@@ -1,95 +1,14 @@
 import { openai } from "@ai-sdk/openai";
-import { generateText, streamText, generateObject } from "ai";
-import scrapingbee from "scrapingbee"; // Import ScrapingBee client - will be removed if only used for Twitter
-import * as cheerio from "cheerio"; // Import cheerio for HTML parsing - keep for Steam
-import {
-  DetailedIndieGameReportSchema,
-  DetailedIndieGameReport,
-} from "@/schema"; // UPDATED Schema import
+import { generateObject } from "ai";
+import { DetailedIndieGameReportSchema } from "@/schema";
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
 
-// Keep ScrapingBee API key for potential other uses (like Steam)
-const scrapingBeeApiKey = process.env.SCRAPINGBEE_API_KEY;
 const rapidApiKey = process.env.RAPIDAPI_KEY; // ADDED: RapidAPI Key
-
-// REMOVED: ScrapingBee API key check (can be removed if only used for Twitter)
-// if (!scrapingBeeApiKey) {
-//   console.error("SCRAPINGBEE_API_KEY environment variable is not set.");
-//   // Optionally, throw an error or handle this case appropriately
-// }
 
 if (!rapidApiKey) {
   console.error("RAPIDAPI_KEY environment variable is not set.");
-  // Optionally, throw an error or handle this case appropriately
-}
-
-// Keep ScrapingBee client creator for potential other uses
-async function createScrapingBeeClient() {
-  if (!scrapingBeeApiKey) {
-    // Return null or throw an error if the API key is missing
-    // This check prevents trying to create a client without a key
-    console.error("Attempted to create ScrapingBee client without an API key.");
-    return null;
-  }
-  return new scrapingbee.ScrapingBeeClient(scrapingBeeApiKey);
-}
-
-/**
- * Scrapes a non-Twitter URL using ScrapingBee and parses the HTML with Cheerio.
- * Allows enabling/disabling stealth mode.
- * (Kept for Steam scraping)
- */
-async function scrapeUrlAndParse(
-  url: string,
-  selectorMap: { [key: string]: string }, // Map of data key to CSS selector
-  useStealth: boolean
-): Promise<{ [key: string]: string | null } | null> {
-  const client = await createScrapingBeeClient();
-  if (!client) return null;
-
-  console.log(`Scraping URL: ${url} (Stealth: ${useStealth})`);
-  try {
-    const response = await client.get({
-      url: url,
-      params: {
-        render_js: true,
-        block_resources: true, // Usually good for faster text extraction
-        stealth_proxy: useStealth,
-      },
-    });
-
-    if (response.status < 200 || response.status >= 300) {
-      throw new Error(
-        `ScrapingBee failed for ${url}: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const decoder = new TextDecoder();
-    const html = decoder.decode(response.data);
-    const $ = cheerio.load(html);
-
-    const extractedData: { [key: string]: string | null } = {};
-    for (const key in selectorMap) {
-      const selector = selectorMap[key];
-      // Special handling for tags to get multiple elements
-      if (key.toLowerCase().includes("tags")) {
-        const tags = $(selector)
-          .map((_, el) => $(el).text().trim())
-          .get(); // Get array of strings
-        extractedData[key] = tags.length > 0 ? tags.join(", ") : null;
-      } else {
-        extractedData[key] = $(selector).first().text().trim() || null;
-      }
-    }
-
-    console.log(`Successfully scraped and parsed: ${url}`);
-    return extractedData;
-  } catch (error) {
-    console.error(`Error processing URL ${url}:`, error);
-    return null;
-  }
 }
 
 // ADDED: Type for raw tweet/author JSON + extracted text
@@ -238,6 +157,62 @@ function findSteamUrlInProfile(authorJson: any): string | null {
   return null;
 }
 
+// ADDED: Function to fetch structured Steam data from RapidAPI
+async function fetchSteamDataFromApi(appId: string): Promise<any | null> {
+  // Return type 'any' for now, can be refined
+  if (!rapidApiKey) {
+    console.error("RAPIDAPI_KEY not configured for Steam API call.");
+    return null;
+  }
+  if (!appId || !/^[0-9]+$/.test(appId)) {
+    console.error(`Invalid Steam App ID provided: ${appId}`);
+    return null;
+  }
+
+  const url = `https://games-details.p.rapidapi.com/gameinfo/single_game/${appId}`;
+  const options = {
+    method: "GET",
+    headers: {
+      "x-rapidapi-key": rapidApiKey,
+      "x-rapidapi-host": "games-details.p.rapidapi.com",
+    },
+  };
+
+  console.log(`Fetching Steam data via API for App ID: ${appId}`);
+  try {
+    // ADD delay if needed for this specific API endpoint's rate limit
+    // await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      // Log API specific errors if possible
+      const errorBody = await response
+        .text()
+        .catch(() => "Failed to read error body");
+      console.error(`Steam API Error Body: ${errorBody}`);
+      throw new Error(
+        `RapidAPI (games-details) failed for App ID ${appId}: ${response.status} ${response.statusText}`
+      );
+    }
+    const result = await response.json();
+    if (result?.status !== 200 || !result?.data) {
+      console.warn(
+        `Steam API returned non-success status or no data for App ID ${appId}:`,
+        result
+      );
+      return null;
+    }
+    console.log(`Successfully fetched Steam API data for App ID: ${appId}`);
+    return result.data; // Return the nested 'data' object
+  } catch (error) {
+    console.error(
+      `Error fetching Steam data for App ID ${appId} via API:`,
+      error
+    );
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   const { messages } = await req.json();
   const userQuery = messages[messages.length - 1].content;
@@ -272,242 +247,91 @@ export async function POST(req: Request) {
     );
   }
 
-  // --- Steam First Strategy ---
-  let profileSteamUrl: string | null = findSteamUrlInProfile(authorJson);
-  let steamData: { [key: string]: string | null } | null = null;
-  let webSearchResultsText: string = ""; // Initialize
-  let contextSummary: string = ""; // Initialize for fallback path
-
-  if (profileSteamUrl) {
-    // 3a. Profile Steam Link FOUND - Scrape Steam First
-    console.log(`Prioritizing Steam URL from profile: ${profileSteamUrl}`);
-    const steamSelectors = {
-      description: "#game_area_description .game_description_snippet",
-      tags: ".glance_tags a.app_tag",
-    };
-    steamData = await scrapeUrlAndParse(profileSteamUrl, steamSelectors, false);
-
-    // 3b. Generate Targeted Gap-Filling Web Search Query
-    let gapFillingQuery = "";
-    const gapQueryGenPrompt = `Based on the provided Tweet text, Author profile JSON, and Scraped Steam data, generate a web search query focused on finding information *likely missing* from these sources. Target details like:
-    - Detailed developer/team background, history, members, roles, location.
-    - Publisher name and details.
-    - Specific funding information (beyond just having a Steam page).
-    - Community links (Discord, Subreddit, official forums).
-    - Social media links (other than the author's Twitter).
-    - Press kit URL.
-    - Other store links (Itch.io, GOG, Epic, etc.).
-
-Tweet Text:
----
-${tweetText}
----
-Author Profile JSON:
----
-${JSON.stringify(authorJson, null, 2) || "Not Available"}
----
-Scraped Steam Data:
----
-Description: ${steamData?.description || "Not Available"}
-Tags: ${steamData?.tags || "Not Available"}
----
-
-Generate *only* the targeted web search query string.`;
-
-    try {
-      console.log("Generating targeted gap-filling web search query...");
-      const queryResult = await generateText({
-        model: openai.responses("gpt-4o-mini"),
-        prompt: gapQueryGenPrompt,
-        maxTokens: 100,
-      });
-      gapFillingQuery = queryResult.text.trim();
-      console.log("Generated gap-filling query:", gapFillingQuery);
-      if (!gapFillingQuery)
-        throw new Error("AI failed to generate gap-filling query.");
-    } catch (error) {
-      console.error("Error generating gap-filling query:", error);
-      gapFillingQuery = `developer background and community links for game on steam page ${profileSteamUrl}`; // Basic fallback
-      console.warn("Using fallback gap-filling query:", gapFillingQuery);
+  // 3. Attempt to find Steam App ID directly from Author JSON
+  console.log("Attempting to find Steam App ID in author profile...");
+  let steamAppId: string | null = null;
+  const steamUrlPattern = /store\.steampowered\.com\/app\/(\d+)/;
+  if (authorJson) {
+    // Check description entities first (most reliable)
+    const descriptionUrls = (authorJson as any)?.result?.data?.users?.[0]
+      ?.result?.legacy?.entities?.description?.urls;
+    if (Array.isArray(descriptionUrls)) {
+      for (const urlEntity of descriptionUrls) {
+        const match = urlEntity?.expanded_url?.match(steamUrlPattern);
+        if (match && match[1]) {
+          steamAppId = match[1];
+          console.log(
+            `Found Steam App ID ${steamAppId} in description entities.`
+          );
+          break;
+        }
+      }
     }
-
-    // 3c. Perform Targeted Web Search
-    console.log(
-      `Performing targeted web search with query: "${gapFillingQuery}"`
-    );
-    const webSearchResult = await generateText({
-      model: openai.responses("gpt-4o-mini"),
-      prompt: gapFillingQuery,
-      tools: {
-        web_search_preview: openai.tools.webSearchPreview({
-          searchContextSize: "high",
-        }),
-      },
-      toolChoice: { type: "tool", toolName: "web_search_preview" },
-    });
-    webSearchResultsText = webSearchResult.text;
-    console.log("Targeted Web Search Result Text:", webSearchResultsText);
-  } else {
-    // 4a. Profile Steam Link NOT FOUND - Use Fallback Strategy
-    console.log("No Steam URL in profile, using broader search strategy...");
-    // Generate Context Summary from Raw JSON using AI (Original Step 3)
-    const summaryGenPrompt = `Analyze the raw JSON data for a tweet and its author\'s profile. Your goal is to extract key factual context for a deep-dive web search, with a focus on accurately identifying the PRIMARY game and developer/studio being discussed.
-
-Key areas to check for names:
-- Tweet text content
-- Tweet hashtags (e.g., #BombshellBlitz)
-- Author's display name (e.g., "sully 💣 wishlist bombshell blitz")
-- Author's profile description/bio
-- URLs mentioned in bio or tweet
-
-Instructions:
-1. Identify the most probable primary game name. Prioritize names explicitly mentioned in hashtags, display name, or bio.
-2. Identify the most probable primary developer/studio name.
-3. Identify any potential publisher names mentioned.
-4. Extract other useful context: key people, locations, project codenames, relevant links.
-5. If there is ambiguity (e.g., multiple potential game names), briefly note it.
-6. Summarize all extracted context concisely.
-
-Tweet JSON:
-\`\`\`json
-${JSON.stringify(tweetJson, null, 2) || "Not available"}
-\`\`\`
-
-Author Profile JSON:
-\`\`\`json
-${JSON.stringify(authorJson, null, 2) || "Not available"}
-\`\`\`
-
-Generate *only* the concise summary of factual context, highlighting the most likely game/dev entities.`;
-
-    try {
-      console.log("Generating context summary from raw JSON...");
-      const summaryResult = await generateText({
-        model: openai.responses("gpt-4o-mini"),
-        prompt: summaryGenPrompt,
-        maxTokens: 300,
-      });
-      contextSummary = summaryResult.text.trim();
-      console.log("Generated Context Summary:", contextSummary);
-      if (!contextSummary)
-        throw new Error("AI failed to generate context summary.");
-    } catch (error) {
-      console.error("Error generating context summary:", error);
-      contextSummary = tweetText; // Fallback
-      console.warn("Using raw tweet text as fallback context.");
+    // Check description text as fallback
+    if (!steamAppId) {
+      const descText = (authorJson as any)?.result?.data?.users?.[0]?.result
+        ?.legacy?.description;
+      if (descText) {
+        const match = descText.match(steamUrlPattern);
+        if (match && match[1]) {
+          steamAppId = match[1];
+          console.log(`Found Steam App ID ${steamAppId} in description text.`);
+        }
+      }
     }
-
-    // 4b. Generate Broad Web Search Query from Summary (Original Step 4)
-    let broadWebSearchQuery = "";
-    const queryGenPrompt = `Based *only* on the following context summary, generate the most effective web search query possible. Focus the query on the *primary game and developer/studio names* identified in the summary.
-
-The goal is to find *in-depth, accurate information* covering all aspects of THAT specific game and its creators:
-- Game Details: Description, gameplay, features, genres, tags, platforms, release status/date, price.
-- Developer Details: Background, history, team members & roles, location.
-- Publisher Details: Name, website, relationship.
-- Funding Details: Source, status, links.
-- Online Presence: Official websites, social media, community hubs, video channels, store pages (Steam!), press kit.
-
-Context Summary:
----
-${contextSummary}
----
-
-Generate *only* the single, optimized web search query string targeting the primary game/developer identified in the summary.`;
-
-    try {
-      console.log("Generating broad web search query from summary...");
-      const queryResult = await generateText({
-        model: openai.responses("gpt-4o-mini"),
-        prompt: queryGenPrompt,
-        maxTokens: 100,
-      });
-      broadWebSearchQuery = queryResult.text.trim();
-      console.log("Generated broad web search query:", broadWebSearchQuery);
-      if (!broadWebSearchQuery)
-        throw new Error("AI failed to generate broad query.");
-    } catch (error) {
-      console.error("Error generating broad web search query:", error);
-      broadWebSearchQuery = `game developer info from tweet ${tweetId}`; // Fallback
-      console.warn("Using fallback broad search query:", broadWebSearchQuery);
-    }
-
-    // 4c. Perform Broad Web Search (Original Step 5)
-    console.log(
-      `Performing broad web search with query: \"${broadWebSearchQuery}\"`
-    );
-    const webSearchResult = await generateText({
-      model: openai.responses("gpt-4o-mini"),
-      prompt: broadWebSearchQuery,
-      tools: {
-        web_search_preview: openai.tools.webSearchPreview({
-          searchContextSize: "high",
-        }),
-      },
-      toolChoice: { type: "tool", toolName: "web_search_preview" },
-    });
-    webSearchResultsText = webSearchResult.text;
-    console.log("Broad Web Search Result Text:", webSearchResultsText);
-
-    // 4d. Try Extracting Steam URL from Broad Web Search Results (Original Step 6 part 1)
-    const steamUrlPattern =
-      /https?:\/\/store\.steampowered\.com\/app\/\d+\/?[^\s]*/;
-    const steamUrlMatch = webSearchResultsText.match(steamUrlPattern);
-    if (steamUrlMatch && steamUrlMatch[0]) {
-      const foundSteamUrl = steamUrlMatch[0];
-      console.log(`Found Steam URL in web search results: ${foundSteamUrl}`);
-      const steamSelectors = {
-        description: "#game_area_description .game_description_snippet",
-        tags: ".glance_tags a.app_tag",
-      };
-      steamData = await scrapeUrlAndParse(foundSteamUrl, steamSelectors, false);
-    } else {
-      console.log("No Steam URL found in broad web search results either.");
+    // Check main profile URL field as another fallback
+    if (!steamAppId) {
+      const profileUrlEntity = (authorJson as any)?.result?.data?.users?.[0]
+        ?.result?.legacy?.entities?.url?.urls?.[0]?.expanded_url;
+      if (profileUrlEntity) {
+        const match = profileUrlEntity.match(steamUrlPattern);
+        if (match && match[1]) {
+          steamAppId = match[1];
+          console.log(`Found Steam App ID ${steamAppId} in profile URL field.`);
+        }
+      }
     }
   }
 
-  // 7. Final AI call to synthesize everything into the DETAILED REPORT schema
-  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive, factual report using the DetailedIndieGameReportSchema JSON format. Populate every field as accurately and completely as possible based *only* on the provided sources. Prioritize factual accuracy and cross-reference information between sources.
-
-Source 1: Original Tweet Text (for 'sourceTweetText' field and context):
----
-${tweetText}
----
-
-Source 2: Web Search Results (main source for filling most report fields):
----
-${webSearchResultsText}
----
-`;
-
-  if (steamData) {
-    finalSynthesisPrompt += `\nSource 3: Scraped Steam Page Details (use for 'scrapedSteamDescription', 'scrapedSteamTags', and to supplement fields like 'gameDescription', 'genresAndTags', 'releaseInfo'):\n---\nDescription: ${
-      steamData.description || "Not found"
-    }\nTags/Genres: ${steamData.tags || "Not found"}\n---\n`;
+  if (!steamAppId) {
+    console.log("No Steam App ID found in author profile.");
   }
 
-  finalSynthesisPrompt += `\nInstructions:
-1.  Analyze all provided sources (Tweet, Web Search Results, Steam Data).
-2.  Cross-reference information across sources to determine the most accurate game name, developer name, publisher name, etc. For example, check if the Steam page title matches the game name mentioned in the tweet/bio.
-3.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.
-4.  For 'relevantLinks', create a comprehensive list of *all* unique URLs found, correctly assigning the 'type' and 'name'.
-5.  Synthesize information accurately for description fields ('gameDescription', 'developerBackground', etc.).
-6.  List identified 'teamMembers' and 'genresAndTags'.
-7.  Provide a confidence level in 'aiConfidenceAssessment'. If there were significant contradictions or ambiguities between sources (e.g., conflicting game names), mention it here.
-8.  Write a concise 'overallReportSummary' paragraph focusing on confirmed facts.
-9.  Use 'null' for fields where no reliable information was found.
+  // 4. Fetch Steam API Data if App ID was found
+  let steamApiData: any | null = null;
+  if (steamAppId) {
+    console.log(`Fetching Steam API data for App ID: ${steamAppId}`);
+    steamApiData = await fetchSteamDataFromApi(steamAppId);
+    if (!steamApiData) {
+      console.warn(
+        `Failed to fetch Steam API data for App ID ${steamAppId}. Proceeding without it.`
+      );
+    }
+  }
 
-Generate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
+  // 5. Final Synthesis (No Web Search, Direct JSON Analysis)
+  console.log("Preparing for final synthesis using available JSON data...");
+  let finalSynthesisPrompt = `Analyze the following raw API data for a Twitter tweet, the tweet author's profile, and potentially Steam game details. Your goal is to extract and synthesize this information into a comprehensive, factual report strictly conforming to the DetailedIndieGameReportSchema JSON format. Web search was NOT performed.\n\n**Sources Provided:**\n\nSource 1: Original Tweet Text (for 'sourceTweetText' field and context):\n---\n${tweetText}\n---\n\nSource 2: Tweet JSON Data:\n\`\`\`json\n${
+    JSON.stringify(tweetJson, null, 2) || "Not available"
+  }\n\`\`\`\n\nSource 3: Author Profile JSON Data:\n\`\`\`json\n${
+    JSON.stringify(authorJson, null, 2) || "Not available"
+  }\n\`\`\`\n`;
 
-  console.log(
-    "Performing final AI synthesis into DetailedIndieGameReportSchema..."
-  );
+  if (steamApiData) {
+    finalSynthesisPrompt += `\nSource 4: Steam Game Details JSON Data (Derived from link in Author Profile):\n\`\`\`json\n${
+      JSON.stringify(steamApiData, null, 2) || "Not available"
+    }\n\`\`\`\n`;
+  }
+
+  finalSynthesisPrompt += `\n**Instructions:**\n1.  Analyze all provided JSON sources (Tweet, Author, Steam if available).\n2.  Identify the primary game, developer, and publisher (if possible) based on the data (prioritize Author JSON name/bio/hashtags and Steam JSON data if present).\n3.  Extract relevant details like descriptions, background info, team members, funding, release status, platforms, genres/tags, website links, social links, community links, store links, etc., directly from the JSON data.\n4.  Populate the 'relevantLinks' array by finding all URLs within the JSON sources and categorizing their 'type' accurately (e.g., 'Steam', 'Twitter Profile', 'Official Website', 'Linktree', 'Other Social').\n5.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.\n6.  Provide a confidence level in 'aiConfidenceAssessment', noting that web search was skipped and confidence depends on the richness of the provided JSON data.\n7.  Write a concise 'overallReportSummary'.\n8.  Use 'null' for fields where no information could be extracted from the provided JSON sources.\n\nGenerate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
+
+  console.log("Performing final AI synthesis directly from API JSON data...");
   const finalResult = await generateObject({
     model: openai.responses("gpt-4o-mini"),
     prompt: finalSynthesisPrompt,
     schema: DetailedIndieGameReportSchema,
   });
 
-  // 8. Return the final object
+  // 6. Return the final object
   return Response.json(finalResult.object);
 }
