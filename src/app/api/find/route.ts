@@ -3,6 +3,7 @@ import { generateObject } from "ai";
 import scrapingbee from "scrapingbee";
 import * as cheerio from "cheerio";
 import { DetailedIndieGameReportSchema } from "@/schema";
+import { db, schema as dbSchema } from "@/db";
 
 // example string for LLM testing
 // const testString = "https://x.com/Just_Game_Dev/status/1918036677609521466";
@@ -443,6 +444,45 @@ export async function POST(req: Request) {
     schema: DetailedIndieGameReportSchema,
   });
 
-  // 6. Return the final object
+  // 6. Persist the find to the database (NEW STEP)
+  console.log("Attempting to save find to database...");
+  try {
+    const newFindData = {
+      sourceTweetId: tweetId, // Use the extracted tweet ID
+      sourceTweetUrl: primaryUrl, // Use the full tweet URL
+      rawTweetJson: tweetJson, // Raw JSON from Twitter API
+      rawAuthorJson: authorJson, // Raw JSON for author profile
+      rawSteamJson: steamApiData, // Raw JSON from Steam API (can be null)
+      rawDemoHtml: rawDemoHtml, // Raw HTML snippet (can be null)
+      report: finalResult.object, // The generated Zod-validated report object
+      // createdAt and updatedAt will be handled by the database default/trigger
+    };
+
+    // Validate with Zod before insertion (optional but good practice)
+    // DetailedIndieGameReportSchema.parse(finalResult.object);
+
+    const inserted = await db
+      .insert(dbSchema.finds)
+      .values(newFindData)
+      .returning({ id: dbSchema.finds.id }); // Optionally return the new ID
+
+    if (inserted && inserted.length > 0 && inserted[0].id) {
+      console.log(
+        `Successfully saved find to database with ID: ${inserted[0].id}`
+      );
+    } else {
+      // This case might happen with certain configurations or if returning wasn't used/successful
+      console.log(
+        "Successfully sent insert command, but did not receive confirmation ID."
+      );
+    }
+  } catch (error) {
+    console.error("Error saving find to database:", error);
+    // Decide how to handle DB errors: Log it but still return the report to the user?
+    // Or return an error response?
+    // For now, we log the error and proceed to return the report.
+  }
+
+  // 7. Return the final object
   return Response.json(finalResult.object);
 }
