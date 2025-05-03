@@ -26,11 +26,16 @@ interface FindPageData {
 }
 
 // This is now an async Server Component
-export default async function Page({ params }: { params: { slug: string } }) {
-  const findId = extractIdFromSlug(params.slug);
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const findId = extractIdFromSlug(slug);
 
   if (findId === null) {
-    console.error("Invalid ID format in slug:", params.slug);
+    console.error("Invalid ID format in slug:", slug);
     notFound(); // Use Next.js built-in notFound helper
   }
 

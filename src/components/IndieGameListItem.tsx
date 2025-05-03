@@ -80,9 +80,6 @@ export function IndieGameListItem({
   const actualAppId = steamAppId || demoAppId;
 
   const coverArtImage = findCoverArtImage(reportData, actualAppId);
-  const hasDemo = reportData.relevantLinks?.some(
-    (link) => link?.type === "Steam Demo"
-  );
 
   // Format the creation date if it exists and is requested
   const formattedDate =
@@ -138,35 +135,6 @@ export function IndieGameListItem({
               </Badge>
             ))}
           </div>
-        )}
-      </div>
-
-      {/* Action Button / Display Badge */}
-      <div className="flex-shrink-0">
-        {primaryLink?.type ? (
-          <span
-            className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white ${
-              primaryLink.type === "Steam"
-                ? "bg-[#1b2838]"
-                : primaryLink.type === "Itch.io"
-                ? "bg-[#fa5c5c]"
-                : primaryLink.type === "Kickstarter"
-                ? "bg-[#05ce78]"
-                : primaryLink.type === "Steam Demo"
-                ? "bg-green-600"
-                : "bg-indigo-600"
-            }`}
-          >
-            {primaryLink.type === "Steam Demo"
-              ? "Demo"
-              : primaryLink.type || "Info"}
-          </span>
-        ) : hasDemo ? (
-          <Badge className="bg-green-600 text-green-50 text-xs px-1.5 py-0.5">
-            Demo
-          </Badge>
-        ) : (
-          <span className="text-xs text-gray-400"></span>
         )}
       </div>
     </div>
