@@ -1,31 +1,64 @@
-"use client";
-
-import { useState } from "react";
-import { DetailedIndieGameReport } from "@/schema";
-import { IndieGameReport } from "@/components/IndieGameReport";
+// Mark as a server component (no "use client" needed)
+import { db, schema } from "@/db";
+import { desc } from "drizzle-orm";
 import { IndieGameListItem } from "@/components/IndieGameListItem";
 import { SubmitGameDialog } from "@/components/SubmitGameDialog";
 
-export default function Home() {
-  const [resultData, setResultData] = useState<DetailedIndieGameReport | null>(
-    null
-  );
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+// Revalidate data every 60 seconds (or choose your preferred interval)
+// Or set to 0 for dynamic rendering on every request
+export const revalidate = 0; // Example: Dynamic rendering
 
-  const handleSuccess = (data: DetailedIndieGameReport) => {
-    setError(null); // Clear previous errors on new success
-    setResultData(data);
-  };
+async function getRecentFinds() {
+  try {
+    const finds = await db
+      .select({
+        id: schema.finds.id,
+        reportData: schema.finds.report,
+        createdAt: schema.finds.createdAt,
+      })
+      .from(schema.finds)
+      .orderBy(desc(schema.finds.createdAt))
+      .limit(20); // Example limit
 
-  const handleError = (error: Error) => {
-    setError(error);
-    setResultData(null); // Clear previous results on error
-  };
+    // Drizzle returns reportData as potentially string | null | Json,
+    // we need to ensure it's parsed if stored as a string.
+    // Also handle potential nulls gracefully.
+    const parsedFinds = finds
+      .map((find) => {
+        let reportData = null;
+        if (find.reportData) {
+          if (typeof find.reportData === "string") {
+            try {
+              reportData = JSON.parse(find.reportData);
+            } catch (e) {
+              console.error(
+                `Failed to parse reportData for find ${find.id}:`,
+                e
+              );
+              // Keep reportData as null if parsing fails
+            }
+          } else {
+            // Assume it's already JSON
+            reportData = find.reportData;
+          }
+        }
+        return {
+          ...find,
+          // Ensure reportData is always in the expected object format or null
+          reportData: reportData as any, // Cast needed if DetailedIndieGameReport type isn't perfectly aligned
+        };
+      })
+      .filter((find) => find.reportData !== null); // Filter out finds with null/invalid reportData
 
-  const handleLoadingChange = (loading: boolean) => {
-    setIsLoading(loading);
-  };
+    return parsedFinds;
+  } catch (error) {
+    console.error("Error fetching finds:", error);
+    return []; // Return empty array on error
+  }
+}
+
+export default async function Home() {
+  const initialFinds = await getRecentFinds();
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8 bg-background text-foreground">
@@ -33,39 +66,31 @@ export default function Home() {
         {/* Header Row */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">IndieFindr</h1>
-          <SubmitGameDialog
-            onSuccess={handleSuccess}
-            onError={handleError}
-            onLoadingChange={handleLoadingChange}
-          />
+          {/* SubmitGameDialog is a Client Component, can be used directly */}
+          <SubmitGameDialog />
         </div>
 
-        {/* Status Indicators */}
-        {isLoading && (
-          <div className="text-center p-4 text-blue-600">
-            Gathering Info... (this may take a minute or two)
-          </div>
-        )}
-
-        {error && (
-          <div className="text-red-500 border border-red-500 rounded p-3">
-            <p>
-              <strong>Error:</strong> {error.message}
+        {/* Display List of Finds */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold border-b pb-2">Recent Finds:</h2>
+          {initialFinds.length > 0 ? (
+            <ul className="space-y-3">
+              {initialFinds.map((find) => (
+                <li key={find.id}>
+                  {/* Wrap list item in a Link later for navigation */}
+                  {/* Ensure find.reportData is passed and valid */}
+                  {find.reportData && (
+                    <IndieGameListItem reportData={find.reportData} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground text-center py-4">
+              No finds submitted yet. Use the button above to add one!
             </p>
-          </div>
-        )}
-
-        {/* Results Display */}
-        {resultData && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold border-b pb-2">
-              Latest Find:
-            </h2>
-            {/* Display both list item and full report for now */}
-            <IndieGameListItem reportData={resultData} />
-            <IndieGameReport reportData={resultData} />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

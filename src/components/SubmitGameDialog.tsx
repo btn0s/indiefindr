@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,30 +11,22 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DetailedIndieGameReport } from "@/schema";
 
-interface SubmitGameDialogProps {
-  onSuccess: (data: DetailedIndieGameReport) => void;
-  onError: (error: Error) => void;
-  onLoadingChange: (loading: boolean) => void;
-}
-
-export function SubmitGameDialog({
-  onSuccess,
-  onError,
-  onLoadingChange,
-}: SubmitGameDialogProps) {
+export function SubmitGameDialog() {
+  const router = useRouter();
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false); // Control dialog visibility
+  const [error, setError] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleLocalSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    onLoadingChange(true); // Notify parent
+    setError(null);
 
     try {
       const messages = [{ role: "user", content: inputValue }];
@@ -52,17 +45,14 @@ export function SubmitGameDialog({
         );
       }
 
-      const data: DetailedIndieGameReport = await response.json();
-      onSuccess(data);
-      setIsOpen(false); // Close dialog on success
-      setInputValue(""); // Clear input
+      setIsOpen(false);
+      setInputValue("");
+      router.refresh();
     } catch (err: any) {
-      onError(err);
-      // Keep dialog open on error? Or close? Let's keep it open for now.
+      setError(err.message || "An unknown error occurred.");
       console.error("Submit error:", err);
     } finally {
       setIsLoading(false);
-      onLoadingChange(false); // Notify parent
     }
   };
 
@@ -70,8 +60,15 @@ export function SubmitGameDialog({
     setInputValue(e.target.value);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setError(null);
+    }
+    setIsOpen(open);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline">Submit New Find</Button>
       </DialogTrigger>
@@ -84,6 +81,11 @@ export function SubmitGameDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleLocalSubmit} className="grid gap-4 py-4">
+          {error && (
+            <p className="text-sm text-red-600 bg-red-100 border border-red-300 rounded px-3 py-2">
+              <strong>Error:</strong> {error}
+            </p>
+          )}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="url" className="text-right">
               Tweet URL
@@ -100,15 +102,20 @@ export function SubmitGameDialog({
               disabled={isLoading}
             />
           </div>
+          <p className="col-span-4 text-xs text-muted-foreground text-center px-4">
+            Example: https://x.com/Just_Game_Dev/status/1918036677609521466
+          </p>
           <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost" type="button">
+                Cancel
+              </Button>
+            </DialogClose>
             <Button type="submit" disabled={isLoading}>
               {isLoading ? "Analyzing..." : "Submit"}
             </Button>
           </DialogFooter>
         </form>
-        <p className="text-xs text-muted-foreground text-center">
-          Example: https://x.com/Just_Game_Dev/status/1918036677609521466
-        </p>
       </DialogContent>
     </Dialog>
   );
