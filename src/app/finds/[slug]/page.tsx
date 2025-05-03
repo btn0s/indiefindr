@@ -9,15 +9,26 @@ export const revalidate = 3600;
 
 interface FindPageProps {
   params: {
-    slug: string; // The 'slug' from the URL, expected to be the find ID
+    slug: string; // The 'slug' from the URL now contains gameName-id format
   };
 }
 
-async function getFindById(id: string) {
-  // Ensure the ID is a valid number if your schema expects serial/integer
-  const findId = parseInt(id, 10);
-  if (isNaN(findId)) {
-    console.error("Invalid ID format:", id);
+// Helper function to extract numeric ID from slug
+function extractIdFromSlug(slug: string): number | null {
+  // Extract the ID from the last part of the slug after the last hyphen
+  const parts = slug.split("-");
+  const idStr = parts[parts.length - 1];
+
+  const id = parseInt(idStr, 10);
+  return isNaN(id) ? null : id;
+}
+
+async function getFindById(slug: string) {
+  // Extract numeric ID from the slug (e.g., "game-title-123" -> 123)
+  const findId = extractIdFromSlug(slug);
+
+  if (findId === null) {
+    console.error("Invalid ID format in slug:", slug);
     return null;
   }
 
@@ -62,7 +73,7 @@ async function getFindById(id: string) {
     // Return only the necessary report data
     return reportData;
   } catch (error) {
-    console.error(`Error fetching find ${id}:`, error);
+    console.error(`Error fetching find with ID ${findId}:`, error);
     return null; // Return null on error
   }
 }

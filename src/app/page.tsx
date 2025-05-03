@@ -10,6 +10,20 @@ import { IndieGameListItem } from "@/components/IndieGameListItem";
 // Or set to 0 for dynamic rendering on every request
 export const revalidate = 0; // Example: Dynamic rendering
 
+// Function to create SEO-friendly slugs
+function createSlug(title: string, id: string | number): string {
+  // Convert title to lowercase, replace spaces with hyphens, remove special chars
+  const titleSlug = title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')  // Remove special characters
+    .replace(/\s+/g, '-')      // Replace spaces with hyphens
+    .replace(/-+/g, '-')       // Remove consecutive hyphens
+    .trim();                   // Trim leading/trailing spaces
+  
+  // Combine with ID to ensure uniqueness
+  return `${titleSlug}-${id}`;
+}
+
 async function getRecentFinds() {
   try {
     const finds = await db
@@ -83,7 +97,10 @@ export default async function Home() {
             {initialFinds.map((find) => (
               <li key={find.id}>
                 <Link
-                  href={`/finds/${find.id}`}
+                  href={`/finds/${createSlug(
+                    find.reportData?.gameName || "untitled-game",
+                    find.id
+                  )}`}
                   className="block hover:bg-gray-100 rounded-lg transition-colors duration-150 border border-transparent hover:border-gray-200"
                 >
                   {/* Updated to pass the complete find object */}
