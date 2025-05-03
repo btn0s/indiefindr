@@ -4,7 +4,7 @@ import { generateEmbedding } from "@/lib/embeddings";
 import { sql, and } from "drizzle-orm";
 
 const SEARCH_LIMIT = 10; // Limit the number of search results
-const DISTANCE_THRESHOLD = 0.7; // Maximum distance for a result to be considered relevant
+const DISTANCE_THRESHOLD = 0.6; // Maximum distance for a result to be considered relevant
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
