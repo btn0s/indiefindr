@@ -77,7 +77,7 @@ export default async function Home() {
 
       {/* Display List of Finds Container */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold border-b pb-2">Recent Finds:</h2>
+        <h2 className="text-lg font-semibold pb-2">Recent Finds</h2>
         {initialFinds.length > 0 ? (
           <ul className="space-y-3">
             {initialFinds.map((find) => (
