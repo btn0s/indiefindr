@@ -4,6 +4,7 @@ import scrapingbee from "scrapingbee";
 import * as cheerio from "cheerio";
 import { DetailedIndieGameReportSchema } from "@/schema";
 import { db, schema as dbSchema } from "@/db";
+import { generateEmbedding } from "@/lib/embeddings";
 
 // example string for LLM testing
 // const testString = "https://x.com/Just_Game_Dev/status/1918036677609521466";
@@ -444,22 +445,56 @@ export async function POST(req: Request) {
     schema: DetailedIndieGameReportSchema,
   });
 
-  // 6. Persist the find to the database (NEW STEP)
+  // ** ADDED: Generate embedding before saving **
+  let embeddingVector: number[] | null = null;
+  try {
+    const report = finalResult.object; // The generated report object
+    // Construct text for embedding (combine key fields)
+    const textToEmbed = [
+      report.gameName,
+      report.gameDescription,
+      report.overallReportSummary,
+      Array.isArray(report.genresAndTags)
+        ? report.genresAndTags.join(", ")
+        : null,
+      report.developerName,
+      report.publisherName,
+    ]
+      .filter(Boolean) // Remove null/undefined/empty strings
+      .join("\n\n"); // Join with double newline for separation
+
+    if (textToEmbed) {
+      console.log("Generating embedding for the new find...");
+      embeddingVector = await generateEmbedding(textToEmbed);
+      console.log("Embedding generated successfully.");
+    } else {
+      console.warn(
+        "Could not generate embedding: No text content found in report."
+      );
+    }
+  } catch (embeddingError) {
+    console.error(
+      "Failed to generate embedding for the new find:",
+      embeddingError
+    );
+    // Decide if you want to fail the whole process or just log and continue
+    // For now, we log and continue, saving the find without an embedding.
+  }
+
+  // 6. Persist the find to the database
   console.log("Attempting to save find to database...");
   try {
+    // Add embeddingVector to the data being inserted (can be null)
     const newFindData = {
-      sourceTweetId: tweetId, // Use the extracted tweet ID
-      sourceTweetUrl: primaryUrl, // Use the full tweet URL
-      rawTweetJson: tweetJson, // Raw JSON from Twitter API
-      rawAuthorJson: authorJson, // Raw JSON for author profile
-      rawSteamJson: steamApiData, // Raw JSON from Steam API (can be null)
-      rawDemoHtml: rawDemoHtml, // Raw HTML snippet (can be null)
-      report: finalResult.object, // The generated Zod-validated report object
-      // createdAt and updatedAt will be handled by the database default/trigger
+      sourceTweetId: tweetId,
+      sourceTweetUrl: primaryUrl,
+      rawTweetJson: tweetJson,
+      rawAuthorJson: authorJson,
+      rawSteamJson: steamApiData,
+      rawDemoHtml: rawDemoHtml,
+      report: finalResult.object,
+      vectorEmbedding: embeddingVector, // <-- Add the embedding vector here
     };
-
-    // Validate with Zod before insertion (optional but good practice)
-    // DetailedIndieGameReportSchema.parse(finalResult.object);
 
     const inserted = await db
       .insert(dbSchema.finds)

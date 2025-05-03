@@ -1,0 +1,116 @@
+{
+  "id": "9a058301-0815-47cb-862e-e5704210c04e",
+  "prevId": "c53f6420-8047-4e7c-8070-52cf5ecadc4a",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.finds": {
+      "name": "finds",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "source_tweet_id": {
+          "name": "source_tweet_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_tweet_url": {
+          "name": "source_tweet_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_tweet_json": {
+          "name": "raw_tweet_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_author_json": {
+          "name": "raw_author_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_steam_json": {
+          "name": "raw_steam_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_demo_html": {
+          "name": "raw_demo_html",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "report": {
+          "name": "report",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vector_embedding": {
+          "name": "vector_embedding",
+          "type": "vector(1536)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "tweet_id_idx": {
+          "name": "tweet_id_idx",
+          "columns": [
+            {
+              "expression": "source_tweet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

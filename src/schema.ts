@@ -95,7 +95,7 @@ export const DetailedIndieGameReportSchema = z.object({
   // --- Source Data & Confidence ---
   sourceTweetText: z
     .string()
-    .describe("The original tweet text provided as input."), // Use non-nullable as it's direct input
+    .describe("The original tweet text provided as input."),
   aiConfidenceAssessment: z
     .string()
     .nullable()
