@@ -29,9 +29,12 @@ export async function GET(req: NextRequest) {
     const searchResults = await db
       .select({
         id: schema.finds.id,
-        // Use sql template to safely access JSONB fields
-        gameName: sql<string>`${schema.finds.report}->>'gameName'`,
-        summary: sql<string>`${schema.finds.report}->>'overallReportSummary'`,
+        // Use sql template to safely access JSONB fields if needed for specific querying,
+        // but select the whole report object for the component
+        // gameName: sql<string>`${schema.finds.report}->>'gameName'`,
+        // summary: sql<string>`${schema.finds.report}->>'overallReportSummary'`,
+        report: schema.finds.report, // Select the full report object
+        createdAt: schema.finds.createdAt, // Select createdAt
         // Calculate the distance (lower is better)
         distance: sql<number>`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector`,
       })
