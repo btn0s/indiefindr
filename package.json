@@ -38,7 +38,9 @@
     "@radix-ui/react-toggle": "^1.1.6",
     "@radix-ui/react-toggle-group": "^1.1.7",
     "@radix-ui/react-tooltip": "^1.2.4",
+    "@types/cheerio": "^0.22.35",
     "ai": "^4.3.13",
+    "cheerio": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -55,11 +57,12 @@
     "react-hook-form": "^7.56.1",
     "react-resizable-panels": "^3.0.0",
     "recharts": "^2.15.3",
+    "scrapingbee": "^1.7.5",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.2.0",
+    "twitter-api-v2": "^1.15.0",
     "vaul": "^1.1.2",
-    "zod": "^3.24.3",
-    "twitter-api-v2": "^1.15.0"
+    "zod": "^3.24.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
