@@ -18,7 +18,14 @@ export function Header() {
           </nav> */}
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
-          <nav className="flex items-center space-x-1">
+          <nav className="flex items-center space-x-4">
+            {/* Search link added here */}
+            <Link
+              href="/search"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              Search
+            </Link>
             {/* Submit button moves to the right */}
             <SubmitGameDialog />
             {/* Add Theme Toggle or User Auth later */}
