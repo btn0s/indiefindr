@@ -1,6 +1,6 @@
 "use client";
 
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 import { Input } from "@/components/ui/input";
 
 export default function Home() {
@@ -12,10 +12,15 @@ export default function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-md space-y-4">
         <div className="space-y-4">
-          {messages.map((m) => (
-            <div key={m.id} className="whitespace-pre-wrap">
-              <div className="font-bold">{m.role}</div>
-              <p>{m.content}</p>
+          {messages.map((message) => (
+            <div key={message.id} className="whitespace-pre-wrap">
+              {message.role === "user" ? "User: " : "AI: "}
+              {message.parts.map((part, i) => {
+                switch (part.type) {
+                  case "text":
+                    return <div key={`${message.id}-${i}`}>{part.text}</div>;
+                }
+              })}
             </div>
           ))}
         </div>
