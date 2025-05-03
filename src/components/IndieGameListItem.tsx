@@ -53,7 +53,7 @@ export function IndieGameListItem({ reportData }: IndieGameListItemProps) {
 
     // If we have a Steam App ID, construct the cover image URL
     if (actualAppId) {
-      return `https://cdn.akamai.steamstatic.com/steam/apps/${actualAppId}/capsule_231x87.jpg`; // Smaller capsule
+      return `https://cdn.akamai.steamstatic.com/steam/apps/${actualAppId}/capsule_616x353.jpg`; // Match main widget aspect ratio
     }
 
     const screenshot = reportData.relevantLinks?.find(
@@ -70,9 +70,9 @@ export function IndieGameListItem({ reportData }: IndieGameListItemProps) {
   );
 
   return (
-    <div className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white w-full max-w-md mx-auto">
+    <div className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white w-full">
       {/* Game Cover Art (Smaller) */}
-      <div className="flex-shrink-0 w-[100px] h-[45px] rounded bg-gray-100 overflow-hidden border border-gray-200 relative">
+      <div className="flex-shrink-0 w-[100px] h-[57px] rounded bg-gray-100 overflow-hidden border border-gray-200 relative">
         {coverArtImage ? (
           <img
             src={coverArtImage}
@@ -120,51 +120,32 @@ export function IndieGameListItem({ reportData }: IndieGameListItemProps) {
         )}
       </div>
 
-      {/* Action Button / Link */}
+      {/* Action Button / Display Badge */}
       <div className="flex-shrink-0">
-        {primaryLink?.url ? (
-          <a
-            href={primaryLink.url}
-            target="_blank"
-            rel="noopener noreferrer"
+        {primaryLink?.type ? (
+          <span
             className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white ${
               primaryLink.type === "Steam"
-                ? "bg-[#1b2838] hover:bg-[#2a475e]"
+                ? "bg-[#1b2838]"
                 : primaryLink.type === "Itch.io"
-                ? "bg-[#fa5c5c] hover:bg-[#f53333]"
+                ? "bg-[#fa5c5c]"
                 : primaryLink.type === "Kickstarter"
-                ? "bg-[#05ce78] hover:bg-[#04a460]"
+                ? "bg-[#05ce78]"
                 : primaryLink.type === "Steam Demo"
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-indigo-600 hover:bg-indigo-700"
+                ? "bg-green-600"
+                : "bg-indigo-600"
             }`}
           >
             {primaryLink.type === "Steam Demo"
               ? "Demo"
-              : primaryLink.type || "View"}
-            {/* Optional: Add an external link icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-3 w-3 ml-1"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-          </a>
+              : primaryLink.type || "Info"}
+          </span>
         ) : hasDemo ? (
           <Badge className="bg-green-600 text-green-50 text-xs px-1.5 py-0.5">
             Demo
           </Badge>
         ) : (
-          // Placeholder if no link is available
-          <span className="text-xs text-gray-400">No Link</span>
+          <span className="text-xs text-gray-400"></span>
         )}
       </div>
     </div>

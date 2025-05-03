@@ -1,80 +1,51 @@
 "use client";
 
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { DetailedIndieGameReport } from "@/schema";
-import { Button } from "@/components/ui/button";
 import { IndieGameReport } from "@/components/IndieGameReport";
+import { IndieGameListItem } from "@/components/IndieGameListItem";
+import { SubmitGameDialog } from "@/components/SubmitGameDialog";
 
 export default function Home() {
-  const [inputValue, setInputValue] = useState("");
   const [resultData, setResultData] = useState<DetailedIndieGameReport | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setResultData(null);
-
-    try {
-      const messages = [{ role: "user", content: inputValue }];
-      const response = await fetch("/api/find", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ messages }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || `HTTP error! status: ${response.status}`
-        );
-      }
-
-      const data: DetailedIndieGameReport = await response.json();
-      setResultData(data);
-    } catch (err: any) {
-      setError(err);
-      console.error("Fetch error:", err);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSuccess = (data: DetailedIndieGameReport) => {
+    setError(null); // Clear previous errors on new success
+    setResultData(data);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
+  const handleError = (error: Error) => {
+    setError(error);
+    setResultData(null); // Clear previous results on error
+  };
+
+  const handleLoadingChange = (loading: boolean) => {
+    setIsLoading(loading);
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8 bg-background text-foreground">
       <div className="w-full max-w-5xl space-y-6">
-        <h1 className="text-3xl font-bold text-center">Indie Game Deep Dive</h1>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-          <Input
-            type="url"
-            name="url"
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="Enter Tweet URL (e.g., https://x.com/...)"
-            required
-            className="w-full"
-            disabled={isLoading}
+        {/* Header Row */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">IndieFindr</h1>
+          <SubmitGameDialog
+            onSuccess={handleSuccess}
+            onError={handleError}
+            onLoadingChange={handleLoadingChange}
           />
-          <span className="text-xs text-muted-foreground mb-2">
-            Try: https://x.com/Just_Game_Dev/status/1918036677609521466
-          </span>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading
-              ? "Gathering Info... (this may take a while)"
-              : "Analyze"}
-          </Button>
-        </form>
+        </div>
+
+        {/* Status Indicators */}
+        {isLoading && (
+          <div className="text-center p-4 text-blue-600">
+            Gathering Info... (this may take a minute or two)
+          </div>
+        )}
 
         {error && (
           <div className="text-red-500 border border-red-500 rounded p-3">
@@ -84,7 +55,17 @@ export default function Home() {
           </div>
         )}
 
-        {resultData && <IndieGameReport reportData={resultData} />}
+        {/* Results Display */}
+        {resultData && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold border-b pb-2">
+              Latest Find:
+            </h2>
+            {/* Display both list item and full report for now */}
+            <IndieGameListItem reportData={resultData} />
+            <IndieGameReport reportData={resultData} />
+          </div>
+        )}
       </div>
     </div>
   );
