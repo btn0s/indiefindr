@@ -131,7 +131,7 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
       {/* Header with navigational elements - could be removed or replaced for actual integration */}
       <div className="relative">
         {/* Back button - for UI consistency */}
-        <button className="absolute top-4 left-4 z-10 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md">
+        {/* <button className="absolute top-4 left-4 z-10 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-5 w-5 text-gray-700"
@@ -144,10 +144,10 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
               clipRule="evenodd"
             />
           </svg>
-        </button>
+        </button> */}
 
         {/* More actions button */}
-        <button className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md">
+        {/* <button className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-5 w-5 text-gray-700"
@@ -156,42 +156,28 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
           >
             <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
           </svg>
-        </button>
+        </button> */}
 
         {/* Background Image with blur effects */}
-        <div className="w-full h-[280px] relative overflow-hidden">
+        <div className="w-full h-[150px] relative">
           {backgroundImage ? (
             <div className="w-full h-full relative">
               <img
                 src={backgroundImage}
                 alt={reportData.gameName || "Game image"}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover blur-md opacity-80"
               />
-              {/* Overlay to ensure text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-black/10"></div>
             </div>
           ) : (
             <div className="w-full h-full bg-gradient-to-b from-indigo-500/90 to-purple-700/90"></div>
           )}
-
-          {/* Blur effects - updated to blend with background color */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent"></div>
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent opacity-70"></div>
-          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/30 to-transparent"></div>
-          <div
-            className="absolute -inset-2 opacity-60"
-            style={{
-              background:
-                "radial-gradient(circle at center, transparent 50%, white 100%)",
-            }}
-          ></div>
         </div>
       </div>
 
       {/* Game info section */}
       <div className="px-4 pt-2 pb-4 relative">
         {/* Game logo/icon - updated to match Steam capsule aspect ratio (616x353) */}
-        <div className="flex justify-between items-start -mt-12 mb-3">
+        <div className="flex justify-between items-start -mt-8 mb-3">
           <div className="relative">
             <div className="w-[100px] h-[57px] rounded-lg border-4 border-white bg-gray-100 overflow-hidden shadow-lg">
               {/* Use Steam cover art if available, otherwise fall back to first letter */}
