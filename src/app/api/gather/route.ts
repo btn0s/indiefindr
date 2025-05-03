@@ -121,10 +121,38 @@ export async function POST(req: Request) {
   // Join contents for the prompt, handle potentially large combined content if necessary
   const combinedContent = contents.join("\n\n---\n\n"); // Simple join, consider truncation if needed
 
-  // Use the AI to analyze the fetched content
+  // Construct the prompt for the AI
+  const finalPrompt = `Analyze the following indie game developer tweet content:
+---
+${combinedContent}
+---
+Based on the tweet, identify the developer/studio and the game mentioned.
+Then, search the web to find the following information:
+- Developer/Studio: Background, history, official website.
+- Game: Official website, Steam page link (or other store pages), Kickstarter/funding page (if any), genre.
+
+Synthesize all the gathered information (from the tweet and the web search) into a structured summary. Include relevant URLs.
+`;
+
+  // Use the AI to analyze the fetched content and perform web search
   const result = await streamText({
-    model: openai.responses("gpt-4o-mini"),
-    prompt: `Summarize the key information from the following extracted tweet content:\n\n${combinedContent}`,
+    model: openai.responses("gpt-4o-mini"), // Or potentially a model known for better tool use/search
+    prompt: finalPrompt,
+    // Re-enable web search tool if needed and available for the model
+    // This syntax might need adjustment based on the current ai-sdk version and model capabilities
+    tools: {
+      web_search_preview: openai.tools.webSearchPreview({
+        // optional configuration:
+        searchContextSize: "high",
+        // userLocation: {
+        //   type: "approximate",
+        //   city: "San Francisco",
+        //   region: "California",
+        // },
+      }),
+    },
+    // Force web search tool:
+    toolChoice: { type: "tool", toolName: "web_search_preview" },
   });
 
   return result.toDataStreamResponse();

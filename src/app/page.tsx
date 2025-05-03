@@ -14,13 +14,17 @@ export default function Home() {
         <div className="space-y-4">
           {messages.map((message) => (
             <div key={message.id} className="whitespace-pre-wrap">
-              {message.role === "user" ? "User: " : "AI: "}
-              {message.parts.map((part, i) => {
-                switch (part.type) {
-                  case "text":
-                    return <div key={`${message.id}-${i}`}>{part.text}</div>;
-                }
-              })}
+              <div className="font-bold text-xs">
+                {message.role === "user" ? "User" : "AI"}
+              </div>
+              <div className="text-sm">
+                {message.parts.map((part, i) => {
+                  switch (part.type) {
+                    case "text":
+                      return <div key={`${message.id}-${i}`}>{part.text}</div>;
+                  }
+                })}
+              </div>
             </div>
           ))}
         </div>
