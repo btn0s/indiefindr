@@ -1,5 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
+import scrapingbee from "scrapingbee";
+import * as cheerio from "cheerio";
 import { DetailedIndieGameReportSchema } from "@/schema";
 
 // example string for LLM testing
@@ -8,10 +10,14 @@ import { DetailedIndieGameReportSchema } from "@/schema";
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
 
-const rapidApiKey = process.env.RAPIDAPI_KEY; // ADDED: RapidAPI Key
+const rapidApiKey = process.env.RAPIDAPI_KEY;
+const scrapingBeeApiKey = process.env.SCRAPINGBEE_API_KEY;
 
 if (!rapidApiKey) {
   console.error("RAPIDAPI_KEY environment variable is not set.");
+}
+if (!scrapingBeeApiKey) {
+  console.error("SCRAPINGBEE_API_KEY environment variable is not set.");
 }
 
 // ADDED: Type for raw tweet/author JSON + extracted text
@@ -216,6 +222,76 @@ async function fetchSteamDataFromApi(appId: string): Promise<any | null> {
   }
 }
 
+// RE-ADD ScrapingBee client creator
+async function createScrapingBeeClient() {
+  if (!scrapingBeeApiKey) {
+    console.error("Attempted to create ScrapingBee client without an API key.");
+    return null;
+  }
+  return new scrapingbee.ScrapingBeeClient(scrapingBeeApiKey);
+}
+
+// UPDATED: Function to scrape raw HTML of the Steam demo section using Cheerio
+async function scrapeSteamDemoSectionHtml(
+  steamUrl: string | null
+): Promise<string | null> {
+  if (!steamUrl) return null;
+  const client = await createScrapingBeeClient();
+  if (!client) return null;
+
+  console.log(`Scraping Steam page for demo section HTML: ${steamUrl}`);
+
+  try {
+    const response = await client.get({
+      url: steamUrl,
+      params: {
+        render_js: false,
+        block_resources: true,
+        country_code: "US",
+      },
+      headers: {
+        // Optional: Set headers if needed, e.g., Accept-Language
+      },
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(
+        `ScrapingBee failed for Steam demo check ${steamUrl}: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const decoder = new TextDecoder();
+    const html = decoder.decode(response.data);
+
+    // Use Cheerio to find the div and extract its inner HTML
+    const $ = cheerio.load(html);
+    const demoDiv = $("div.game_area_purchase_game.demo_above_purchase");
+
+    if (demoDiv.length > 0) {
+      // Get the inner HTML of the first matching element
+      const demoHtml = demoDiv.html();
+      if (demoHtml) {
+        console.log("Found demo section HTML snippet using Cheerio.");
+        return demoHtml.trim();
+      } else {
+        console.log("Demo section div found, but it was empty.");
+        return null;
+      }
+    } else {
+      console.log(
+        "Demo section div not found on Steam page using Cheerio selector."
+      );
+      return null;
+    }
+  } catch (error) {
+    console.error(
+      `Error scraping Steam page ${steamUrl} for demo section:`,
+      error
+    );
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   const { messages } = await req.json();
   const userQuery = messages[messages.length - 1].content;
@@ -250,49 +326,63 @@ export async function POST(req: Request) {
     );
   }
 
-  // 3. Attempt to find Steam App ID directly from Author JSON
-  console.log("Attempting to find Steam App ID in author profile...");
+  // 3. Attempt to find Steam App ID AND URL directly from Author JSON
+  console.log("Attempting to find Steam App ID and URL in author profile...");
   let steamAppId: string | null = null;
-  const steamUrlPattern = /store\.steampowered\.com\/app\/(\d+)/;
+  let profileSteamUrl: string | null = null; // Store the found URL
+  const steamUrlPattern =
+    /(https?:\/\/store\.steampowered\.com\/app\/(\d+)\/?[^\s]*)/i; // Capture group 1 is full URL, group 2 is AppID
+
   if (authorJson) {
-    // Check description entities first (most reliable)
-    const descriptionUrls = (authorJson as any)?.result?.data?.users?.[0]
-      ?.result?.legacy?.entities?.description?.urls;
-    if (Array.isArray(descriptionUrls)) {
-      for (const urlEntity of descriptionUrls) {
-        const match = urlEntity?.expanded_url?.match(steamUrlPattern);
-        if (match && match[1]) {
-          steamAppId = match[1];
-          console.log(
-            `Found Steam App ID ${steamAppId} in description entities.`
-          );
-          break;
+    try {
+      // Check description entities first
+      const descriptionUrls = (authorJson as any)?.result?.data?.users?.[0]
+        ?.result?.legacy?.entities?.description?.urls;
+      if (Array.isArray(descriptionUrls)) {
+        for (const urlEntity of descriptionUrls) {
+          const match = urlEntity?.expanded_url?.match(steamUrlPattern);
+          if (match && match[1] && match[2]) {
+            profileSteamUrl = match[1]; // Store the full URL
+            steamAppId = match[2]; // Store the App ID
+            console.log(
+              `Found Steam URL ${profileSteamUrl} (App ID ${steamAppId}) in description entities.`
+            );
+            break;
+          }
         }
       }
-    }
-    // Check description text as fallback
-    if (!steamAppId) {
-      const descText = (authorJson as any)?.result?.data?.users?.[0]?.result
-        ?.legacy?.description;
-      if (descText) {
-        const match = descText.match(steamUrlPattern);
-        if (match && match[1]) {
-          steamAppId = match[1];
-          console.log(`Found Steam App ID ${steamAppId} in description text.`);
+      // Check description text as fallback
+      if (!steamAppId) {
+        const descText = (authorJson as any)?.result?.data?.users?.[0]?.result
+          ?.legacy?.description;
+        if (descText) {
+          const match = descText.match(steamUrlPattern);
+          if (match && match[1] && match[2]) {
+            profileSteamUrl = match[1];
+            steamAppId = match[2];
+            console.log(
+              `Found Steam URL ${profileSteamUrl} (App ID ${steamAppId}) in description text.`
+            );
+          }
         }
       }
-    }
-    // Check main profile URL field as another fallback
-    if (!steamAppId) {
-      const profileUrlEntity = (authorJson as any)?.result?.data?.users?.[0]
-        ?.result?.legacy?.entities?.url?.urls?.[0]?.expanded_url;
-      if (profileUrlEntity) {
-        const match = profileUrlEntity.match(steamUrlPattern);
-        if (match && match[1]) {
-          steamAppId = match[1];
-          console.log(`Found Steam App ID ${steamAppId} in profile URL field.`);
+      // Check main profile URL field as another fallback
+      if (!steamAppId) {
+        const profileUrlEntity = (authorJson as any)?.result?.data?.users?.[0]
+          ?.result?.legacy?.entities?.url?.urls?.[0]?.expanded_url;
+        if (profileUrlEntity) {
+          const match = profileUrlEntity.match(steamUrlPattern);
+          if (match && match[1] && match[2]) {
+            profileSteamUrl = match[1];
+            steamAppId = match[2];
+            console.log(
+              `Found Steam URL ${profileSteamUrl} (App ID ${steamAppId}) in profile URL field.`
+            );
+          }
         }
       }
+    } catch (e) {
+      console.error("Error accessing properties in authorJson:", e);
     }
   }
 
@@ -300,20 +390,30 @@ export async function POST(req: Request) {
     console.log("No Steam App ID found in author profile.");
   }
 
-  // 4. Fetch Steam API Data if App ID was found
+  // 4. Fetch Steam API Data AND Scrape Demo HTML if App ID was found
   let steamApiData: any | null = null;
+  let rawDemoHtml: string | null = null;
+
   if (steamAppId) {
     console.log(`Fetching Steam API data for App ID: ${steamAppId}`);
     steamApiData = await fetchSteamDataFromApi(steamAppId);
-    if (!steamApiData) {
+    if (steamApiData) {
+      // Scrape the ORIGINAL profileSteamUrl for the demo section
+      console.log(
+        `Scraping verified Steam URL for demo section: ${profileSteamUrl}`
+      );
+      rawDemoHtml = await scrapeSteamDemoSectionHtml(profileSteamUrl); // Pass the original URL
+    } else {
       console.warn(
-        `Failed to fetch Steam API data for App ID ${steamAppId}. Proceeding without it.`
+        `Failed to fetch Steam API data for App ID ${steamAppId}. Proceeding without it (and without demo check).`
       );
     }
   }
 
-  // 5. Final Synthesis (No Web Search, Direct JSON Analysis)
-  console.log("Preparing for final synthesis using available JSON data...");
+  // 5. Final Synthesis (No Web Search, Direct JSON Analysis + Raw Demo HTML)
+  console.log(
+    "Preparing for final synthesis using available data (incl. demo HTML check)..."
+  );
   let finalSynthesisPrompt = `Analyze the following raw API data for a Twitter tweet, the tweet author's profile, and potentially Steam game details. Your goal is to extract and synthesize this information into a comprehensive, factual report strictly conforming to the DetailedIndieGameReportSchema JSON format. Web search was NOT performed.\n\n**Sources Provided:**\n\nSource 1: Original Tweet Text (for 'sourceTweetText' field and context):\n---\n${tweetText}\n---\n\nSource 2: Tweet JSON Data:\n\`\`\`json\n${
     JSON.stringify(tweetJson, null, 2) || "Not available"
   }\n\`\`\`\n\nSource 3: Author Profile JSON Data:\n\`\`\`json\n${
@@ -326,9 +426,15 @@ export async function POST(req: Request) {
     }\n\`\`\`\n`;
   }
 
-  finalSynthesisPrompt += `\n**Instructions:**\n1.  Analyze all provided JSON sources (Tweet, Author, Steam if available).\n2.  Identify the primary game, developer, and publisher (if possible) based on the data (prioritize Author JSON name/bio/hashtags and Steam JSON data if present).\n3.  Extract relevant details like descriptions, background info, team members, funding, release status, platforms, genres/tags, website links, social links, community links, store links, etc., directly from the JSON data.\n4.  Populate the 'relevantLinks' array by finding all URLs within the JSON sources and categorizing their 'type' accurately (e.g., 'Steam', 'Twitter Profile', 'Official Website', 'Linktree', 'Other Social').\n5.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.\n6.  Provide a confidence level in 'aiConfidenceAssessment', noting that web search was skipped and confidence depends on the richness of the provided JSON data.\n7.  Write a concise 'overallReportSummary'.\n8.  Use 'null' for fields where no information could be extracted from the provided JSON sources.\n\nGenerate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
+  if (rawDemoHtml) {
+    finalSynthesisPrompt += `\nSource 5: Raw HTML Snippet of Steam Page Demo Section:\n\`\`\`html\n${rawDemoHtml}\n\`\`\`\n`;
+  }
 
-  console.log("Performing final AI synthesis directly from API JSON data...");
+  finalSynthesisPrompt += `\n**Instructions:**\n1.  Analyze all provided sources (Tweet, Author JSON, Steam API JSON, Raw Demo HTML Snippet).\n2.  Identify the primary game, developer, and publisher (if possible) based on the data (prioritize Author JSON name/bio/hashtags and Steam JSON data if present).\n3.  Extract relevant details like descriptions, background info, team members, funding, release status, platforms, genres/tags, website links, social links, community links, store links, etc., directly from the JSON/HTML sources.\n4.  Populate the 'relevantLinks' array by finding all URLs within the JSON/HTML sources and categorizing their 'type' accurately (e.g., 'Steam', 'Twitter Profile', 'Official Website', 'Linktree', 'Other Social').\n5.  **Check Source 5 (Raw Demo HTML Snippet):** If it contains clear indication of a demo (e.g., a 'Download Demo' button or link), reflect this in the 'releaseInfo' field and potentially add a demo link to 'relevantLinks'.\n6.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.\n7.  Provide a confidence level in 'aiConfidenceAssessment', noting that web search was skipped and confidence depends on the richness of the provided JSON data.\n8.  Write a concise 'overallReportSummary'.\n9.  Use 'null' for fields where no information could be extracted from the provided JSON/HTML sources.\n\nGenerate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
+
+  console.log(
+    "Performing final AI synthesis (incl. raw demo HTML analysis)..."
+  );
   const finalResult = await generateObject({
     model: openai.responses("gpt-4o-mini"),
     prompt: finalSynthesisPrompt,
