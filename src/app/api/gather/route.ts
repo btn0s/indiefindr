@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai";
-import { streamText } from "ai";
+import { streamText, generateText, tool } from "ai";
 import scrapingbee from "scrapingbee"; // Import ScrapingBee client
 import * as cheerio from "cheerio"; // Import cheerio for HTML parsing
 
@@ -21,63 +21,57 @@ async function createScrapingBeeClient() {
   return new scrapingbee.ScrapingBeeClient(scrapingBeeApiKey);
 }
 
-async function fetchUrlContent(url: string): Promise<string | null> {
+/**
+ * Scrapes a URL using ScrapingBee and parses the HTML with Cheerio.
+ * Allows enabling/disabling stealth mode.
+ */
+async function scrapeUrlAndParse(
+  url: string,
+  selectorMap: { [key: string]: string }, // Map of data key to CSS selector
+  useStealth: boolean
+): Promise<{ [key: string]: string | null } | null> {
   const client = await createScrapingBeeClient();
-  if (!client) {
-    console.error("ScrapingBee client could not be initialized.");
-    return null; // Return null or handle error as appropriate
-  }
+  if (!client) return null;
 
+  console.log(`Scraping URL: ${url} (Stealth: ${useStealth})`);
   try {
-    console.log(`Scraping URL with ScrapingBee for tweet content: ${url}`);
     const response = await client.get({
       url: url,
       params: {
-        render_js: true, // Keep JS rendering enabled, likely needed for Twitter/X
-        // extract_rules commented out as per user change, parsing HTML manually now
-        // extract_rules: JSON.stringify({
-        //   tweet_content: "article[data-testid]",
-        // }),
-        block_resources: true, // Keep blocking resources
-        stealth_proxy: true, // Keep stealth proxy
+        render_js: true,
+        block_resources: true, // Usually good for faster text extraction
+        stealth_proxy: useStealth,
       },
     });
 
     if (response.status < 200 || response.status >= 300) {
       throw new Error(
-        `ScrapingBee failed with status: ${response.status} ${
-          response.statusText
-        }. Response: ${await response.data?.text()}`
+        `ScrapingBee failed for ${url}: ${response.status} ${response.statusText}`
       );
     }
 
-    // Decode the raw HTML response
     const decoder = new TextDecoder();
     const html = decoder.decode(response.data);
-
-    // Parse the HTML using cheerio
     const $ = cheerio.load(html);
 
-    // Find the tweet article element and extract its text
-    // Note: Twitter/X HTML can be complex. This selector might need refinement
-    // if there are multiple such articles or nested structures.
-    // .text() gets the combined text content of the element and its descendants.
-    const tweetText = $('article[data-testid="tweet"]').text();
-
-    if (!tweetText || tweetText.trim() === "") {
-      console.warn(
-        `Could not find or extract text from article[data-testid="tweet"] for: ${url}`
-      );
-      // Optional: Log the full HTML for debugging if needed
-      // console.log("Full HTML:", html);
-      return null;
+    const extractedData: { [key: string]: string | null } = {};
+    for (const key in selectorMap) {
+      const selector = selectorMap[key];
+      // Special handling for tags to get multiple elements
+      if (key.toLowerCase().includes("tags")) {
+        const tags = $(selector)
+          .map((_, el) => $(el).text().trim())
+          .get(); // Get array of strings
+        extractedData[key] = tags.length > 0 ? tags.join(", ") : null;
+      } else {
+        extractedData[key] = $(selector).first().text().trim() || null;
+      }
     }
 
-    console.log(`Successfully extracted tweet text for: ${url}`);
-    // Return the extracted plain text
-    return tweetText.trim();
+    console.log(`Successfully scraped and parsed: ${url}`);
+    return extractedData;
   } catch (error) {
-    console.error(`Error fetching URL ${url} with ScrapingBee:`, error);
+    console.error(`Error processing URL ${url}:`, error);
     return null;
   }
 }
@@ -86,74 +80,114 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
   const userQuery = messages[messages.length - 1].content;
 
-  // Check if the input is a URL
+  // 1. Extract URLs from initial user query (e.g., tweet URL)
   const urlPattern = /https?:\/\/[^\s]+/g;
-  const urls = userQuery.match(urlPattern);
+  const initialUrls = userQuery.match(urlPattern);
 
-  // If no URLs found, handle appropriately (e.g., return an error or different response)
-  if (!urls || urls.length === 0) {
-    // Decide how to handle cases where no URLs are provided
-    // For now, let's proceed but contents will be empty/null
-    console.log("No URLs found in the user query.");
+  if (!initialUrls || initialUrls.length === 0) {
+    return new Response(JSON.stringify({ error: "No URL found in query." }), {
+      status: 400,
+    });
   }
+  const primaryUrl = initialUrls[0]; // Assuming the first URL is the main one (e.g., tweet)
 
-  // If URLs found, fetch their content
-  // Filter out potential null results from failed scrapes
-  const contents = (
-    await Promise.all(
-      (urls || []).map((url: string) => fetchUrlContent(url)) // Add type annotation for url
-    )
-  ).filter((content): content is string => content !== null); // Filter out nulls and assert type
+  // 2. Scrape the primary URL (e.g., tweet content)
+  const tweetSelectors = { tweetText: 'article[data-testid="tweet"]' };
+  const tweetData = await scrapeUrlAndParse(primaryUrl, tweetSelectors, true); // Use stealth for Twitter/X
+  const tweetContent = tweetData?.tweetText;
 
-  console.log("Fetched Contents:", contents); // Log the actual fetched content
-
-  // Handle case where all scrapes failed or no URLs were found
-  if (contents.length === 0) {
+  if (!tweetContent) {
     return new Response(
-      JSON.stringify({
-        error: "Could not fetch content from the provided URL(s).",
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ error: `Failed to scrape content from ${primaryUrl}` }),
+      {
+        status: 500,
+      }
     );
-    // Or, stream back a message indicating failure
   }
 
-  // Join contents for the prompt, handle potentially large combined content if necessary
-  const combinedContent = contents.join("\n\n---\n\n"); // Simple join, consider truncation if needed
-
-  // Construct the prompt for the AI
-  const finalPrompt = `Analyze the following indie game developer tweet content:
+  // 3. Initial AI call with web search to find related info (including Steam URL)
+  const initialPrompt = `Analyze the following indie game developer tweet content:
 ---
-${combinedContent}
+${tweetContent}
 ---
 Based on the tweet, identify the developer/studio and the game mentioned.
 Then, search the web to find the following information:
 - Developer/Studio: Background, history, official website.
-- Game: Official website, Steam page link (or other store pages), Kickstarter/funding page (if any), genre.
-
-Synthesize all the gathered information (from the tweet and the web search) into a structured summary. Include relevant URLs.
+- Game: Official website, **Steam store page link (MUST be store.steampowered.com/app/...)**, Kickstarter/funding page (if any), genre.
+Provide a concise summary and list the URLs found, especially the Steam store page URL.
 `;
 
-  // Use the AI to analyze the fetched content and perform web search
-  const result = await streamText({
-    model: openai.responses("gpt-4o-mini"), // Or potentially a model known for better tool use/search
-    prompt: finalPrompt,
-    // Re-enable web search tool if needed and available for the model
-    // This syntax might need adjustment based on the current ai-sdk version and model capabilities
+  console.log("Performing initial AI search with generateText...");
+  const initialResult = await generateText({
+    model: openai.responses("gpt-4o-mini"),
+    prompt: initialPrompt,
     tools: {
       web_search_preview: openai.tools.webSearchPreview({
-        // optional configuration:
         searchContextSize: "high",
-        // userLocation: {
-        //   type: "approximate",
-        //   city: "San Francisco",
-        //   region: "California",
-        // },
       }),
     },
-    // Force web search tool:
     toolChoice: { type: "tool", toolName: "web_search_preview" },
   });
 
-  return result.toDataStreamResponse();
+  const initialAiText = initialResult.text;
+  console.log("Initial AI Search Result Text:", initialAiText);
+
+  // 4. Try to extract Steam URL from the initial AI response
+  const steamUrlPattern =
+    /https?:\/\/store\.steampowered\.com\/app\/\d+\/?[^\s]*/;
+  const steamUrlMatch = initialAiText.match(steamUrlPattern);
+  let steamData: { [key: string]: string | null } | null = null;
+
+  if (steamUrlMatch && steamUrlMatch[0]) {
+    const steamUrl = steamUrlMatch[0];
+    console.log(`Found Steam URL: ${steamUrl}`);
+
+    // 5. Scrape Steam page (NO stealth) if URL found
+    // Selectors are best guesses and might need adjustment!
+    const steamSelectors = {
+      description: "#game_area_description .game_description_snippet", // Main description snippet
+      tags: ".glance_tags a.app_tag", // Genre tags
+      // Add more selectors here if needed (e.g., release date, developer)
+      // developer: ".dev_row .summary a"
+    };
+    steamData = await scrapeUrlAndParse(steamUrl, steamSelectors, false); // NO stealth for Steam
+  } else {
+    console.log("No Steam URL found in initial AI response.");
+  }
+
+  // 6. Final AI call to synthesize everything
+  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive summary about the indie developer and their game. Include relevant URLs found previously.
+
+Original Tweet Content:
+---
+${tweetContent}
+---
+
+Initial Web Search Summary:
+---
+${initialAiText}
+---
+`;
+
+  if (steamData) {
+    finalSynthesisPrompt += `
+Scraped Steam Page Details:
+---
+Description: ${steamData.description || "Not found"}
+Tags/Genres: ${steamData.tags || "Not found"}
+---
+`;
+  }
+
+  finalSynthesisPrompt += `
+Please provide a final, structured report.`;
+
+  console.log("Performing final AI synthesis with streamText...");
+  const finalResult = await streamText({
+    model: openai.responses("gpt-4o-mini"),
+    prompt: finalSynthesisPrompt,
+  });
+
+  // 7. Return the final synthesized stream
+  return finalResult.toDataStreamResponse();
 }
