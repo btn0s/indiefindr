@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/db";
 import { generateEmbedding } from "@/lib/embeddings";
-import { sql } from "drizzle-orm";
+import { sql, and } from "drizzle-orm";
 
 const SEARCH_LIMIT = 10; // Limit the number of search results
+const DISTANCE_THRESHOLD = 0.7; // Maximum distance for a result to be considered relevant
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -39,7 +40,12 @@ export async function GET(req: NextRequest) {
         distance: sql<number>`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector`,
       })
       .from(schema.finds)
-      .where(sql`${schema.finds.vectorEmbedding} IS NOT NULL`) // Only search items with embeddings
+      .where(
+        and(
+          sql`${schema.finds.vectorEmbedding} IS NOT NULL`, // Only search items with embeddings
+          sql`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector < ${DISTANCE_THRESHOLD}` // Filter by distance threshold
+        )
+      )
       .orderBy(
         sql`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector ASC`
       ) // Order by similarity (ascending distance)
