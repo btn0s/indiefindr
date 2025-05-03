@@ -3,6 +3,7 @@
 import { DetailedIndieGameReport } from "@/schema";
 import { Badge } from "./ui/badge";
 import { useState } from "react";
+import { extractSteamAppId } from "@/lib/utils";
 
 // Helper function to group links by type
 const groupLinksByType = (links: DetailedIndieGameReport["relevantLinks"]) => {
@@ -16,12 +17,6 @@ const groupLinksByType = (links: DetailedIndieGameReport["relevantLinks"]) => {
     acc[type].push(link);
     return acc;
   }, {} as { [key: string]: typeof links });
-};
-
-// Helper to extract Steam App ID from a Steam URL
-const extractSteamAppId = (url: string): string | null => {
-  const match = url.match(/store\.steampowered\.com\/app\/(\d+)/i);
-  return match ? match[1] : null;
 };
 
 interface IndieGameReportProps {

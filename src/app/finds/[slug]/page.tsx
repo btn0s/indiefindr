@@ -2,10 +2,11 @@ import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { IndieGameReport } from "@/components/IndieGameReport";
-import { DetailedIndieGameReport } from "@/schema"; // Ensure this type is correct
+import { DetailedIndieGameReport } from "@/schema";
+import { RerunFormClient } from "@/components/RerunFormClient";
 
-// Revalidate data every hour, or set to 0 for dynamic on every request
-export const revalidate = 3600;
+// Import the server action from the separate file
+import { rerunAnalysisAction } from "./actions";
 
 // Helper function to extract numeric ID from slug
 function extractIdFromSlug(slug: string): number | null {
@@ -16,28 +17,44 @@ function extractIdFromSlug(slug: string): number | null {
   return isNaN(id) ? null : id;
 }
 
-async function getFindById(slug: string) {
-  // Extract numeric ID from the slug (e.g., "game-title-123" -> 123)
+// Type for the data fetched by getFindById
+interface FindPageData {
+  id: number;
+  sourceTweetUrl: string;
+  reportData: DetailedIndieGameReport;
+  createdAt: Date;
+}
+
+// This is now an async Server Component
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
   const findId = extractIdFromSlug(slug);
 
   if (findId === null) {
     console.error("Invalid ID format in slug:", slug);
-    return null;
+    notFound(); // Use Next.js built-in notFound helper
   }
 
+  // Fetch data directly on the server
+  let initialFindData: FindPageData | null = null;
   try {
     const result = await db
       .select({
         id: schema.finds.id,
-        reportData: schema.finds.report, // Select the 'report' column
+        reportData: schema.finds.report,
         createdAt: schema.finds.createdAt,
+        sourceTweetUrl: schema.finds.sourceTweetUrl,
       })
       .from(schema.finds)
       .where(eq(schema.finds.id, findId))
       .limit(1);
 
     if (result.length === 0) {
-      return null; // Not found
+      notFound(); // Not found
     }
 
     const find = result[0];
@@ -50,46 +67,45 @@ async function getFindById(slug: string) {
           reportData = JSON.parse(find.reportData);
         } catch (e) {
           console.error(`Failed to parse reportData for find ${find.id}:`, e);
-          // Keep reportData as null if parsing fails
+          // If parsing fails, treat as not found or show error?
+          // For now, let's treat it as critical and call notFound
+          notFound();
         }
       } else {
-        // Assume it's already JSON
         reportData = find.reportData as DetailedIndieGameReport;
       }
     }
 
     if (!reportData) {
       console.error(`Report data is null or invalid for find ${find.id}`);
-      return null; // Treat as not found if report data is invalid
+      notFound(); // Treat missing report data as not found
     }
 
-    // Return only the necessary report data
-    return reportData;
+    initialFindData = {
+      id: find.id,
+      reportData: reportData,
+      createdAt: find.createdAt,
+      sourceTweetUrl: find.sourceTweetUrl,
+    };
   } catch (error) {
     console.error(`Error fetching find with ID ${findId}:`, error);
-    return null; // Return null on error
-  }
-}
-
-// This is the Server Component for the dynamic route
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const reportData = await getFindById(slug);
-
-  if (!reportData) {
-    notFound(); // Use Next.js built-in notFound helper
+    // Consider showing a generic error page instead of notFound for DB errors
+    notFound(); // Or throw error to trigger error.tsx
   }
 
+  // We ensured findData is not null by calling notFound() otherwise
+  // Pass the initial data and the *imported* server action to the client component
   return (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8 bg-gray-50">
-      {/* Maybe add a back button later */}
       <div className="w-full max-w-5xl">
-        {/* Render the detailed report component */}
-        <IndieGameReport reportData={reportData} />
+        {/* Minimal client component for the form/button */}
+        <RerunFormClient
+          findId={initialFindData.id}
+          sourceTweetUrl={initialFindData.sourceTweetUrl}
+          rerunAnalysisAction={rerunAnalysisAction}
+        />
+        {/* Render the report directly in the server component */}
+        <IndieGameReport reportData={initialFindData.reportData} />
       </div>
     </div>
   );

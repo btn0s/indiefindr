@@ -5,6 +5,7 @@ import * as cheerio from "cheerio";
 import { DetailedIndieGameReportSchema } from "@/schema";
 import { db, schema as dbSchema } from "@/db";
 import { generateEmbedding } from "@/lib/embeddings";
+import { eq } from "drizzle-orm";
 
 // example string for LLM testing
 // const testString = "https://x.com/Just_Game_Dev/status/1918036677609521466";
@@ -294,6 +295,86 @@ async function scrapeSteamDemoSectionHtml(
   }
 }
 
+// ADDED: Function to search Steam game by name using RapidAPI
+async function searchSteamByName(
+  gameName: string
+): Promise<{ appId: string; storeUrl: string } | null> {
+  if (!rapidApiKey) {
+    console.error("RAPIDAPI_KEY not configured for Steam search API call.");
+    return null;
+  }
+  if (!gameName || gameName.trim() === "") {
+    console.log("Cannot search Steam by name with an empty query.");
+    return null;
+  }
+
+  const url = `https://games-details.p.rapidapi.com/search?sugg=${encodeURIComponent(
+    gameName.trim()
+  )}`;
+  const options = {
+    method: "GET",
+    headers: {
+      "x-rapidapi-key": rapidApiKey,
+      "x-rapidapi-host": "games-details.p.rapidapi.com",
+    },
+  };
+
+  console.log(`Searching Steam via API for game name: \"${gameName}\"`);
+  try {
+    // Add delay if needed - maybe not needed for search endpoint?
+    // await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      const errorBody = await response
+        .text()
+        .catch(() => "Failed to read error body");
+      console.error(`Steam Search API Error Body: ${errorBody}`);
+      throw new Error(
+        `RapidAPI (games-details search) failed for name \"${gameName}\": ${response.status} ${response.statusText}`
+      );
+    }
+    const result = await response.json();
+
+    // Basic check for valid results - API might return empty array or specific structure
+    // Adjust this check based on actual API response for no/bad results
+    if (
+      !result ||
+      (Array.isArray(result) && result.length === 0) ||
+      result.status === 404
+    ) {
+      console.warn(
+        `Steam search API returned no results for name: \"${gameName}\"`
+      );
+      return null;
+    }
+
+    // TODO: Add more robust logic to pick the BEST match if multiple results
+    // For now, take the first result if it looks like a game (has appId and store_url)
+    const firstResult = Array.isArray(result) ? result[0] : result;
+    if (firstResult && firstResult.appId && firstResult.store_url) {
+      console.log(
+        `Found potential Steam match by name: ID ${firstResult.appId}, URL ${firstResult.store_url}`
+      );
+      return {
+        appId: String(firstResult.appId),
+        storeUrl: firstResult.store_url,
+      };
+    }
+
+    console.warn(
+      `Steam search API results for \"${gameName}\" did not contain expected fields (appId, store_url) in the first item.`
+    );
+    return null;
+  } catch (error) {
+    console.error(
+      `Error searching Steam for game name \"${gameName}\" via API:`,
+      error
+    );
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   const { messages } = await req.json();
   const userQuery = messages[messages.length - 1].content;
@@ -389,10 +470,75 @@ export async function POST(req: Request) {
   }
 
   if (!steamAppId) {
-    console.log("No Steam App ID found in author profile.");
+    console.log(
+      "No Steam App ID found directly in author profile. Attempting search by name..."
+    );
+    let potentialGameName: string | null = null;
+
+    // Strategy 1: Try author's display name (often contains game title)
+    try {
+      const authorName = (authorJson as any)?.result?.data?.users?.[0]?.result
+        ?.legacy?.name;
+      if (authorName && authorName.length > 2) {
+        // Basic check for non-trivial name
+        potentialGameName = authorName;
+        console.log(
+          `Attempting search using author name: \"${potentialGameName}\".`
+        );
+      }
+    } catch (e) {
+      console.warn(
+        "Could not extract author name for potential game search:",
+        e
+      );
+    }
+
+    // Strategy 2: Look for text in quotes in the tweet (if author name didn't yield results)
+    if (!potentialGameName && tweetText) {
+      const quoteMatch = tweetText.match(/["'](.+?)["']/);
+      if (quoteMatch && quoteMatch[1] && quoteMatch[1].length > 2) {
+        potentialGameName = quoteMatch[1];
+        console.log(
+          `Attempting search using quoted text from tweet: \"${potentialGameName}\".`
+        );
+      }
+    }
+
+    // Strategy 3: Look for hashtags in the tweet (if still no name)
+    // TODO: Could refine this to filter common hashtags like #indiedev, #gamedev
+    if (!potentialGameName && tweetText) {
+      const hashtagMatch = tweetText.match(/#(\w+)/);
+      if (hashtagMatch && hashtagMatch[1] && hashtagMatch[1].length > 2) {
+        potentialGameName = hashtagMatch[1].replace(/_/g, " "); // Replace underscore with space
+        console.log(
+          `Attempting search using first hashtag from tweet: \"${potentialGameName}\".`
+        );
+      }
+    }
+
+    // If we found a potential name, try searching Steam
+    if (potentialGameName) {
+      const searchResult = await searchSteamByName(potentialGameName);
+      if (searchResult) {
+        console.log(
+          `Successfully found Steam game via name search: App ID ${searchResult.appId}`
+        );
+        steamAppId = searchResult.appId;
+        // Use the URL returned by the search API as the primary steam URL
+        profileSteamUrl = searchResult.storeUrl;
+      } else {
+        console.log(
+          `Steam search for \"${potentialGameName}\" did not yield a usable result.`
+        );
+      }
+    } else {
+      console.log(
+        "Could not determine a potential game name from author name, tweet quotes, or hashtags to search."
+      );
+    }
   }
 
-  // 4. Fetch Steam API Data AND Scrape Demo HTML if App ID was found
+  // 4. Fetch Steam API Data AND Scrape Demo HTML if App ID was found (either directly or via search)
   let steamApiData: any | null = null;
   let rawDemoHtml: string | null = null;
 
@@ -481,43 +627,72 @@ export async function POST(req: Request) {
     // For now, we log and continue, saving the find without an embedding.
   }
 
-  // 6. Persist the find to the database
-  console.log("Attempting to save find to database...");
+  // 6. Persist the find to the database (Update or Insert)
+  console.log("Attempting to save find to database (Update or Insert)...");
+  let findId: number | null = null;
   try {
-    // Add embeddingVector to the data being inserted (can be null)
-    const newFindData = {
-      sourceTweetId: tweetId,
+    // Check if a find with this tweet ID already exists
+    const existingFind = await db
+      .select({ id: dbSchema.finds.id })
+      .from(dbSchema.finds)
+      .where(eq(dbSchema.finds.sourceTweetId, tweetId))
+      .limit(1);
+
+    const findDataToSave = {
+      // sourceTweetId is used for lookup/where clause, not set during update/insert here
       sourceTweetUrl: primaryUrl,
       rawTweetJson: tweetJson,
       rawAuthorJson: authorJson,
       rawSteamJson: steamApiData,
       rawDemoHtml: rawDemoHtml,
       report: finalResult.object,
-      vectorEmbedding: embeddingVector, // <-- Add the embedding vector here
+      vectorEmbedding: embeddingVector,
+      updatedAt: new Date(), // Explicitly set updatedAt for both insert and update
     };
 
-    const inserted = await db
-      .insert(dbSchema.finds)
-      .values(newFindData)
-      .returning({ id: dbSchema.finds.id }); // Optionally return the new ID
-
-    if (inserted && inserted.length > 0 && inserted[0].id) {
-      console.log(
-        `Successfully saved find to database with ID: ${inserted[0].id}`
-      );
+    if (existingFind && existingFind.length > 0) {
+      // Update existing find
+      findId = existingFind[0].id;
+      console.log(`Found existing find with ID: ${findId}. Updating...`);
+      await db
+        .update(dbSchema.finds)
+        .set(findDataToSave)
+        .where(eq(dbSchema.finds.id, findId));
+      console.log(`Successfully updated find with ID: ${findId}`);
     } else {
-      // This case might happen with certain configurations or if returning wasn't used/successful
-      console.log(
-        "Successfully sent insert command, but did not receive confirmation ID."
-      );
+      // Insert new find
+      console.log("No existing find found. Inserting new record...");
+      const inserted = await db
+        .insert(dbSchema.finds)
+        .values({
+          ...findDataToSave,
+          sourceTweetId: tweetId, // Include tweetId only on insert
+          // createdAt will be set by default
+        })
+        .returning({ id: dbSchema.finds.id });
+
+      if (inserted && inserted.length > 0 && inserted[0].id) {
+        findId = inserted[0].id;
+        console.log(
+          `Successfully saved new find to database with ID: ${findId}`
+        );
+      } else {
+        console.error("Insert command succeeded but did not return a new ID.");
+        // Throw an error or handle appropriately if ID is crucial
+        throw new Error("Failed to retrieve ID after inserting new find.");
+      }
     }
   } catch (error) {
     console.error("Error saving find to database:", error);
-    // Decide how to handle DB errors: Log it but still return the report to the user?
-    // Or return an error response?
-    // For now, we log the error and proceed to return the report.
+    // Return an error response if DB operation fails
+    return new Response(
+      JSON.stringify({
+        error: "Failed to save the analysis result to the database.",
+      }),
+      { status: 500 }
+    );
   }
 
-  // 7. Return the final object
-  return Response.json(finalResult.object);
+  // 7. Return the final report object AND the find ID
+  return Response.json({ report: finalResult.object, findId: findId });
 }
