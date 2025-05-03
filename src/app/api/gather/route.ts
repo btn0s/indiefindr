@@ -1,16 +1,28 @@
 import { openai } from "@ai-sdk/openai";
-import { streamText, generateText, tool } from "ai";
-import scrapingbee from "scrapingbee"; // Import ScrapingBee client
-import * as cheerio from "cheerio"; // Import cheerio for HTML parsing
+import { generateText, streamText, generateObject } from "ai";
+import scrapingbee from "scrapingbee"; // Import ScrapingBee client - will be removed if only used for Twitter
+import * as cheerio from "cheerio"; // Import cheerio for HTML parsing - keep for Steam
+import { IndieDevReportSchema } from "@/schema";
 
-// Make sure to set SCRAPINGBEE_API_KEY in your environment variables
+// Allow streaming responses up to 60 seconds
+export const maxDuration = 60;
+
+// Keep ScrapingBee API key for potential other uses (like Steam)
 const scrapingBeeApiKey = process.env.SCRAPINGBEE_API_KEY;
+const rapidApiKey = process.env.RAPIDAPI_KEY; // ADDED: RapidAPI Key
 
-if (!scrapingBeeApiKey) {
-  console.error("SCRAPINGBEE_API_KEY environment variable is not set.");
+// REMOVED: ScrapingBee API key check (can be removed if only used for Twitter)
+// if (!scrapingBeeApiKey) {
+//   console.error("SCRAPINGBEE_API_KEY environment variable is not set.");
+//   // Optionally, throw an error or handle this case appropriately
+// }
+
+if (!rapidApiKey) {
+  console.error("RAPIDAPI_KEY environment variable is not set.");
   // Optionally, throw an error or handle this case appropriately
 }
 
+// Keep ScrapingBee client creator for potential other uses
 async function createScrapingBeeClient() {
   if (!scrapingBeeApiKey) {
     // Return null or throw an error if the API key is missing
@@ -22,8 +34,9 @@ async function createScrapingBeeClient() {
 }
 
 /**
- * Scrapes a URL using ScrapingBee and parses the HTML with Cheerio.
+ * Scrapes a non-Twitter URL using ScrapingBee and parses the HTML with Cheerio.
  * Allows enabling/disabling stealth mode.
+ * (Kept for Steam scraping)
  */
 async function scrapeUrlAndParse(
   url: string,
@@ -76,29 +89,76 @@ async function scrapeUrlAndParse(
   }
 }
 
+// ADDED: Function to fetch tweet content using RapidAPI
+async function fetchTweetContent(tweetId: string): Promise<string | null> {
+  if (!rapidApiKey) {
+    console.error("RAPIDAPI_KEY not configured.");
+    return null;
+  }
+
+  const url = `https://twitter241.p.rapidapi.com/tweet-v2?pid=${tweetId}`;
+  const options = {
+    method: "GET",
+    headers: {
+      "x-rapidapi-key": rapidApiKey,
+      "x-rapidapi-host": "twitter241.p.rapidapi.com",
+    },
+  };
+
+  console.log(`Fetching tweet content for ID: ${tweetId}`);
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      throw new Error(
+        `RapidAPI failed for tweet ${tweetId}: ${response.status} ${response.statusText}`
+      );
+    }
+    const result = await response.json();
+    // Extract text based on observed structure
+    const tweetText = result?.result?.tweetResult?.result?.legacy?.full_text;
+    if (!tweetText) {
+      console.warn(
+        "Could not extract tweet text from RapidAPI response structure:",
+        result
+      );
+      return null;
+    }
+    console.log(`Successfully fetched tweet content for ID: ${tweetId}`);
+    return tweetText;
+  } catch (error) {
+    console.error(`Error fetching tweet ${tweetId} via RapidAPI:`, error);
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   const { messages } = await req.json();
   const userQuery = messages[messages.length - 1].content;
 
-  // 1. Extract URLs from initial user query (e.g., tweet URL)
-  const urlPattern = /https?:\/\/[^\s]+/g;
-  const initialUrls = userQuery.match(urlPattern);
+  // 1. Extract Tweet URL and ID from initial user query
+  const tweetUrlPattern =
+    /https?:\/\/(?:x|twitter)\.com\/[^\/]+\/status\/(\d+)/i; // Corrected: Use single backslashes for escaping in regex literal
+  const match = userQuery.match(tweetUrlPattern);
 
-  if (!initialUrls || initialUrls.length === 0) {
-    return new Response(JSON.stringify({ error: "No URL found in query." }), {
-      status: 400,
-    });
+  if (!match || !match[0] || !match[1]) {
+    return new Response(
+      JSON.stringify({
+        error: "No valid Twitter/X status URL found in query.",
+      }),
+      { status: 400 }
+    );
   }
-  const primaryUrl = initialUrls[0]; // Assuming the first URL is the main one (e.g., tweet)
+  const primaryUrl = match[0]; // Full URL
+  const tweetId = match[1]; // Extracted Tweet ID
 
-  // 2. Scrape the primary URL (e.g., tweet content)
-  const tweetSelectors = { tweetText: 'article[data-testid="tweet"]' };
-  const tweetData = await scrapeUrlAndParse(primaryUrl, tweetSelectors, true); // Use stealth for Twitter/X
-  const tweetContent = tweetData?.tweetText;
+  // 2. Fetch the tweet content using RapidAPI
+  const tweetContent = await fetchTweetContent(tweetId); // Use new function
 
   if (!tweetContent) {
     return new Response(
-      JSON.stringify({ error: `Failed to scrape content from ${primaryUrl}` }),
+      JSON.stringify({
+        error: `Failed to fetch tweet content for ${primaryUrl}`,
+      }),
       {
         status: 500,
       }
@@ -106,16 +166,7 @@ export async function POST(req: Request) {
   }
 
   // 3. Initial AI call with web search to find related info (including Steam URL)
-  const initialPrompt = `Analyze the following indie game developer tweet content:
----
-${tweetContent}
----
-Based on the tweet, identify the developer/studio and the game mentioned.
-Then, search the web to find the following information:
-- Developer/Studio: Background, history, official website.
-- Game: Official website, **Steam store page link (MUST be store.steampowered.com/app/...)**, Kickstarter/funding page (if any), genre.
-Provide a concise summary and list the URLs found, especially the Steam store page URL.
-`;
+  const initialPrompt = `Analyze the following indie game developer tweet content:\n---\n${tweetContent}\n---\nBased on the tweet, identify the developer/studio and the game mentioned.\nThen, search the web to find the following information:\n- Developer/Studio: Background, history, official website.\n- Game: Official website, **Steam store page link (MUST be store.steampowered.com/app/...)**, Kickstarter/funding page (if any), genre.\nProvide a concise summary and list the URLs found, especially the Steam store page URL.\n`;
 
   console.log("Performing initial AI search with generateText...");
   const initialResult = await generateText({
@@ -180,14 +231,16 @@ Tags/Genres: ${steamData.tags || "Not found"}
   }
 
   finalSynthesisPrompt += `
-Please provide a final, structured report.`;
+Based on all the information provided (original tweet, initial web search summary, and scraped Steam details if available), generate a structured JSON object conforming to the IndieDevReportSchema. Extract the relevant pieces of information and place them into the corresponding fields of the schema. Provide a concise overall summary in the 'overallSummary' field.
+`;
 
-  console.log("Performing final AI synthesis with streamText...");
-  const finalResult = await streamText({
+  console.log("Performing final AI synthesis with generateObject...");
+  const finalResult = await generateObject({
     model: openai.responses("gpt-4o-mini"),
     prompt: finalSynthesisPrompt,
+    schema: IndieDevReportSchema,
   });
 
-  // 7. Return the final synthesized stream
-  return finalResult.toDataStreamResponse();
+  // 7. Return the final object as a standard JSON response
+  return Response.json(finalResult.object);
 }
