@@ -1,90 +1,121 @@
-"use client";
+// Mark as a server component (no "use client" needed)
+import { db, schema } from "@/db";
+import { desc } from "drizzle-orm";
+import Link from "next/link";
+import { IndieGameListItem } from "@/components/IndieGameListItem";
+// SubmitGameDialog is no longer directly needed here
+// import { SubmitGameDialog } from "@/components/SubmitGameDialog";
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { DetailedIndieGameReport } from "@/schema";
-import { Button } from "@/components/ui/button";
-import { IndieGameReport } from "@/components/IndieGameReport";
+// Revalidate data every 60 seconds (or choose your preferred interval)
+// Or set to 0 for dynamic rendering on every request
+export const revalidate = 0; // Example: Dynamic rendering
 
-export default function Home() {
-  const [inputValue, setInputValue] = useState("");
-  const [resultData, setResultData] = useState<DetailedIndieGameReport | null>(
-    null
-  );
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+// Function to create SEO-friendly slugs
+function createSlug(title: string, id: string | number): string {
+  // Convert title to lowercase, replace spaces with hyphens, remove special chars
+  const titleSlug = title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')  // Remove special characters
+    .replace(/\s+/g, '-')      // Replace spaces with hyphens
+    .replace(/-+/g, '-')       // Remove consecutive hyphens
+    .trim();                   // Trim leading/trailing spaces
+  
+  // Combine with ID to ensure uniqueness
+  return `${titleSlug}-${id}`;
+}
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setResultData(null);
+async function getRecentFinds() {
+  try {
+    const finds = await db
+      .select({
+        id: schema.finds.id,
+        reportData: schema.finds.report,
+        createdAt: schema.finds.createdAt,
+      })
+      .from(schema.finds)
+      .orderBy(desc(schema.finds.createdAt))
+      .limit(20); // Example limit
 
-    try {
-      const messages = [{ role: "user", content: inputValue }];
-      const response = await fetch("/api/find", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ messages }),
-      });
+    // Drizzle returns reportData as potentially string | null | Json,
+    // we need to ensure it's parsed if stored as a string.
+    // Also handle potential nulls gracefully.
+    const parsedFinds = finds
+      .map((find) => {
+        let reportData = null;
+        if (find.reportData) {
+          if (typeof find.reportData === "string") {
+            try {
+              reportData = JSON.parse(find.reportData);
+            } catch (e) {
+              console.error(
+                `Failed to parse reportData for find ${find.id}:`,
+                e
+              );
+              // Keep reportData as null if parsing fails
+            }
+          } else {
+            // Assume it's already JSON
+            reportData = find.reportData;
+          }
+        }
+        return {
+          ...find,
+          // Ensure reportData is always in the expected object format or null
+          reportData: reportData as any, // Cast needed if DetailedIndieGameReport type isn't perfectly aligned
+        };
+      })
+      .filter((find) => find.reportData !== null); // Filter out finds with null/invalid reportData
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || `HTTP error! status: ${response.status}`
-        );
-      }
+    return parsedFinds;
+  } catch (error) {
+    console.error("Error fetching finds:", error);
+    return []; // Return empty array on error
+  }
+}
 
-      const data: DetailedIndieGameReport = await response.json();
-      setResultData(data);
-    } catch (err: any) {
-      setError(err);
-      console.error("Fetch error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-  };
+export default async function Home() {
+  const initialFinds = await getRecentFinds();
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4 md:p-8 bg-background text-foreground">
-      <div className="w-full max-w-5xl space-y-6">
-        <h1 className="text-3xl font-bold text-center">Indie Game Deep Dive</h1>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-          <Input
-            type="url"
-            name="url"
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="Enter Tweet URL (e.g., https://x.com/...)"
-            required
-            className="w-full"
-            disabled={isLoading}
-          />
-          <span className="text-xs text-muted-foreground mb-2">
-            Try: https://x.com/Just_Game_Dev/status/1918036677609521466
-          </span>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading
-              ? "Gathering Info... (this may take a while)"
-              : "Analyze"}
-          </Button>
-        </form>
+    <div className="container max-w-5xl mx-auto px-4 py-8">
+      {/* Hero Section - Left Aligned */}
+      <section className="py-8 mb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl lg:text-5xl mb-3">
+          Discover Your Next Favorite Indie Game
+        </h1>
+        <p className="max-w-3xl text-lg text-muted-foreground">
+          IndieFindr is your curated feed for discovering exciting new indie
+          games. Explore the latest finds and uncover hidden gems.
+        </p>
+      </section>
 
-        {error && (
-          <div className="text-red-500 border border-red-500 rounded p-3">
-            <p>
-              <strong>Error:</strong> {error.message}
-            </p>
-          </div>
+      {/* Display List of Finds Container */}
+      <div className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold">Recent Finds</h2>
+        {initialFinds.length > 0 ? (
+          <ul className="flex flex-col gap-2">
+            {initialFinds.map((find) => (
+              <li key={find.id}>
+                <Link
+                  href={`/finds/${createSlug(
+                    find.reportData?.gameName || "untitled-game",
+                    find.id
+                  )}`}
+                  className="block hover:bg-gray-100 rounded-lg transition-colors duration-150 border border-transparent hover:border-gray-200"
+                >
+                  {/* Updated to pass the complete find object */}
+                  {find.reportData && (
+                    <IndieGameListItem find={find} showCreatedAt={true} />
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground text-center py-4">
+            No finds submitted yet. Use the button above to add one!
+          </p>
         )}
-
-        {resultData && <IndieGameReport reportData={resultData} />}
       </div>
     </div>
   );

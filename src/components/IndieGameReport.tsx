@@ -1,3 +1,5 @@
+"use client";
+
 import { DetailedIndieGameReport } from "@/schema";
 import { Badge } from "./ui/badge";
 import { useState } from "react";
