@@ -26,12 +26,26 @@ export const metadata: Metadata = {
       "Your curated feed for discovering exciting new indie games. Explore the latest finds and uncover hidden gems.",
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "IndieFindr - Discover Your Next Favorite Indie Game",
     description:
       "Your curated feed for discovering exciting new indie games. Explore the latest finds and uncover hidden gems.",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
   },
 };
 
