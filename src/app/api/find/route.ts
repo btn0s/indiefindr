@@ -3,6 +3,7 @@ import { generateObject } from "ai";
 import scrapingbee from "scrapingbee";
 import * as cheerio from "cheerio";
 import { DetailedIndieGameReportSchema } from "@/schema";
+import { db, schema as dbSchema } from "@/db";
 
 // example string for LLM testing
 // const testString = "https://x.com/Just_Game_Dev/status/1918036677609521466";
@@ -430,7 +431,9 @@ export async function POST(req: Request) {
     finalSynthesisPrompt += `\nSource 5: Raw HTML Snippet of Steam Page Demo Section:\n\`\`\`html\n${rawDemoHtml}\n\`\`\`\n`;
   }
 
-  finalSynthesisPrompt += `\n**Instructions:**\n1.  Analyze all provided sources (Tweet, Author JSON, Steam API JSON, Raw Demo HTML Snippet).\n2.  **Strict Field Mapping:** Populate fields *only* with information that accurately matches the field's description based on the sources. Do **not** substitute information (e.g., do not put a Steam link in a field meant for an official website if the official website URL is not found).\n3.  Identify the primary game, developer, and publisher (if possible) based on the data (prioritize Author JSON name/bio/hashtags and Steam JSON data if present).\n4.  Extract relevant details like descriptions, background info, team members, funding, release status, platforms, genres/tags, website links, social links, community links, store links, etc., directly from the JSON/HTML sources.\n5.  **Link Handling & Classification (VERY IMPORTANT):** Populate the \\\'relevantLinks\\\' array as the primary location for *all* discovered URLs. Find all unique URLs within the sources. Assign the \\\'type\\\' accurately based **strictly** on the URL\\\'s domain and context. \\n    *   **Correct Examples:**\\n        *   \`https://store.steampowered.com/...\` -> \`type: \'Steam\'\`\\n        *   \`https://x.com/username\` -> \`type: \'Twitter Profile\'\`\\n        *   \`https://twitter.com/username\` -> \`type: \'Twitter Profile\'\`\\n        *   \`https://discord.gg/invitecode\` -> \`type: \'Discord\'\`\\n        *   \`https://mycoolgame.com\` -> \`type: \'Official Website\'\`\\n        *   \`https://mydevstudio.com\` -> \`type: \'Official Website\'\`\\n        *   \`https://username.itch.io/gamename\` -> \`type: \'Itch.io\'\`\\n        *   \`https://kickstarter.com/projects/...\` -> \`type: \'Kickstarter\'\`\\n        *   \`https://mypublisher.com\` -> \`type: \'Publisher\'\`\\n        *   \`https://instagram.com/username\` -> \`type: \'Other Social\'\`\\n    *   **Incorrect Examples (DO NOT DO THIS):**\\n        *   \`https://x.com/username\` -> \`type: \'Official Website\'\`  **<-- WRONG**\\n        *   \`https://store.steampowered.com/...\` -> \`type: \'Official Website\'\` **<-- WRONG**\\n    *   **Rules:**\\n        *   Use \\\'Official Website\\\' **only** for a dedicated website for the game or the primary website/landing page for the developer/studio. **It MUST NOT be a social media profile (x.com, twitter.com, facebook.com, instagram.com, etc.) or a store page (steampowered.com, itch.io, etc.).**\\n        *   Use specific types (\\\'Steam\\\', \\\'Twitter Profile\\\', \\\'Discord\\\', \\\'YouTube\\\', \\\'Kickstarter\\\', \\\'Publisher\\\', \\\'Itch.io\\\', \\\'Press Kit\\\') whenever possible.\\n        *   Use \\\'Other Social\\\', \\\'Other Store\\\', \\\'Other Community\\\' for links that don\\\'t fit the specific types above.\\n        *   Use the display_url or inferred context for the \\\'name\\\' field where appropriate (e.g., name: \\\'Developer Blog\\\').\\n6.  **Demo Check:** Examine Source 5 (Raw Demo HTML Snippet). If it clearly indicates a demo (e.g., a \\\'Download Demo\\\' button), reflect this fact in the \\\'releaseInfo\\\' field (e.g., append \\\"Demo Available\\\") and add a specific entry of type \\\'Steam Demo\\\' to \\\'relevantLinks\\\' if a unique demo link/action is identifiable.\\n7.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.\\n8.  **Use Null for Missing Data:** If information specifically required for a field (e.g., \\\'publisherName\\\', \\\'fundingInfo\\\') cannot be found in the provided sources, set that field to \\\'null\\\'.\\n9.  Provide a confidence level in \\\'aiConfidenceAssessment\\\', noting that web search was skipped.\\n10. Write a concise \\\'overallReportSummary\\\'.\\n\\nGenerate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
+  finalSynthesisPrompt += `\n**Instructions:**\n1.  Analyze all provided sources (Tweet, Author JSON, Steam API JSON, Raw Demo HTML Snippet).\n2.  **Strict Field Mapping:** Populate fields *only* with information that accurately matches the field's description based on the sources. Do **not** substitute information (e.g., do not put a Steam link in a field meant for an official website if the official website URL is not found).\n3.  Identify the primary game, developer, and publisher (if possible) based on the data (prioritize Author JSON name/bio/hashtags and Steam JSON data if present).\n4.  Extract relevant details like descriptions, background info, team members, funding, release status, platforms, genres/tags, website links, social links, community links, store links, etc., directly from the JSON/HTML sources.\n5.  **Link Handling & Classification (VERY IMPORTANT):** Populate the \\\'relevantLinks\\\' array as the primary location for *all* discovered URLs. Find all unique URLs within the sources. Assign the \\\'type\\\' accurately based **strictly** on the URL\\\'s domain and context. \\n    *   **Correct Examples:**\\n        *   \`https://store.steampowered.com/...\` -> \`type: \'Steam\'\`\\n        *   \`https://x.com/username\` -> \`type: \'Twitter Profile\'\`\\n        *   \`https://twitter.com/username\` -> \`type: \'Twitter Profile\'\`\\n        *   \`https://discord.gg/invitecode\` -> \`type: \'Discord\'\`\\n        *   \`https://mycoolgame.com\` -> \`type: \'Official Website\'\`\\n        *   \`https://mydevstudio.com\` -> \`type: \'Official Website\'\`\\n        *   \`https://username.itch.io/gamename\` -> \`type: \'Itch.io\'\`\\n        *   \`https://kickstarter.com/projects/...\` -> \`type: \'Kickstarter\'\`\\n        *   \`https://mypublisher.com\` -> \`type: \'Publisher\'\`\\n        *   \`https://instagram.com/username\` -> \`type: \'Other Social\'\`\\n    *   **Incorrect Examples (DO NOT DO THIS):**\\n        *   \`https://x.com/username\` -> \`type: \'Official Website\'\`  **<-- WRONG**\\n        *   \`https://store.steampowered.com/...\` -> \`type: \'Official Website\'\` **<-- WRONG**\\n    *   **Rules:**\\n        *   Use \\\'Official Website\\\' **only** for a dedicated website for the game or the primary website/landing page for the developer/studio. **It MUST NOT be a social media profile (x.com, twitter.com, facebook.com, instagram.com, etc.) or a store page (steampowered.com, itch.io, etc.).**\\n        *   Use specific types (\\\'Steam\\\', \\\'Twitter Profile\\\', \\\'Discord\\\', \\\'YouTube\\\', \\\'Kickstarter\\\', \\\'Publisher\\\', \\\'Itch.io\\\', \\\'Press Kit\\\') whenever possible.\\n        *   Use \\\'Other Social\\\', \\\'Other Store\\\', \\\'Other Community\\\' for links that don\\\'t fit the specific types above.\\n        *   Use the display_url or inferred context for the \\\'name\\\' field where appropriate (e.g., name: \\\'Developer Blog\\\').
+6.  **Image Links (CRITICAL):** ALWAYS extract image URLs from the sources and include them in the \\\'relevantLinks\\\' array with appropriate types:\\n    *   For Steam header images (game_header_image_full): use the type \\\'Key Art\\\'\\n    *   For Steam screenshots: use the type \\\'Screenshot\\\'\\n    *   For Steam capsule images: use the type \\\'Cover Art\\\'\\n    *   For video thumbnail images: use the type \\\'Trailer Thumbnail\\\'\\n    *   If Steam API data is available, ensure you extract BOTH header and screenshots and add them with their appropriate types.\\n    *   **PRIORITY:** Always prioritize extracting official Steam images over any other image source.
+7.  **Demo Check:** Examine Source 5 (Raw Demo HTML Snippet). If it clearly indicates a demo (e.g., a \\\'Download Demo\\\' button), reflect this fact in the \\\'releaseInfo\\\' field (e.g., append \\\"Demo Available\\\") and add a specific entry of type \\\'Steam Demo\\\' to \\\'relevantLinks\\\' if a unique demo link/action is identifiable.\\n8.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.\\n9.  **Use Null for Missing Data:** If information specifically required for a field (e.g., \\\'publisherName\\\', \\\'fundingInfo\\\') cannot be found in the provided sources, set that field to \\\'null\\\'.\\n10. Provide a confidence level in \\\'aiConfidenceAssessment\\\', noting that web search was skipped.\\n11. Write a concise \\\'overallReportSummary\\\'.\\n\\nGenerate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
 
   console.log(
     "Performing final AI synthesis (incl. raw demo HTML analysis)..."
@@ -441,6 +444,45 @@ export async function POST(req: Request) {
     schema: DetailedIndieGameReportSchema,
   });
 
-  // 6. Return the final object
+  // 6. Persist the find to the database (NEW STEP)
+  console.log("Attempting to save find to database...");
+  try {
+    const newFindData = {
+      sourceTweetId: tweetId, // Use the extracted tweet ID
+      sourceTweetUrl: primaryUrl, // Use the full tweet URL
+      rawTweetJson: tweetJson, // Raw JSON from Twitter API
+      rawAuthorJson: authorJson, // Raw JSON for author profile
+      rawSteamJson: steamApiData, // Raw JSON from Steam API (can be null)
+      rawDemoHtml: rawDemoHtml, // Raw HTML snippet (can be null)
+      report: finalResult.object, // The generated Zod-validated report object
+      // createdAt and updatedAt will be handled by the database default/trigger
+    };
+
+    // Validate with Zod before insertion (optional but good practice)
+    // DetailedIndieGameReportSchema.parse(finalResult.object);
+
+    const inserted = await db
+      .insert(dbSchema.finds)
+      .values(newFindData)
+      .returning({ id: dbSchema.finds.id }); // Optionally return the new ID
+
+    if (inserted && inserted.length > 0 && inserted[0].id) {
+      console.log(
+        `Successfully saved find to database with ID: ${inserted[0].id}`
+      );
+    } else {
+      // This case might happen with certain configurations or if returning wasn't used/successful
+      console.log(
+        "Successfully sent insert command, but did not receive confirmation ID."
+      );
+    }
+  } catch (error) {
+    console.error("Error saving find to database:", error);
+    // Decide how to handle DB errors: Log it but still return the report to the user?
+    // Or return an error response?
+    // For now, we log the error and proceed to return the report.
+  }
+
+  // 7. Return the final object
   return Response.json(finalResult.object);
 }
