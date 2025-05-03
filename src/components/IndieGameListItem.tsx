@@ -1,12 +1,13 @@
 import { DetailedIndieGameReport } from "@/schema";
 import { Badge } from "./ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { extractSteamAppId } from "@/lib/utils";
 
 // Helper functions moved outside component for cleaner organization
-const extractSteamAppId = (url: string): string | null => {
-  const match = url.match(/store\.steampowered\.com\/app\/(\d+)/i);
-  return match ? match[1] : null;
-};
+// const extractSteamAppId = (url: string): string | null => {
+//   const match = url.match(/store\\.steampowered\\.com\\/app\\/(\\d+)/i);
+//   return match ? match[1] : null;
+// };
 
 const getPrimaryLink = (links: DetailedIndieGameReport["relevantLinks"]) => {
   if (!links) return null;
