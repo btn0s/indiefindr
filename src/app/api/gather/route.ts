@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, streamText, generateObject } from "ai";
 import scrapingbee from "scrapingbee"; // Import ScrapingBee client - will be removed if only used for Twitter
 import * as cheerio from "cheerio"; // Import cheerio for HTML parsing - keep for Steam
-import { GameLandingPageSchema } from "@/schema"; // UPDATED Schema import
+import { GameLandingPageSchema, GameLandingPageData } from "@/schema"; // Correct Schema import
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -89,15 +89,30 @@ async function scrapeUrlAndParse(
   }
 }
 
-// ADDED: Function to fetch tweet content using RapidAPI
-async function fetchTweetContent(tweetId: string): Promise<string | null> {
+// ADDED: Type for raw tweet/author JSON + extracted text
+interface RawTweetAndAuthorData {
+  tweetText: string | null; // Keep extracted text for final schema
+  tweetJson: object | null;
+  authorJson: object | null;
+}
+
+// REVISED: Fetch raw JSON for tweet and author
+async function fetchRawTweetAndAuthorJson(
+  tweetId: string
+): Promise<RawTweetAndAuthorData> {
+  let tweetData: any = null;
+  let userData: any = null;
+  let tweetText: string | null = null;
+
   if (!rapidApiKey) {
     console.error("RAPIDAPI_KEY not configured.");
-    return null;
+    return { tweetText: null, tweetJson: null, authorJson: null };
   }
 
-  const url = `https://twitter241.p.rapidapi.com/tweet-v2?pid=${tweetId}`;
+  // 1. Fetch Tweet Data
+  const tweetUrl = `https://twitter241.p.rapidapi.com/tweet-v2?pid=${tweetId}`;
   const options = {
+    // Renamed from tweetOptions for clarity
     method: "GET",
     headers: {
       "x-rapidapi-key": rapidApiKey,
@@ -105,39 +120,75 @@ async function fetchTweetContent(tweetId: string): Promise<string | null> {
     },
   };
 
-  console.log(`Fetching tweet content for ID: ${tweetId}`);
+  console.log(`Fetching raw tweet JSON for ID: ${tweetId}`);
   try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
+    const tweetResponse = await fetch(tweetUrl, options);
+    if (!tweetResponse.ok) {
       throw new Error(
-        `RapidAPI failed for tweet ${tweetId}: ${response.status} ${response.statusText}`
+        `RapidAPI (tweet-v2) failed for tweet ${tweetId}: ${tweetResponse.status} ${tweetResponse.statusText}`
       );
     }
-    const result = await response.json();
-    // Extract text based on observed structure
-    const tweetText = result?.result?.tweetResult?.result?.legacy?.full_text;
-    if (!tweetText) {
+    tweetData = await tweetResponse.json(); // Keep raw JSON
+    // Also extract text needed for final schema
+    tweetText = tweetData?.result?.tweetResult?.result?.legacy?.full_text;
+    console.log(`Successfully fetched raw tweet JSON for ID: ${tweetId}`);
+
+    // Extract User ID for next call
+    const userId =
+      tweetData?.result?.tweetResult?.result?.core?.user_results?.result
+        ?.rest_id;
+
+    if (userId) {
+      console.log(
+        `Found author User ID: ${userId}, fetching raw profile JSON...`
+      );
+      // ADDED: Wait 1 second to avoid rate limiting on the next API call
+      console.log("Waiting 1 second before fetching user profile...");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // 2. Fetch User Data JSON if User ID found
+      const userUrl = `https://twitter241.p.rapidapi.com/get-users?users=${userId}`;
+      try {
+        const userResponse = await fetch(userUrl, options); // Reuse options
+        if (!userResponse.ok) {
+          throw new Error(
+            `RapidAPI (get-users) failed for user ${userId}: ${userResponse.status} ${userResponse.statusText}`
+          );
+        }
+        userData = await userResponse.json(); // Keep raw JSON
+        console.log(
+          `Successfully fetched raw author profile JSON for User ID: ${userId}`
+        );
+      } catch (userError) {
+        console.error(
+          `Error fetching user profile JSON for ${userId} via RapidAPI:`,
+          userError
+        );
+      }
+    } else {
       console.warn(
-        "Could not extract tweet text from RapidAPI response structure:",
-        result
+        "Could not extract User ID from tweet data to fetch profile JSON."
       );
-      return null;
     }
-    console.log(`Successfully fetched tweet content for ID: ${tweetId}`);
-    return tweetText;
-  } catch (error) {
-    console.error(`Error fetching tweet ${tweetId} via RapidAPI:`, error);
-    return null;
+  } catch (tweetError) {
+    console.error(
+      `Error fetching tweet JSON ${tweetId} via RapidAPI:`,
+      tweetError
+    );
+    // Return nulls if tweet fetch fails
+    return { tweetText: null, tweetJson: null, authorJson: null };
   }
+
+  return { tweetText, tweetJson: tweetData, authorJson: userData };
 }
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
   const userQuery = messages[messages.length - 1].content;
 
-  // 1. Extract Tweet URL and ID from initial user query
+  // 1. Extract Tweet URL and ID
   const tweetUrlPattern =
-    /https?:\/\/(?:x|twitter)\.com\/[^\/]+\/status\/(\d+)/i; // Corrected: Use single backslashes for escaping in regex literal
+    /https?:\/\/(?:x|twitter)\.com\/[^\/]+\/status\/(\d+)/i;
   const match = userQuery.match(tweetUrlPattern);
 
   if (!match || !match[0] || !match[1]) {
@@ -151,72 +202,93 @@ export async function POST(req: Request) {
   const primaryUrl = match[0]; // Full URL
   const tweetId = match[1]; // Extracted Tweet ID
 
-  // 2. Fetch the tweet content using RapidAPI
-  const tweetContent = await fetchTweetContent(tweetId); // Use new function
+  // 2. Fetch Raw Tweet and Author JSON data
+  const { tweetText, tweetJson, authorJson } = await fetchRawTweetAndAuthorJson(
+    tweetId
+  );
 
-  if (!tweetContent) {
+  // We still need tweetText for the final summary, even if JSON fetching had issues
+  if (!tweetText) {
     return new Response(
       JSON.stringify({
-        error: `Failed to fetch tweet content for ${primaryUrl}`,
+        error: `Failed to fetch tweet text content for ${primaryUrl}`,
       }),
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 
-  // 3. Initial AI call with web search to find comprehensive game/dev info
-  const initialPrompt = `Analyze the following indie game developer tweet content:
+  // 3. Generate Context Summary from Raw JSON using AI
+  let contextSummary = "";
+  const summaryGenPrompt = `Analyze the raw JSON data for a tweet and its author's profile. Generate a concise text summary highlighting the key information relevant for finding details about the developer and their game. Focus on names, game titles, descriptions, links, and any other context useful for a subsequent web search.
+
+Tweet JSON:
+\`\`\`json
+${JSON.stringify(tweetJson, null, 2) || "Not available"}
+\`\`\`
+
+Author Profile JSON:
+\`\`\`json
+${JSON.stringify(authorJson, null, 2) || "Not available"}
+\`\`\`
+
+Generate *only* the concise summary text.`;
+
+  try {
+    console.log("Generating context summary from raw JSON...");
+    const summaryResult = await generateText({
+      model: openai.responses("gpt-4o-mini"),
+      prompt: summaryGenPrompt,
+      maxTokens: 300, // Allow more tokens for summary
+    });
+    contextSummary = summaryResult.text.trim();
+    console.log("Generated Context Summary:", contextSummary);
+    if (!contextSummary) {
+      throw new Error("AI failed to generate context summary.");
+    }
+  } catch (error) {
+    console.error("Error generating context summary:", error);
+    // Fallback: Use only the tweet text if summary generation fails
+    contextSummary = tweetText;
+    console.warn("Using raw tweet text as fallback context.");
+  }
+
+  // 4. Generate an Optimized Web Search Query using the AI-generated Summary
+  let webSearchQuery = "";
+  const queryGenPrompt = `Based *only* on the following summary text (derived from a tweet and author profile), generate a concise and effective web search query. The query should aim to find comprehensive details for building a game landing page, covering game info, developer info, community links, and funding details as specified in the GameLandingPageSchema.
+
+Context Summary:
 ---
-${tweetContent}
+${contextSummary}
 ---
-Based *only* on the tweet, identify the developer/studio name and the game name if mentioned.
 
-Then, perform an extensive web search to gather as much information as possible for a detailed game landing page. Find details for *all* of the following fields:
+Generate *only* the web search query string.`;
 
-**Game Information:**
-- Game Name (confirm or find)
-- Tagline
-- Short Description (1-2 sentences)
-- Detailed Description (gameplay, story, unique selling points)
-- Genres (list)
-- Tags (list, more specific than genres)
-- Platforms (PC, Mac, Linux, PS5, Xbox Series X/S, Switch, iOS, Android, etc.)
-- Release Status (Released, Early Access, Announced, TBA, etc.)
-- Release Date (if known)
-- Price (if known)
-- Official Game Website URL
-- Steam Store URL (MUST find store.steampowered.com/app/... link if it exists)
-- Other Store URLs (Epic, GOG, itch.io, console stores - provide name and URL)
-- Trailer Video URL (YouTube, Vimeo, etc.)
-- Screenshot URLs (list of direct image URLs if possible)
-- Key Features (bullet points/list)
+  try {
+    console.log("Generating optimized web search query from summary...");
+    const queryResult = await generateText({
+      model: openai.responses("gpt-4o-mini"),
+      prompt: queryGenPrompt,
+      maxTokens: 100,
+    });
+    webSearchQuery = queryResult.text.trim();
+    console.log("Generated web search query:", webSearchQuery);
+    if (!webSearchQuery) {
+      throw new Error("AI failed to generate a web search query from summary.");
+    }
+  } catch (error) {
+    console.error("Error generating web search query from summary:", error);
+    // Fallback: Use a very basic query if generation fails
+    webSearchQuery = `game developer info from tweet ${tweetId}`;
+    console.warn("Using fallback search query:", webSearchQuery);
+  }
 
-**Developer / Team Information:**
-- Developer/Studio Name (confirm or find)
-- Developer Website URL
-- Developer Location (Country/City/Remote)
-- Team Background (Detailed history, founding story, previous projects, mission/values)
-- Team Members (Identify key members and their roles)
-- Social Media Links (Platform and URL for Twitter, Discord, Facebook, etc.)
-
-**Community & Links:**
-- Press Kit URL
-- Discord Invite URL
-- Subreddit URL
-- Other Community Links (Forums, wikis - provide name and URL)
-
-**Funding Information:**
-- Funding Status (Self-funded, Kickstarter, Patreon, etc.)
-- Funding Page URL (Kickstarter, Patreon link, etc.)
-
-Provide a comprehensive summary of all findings from the web search. Clearly list all URLs found. Prioritize finding the Steam Store URL.
-`;
-
-  console.log("Performing initial AI search with generateText...");
-  const initialResult = await generateText({
+  // 5. Perform Web Search using the generated query
+  console.log(
+    `Performing web search with generated query: "${webSearchQuery}"`
+  );
+  const webSearchResult = await generateText({
     model: openai.responses("gpt-4o-mini"),
-    prompt: initialPrompt,
+    prompt: webSearchQuery,
     tools: {
       web_search_preview: openai.tools.webSearchPreview({
         searchContextSize: "high",
@@ -225,49 +297,44 @@ Provide a comprehensive summary of all findings from the web search. Clearly lis
     toolChoice: { type: "tool", toolName: "web_search_preview" },
   });
 
-  const initialAiText = initialResult.text;
-  console.log("Initial AI Search Result Text:", initialAiText);
+  const webSearchResultsText = webSearchResult.text;
+  console.log("Web Search Result Text:", webSearchResultsText);
 
-  // 4. Try to extract Steam URL from the initial AI response
+  // 6. Try to extract Steam URL and Scrape Steam Page
   const steamUrlPattern =
     /https?:\/\/store\.steampowered\.com\/app\/\d+\/?[^\s]*/;
-  const steamUrlMatch = initialAiText.match(steamUrlPattern);
+  const steamUrlMatch = webSearchResultsText.match(steamUrlPattern);
   let steamData: { [key: string]: string | null } | null = null;
 
   if (steamUrlMatch && steamUrlMatch[0]) {
     const steamUrl = steamUrlMatch[0];
     console.log(`Found Steam URL: ${steamUrl}`);
-
-    // 5. Scrape Steam page (NO stealth) if URL found
-    // Selectors are best guesses and might need adjustment!
     const steamSelectors = {
-      description: "#game_area_description .game_description_snippet", // Main description snippet
-      tags: ".glance_tags a.app_tag", // Genre tags
-      // Add more selectors here if needed (e.g., release date, developer)
-      // developer: ".dev_row .summary a"
+      description: "#game_area_description .game_description_snippet",
+      tags: ".glance_tags a.app_tag",
     };
-    steamData = await scrapeUrlAndParse(steamUrl, steamSelectors, false); // NO stealth for Steam
+    steamData = await scrapeUrlAndParse(steamUrl, steamSelectors, false);
   } else {
-    console.log("No Steam URL found in initial AI response.");
+    console.log("No Steam URL found in web search results.");
   }
 
-  // 6. Final AI call to synthesize everything into the new schema
-  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive, structured JSON object conforming to the GameLandingPageSchema. Populate every field as accurately as possible based on the provided data. If specific information for a field wasn't found in the preceding steps, use 'null' for that field unless it's a required string (like tweetSummary).
+  // 7. Final AI call to synthesize everything into the schema
+  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive, structured JSON object conforming to the GameLandingPageSchema. Populate every field as accurately as possible. Use 'null' for fields where information wasn't found.
 
-Original Tweet Content Summary (for the 'tweetSummary' field):
+Original Tweet Content (for 'tweetSummary' field):
 ---
-${tweetContent}
+${tweetText}
 ---
 
-Initial Web Search Summary & Findings (for context and filling fields):
+Web Search Results (main source for filling fields):
 ---
-${initialAiText}
+${webSearchResultsText}
 ---
 `;
 
   if (steamData) {
     finalSynthesisPrompt += `
-Scraped Steam Page Details (use for 'scrapedSteamDescription' and potentially 'genres', 'tags', 'detailedDescription'):
+Scraped Steam Page Details (use for 'scrapedSteamDescription', 'scrapedSteamTags', and supplement other fields like 'genres', 'tags', 'detailedDescription'):
 ---
 Description: ${steamData.description || "Not found"}
 Tags/Genres: ${steamData.tags || "Not found"}
@@ -276,7 +343,7 @@ Tags/Genres: ${steamData.tags || "Not found"}
   }
 
   finalSynthesisPrompt += `
-Based on all the information provided (original tweet summary, initial web search summary, and scraped Steam details), generate the final JSON object using the GameLandingPageSchema. Extract and structure the relevant pieces of information into the corresponding fields. Provide a concise overall summary in the 'overallSummary' field.
+Based *only* on the information provided above (original tweet text, web search results, and scraped Steam details), generate the final JSON object using the GameLandingPageSchema. Extract and structure the relevant pieces of information into the corresponding fields. Provide a concise overall summary in the 'overallSummary' field.
 `;
 
   console.log(
@@ -285,9 +352,9 @@ Based on all the information provided (original tweet summary, initial web searc
   const finalResult = await generateObject({
     model: openai.responses("gpt-4o-mini"),
     prompt: finalSynthesisPrompt,
-    schema: GameLandingPageSchema, // UPDATED to use the new schema
+    schema: GameLandingPageSchema,
   });
 
-  // 7. Return the final object as a standard JSON response
+  // 8. Return the final object
   return Response.json(finalResult.object);
 }
