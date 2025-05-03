@@ -2,6 +2,9 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { DetailedIndieGameReportSchema } from "@/schema";
 
+// example string for LLM testing
+// const testString = "https://x.com/Just_Game_Dev/status/1918036677609521466";
+
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
 
