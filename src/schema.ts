@@ -1,16 +1,4 @@
 import { z } from "zod";
-import { customType } from "drizzle-orm/pg-core";
-import { pgTable, uuid, text, jsonb, timestamp } from "drizzle-orm/pg-core";
-
-// Define the custom vector type
-const vector = customType<{ data: number[]; driverData: string }>({
-  dataType() {
-    return "vector(1536)";
-  },
-  toDriver(value: number[]): string {
-    return JSON.stringify(value);
-  },
-});
 
 const TeamMemberSchema = z.object({
   name: z.string().nullable().describe("Name of the team member."),
@@ -128,26 +116,3 @@ export const DetailedIndieGameReportSchema = z.object({
 export type DetailedIndieGameReport = z.infer<
   typeof DetailedIndieGameReportSchema
 >;
-
-// Define the table for storing the submitted finds and their reports
-export const finds = pgTable("finds", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  sourceTweetId: text("source_tweet_id").notNull().unique(),
-  sourceTweetUrl: text("source_tweet_url").notNull(),
-  rawTweetJson: jsonb("raw_tweet_json"),
-  rawAuthorJson: jsonb("raw_author_json"),
-  rawSteamJson: jsonb("raw_steam_json"),
-  rawDemoHtml: text("raw_demo_html"),
-  report: jsonb("report").$type<DetailedIndieGameReport>().notNull(),
-  vectorEmbedding: vector("vector_embedding"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
-
-// Type alias for convenience when selecting/inserting finds
-export type Find = typeof finds.$inferSelect;
-export type NewFind = typeof finds.$inferInsert;

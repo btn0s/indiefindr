@@ -5,7 +5,18 @@ import {
   timestamp,
   jsonb,
   uniqueIndex,
+  customType,
 } from "drizzle-orm/pg-core";
+
+// Define the custom vector type
+const vector = customType<{ data: number[]; driverData: string }>({
+  dataType() {
+    return "vector(1536)"; // Match OpenAI text-embedding-3-small dimensions
+  },
+  toDriver(value: number[]): string {
+    return JSON.stringify(value);
+  },
+});
 
 // Define the structure for the 'report' column based on your Zod schema
 // Note: Drizzle doesn't directly use Zod types for DB columns,
@@ -28,6 +39,9 @@ export const finds = pgTable(
 
     // The processed report conforming to DetailedIndieGameReportSchema
     report: jsonb("report").$type<DetailedIndieGameReport>().notNull(),
+
+    // Add the vector column
+    vectorEmbedding: vector("vector_embedding"),
 
     // Timestamps
     createdAt: timestamp("created_at", { withTimezone: true })
