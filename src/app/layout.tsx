@@ -10,8 +10,29 @@ const fontSans = FontSans({
 });
 
 export const metadata: Metadata = {
-  title: "IndieFindr",
-  description: "Discovering the latest indie games from Twitter.",
+  title: "IndieFindr - Discover Your Next Favorite Indie Game",
+  description:
+    "IndieFindr is your curated feed for discovering exciting new indie games. Explore the latest finds and uncover hidden gems from the indie gaming world.",
+  keywords: [
+    "indie games",
+    "game discovery",
+    "indie gaming",
+    "video games",
+    "indie developers",
+  ],
+  openGraph: {
+    title: "IndieFindr - Discover Your Next Favorite Indie Game",
+    description:
+      "Your curated feed for discovering exciting new indie games. Explore the latest finds and uncover hidden gems.",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "IndieFindr - Discover Your Next Favorite Indie Game",
+    description:
+      "Your curated feed for discovering exciting new indie games. Explore the latest finds and uncover hidden gems.",
+  },
 };
 
 export default function RootLayout({
