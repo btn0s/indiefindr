@@ -129,7 +129,7 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
   const backgroundImage = findBackgroundImage();
 
   return (
-    <div className="w-full max-w-[500px] mx-auto border border-gray-200 rounded-xl overflow-hidden shadow-md bg-white">
+    <div className="w-full mx-auto border border-gray-200 rounded-xl overflow-hidden shadow-md bg-white">
       {/* Header with navigational elements - could be removed or replaced for actual integration */}
       <div className="relative">
         {/* Back button - for UI consistency */}
