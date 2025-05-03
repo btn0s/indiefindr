@@ -76,10 +76,10 @@ export default async function Home() {
       </section>
 
       {/* Display List of Finds Container */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold pb-2">Recent Finds</h2>
+      <div className="flex flex-col gap-2">
+        <h2 className="text-lg font-semibold">Recent Finds</h2>
         {initialFinds.length > 0 ? (
-          <ul className="space-y-3">
+          <ul className="flex flex-col gap-2">
             {initialFinds.map((find) => (
               <li key={find.id}>
                 <Link
