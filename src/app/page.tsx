@@ -1,6 +1,7 @@
 // Mark as a server component (no "use client" needed)
 import { db, schema } from "@/db";
 import { desc } from "drizzle-orm";
+import Link from "next/link";
 import { IndieGameListItem } from "@/components/IndieGameListItem";
 import { SubmitGameDialog } from "@/components/SubmitGameDialog";
 
@@ -77,11 +78,15 @@ export default async function Home() {
             <ul className="space-y-3">
               {initialFinds.map((find) => (
                 <li key={find.id}>
-                  {/* Wrap list item in a Link later for navigation */}
-                  {/* Ensure find.reportData is passed and valid */}
-                  {find.reportData && (
-                    <IndieGameListItem reportData={find.reportData} />
-                  )}
+                  <Link
+                    href={`/finds/${find.id}`}
+                    className="block hover:bg-gray-50 rounded-lg transition-colors duration-150"
+                  >
+                    {/* Ensure find.reportData is passed and valid */}
+                    {find.reportData && (
+                      <IndieGameListItem reportData={find.reportData} />
+                    )}
+                  </Link>
                 </li>
               ))}
             </ul>
