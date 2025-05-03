@@ -3,8 +3,6 @@ import { db, schema } from "@/db";
 import { generateEmbedding } from "@/lib/embeddings";
 import { sql } from "drizzle-orm";
 
-export const runtime = "edge"; // Optional: Use edge runtime if preferred
-
 const SEARCH_LIMIT = 10; // Limit the number of search results
 
 export async function GET(req: NextRequest) {
@@ -31,8 +29,9 @@ export async function GET(req: NextRequest) {
     const searchResults = await db
       .select({
         id: schema.finds.id,
-        gameName: schema.finds.report.gameName,
-        summary: schema.finds.report.overallReportSummary,
+        // Use sql template to safely access JSONB fields
+        gameName: sql<string>`${schema.finds.report}->>'gameName'`,
+        summary: sql<string>`${schema.finds.report}->>'overallReportSummary'`,
         // Calculate the distance (lower is better)
         distance: sql<number>`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector`,
       })
