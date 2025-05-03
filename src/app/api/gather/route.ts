@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, streamText, generateObject } from "ai";
 import scrapingbee from "scrapingbee"; // Import ScrapingBee client - will be removed if only used for Twitter
 import * as cheerio from "cheerio"; // Import cheerio for HTML parsing - keep for Steam
-import { GameLandingPageSchema, GameLandingPageData } from "@/schema"; // Correct Schema import
+import { DetailedIndieGameReportSchema } from "@/schema"; // UPDATED Schema import
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -207,7 +207,6 @@ export async function POST(req: Request) {
     tweetId
   );
 
-  // We still need tweetText for the final summary, even if JSON fetching had issues
   if (!tweetText) {
     return new Response(
       JSON.stringify({
@@ -219,7 +218,7 @@ export async function POST(req: Request) {
 
   // 3. Generate Context Summary from Raw JSON using AI
   let contextSummary = "";
-  const summaryGenPrompt = `Analyze the raw JSON data for a tweet and its author's profile. Generate a concise text summary highlighting the key information relevant for finding details about the developer and their game. Focus on names, game titles, descriptions, links, and any other context useful for a subsequent web search.
+  const summaryGenPrompt = `Analyze the raw JSON data for a tweet and its author's profile. Extract key factual entities and context useful for performing a deep-dive web search. Identify potential game names, developer names, publisher names, key people, locations, project codenames, and any links mentioned. Summarize this context concisely.
 
 Tweet JSON:
 \`\`\`json
@@ -231,7 +230,7 @@ Author Profile JSON:
 ${JSON.stringify(authorJson, null, 2) || "Not available"}
 \`\`\`
 
-Generate *only* the concise summary text.`;
+Generate *only* the concise summary of factual context for the web search.`;
 
   try {
     console.log("Generating context summary from raw JSON...");
@@ -254,14 +253,19 @@ Generate *only* the concise summary text.`;
 
   // 4. Generate an Optimized Web Search Query using the AI-generated Summary
   let webSearchQuery = "";
-  const queryGenPrompt = `Based *only* on the following summary text (derived from a tweet and author profile), generate a concise and effective web search query. The query should aim to find comprehensive details for building a game landing page, covering game info, developer info, community links, and funding details as specified in the GameLandingPageSchema.
+  const queryGenPrompt = `Based *only* on the following context summary (derived from a tweet and author profile), generate the most effective web search query possible. The goal is to find *in-depth, accurate information* covering all aspects of the game and its creators:
+  - Game Details: Name, description, gameplay, features, genres, tags, platforms, release status/date, price.
+  - Developer Details: Name, background, history, team members & roles, location.
+  - Publisher Details: Name, website, relationship to developer.
+  - Funding Details: Funding source (Kickstarter, publisher, self-funded), status, links.
+  - Online Presence: Official websites (game, dev, publisher), social media profiles (Twitter, Discord, etc.), community hubs (Reddit), video channels (YouTube), store pages (Steam, Itch.io, etc.), press kit.
 
 Context Summary:
 ---
 ${contextSummary}
 ---
 
-Generate *only* the web search query string.`;
+Generate *only* the single, optimized web search query string designed for maximum information retrieval.`;
 
   try {
     console.log("Generating optimized web search query from summary...");
@@ -284,7 +288,7 @@ Generate *only* the web search query string.`;
 
   // 5. Perform Web Search using the generated query
   console.log(
-    `Performing web search with generated query: "${webSearchQuery}"`
+    `Performing web search with generated query: \"${webSearchQuery}\"`
   );
   const webSearchResult = await generateText({
     model: openai.responses("gpt-4o-mini"),
@@ -318,41 +322,47 @@ Generate *only* the web search query string.`;
     console.log("No Steam URL found in web search results.");
   }
 
-  // 7. Final AI call to synthesize everything into the schema
-  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive, structured JSON object conforming to the GameLandingPageSchema. Populate every field as accurately as possible. Use 'null' for fields where information wasn't found.
+  // 7. Final AI call to synthesize everything into the DETAILED REPORT schema
+  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive, factual report using the DetailedIndieGameReportSchema JSON format. Populate every field as accurately and completely as possible based *only* on the provided sources. Prioritize factual accuracy over assumptions.
 
-Original Tweet Content (for 'tweetSummary' field):
+Source 1: Original Tweet Text (for 'sourceTweetText' field and context):
 ---
 ${tweetText}
 ---
 
-Web Search Results (main source for filling fields):
+Source 2: Web Search Results (main source for filling most report fields):
 ---
 ${webSearchResultsText}
 ---
 `;
 
   if (steamData) {
-    finalSynthesisPrompt += `
-Scraped Steam Page Details (use for 'scrapedSteamDescription', 'scrapedSteamTags', and supplement other fields like 'genres', 'tags', 'detailedDescription'):
----
-Description: ${steamData.description || "Not found"}
-Tags/Genres: ${steamData.tags || "Not found"}
----
-`;
+    finalSynthesisPrompt += `\nSource 3: Scraped Steam Page Details (use for 'scrapedSteamDescription', 'scrapedSteamTags', and to supplement fields like 'gameDescription', 'genresAndTags', 'releaseInfo'):\n---\nDescription: ${
+      steamData.description || "Not found"
+    }\nTags/Genres: ${steamData.tags || "Not found"}\n---\n`;
   }
 
-  finalSynthesisPrompt += `
-Based *only* on the information provided above (original tweet text, web search results, and scraped Steam details), generate the final JSON object using the GameLandingPageSchema. Extract and structure the relevant pieces of information into the corresponding fields. Provide a concise overall summary in the 'overallSummary' field.
-`;
+  finalSynthesisPrompt += `\nInstructions:
+1.  Analyze all provided sources (Tweet, Web Search Results, Steam Data).
+2.  Extract and synthesize all relevant factual information.
+3.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.
+4.  For 'relevantLinks', create a comprehensive list of *all* unique URLs found across sources, correctly assigning the 'type' (e.g., 'Steam', 'Twitter', 'Official Website', 'Publisher', 'Kickstarter', 'YouTube', 'Discord'). Use the 'name' field for context (e.g., 'Epic Games Store').
+5.  Fill 'gameDescription', 'developerBackground', 'publisherInfo', 'fundingInfo', 'releaseInfo' with synthesized text based on findings.
+6.  List identified 'teamMembers' with their roles.
+7.  List all relevant 'genresAndTags'.
+8.  Provide a confidence level in 'aiConfidenceAssessment'.
+9.  Write a concise 'overallReportSummary' paragraph.
+10. Use 'null' for fields where no information was found in the sources.
+
+Generate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
 
   console.log(
-    "Performing final AI synthesis with generateObject using GameLandingPageSchema..."
+    "Performing final AI synthesis into DetailedIndieGameReportSchema..."
   );
   const finalResult = await generateObject({
     model: openai.responses("gpt-4o-mini"),
     prompt: finalSynthesisPrompt,
-    schema: GameLandingPageSchema,
+    schema: DetailedIndieGameReportSchema, // UPDATED schema
   });
 
   // 8. Return the final object
