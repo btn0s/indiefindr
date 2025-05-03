@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, streamText, generateObject } from "ai";
 import scrapingbee from "scrapingbee"; // Import ScrapingBee client - will be removed if only used for Twitter
 import * as cheerio from "cheerio"; // Import cheerio for HTML parsing - keep for Steam
-import { IndieDevReportSchema } from "@/schema";
+import { GameLandingPageSchema } from "@/schema"; // UPDATED Schema import
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -165,8 +165,53 @@ export async function POST(req: Request) {
     );
   }
 
-  // 3. Initial AI call with web search to find related info (including Steam URL)
-  const initialPrompt = `Analyze the following indie game developer tweet content:\n---\n${tweetContent}\n---\nBased on the tweet, identify the developer/studio and the game mentioned.\nThen, search the web to find the following information:\n- Developer/Studio: Background, history, official website.\n- Game: Official website, **Steam store page link (MUST be store.steampowered.com/app/...)**, Kickstarter/funding page (if any), genre.\nProvide a concise summary and list the URLs found, especially the Steam store page URL.\n`;
+  // 3. Initial AI call with web search to find comprehensive game/dev info
+  const initialPrompt = `Analyze the following indie game developer tweet content:
+---
+${tweetContent}
+---
+Based *only* on the tweet, identify the developer/studio name and the game name if mentioned.
+
+Then, perform an extensive web search to gather as much information as possible for a detailed game landing page. Find details for *all* of the following fields:
+
+**Game Information:**
+- Game Name (confirm or find)
+- Tagline
+- Short Description (1-2 sentences)
+- Detailed Description (gameplay, story, unique selling points)
+- Genres (list)
+- Tags (list, more specific than genres)
+- Platforms (PC, Mac, Linux, PS5, Xbox Series X/S, Switch, iOS, Android, etc.)
+- Release Status (Released, Early Access, Announced, TBA, etc.)
+- Release Date (if known)
+- Price (if known)
+- Official Game Website URL
+- Steam Store URL (MUST find store.steampowered.com/app/... link if it exists)
+- Other Store URLs (Epic, GOG, itch.io, console stores - provide name and URL)
+- Trailer Video URL (YouTube, Vimeo, etc.)
+- Screenshot URLs (list of direct image URLs if possible)
+- Key Features (bullet points/list)
+
+**Developer / Team Information:**
+- Developer/Studio Name (confirm or find)
+- Developer Website URL
+- Developer Location (Country/City/Remote)
+- Team Background (Detailed history, founding story, previous projects, mission/values)
+- Team Members (Identify key members and their roles)
+- Social Media Links (Platform and URL for Twitter, Discord, Facebook, etc.)
+
+**Community & Links:**
+- Press Kit URL
+- Discord Invite URL
+- Subreddit URL
+- Other Community Links (Forums, wikis - provide name and URL)
+
+**Funding Information:**
+- Funding Status (Self-funded, Kickstarter, Patreon, etc.)
+- Funding Page URL (Kickstarter, Patreon link, etc.)
+
+Provide a comprehensive summary of all findings from the web search. Clearly list all URLs found. Prioritize finding the Steam Store URL.
+`;
 
   console.log("Performing initial AI search with generateText...");
   const initialResult = await generateText({
@@ -206,15 +251,15 @@ export async function POST(req: Request) {
     console.log("No Steam URL found in initial AI response.");
   }
 
-  // 6. Final AI call to synthesize everything
-  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive summary about the indie developer and their game. Include relevant URLs found previously.
+  // 6. Final AI call to synthesize everything into the new schema
+  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive, structured JSON object conforming to the GameLandingPageSchema. Populate every field as accurately as possible based on the provided data. If specific information for a field wasn't found in the preceding steps, use 'null' for that field unless it's a required string (like tweetSummary).
 
-Original Tweet Content:
+Original Tweet Content Summary (for the 'tweetSummary' field):
 ---
 ${tweetContent}
 ---
 
-Initial Web Search Summary:
+Initial Web Search Summary & Findings (for context and filling fields):
 ---
 ${initialAiText}
 ---
@@ -222,7 +267,7 @@ ${initialAiText}
 
   if (steamData) {
     finalSynthesisPrompt += `
-Scraped Steam Page Details:
+Scraped Steam Page Details (use for 'scrapedSteamDescription' and potentially 'genres', 'tags', 'detailedDescription'):
 ---
 Description: ${steamData.description || "Not found"}
 Tags/Genres: ${steamData.tags || "Not found"}
@@ -231,14 +276,16 @@ Tags/Genres: ${steamData.tags || "Not found"}
   }
 
   finalSynthesisPrompt += `
-Based on all the information provided (original tweet, initial web search summary, and scraped Steam details if available), generate a structured JSON object conforming to the IndieDevReportSchema. Extract the relevant pieces of information and place them into the corresponding fields of the schema. Provide a concise overall summary in the 'overallSummary' field.
+Based on all the information provided (original tweet summary, initial web search summary, and scraped Steam details), generate the final JSON object using the GameLandingPageSchema. Extract and structure the relevant pieces of information into the corresponding fields. Provide a concise overall summary in the 'overallSummary' field.
 `;
 
-  console.log("Performing final AI synthesis with generateObject...");
+  console.log(
+    "Performing final AI synthesis with generateObject using GameLandingPageSchema..."
+  );
   const finalResult = await generateObject({
     model: openai.responses("gpt-4o-mini"),
     prompt: finalSynthesisPrompt,
-    schema: IndieDevReportSchema,
+    schema: GameLandingPageSchema, // UPDATED to use the new schema
   });
 
   // 7. Return the final object as a standard JSON response
