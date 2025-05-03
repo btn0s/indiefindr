@@ -1,4 +1,5 @@
 import { DetailedIndieGameReport } from "@/schema";
+import { Badge } from "./ui/badge";
 
 // Helper function to group links by type
 const groupLinksByType = (links: DetailedIndieGameReport["relevantLinks"]) => {
@@ -137,13 +138,66 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
           </p>
         </div>
 
+        {/* Steam & Demo links (prioritized) */}
+        {(groupedLinks["Steam"] ||
+          groupedLinks["Steam Demo"] ||
+          groupedLinks["Itch.io"]) && (
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-3 rounded-lg border border-indigo-100 mb-4 flex items-center justify-between">
+            <div className="flex flex-col gap-2">
+              <h3 className="font-medium text-gray-900 leading-none">
+                Play or Wishlist
+              </h3>
+              {groupedLinks["Steam Demo"] && (
+                <Badge className="bg-green-600 text-green-50">
+                  Demo Available
+                </Badge>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              {groupedLinks["Steam"]?.map((link, index) => (
+                <a
+                  key={`steam-${index}`}
+                  href={link?.url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center bg-[#1b2838] text-white px-3 py-1.5 rounded-md text-sm font-medium"
+                >
+                  Steam Page
+                </a>
+              ))}
+              {groupedLinks["Itch.io"]?.map((link, index) => (
+                <a
+                  key={`itch-${index}`}
+                  href={link?.url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center bg-[#fa5c5c] text-white px-3 py-1.5 rounded-md text-sm font-medium"
+                >
+                  Itch.io
+                </a>
+              ))}
+              {groupedLinks["Kickstarter"]?.map((link, index) => (
+                <a
+                  key={`kickstarter-${index}`}
+                  href={link?.url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center bg-[#05ce78] text-white px-3 py-1.5 rounded-md text-sm font-medium"
+                >
+                  Kickstarter
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* AI confidence assessment */}
-        {reportData.aiConfidenceAssessment && (
+        {/* {reportData.aiConfidenceAssessment && (
           <div className="mb-4 bg-blue-50 border border-blue-100 rounded p-2 text-xs text-blue-800">
             <div className="font-medium mb-0.5">AI Report Confidence</div>
             <p>{reportData.aiConfidenceAssessment}</p>
           </div>
-        )}
+        )} */}
 
         {/* Tags/Genres */}
         {reportData.genresAndTags && reportData.genresAndTags.length > 0 && (
@@ -166,63 +220,6 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
             <div className="bg-gray-50 p-3 rounded-lg text-sm border border-gray-100">
               <h3 className="font-medium text-gray-900 mb-1">Release Info</h3>
               <p className="text-gray-700">{reportData.releaseInfo}</p>
-            </div>
-          )}
-
-          {/* Steam & Demo links (prioritized) */}
-          {(groupedLinks["Steam"] ||
-            groupedLinks["Steam Demo"] ||
-            groupedLinks["Itch.io"]) && (
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-3 rounded-lg border border-indigo-100">
-              <h3 className="font-medium text-gray-900 mb-2">
-                Play or Wishlist
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {groupedLinks["Steam"]?.map((link, index) => (
-                  <a
-                    key={`steam-${index}`}
-                    href={link?.url || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center bg-[#1b2838] text-white px-3 py-1.5 rounded-md text-sm font-medium"
-                  >
-                    Steam Page
-                  </a>
-                ))}
-                {groupedLinks["Steam Demo"]?.map((link, index) => (
-                  <a
-                    key={`steam-demo-${index}`}
-                    href={link?.url || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center bg-green-600 text-white px-3 py-1.5 rounded-md text-sm font-medium"
-                  >
-                    Demo Available
-                  </a>
-                ))}
-                {groupedLinks["Itch.io"]?.map((link, index) => (
-                  <a
-                    key={`itch-${index}`}
-                    href={link?.url || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center bg-[#fa5c5c] text-white px-3 py-1.5 rounded-md text-sm font-medium"
-                  >
-                    Itch.io
-                  </a>
-                ))}
-                {groupedLinks["Kickstarter"]?.map((link, index) => (
-                  <a
-                    key={`kickstarter-${index}`}
-                    href={link?.url || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center bg-[#05ce78] text-white px-3 py-1.5 rounded-md text-sm font-medium"
-                  >
-                    Kickstarter
-                  </a>
-                ))}
-              </div>
             </div>
           )}
 
