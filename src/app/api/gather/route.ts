@@ -218,7 +218,22 @@ export async function POST(req: Request) {
 
   // 3. Generate Context Summary from Raw JSON using AI
   let contextSummary = "";
-  const summaryGenPrompt = `Analyze the raw JSON data for a tweet and its author's profile. Extract key factual entities and context useful for performing a deep-dive web search. Identify potential game names, developer names, publisher names, key people, locations, project codenames, and any links mentioned. Summarize this context concisely.
+  const summaryGenPrompt = `Analyze the raw JSON data for a tweet and its author's profile. Your goal is to extract key factual context for a deep-dive web search, with a focus on accurately identifying the PRIMARY game and developer/studio being discussed.
+
+Key areas to check for names:
+- Tweet text content
+- Tweet hashtags (e.g., #BombshellBlitz)
+- Author's display name (e.g., "sully 💣 wishlist bombshell blitz")
+- Author's profile description/bio
+- URLs mentioned in bio or tweet
+
+Instructions:
+1. Identify the most probable primary game name. Prioritize names explicitly mentioned in hashtags, display name, or bio.
+2. Identify the most probable primary developer/studio name.
+3. Identify any potential publisher names mentioned.
+4. Extract other useful context: key people, locations, project codenames, relevant links.
+5. If there is ambiguity (e.g., multiple potential game names), briefly note it.
+6. Summarize all extracted context concisely.
 
 Tweet JSON:
 \`\`\`json
@@ -230,7 +245,7 @@ Author Profile JSON:
 ${JSON.stringify(authorJson, null, 2) || "Not available"}
 \`\`\`
 
-Generate *only* the concise summary of factual context for the web search.`;
+Generate *only* the concise summary of factual context, highlighting the most likely game/dev entities.`;
 
   try {
     console.log("Generating context summary from raw JSON...");
@@ -253,19 +268,21 @@ Generate *only* the concise summary of factual context for the web search.`;
 
   // 4. Generate an Optimized Web Search Query using the AI-generated Summary
   let webSearchQuery = "";
-  const queryGenPrompt = `Based *only* on the following context summary (derived from a tweet and author profile), generate the most effective web search query possible. The goal is to find *in-depth, accurate information* covering all aspects of the game and its creators:
-  - Game Details: Name, description, gameplay, features, genres, tags, platforms, release status/date, price.
-  - Developer Details: Name, background, history, team members & roles, location.
-  - Publisher Details: Name, website, relationship to developer.
-  - Funding Details: Funding source (Kickstarter, publisher, self-funded), status, links.
-  - Online Presence: Official websites (game, dev, publisher), social media profiles (Twitter, Discord, etc.), community hubs (Reddit), video channels (YouTube), store pages (Steam, Itch.io, etc.), press kit.
+  const queryGenPrompt = `Based *only* on the following context summary (derived from a tweet and author profile), generate the most effective web search query possible. Focus the query on the *primary game and developer/studio names* identified in the summary.
+
+The goal is to find *in-depth, accurate information* covering all aspects of THAT specific game and its creators:
+- Game Details: Description, gameplay, features, genres, tags, platforms, release status/date, price.
+- Developer Details: Background, history, team members & roles, location.
+- Publisher Details: Name, website, relationship.
+- Funding Details: Source, status, links.
+- Online Presence: Official websites, social media, community hubs, video channels, store pages (Steam!), press kit.
 
 Context Summary:
 ---
 ${contextSummary}
 ---
 
-Generate *only* the single, optimized web search query string designed for maximum information retrieval.`;
+Generate *only* the single, optimized web search query string targeting the primary game/developer identified in the summary.`;
 
   try {
     console.log("Generating optimized web search query from summary...");
@@ -323,7 +340,7 @@ Generate *only* the single, optimized web search query string designed for maxim
   }
 
   // 7. Final AI call to synthesize everything into the DETAILED REPORT schema
-  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive, factual report using the DetailedIndieGameReportSchema JSON format. Populate every field as accurately and completely as possible based *only* on the provided sources. Prioritize factual accuracy over assumptions.
+  let finalSynthesisPrompt = `Synthesize all the following information into a comprehensive, factual report using the DetailedIndieGameReportSchema JSON format. Populate every field as accurately and completely as possible based *only* on the provided sources. Prioritize factual accuracy and cross-reference information between sources.
 
 Source 1: Original Tweet Text (for 'sourceTweetText' field and context):
 ---
@@ -344,15 +361,14 @@ ${webSearchResultsText}
 
   finalSynthesisPrompt += `\nInstructions:
 1.  Analyze all provided sources (Tweet, Web Search Results, Steam Data).
-2.  Extract and synthesize all relevant factual information.
+2.  Cross-reference information across sources to determine the most accurate game name, developer name, publisher name, etc. For example, check if the Steam page title matches the game name mentioned in the tweet/bio.
 3.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.
-4.  For 'relevantLinks', create a comprehensive list of *all* unique URLs found across sources, correctly assigning the 'type' (e.g., 'Steam', 'Twitter', 'Official Website', 'Publisher', 'Kickstarter', 'YouTube', 'Discord'). Use the 'name' field for context (e.g., 'Epic Games Store').
-5.  Fill 'gameDescription', 'developerBackground', 'publisherInfo', 'fundingInfo', 'releaseInfo' with synthesized text based on findings.
-6.  List identified 'teamMembers' with their roles.
-7.  List all relevant 'genresAndTags'.
-8.  Provide a confidence level in 'aiConfidenceAssessment'.
-9.  Write a concise 'overallReportSummary' paragraph.
-10. Use 'null' for fields where no information was found in the sources.
+4.  For 'relevantLinks', create a comprehensive list of *all* unique URLs found, correctly assigning the 'type' and 'name'.
+5.  Synthesize information accurately for description fields ('gameDescription', 'developerBackground', etc.).
+6.  List identified 'teamMembers' and 'genresAndTags'.
+7.  Provide a confidence level in 'aiConfidenceAssessment'. If there were significant contradictions or ambiguities between sources (e.g., conflicting game names), mention it here.
+8.  Write a concise 'overallReportSummary' paragraph focusing on confirmed facts.
+9.  Use 'null' for fields where no reliable information was found.
 
 Generate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
 
@@ -362,7 +378,7 @@ Generate *only* the final JSON object conforming to DetailedIndieGameReportSchem
   const finalResult = await generateObject({
     model: openai.responses("gpt-4o-mini"),
     prompt: finalSynthesisPrompt,
-    schema: DetailedIndieGameReportSchema, // UPDATED schema
+    schema: DetailedIndieGameReportSchema,
   });
 
   // 8. Return the final object
