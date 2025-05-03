@@ -1,0 +1,56 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db, schema } from "@/db";
+import { generateEmbedding } from "@/lib/embeddings";
+import { sql } from "drizzle-orm";
+
+export const runtime = "edge"; // Optional: Use edge runtime if preferred
+
+const SEARCH_LIMIT = 10; // Limit the number of search results
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const query = searchParams.get("q");
+
+  if (!query) {
+    return NextResponse.json(
+      { error: 'Missing search query parameter "q"' },
+      { status: 400 }
+    );
+  }
+
+  try {
+    // 1. Generate embedding for the user query
+    const queryEmbedding = await generateEmbedding(query);
+
+    // 2. Prepare the query embedding string for the SQL query
+    const queryEmbeddingString = `[${queryEmbedding.join(",")}]`;
+
+    // 3. Perform vector similarity search using Drizzle's sql helper
+    // We use the cosine distance operator (<=>)
+    // Lower distance means higher similarity
+    const searchResults = await db
+      .select({
+        id: schema.finds.id,
+        gameName: schema.finds.report.gameName,
+        summary: schema.finds.report.overallReportSummary,
+        // Calculate the distance (lower is better)
+        distance: sql<number>`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector`,
+      })
+      .from(schema.finds)
+      .where(sql`${schema.finds.vectorEmbedding} IS NOT NULL`) // Only search items with embeddings
+      .orderBy(
+        sql`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector ASC`
+      ) // Order by similarity (ascending distance)
+      .limit(SEARCH_LIMIT);
+
+    return NextResponse.json(searchResults);
+  } catch (error) {
+    console.error("Search API error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred";
+    return NextResponse.json(
+      { error: `Search failed: ${errorMessage}` },
+      { status: 500 }
+    );
+  }
+}
