@@ -16,6 +16,12 @@ const groupLinksByType = (links: DetailedIndieGameReport["relevantLinks"]) => {
   }, {} as { [key: string]: typeof links });
 };
 
+// Helper to extract Steam App ID from a Steam URL
+const extractSteamAppId = (url: string): string | null => {
+  const match = url.match(/store\.steampowered\.com\/app\/(\d+)/i);
+  return match ? match[1] : null;
+};
+
 interface IndieGameReportProps {
   reportData: DetailedIndieGameReport;
 }
@@ -37,13 +43,88 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
     }
   };
 
-  // Extract first image link if available for header background
-  const imageLink = reportData.relevantLinks?.find(
-    (link) =>
-      link.type === "Screenshot" ||
-      link.type === "Key Art" ||
-      link.type === "Trailer Thumbnail"
-  )?.url;
+  // Get Steam App ID if available
+  const getSteamAppId = (): string | null => {
+    // First check for Steam links
+    if (groupedLinks["Steam"] && groupedLinks["Steam"][0]?.url) {
+      return extractSteamAppId(groupedLinks["Steam"][0].url);
+    }
+    // Then check for Steam Demo links
+    if (groupedLinks["Steam Demo"] && groupedLinks["Steam Demo"][0]?.url) {
+      const demoUrl = groupedLinks["Steam Demo"][0].url;
+      if (demoUrl.includes("store.steampowered.com")) {
+        return extractSteamAppId(demoUrl);
+      }
+    }
+    return null;
+  };
+
+  const steamAppId = getSteamAppId();
+
+  // Find the appropriate Steam cover art for the tile
+  const findCoverArtImage = () => {
+    // Check if we have direct image links first
+    const coverArt = reportData.relevantLinks?.find(
+      (link) => link.type === "Cover Art"
+    )?.url;
+
+    if (coverArt) return coverArt;
+
+    const keyArt = reportData.relevantLinks?.find(
+      (link) => link.type === "Key Art"
+    )?.url;
+
+    if (keyArt) return keyArt;
+
+    // If we have a Steam App ID, construct the cover image URL
+    if (steamAppId) {
+      return `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/capsule_616x353.jpg`;
+    }
+
+    // Check for screenshots as fallback
+    const screenshot = reportData.relevantLinks?.find(
+      (link) => link.type === "Screenshot"
+    )?.url;
+
+    if (screenshot) return screenshot;
+
+    return null;
+  };
+
+  // Find background image - prefer screenshots over other types
+  const findBackgroundImage = () => {
+    // First try a screenshot
+    const screenshot = reportData.relevantLinks?.find(
+      (link) => link.type === "Screenshot"
+    )?.url;
+
+    if (screenshot) return screenshot;
+
+    // If we have a Steam App ID, construct the header image URL
+    if (steamAppId) {
+      return `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
+    }
+
+    // Then try Key Art
+    const keyArt = reportData.relevantLinks?.find(
+      (link) => link.type === "Key Art"
+    )?.url;
+
+    if (keyArt) return keyArt;
+
+    // Then try trailer thumbnail
+    const trailerThumb = reportData.relevantLinks?.find(
+      (link) => link.type === "Trailer Thumbnail"
+    )?.url;
+
+    if (trailerThumb) return trailerThumb;
+
+    // Fall back to the same image as cover art if available
+    return findCoverArtImage();
+  };
+
+  const coverArtImage = findCoverArtImage();
+  const backgroundImage = findBackgroundImage();
 
   return (
     <div className="w-full max-w-[500px] mx-auto border border-gray-200 rounded-xl overflow-hidden shadow-md bg-white">
@@ -79,12 +160,16 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
 
         {/* Background Image with blur effects */}
         <div className="w-full h-[280px] relative overflow-hidden">
-          {imageLink ? (
-            <img
-              src={imageLink}
-              alt={reportData.gameName || "Game image"}
-              className="w-full h-full object-cover"
-            />
+          {backgroundImage ? (
+            <div className="w-full h-full relative">
+              <img
+                src={backgroundImage}
+                alt={reportData.gameName || "Game image"}
+                className="w-full h-full object-cover"
+              />
+              {/* Overlay to ensure text readability */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-black/10"></div>
+            </div>
           ) : (
             <div className="w-full h-full bg-gradient-to-b from-indigo-500/90 to-purple-700/90"></div>
           )}
@@ -105,14 +190,22 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
 
       {/* Game info section */}
       <div className="px-4 pt-2 pb-4 relative">
-        {/* Game logo/icon */}
+        {/* Game logo/icon - updated to match Steam capsule aspect ratio (616x353) */}
         <div className="flex justify-between items-start -mt-12 mb-3">
           <div className="relative">
-            <div className="w-[72px] h-[72px] rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-lg">
-              {/* Use first letter of game name as icon if no image */}
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-800 text-white text-xl font-bold">
-                {reportData.gameName ? reportData.gameName.charAt(0) : "G"}
-              </div>
+            <div className="w-[100px] h-[57px] rounded-lg border-4 border-white bg-gray-100 overflow-hidden shadow-lg">
+              {/* Use Steam cover art if available, otherwise fall back to first letter */}
+              {coverArtImage ? (
+                <img
+                  src={coverArtImage}
+                  alt={reportData.gameName || "Game cover"}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-800 text-white text-sm font-bold">
+                  {reportData.gameName ? reportData.gameName.charAt(0) : "G"}
+                </div>
+              )}
             </div>
             {/* New badge if recently released */}
             {reportData.releaseInfo?.toLowerCase().includes("2024") && (
