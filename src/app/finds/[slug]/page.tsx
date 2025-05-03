@@ -79,10 +79,8 @@ async function getFindById(slug: string) {
 }
 
 // This is the Server Component for the dynamic route
-export default async function FindPage(props: Promise<FindPageProps>) {
-  const {
-    params: { slug },
-  } = await props;
+export default async function FindPage({ params }: FindPageProps) {
+  const { slug } = params;
   const reportData = await getFindById(slug);
 
   if (!reportData) {
