@@ -83,17 +83,15 @@ export default function Home() {
             className="w-full"
             disabled={isLoading}
           />
-          <span className="text-xs text-muted-foreground text-center">
-            Example: https://x.com/Just_Game_Dev/status/1918036677609521466
+          <span className="text-xs text-muted-foreground mb-2">
+            Try: https://x.com/Just_Game_Dev/status/1918036677609521466
           </span>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Gathering Info..." : "Analyze Tweet"}
+            {isLoading
+              ? "Gathering Info... (this may take a while)"
+              : "Analyze"}
           </Button>
         </form>
-
-        {isLoading && (
-          <div className="text-center text-muted-foreground">Loading...</div>
-        )}
 
         {error && (
           <div className="text-red-500 border border-red-500 rounded p-3">
