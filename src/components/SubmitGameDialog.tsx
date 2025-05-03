@@ -16,6 +16,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const isDev = process.env.NODE_ENV === "development";
+
 export function SubmitGameDialog() {
   const router = useRouter();
   const [inputValue, setInputValue] = useState("");
@@ -66,6 +68,10 @@ export function SubmitGameDialog() {
     }
     setIsOpen(open);
   };
+
+  if (!isDev) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
