@@ -2,7 +2,10 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, streamText, generateObject } from "ai";
 import scrapingbee from "scrapingbee"; // Import ScrapingBee client - will be removed if only used for Twitter
 import * as cheerio from "cheerio"; // Import cheerio for HTML parsing - keep for Steam
-import { DetailedIndieGameReportSchema } from "@/schema"; // UPDATED Schema import
+import {
+  DetailedIndieGameReportSchema,
+  DetailedIndieGameReport,
+} from "@/schema"; // UPDATED Schema import
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -182,6 +185,59 @@ async function fetchRawTweetAndAuthorJson(
   return { tweetText, tweetJson: tweetData, authorJson: userData };
 }
 
+// ADDED: Helper to find Steam URL in text or profile entities
+function findSteamUrlInProfile(authorJson: any): string | null {
+  if (!authorJson) return null;
+  const profile = authorJson?.result?.data?.users?.[0]?.result?.legacy;
+  if (!profile) return null;
+
+  const steamUrlPattern =
+    /https?:\/\/store\.steampowered\.com\/app\/\d+\/?[^\s]*/;
+
+  // Check 1: Plain text in profile description
+  if (profile.description) {
+    const match = profile.description.match(steamUrlPattern);
+    if (match && match[0]) {
+      console.log(
+        "Found Steam URL pattern in profile description text:",
+        match[0]
+      );
+      return match[0];
+    }
+  }
+
+  // Check 2: Entities within the description (parsed URLs)
+  const descriptionUrls = profile.entities?.description?.urls;
+  if (Array.isArray(descriptionUrls)) {
+    for (const urlEntity of descriptionUrls) {
+      if (urlEntity?.expanded_url) {
+        const match = urlEntity.expanded_url.match(steamUrlPattern);
+        if (match && match[0]) {
+          console.log(
+            "Found Steam URL in profile description entities:",
+            match[0]
+          );
+          return match[0];
+        }
+      }
+    }
+  }
+
+  // Check 3: Main profile URL field entity
+  const profileUrlEntity = profile.entities?.url?.urls?.[0]?.expanded_url;
+  if (profileUrlEntity) {
+    const match = profileUrlEntity.match(steamUrlPattern);
+    if (match && match[0]) {
+      console.log("Found Steam URL in main profile URL field:", match[0]);
+      return match[0];
+    }
+    // Potential Enhancement: Could follow the profileUrlEntity if it's a link shortener/hub like Linktree, but that adds complexity/fragility.
+  }
+
+  console.log("No Steam URL found directly in author profile JSON structure.");
+  return null;
+}
+
 export async function POST(req: Request) {
   const { messages } = await req.json();
   const userQuery = messages[messages.length - 1].content;
@@ -216,9 +272,86 @@ export async function POST(req: Request) {
     );
   }
 
-  // 3. Generate Context Summary from Raw JSON using AI
-  let contextSummary = "";
-  const summaryGenPrompt = `Analyze the raw JSON data for a tweet and its author's profile. Your goal is to extract key factual context for a deep-dive web search, with a focus on accurately identifying the PRIMARY game and developer/studio being discussed.
+  // --- Steam First Strategy ---
+  let profileSteamUrl: string | null = findSteamUrlInProfile(authorJson);
+  let steamData: { [key: string]: string | null } | null = null;
+  let webSearchResultsText: string = ""; // Initialize
+  let contextSummary: string = ""; // Initialize for fallback path
+
+  if (profileSteamUrl) {
+    // 3a. Profile Steam Link FOUND - Scrape Steam First
+    console.log(`Prioritizing Steam URL from profile: ${profileSteamUrl}`);
+    const steamSelectors = {
+      description: "#game_area_description .game_description_snippet",
+      tags: ".glance_tags a.app_tag",
+    };
+    steamData = await scrapeUrlAndParse(profileSteamUrl, steamSelectors, false);
+
+    // 3b. Generate Targeted Gap-Filling Web Search Query
+    let gapFillingQuery = "";
+    const gapQueryGenPrompt = `Based on the provided Tweet text, Author profile JSON, and Scraped Steam data, generate a web search query focused on finding information *likely missing* from these sources. Target details like:
+    - Detailed developer/team background, history, members, roles, location.
+    - Publisher name and details.
+    - Specific funding information (beyond just having a Steam page).
+    - Community links (Discord, Subreddit, official forums).
+    - Social media links (other than the author's Twitter).
+    - Press kit URL.
+    - Other store links (Itch.io, GOG, Epic, etc.).
+
+Tweet Text:
+---
+${tweetText}
+---
+Author Profile JSON:
+---
+${JSON.stringify(authorJson, null, 2) || "Not Available"}
+---
+Scraped Steam Data:
+---
+Description: ${steamData?.description || "Not Available"}
+Tags: ${steamData?.tags || "Not Available"}
+---
+
+Generate *only* the targeted web search query string.`;
+
+    try {
+      console.log("Generating targeted gap-filling web search query...");
+      const queryResult = await generateText({
+        model: openai.responses("gpt-4o-mini"),
+        prompt: gapQueryGenPrompt,
+        maxTokens: 100,
+      });
+      gapFillingQuery = queryResult.text.trim();
+      console.log("Generated gap-filling query:", gapFillingQuery);
+      if (!gapFillingQuery)
+        throw new Error("AI failed to generate gap-filling query.");
+    } catch (error) {
+      console.error("Error generating gap-filling query:", error);
+      gapFillingQuery = `developer background and community links for game on steam page ${profileSteamUrl}`; // Basic fallback
+      console.warn("Using fallback gap-filling query:", gapFillingQuery);
+    }
+
+    // 3c. Perform Targeted Web Search
+    console.log(
+      `Performing targeted web search with query: "${gapFillingQuery}"`
+    );
+    const webSearchResult = await generateText({
+      model: openai.responses("gpt-4o-mini"),
+      prompt: gapFillingQuery,
+      tools: {
+        web_search_preview: openai.tools.webSearchPreview({
+          searchContextSize: "high",
+        }),
+      },
+      toolChoice: { type: "tool", toolName: "web_search_preview" },
+    });
+    webSearchResultsText = webSearchResult.text;
+    console.log("Targeted Web Search Result Text:", webSearchResultsText);
+  } else {
+    // 4a. Profile Steam Link NOT FOUND - Use Fallback Strategy
+    console.log("No Steam URL in profile, using broader search strategy...");
+    // Generate Context Summary from Raw JSON using AI (Original Step 3)
+    const summaryGenPrompt = `Analyze the raw JSON data for a tweet and its author\'s profile. Your goal is to extract key factual context for a deep-dive web search, with a focus on accurately identifying the PRIMARY game and developer/studio being discussed.
 
 Key areas to check for names:
 - Tweet text content
@@ -247,28 +380,26 @@ ${JSON.stringify(authorJson, null, 2) || "Not available"}
 
 Generate *only* the concise summary of factual context, highlighting the most likely game/dev entities.`;
 
-  try {
-    console.log("Generating context summary from raw JSON...");
-    const summaryResult = await generateText({
-      model: openai.responses("gpt-4o-mini"),
-      prompt: summaryGenPrompt,
-      maxTokens: 300, // Allow more tokens for summary
-    });
-    contextSummary = summaryResult.text.trim();
-    console.log("Generated Context Summary:", contextSummary);
-    if (!contextSummary) {
-      throw new Error("AI failed to generate context summary.");
+    try {
+      console.log("Generating context summary from raw JSON...");
+      const summaryResult = await generateText({
+        model: openai.responses("gpt-4o-mini"),
+        prompt: summaryGenPrompt,
+        maxTokens: 300,
+      });
+      contextSummary = summaryResult.text.trim();
+      console.log("Generated Context Summary:", contextSummary);
+      if (!contextSummary)
+        throw new Error("AI failed to generate context summary.");
+    } catch (error) {
+      console.error("Error generating context summary:", error);
+      contextSummary = tweetText; // Fallback
+      console.warn("Using raw tweet text as fallback context.");
     }
-  } catch (error) {
-    console.error("Error generating context summary:", error);
-    // Fallback: Use only the tweet text if summary generation fails
-    contextSummary = tweetText;
-    console.warn("Using raw tweet text as fallback context.");
-  }
 
-  // 4. Generate an Optimized Web Search Query using the AI-generated Summary
-  let webSearchQuery = "";
-  const queryGenPrompt = `Based *only* on the following context summary (derived from a tweet and author profile), generate the most effective web search query possible. Focus the query on the *primary game and developer/studio names* identified in the summary.
+    // 4b. Generate Broad Web Search Query from Summary (Original Step 4)
+    let broadWebSearchQuery = "";
+    const queryGenPrompt = `Based *only* on the following context summary, generate the most effective web search query possible. Focus the query on the *primary game and developer/studio names* identified in the summary.
 
 The goal is to find *in-depth, accurate information* covering all aspects of THAT specific game and its creators:
 - Game Details: Description, gameplay, features, genres, tags, platforms, release status/date, price.
@@ -284,59 +415,55 @@ ${contextSummary}
 
 Generate *only* the single, optimized web search query string targeting the primary game/developer identified in the summary.`;
 
-  try {
-    console.log("Generating optimized web search query from summary...");
-    const queryResult = await generateText({
-      model: openai.responses("gpt-4o-mini"),
-      prompt: queryGenPrompt,
-      maxTokens: 100,
-    });
-    webSearchQuery = queryResult.text.trim();
-    console.log("Generated web search query:", webSearchQuery);
-    if (!webSearchQuery) {
-      throw new Error("AI failed to generate a web search query from summary.");
+    try {
+      console.log("Generating broad web search query from summary...");
+      const queryResult = await generateText({
+        model: openai.responses("gpt-4o-mini"),
+        prompt: queryGenPrompt,
+        maxTokens: 100,
+      });
+      broadWebSearchQuery = queryResult.text.trim();
+      console.log("Generated broad web search query:", broadWebSearchQuery);
+      if (!broadWebSearchQuery)
+        throw new Error("AI failed to generate broad query.");
+    } catch (error) {
+      console.error("Error generating broad web search query:", error);
+      broadWebSearchQuery = `game developer info from tweet ${tweetId}`; // Fallback
+      console.warn("Using fallback broad search query:", broadWebSearchQuery);
     }
-  } catch (error) {
-    console.error("Error generating web search query from summary:", error);
-    // Fallback: Use a very basic query if generation fails
-    webSearchQuery = `game developer info from tweet ${tweetId}`;
-    console.warn("Using fallback search query:", webSearchQuery);
-  }
 
-  // 5. Perform Web Search using the generated query
-  console.log(
-    `Performing web search with generated query: \"${webSearchQuery}\"`
-  );
-  const webSearchResult = await generateText({
-    model: openai.responses("gpt-4o-mini"),
-    prompt: webSearchQuery,
-    tools: {
-      web_search_preview: openai.tools.webSearchPreview({
-        searchContextSize: "high",
-      }),
-    },
-    toolChoice: { type: "tool", toolName: "web_search_preview" },
-  });
+    // 4c. Perform Broad Web Search (Original Step 5)
+    console.log(
+      `Performing broad web search with query: \"${broadWebSearchQuery}\"`
+    );
+    const webSearchResult = await generateText({
+      model: openai.responses("gpt-4o-mini"),
+      prompt: broadWebSearchQuery,
+      tools: {
+        web_search_preview: openai.tools.webSearchPreview({
+          searchContextSize: "high",
+        }),
+      },
+      toolChoice: { type: "tool", toolName: "web_search_preview" },
+    });
+    webSearchResultsText = webSearchResult.text;
+    console.log("Broad Web Search Result Text:", webSearchResultsText);
 
-  const webSearchResultsText = webSearchResult.text;
-  console.log("Web Search Result Text:", webSearchResultsText);
-
-  // 6. Try to extract Steam URL and Scrape Steam Page
-  const steamUrlPattern =
-    /https?:\/\/store\.steampowered\.com\/app\/\d+\/?[^\s]*/;
-  const steamUrlMatch = webSearchResultsText.match(steamUrlPattern);
-  let steamData: { [key: string]: string | null } | null = null;
-
-  if (steamUrlMatch && steamUrlMatch[0]) {
-    const steamUrl = steamUrlMatch[0];
-    console.log(`Found Steam URL: ${steamUrl}`);
-    const steamSelectors = {
-      description: "#game_area_description .game_description_snippet",
-      tags: ".glance_tags a.app_tag",
-    };
-    steamData = await scrapeUrlAndParse(steamUrl, steamSelectors, false);
-  } else {
-    console.log("No Steam URL found in web search results.");
+    // 4d. Try Extracting Steam URL from Broad Web Search Results (Original Step 6 part 1)
+    const steamUrlPattern =
+      /https?:\/\/store\.steampowered\.com\/app\/\d+\/?[^\s]*/;
+    const steamUrlMatch = webSearchResultsText.match(steamUrlPattern);
+    if (steamUrlMatch && steamUrlMatch[0]) {
+      const foundSteamUrl = steamUrlMatch[0];
+      console.log(`Found Steam URL in web search results: ${foundSteamUrl}`);
+      const steamSelectors = {
+        description: "#game_area_description .game_description_snippet",
+        tags: ".glance_tags a.app_tag",
+      };
+      steamData = await scrapeUrlAndParse(foundSteamUrl, steamSelectors, false);
+    } else {
+      console.log("No Steam URL found in broad web search results either.");
+    }
   }
 
   // 7. Final AI call to synthesize everything into the DETAILED REPORT schema
