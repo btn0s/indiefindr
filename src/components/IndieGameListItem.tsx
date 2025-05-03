@@ -1,13 +1,13 @@
 import { DetailedIndieGameReport } from "@/schema";
 import { Badge } from "./ui/badge";
+import { formatDistanceToNow } from "date-fns";
 
-// Helper to extract Steam App ID from a Steam URL
+// Helper functions moved outside component for cleaner organization
 const extractSteamAppId = (url: string): string | null => {
   const match = url.match(/store\.steampowered\.com\/app\/(\d+)/i);
   return match ? match[1] : null;
 };
 
-// Helper function to group links by type (simplified for list item)
 const getPrimaryLink = (links: DetailedIndieGameReport["relevantLinks"]) => {
   if (!links) return null;
   // Prioritize Steam, then Itch.io, then Kickstarter
@@ -23,11 +23,50 @@ const getPrimaryLink = (links: DetailedIndieGameReport["relevantLinks"]) => {
   return links[0] ? { type: links[0].type, url: links[0].url } : null;
 };
 
-interface IndieGameListItemProps {
+const findCoverArtImage = (
+  reportData: DetailedIndieGameReport,
+  actualAppId: string | null
+) => {
+  const coverArt = reportData.relevantLinks?.find(
+    (link) => link.type === "Cover Art"
+  )?.url;
+  if (coverArt) return coverArt;
+
+  const keyArt = reportData.relevantLinks?.find(
+    (link) => link.type === "Key Art"
+  )?.url;
+  if (keyArt) return keyArt;
+
+  // If we have a Steam App ID, construct the cover image URL
+  if (actualAppId) {
+    return `https://cdn.akamai.steamstatic.com/steam/apps/${actualAppId}/capsule_616x353.jpg`;
+  }
+
+  const screenshot = reportData.relevantLinks?.find(
+    (link) => link.type === "Screenshot"
+  )?.url;
+  if (screenshot) return screenshot;
+
+  return null;
+};
+
+interface GameFind {
+  id: string | number;
   reportData: DetailedIndieGameReport;
+  createdAt: Date | string;
 }
 
-export function IndieGameListItem({ reportData }: IndieGameListItemProps) {
+interface IndieGameListItemProps {
+  find: GameFind;
+  showCreatedAt?: boolean;
+}
+
+export function IndieGameListItem({
+  find,
+  showCreatedAt = false,
+}: IndieGameListItemProps) {
+  const { reportData, createdAt } = find;
+
   const primaryLink = getPrimaryLink(reportData.relevantLinks);
   const steamAppId =
     primaryLink?.type === "Steam" && primaryLink.url
@@ -39,39 +78,20 @@ export function IndieGameListItem({ reportData }: IndieGameListItemProps) {
       : null;
   const actualAppId = steamAppId || demoAppId;
 
-  // Find the appropriate Steam cover art for the tile
-  const findCoverArtImage = () => {
-    const coverArt = reportData.relevantLinks?.find(
-      (link) => link.type === "Cover Art"
-    )?.url;
-    if (coverArt) return coverArt;
-
-    const keyArt = reportData.relevantLinks?.find(
-      (link) => link.type === "Key Art"
-    )?.url;
-    if (keyArt) return keyArt;
-
-    // If we have a Steam App ID, construct the cover image URL
-    if (actualAppId) {
-      return `https://cdn.akamai.steamstatic.com/steam/apps/${actualAppId}/capsule_616x353.jpg`; // Match main widget aspect ratio
-    }
-
-    const screenshot = reportData.relevantLinks?.find(
-      (link) => link.type === "Screenshot"
-    )?.url;
-    if (screenshot) return screenshot;
-
-    return null;
-  };
-
-  const coverArtImage = findCoverArtImage();
+  const coverArtImage = findCoverArtImage(reportData, actualAppId);
   const hasDemo = reportData.relevantLinks?.some(
     (link) => link?.type === "Steam Demo"
   );
 
+  // Format the creation date if it exists and is requested
+  const formattedDate =
+    showCreatedAt && createdAt
+      ? formatDistanceToNow(new Date(createdAt), { addSuffix: true })
+      : null;
+
   return (
     <div className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white w-full">
-      {/* Game Cover Art (Smaller) */}
+      {/* Game Cover Art */}
       <div className="flex-shrink-0 w-[100px] h-[57px] rounded bg-gray-100 overflow-hidden border border-gray-200 relative">
         {coverArtImage ? (
           <img
@@ -93,29 +113,29 @@ export function IndieGameListItem({ reportData }: IndieGameListItemProps) {
 
       {/* Game Info */}
       <div className="flex-grow min-w-0">
-        <h3 className="text-sm font-semibold text-gray-900 truncate">
-          {reportData.gameName || "Untitled Game"}
-        </h3>
+        <div className="flex items-center">
+          <h3 className="text-sm font-semibold text-gray-900 truncate">
+            {reportData.gameName || "Untitled Game"}
+          </h3>
+          {formattedDate && (
+            <span className="ml-2 text-xs text-gray-400">{formattedDate}</span>
+          )}
+        </div>
         <p className="text-xs text-gray-500 truncate">
           by {reportData.developerName || "Unknown Developer"}
         </p>
         {/* Optional: Display a few key tags */}
         {reportData.genresAndTags && reportData.genresAndTags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {reportData.genresAndTags.slice(0, 2).map(
-              (
-                item,
-                index // Show only first 2 tags
-              ) => (
-                <Badge
-                  key={index}
-                  variant="secondary"
-                  className="text-xs px-1.5 py-0.5"
-                >
-                  {item}
-                </Badge>
-              )
-            )}
+            {reportData.genresAndTags.slice(0, 2).map((item, index) => (
+              <Badge
+                key={index}
+                variant="secondary"
+                className="text-xs px-1.5 py-0.5"
+              >
+                {item}
+              </Badge>
+            ))}
           </div>
         )}
       </div>

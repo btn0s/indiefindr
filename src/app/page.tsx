@@ -86,9 +86,9 @@ export default async function Home() {
                   href={`/finds/${find.id}`}
                   className="block hover:bg-gray-100 rounded-lg transition-colors duration-150 border border-transparent hover:border-gray-200"
                 >
-                  {/* Ensure find.reportData is passed and valid */}
+                  {/* Updated to pass the complete find object */}
                   {find.reportData && (
-                    <IndieGameListItem reportData={find.reportData} />
+                    <IndieGameListItem find={find} showCreatedAt={true} />
                   )}
                 </Link>
               </li>
