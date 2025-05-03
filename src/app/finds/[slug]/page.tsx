@@ -7,15 +7,8 @@ import { DetailedIndieGameReport } from "@/schema"; // Ensure this type is corre
 // Revalidate data every hour, or set to 0 for dynamic on every request
 export const revalidate = 3600;
 
-interface FindPageProps {
-  params: {
-    slug: string; // The 'slug' from the URL now contains gameName-id format
-  };
-}
-
 // Helper function to extract numeric ID from slug
 function extractIdFromSlug(slug: string): number | null {
-  // Extract the ID from the last part of the slug after the last hyphen
   const parts = slug.split("-");
   const idStr = parts[parts.length - 1];
 
@@ -79,9 +72,8 @@ async function getFindById(slug: string) {
 }
 
 // This is the Server Component for the dynamic route
-export default async function FindPage({ params }: FindPageProps) {
-  const { slug } = params;
-  const reportData = await getFindById(slug);
+export default async function Page({ params }: { params: { slug: string } }) {
+  const reportData = await getFindById(params.slug);
 
   if (!reportData) {
     notFound(); // Use Next.js built-in notFound helper
