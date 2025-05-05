@@ -1,25 +1,29 @@
 // Mark as a server component (no "use client" needed)
+
 import { db, schema } from "@/db";
 import { desc } from "drizzle-orm";
 import Link from "next/link";
 import { IndieGameListItem } from "@/components/IndieGameListItem";
-// SubmitGameDialog is no longer directly needed here
-// import { SubmitGameDialog } from "@/components/SubmitGameDialog";
+// Client-side hooks removed
+// import { useRouter } from "next/navigation"; // Import router
+// import { Input } from "@/components/ui/input"; // Assuming shadcn/ui Input
+// import { Button } from "@/components/ui/button"; // Assuming shadcn/ui Button
+import { HeroSearchForm } from "@/components/HeroSearchForm"; // Import the new client component
 
 // Revalidate data every 60 seconds (or choose your preferred interval)
 // Or set to 0 for dynamic rendering on every request
-export const revalidate = 0; // Example: Dynamic rendering
+export const revalidate = 0; // Re-enable revalidation or keep as 0 for dynamic
 
 // Function to create SEO-friendly slugs
 function createSlug(title: string, id: string | number): string {
   // Convert title to lowercase, replace spaces with hyphens, remove special chars
   const titleSlug = title
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '')  // Remove special characters
-    .replace(/\s+/g, '-')      // Replace spaces with hyphens
-    .replace(/-+/g, '-')       // Remove consecutive hyphens
-    .trim();                   // Trim leading/trailing spaces
-  
+    .replace(/[^\w\s-]/g, "") // Remove special characters
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Remove consecutive hyphens
+    .trim(); // Trim leading/trailing spaces
+
   // Combine with ID to ensure uniqueness
   return `${titleSlug}-${id}`;
 }
@@ -73,8 +77,19 @@ async function getRecentFinds() {
   }
 }
 
+// Define the type for the props expected by the Home component
+// Since getRecentFinds is async, the component receives the result as props
+// interface HomeProps {
+//   initialFinds: Awaited<ReturnType<typeof getRecentFinds>>;
+// }
+// Removed HomeProps interface as it's not strictly needed for a default export Server Component fetching its own data
+
+// The default export is now an async Server Component again
 export default async function Home() {
-  const initialFinds = await getRecentFinds();
+  const initialFinds = await getRecentFinds(); // Fetch data directly
+  // State and effects removed
+
+  // handleSearchSubmit removed
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">
@@ -83,10 +98,12 @@ export default async function Home() {
         <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl lg:text-5xl mb-3">
           Discover Your Next Favorite Indie Game
         </h1>
-        <p className="max-w-3xl text-lg text-muted-foreground">
+        <p className="max-w-3xl text-lg text-muted-foreground mb-6">
           IndieFindr is your curated feed for discovering exciting new indie
           games. Explore the latest finds and uncover hidden gems.
         </p>
+        {/* Use the client component for the search form */}
+        <HeroSearchForm />
       </section>
 
       {/* Display List of Finds Container */}

@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: { steamAppId: string } }
+  { params }: { params: Promise<{ steamAppId: string }> }
 ) {
-  const steamAppId = params.steamAppId;
+  const steamAppId = (await params).steamAppId;
   const apiKey = process.env.RAPIDAPI_KEY;
 
   if (!steamAppId) {
