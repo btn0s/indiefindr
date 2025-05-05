@@ -22,6 +22,8 @@ interface IndieGameReportProps {
 }
 
 export function IndieGameReport({ reportData }: IndieGameReportProps) {
+  const { steamAppId } = reportData;
+
   const groupedLinks = groupLinksByType(reportData.relevantLinks);
   const [copyStatus, setCopyStatus] = useState<string>("");
 
@@ -38,25 +40,6 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
     }
   };
 
-  // Get Steam App ID - Prioritize from reportData, then calculate
-  const getSteamAppId = (): string | null => {
-    if (reportData.steamAppId) {
-      return reportData.steamAppId;
-    }
-    // Fallback calculation if not in reportData
-    if (groupedLinks["Steam"] && groupedLinks["Steam"][0]?.url) {
-      return extractSteamAppId(groupedLinks["Steam"][0].url);
-    }
-    if (groupedLinks["Steam Demo"] && groupedLinks["Steam Demo"][0]?.url) {
-      const demoUrl = groupedLinks["Steam Demo"][0].url;
-      if (demoUrl.includes("store.steampowered.com")) {
-        return extractSteamAppId(demoUrl);
-      }
-    }
-    return null;
-  };
-
-  const steamAppId = getSteamAppId();
   const screenshots = groupedLinks["Screenshot"] || [];
 
   // Find the appropriate Steam cover art for the tile
