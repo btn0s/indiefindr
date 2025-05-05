@@ -51,28 +51,7 @@ export function IndieGameReport({
   const screenshots = gameData.media?.screenshot || [];
 
   const coverArtImage = findGameImage(steamAppId);
-
   const backgroundImage = findGameBackgroundImage(gameData, steamAppId);
-
-  const steamLink = gameData.external_links?.find((link) =>
-    link.name?.toLowerCase().includes("steam")
-  );
-  const itchLink = gameData.external_links?.find((link) =>
-    link.name?.toLowerCase().includes("itch.io")
-  );
-  const kickstarterLink = gameData.external_links?.find((link) =>
-    link.name?.toLowerCase().includes("kickstarter")
-  );
-
-  const hasSteamDemo = false;
-
-  const otherLinks =
-    gameData.external_links?.filter(
-      (link) =>
-        !["steam", "itch.io", "kickstarter"].some((term) =>
-          link.name?.toLowerCase().includes(term)
-        )
-    ) || [];
 
   return (
     <div className="w-full mx-auto border rounded-xl overflow-hidden shadow-md bg-background">
@@ -169,56 +148,6 @@ export function IndieGameReport({
           </p>
         </div>
 
-        {(steamLink || itchLink || kickstarterLink || hasSteamDemo) && (
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-3 rounded-lg border border-indigo-100 mb-4 flex items-center justify-between">
-            <div className="flex flex-col gap-2">
-              <h3 className="font-medium text-gray-900 leading-none">
-                Play or Wishlist
-              </h3>
-              {hasSteamDemo && (
-                <Badge className="bg-green-600 text-green-50">
-                  Demo Available
-                </Badge>
-              )}
-            </div>
-            <div className="flex flex-col gap-2 items-end">
-              {steamLink && (
-                <a
-                  key={`steam-link`}
-                  href={steamLink.link || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center bg-[#1b2838] text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-[#2a475e] transition-colors"
-                >
-                  Steam Page
-                </a>
-              )}
-              {itchLink && (
-                <a
-                  key={`itch-link`}
-                  href={itchLink.link || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center bg-[#fa5c5c] text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-[#f93d3d] transition-colors"
-                >
-                  Itch.io
-                </a>
-              )}
-              {kickstarterLink && (
-                <a
-                  key={`kickstarter-link`}
-                  href={kickstarterLink.link || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center bg-[#05ce78] text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-[#04a964] transition-colors"
-                >
-                  Kickstarter
-                </a>
-              )}
-            </div>
-          </div>
-        )}
-
         {gameData.tags && gameData.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {gameData.tags.map((item, index) => (
@@ -279,36 +208,14 @@ export function IndieGameReport({
           </div>
         )}
 
+        {gameData.release_date && (
+          <div className="bg-muted p-3 rounded-lg text-sm border ">
+            <h3 className="font-medium mb-1">Release Info</h3>
+            <p className="text-muted-foreground">{gameData.release_date}</p>
+          </div>
+        )}
+
         <div className="space-y-4">
-          {gameData.release_date && (
-            <div className="bg-gray-50 p-3 rounded-lg text-sm border border-gray-100">
-              <h3 className="font-medium text-gray-900 mb-1">Release Info</h3>
-              <p className="text-gray-700">{gameData.release_date}</p>
-            </div>
-          )}
-
-          {otherLinks.length > 0 && (
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-              <h3 className="font-medium text-gray-900 mb-2">
-                Other Links & Resources
-              </h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                {otherLinks.map((link) => (
-                  <a
-                    key={link.name || link.link}
-                    href={link.link || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-600 hover:text-indigo-800 hover:underline text-sm truncate"
-                    title={`${link.name}: ${link.link}`}
-                  >
-                    {link.name || "Link"}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
           <details className="mt-4 text-xs border-t pt-2">
             <summary className="font-medium text-gray-500 cursor-pointer">
               Developer Data & Notes
