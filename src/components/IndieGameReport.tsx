@@ -73,9 +73,9 @@ export function IndieGameReport({
       </div>
 
       <div className="px-4 pb-4 relative flex flex-col gap-4">
-        <div className="relative -mt-16 mb-4 flex items-center justify-between">
+        <div className="relative -mt-16 flex items-center justify-between">
           <div>
-            <div className="aspect-cover-art w-[200px] rounded-lg border-4 border-white bg-gray-100 overflow-hidden shadow-lg">
+            <div className="aspect-cover-art w-[200px] rounded-lg border-4 border-white bg-gray-100 overflow-hidden shadow">
               {coverArtImage ? (
                 <img
                   src={coverArtImage}
@@ -143,22 +143,58 @@ export function IndieGameReport({
 
         <div className="">
           <p className="text-muted-foreground text-sm">
-            {(gameData.desc || gameData.about_game || "").substring(0, 300)}
-            {(gameData.desc || gameData.about_game || "").length > 300
-              ? "..."
-              : ""}
+            {gameData.desc || gameData.about_game || ""}
           </p>
         </div>
 
-        {gameData.tags && gameData.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {gameData.tags.map((item, index) => (
-              <Badge key={index} variant="outline">
-                {item}
-              </Badge>
-            ))}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border bg-muted p-4 text-sm">
+          <div>
+            <div className="font-medium text-foreground">Release Date</div>
+            <div className="text-muted-foreground">
+              {gameData.release_date || "N/A"}
+            </div>
           </div>
-        )}
+          <div>
+            <div className="font-medium text-foreground">Developer</div>
+            <div className="text-muted-foreground truncate">
+              {gameData.dev_details?.developer_name?.join(", ") || "Unknown"}
+            </div>
+          </div>
+          <div>
+            <div className="font-medium text-foreground">Price</div>
+            <div className="text-muted-foreground">
+              {gameData.pricing?.find((p) =>
+                p.name.toLowerCase().includes("play")
+              )?.price ||
+                gameData.pricing?.[0]?.price ||
+                "N/A"}
+            </div>
+          </div>
+          {gameData.dev_details?.publisher?.length > 0 && (
+            <div>
+              <div className="font-medium text-foreground">Publisher</div>
+              <div className="text-muted-foreground truncate">
+                {gameData.dev_details.publisher.join(", ") || "Unknown"}
+              </div>
+            </div>
+          )}
+          {gameData.tags && gameData.tags.length > 0 && (
+            <div className="col-span-2 mt-2">
+              <div className="font-medium text-foreground mb-1.5">Tags</div>
+              <div className="flex flex-wrap gap-1.5">
+                {gameData.tags.map((item, index) => (
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className="bg-background"
+                  >
+                    {item}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {screenshots.length > 0 && (
           <div className="">
@@ -211,13 +247,6 @@ export function IndieGameReport({
         )}
 
         {steamAppId && <GameNewsSection steamAppId={steamAppId} />}
-
-        {gameData.release_date && (
-          <div className="bg-muted p-3 rounded-lg text-sm border ">
-            <h3 className="font-medium mb-1">Release Info</h3>
-            <p className="text-muted-foreground">{gameData.release_date}</p>
-          </div>
-        )}
 
         <div className="space-y-4">
           <details className="mt-4 text-xs border-t pt-2">
