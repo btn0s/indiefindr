@@ -200,6 +200,8 @@ export async function POST(req: Request) {
   const partialReport = createPartialReportFromSteamApi(steamApiData);
   // Add the source URL to the report
   partialReport.sourceSteamUrl = primaryUrl;
+  // Add the extracted Steam App ID
+  partialReport.steamAppId = steamAppId;
 
   // 4. Generate Embedding
   console.log("[Simple Find] Attempting to generate embedding...");

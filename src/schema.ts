@@ -94,6 +94,12 @@ export const DetailedIndieGameReportSchema = z.object({
 
   // --- Source Data & Confidence ---
   sourceSteamUrl: z.string().url().nullable(),
+  steamAppId: z
+    .string()
+    .nullable()
+    .describe(
+      "The extracted Steam Application ID, if a Steam store page link was found."
+    ),
   aiConfidenceAssessment: z
     .string()
     .nullable()

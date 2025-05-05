@@ -47,13 +47,15 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
     }
   };
 
-  // Get Steam App ID if available
+  // Get Steam App ID - Prioritize from reportData, then calculate
   const getSteamAppId = (): string | null => {
-    // First check for Steam links
+    if (reportData.steamAppId) {
+      return reportData.steamAppId;
+    }
+    // Fallback calculation if not in reportData
     if (groupedLinks["Steam"] && groupedLinks["Steam"][0]?.url) {
       return extractSteamAppId(groupedLinks["Steam"][0].url);
     }
-    // Then check for Steam Demo links
     if (groupedLinks["Steam Demo"] && groupedLinks["Steam Demo"][0]?.url) {
       const demoUrl = groupedLinks["Steam Demo"][0].url;
       if (demoUrl.includes("store.steampowered.com")) {
@@ -68,63 +70,36 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
 
   // Find the appropriate Steam cover art for the tile
   const findCoverArtImage = () => {
-    // Check if we have direct image links first
-    const coverArt = reportData.relevantLinks?.find(
-      (link) => link.type === "Cover Art"
-    )?.url;
-
-    if (coverArt) return coverArt;
-
-    const keyArt = reportData.relevantLinks?.find(
-      (link) => link.type === "Key Art"
-    )?.url;
-
-    if (keyArt) return keyArt;
-
-    // If we have a Steam App ID, construct the cover image URL
+    // Use the determined steamAppId (either from report or calculated)
     if (steamAppId) {
-      return `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/capsule_616x353.jpg`;
+      return `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
     }
-
-    // Check for screenshots as fallback
-    const screenshot = reportData.relevantLinks?.find(
-      (link) => link.type === "Screenshot"
-    )?.url;
-
-    if (screenshot) return screenshot;
-
     return null;
   };
 
   // Find background image - prefer screenshots over other types
   const findBackgroundImage = () => {
-    // First try a screenshot
     const screenshot = reportData.relevantLinks?.find(
       (link) => link.type === "Screenshot"
     )?.url;
-
     if (screenshot) return screenshot;
 
-    // If we have a Steam App ID, construct the header image URL
+    // Use the determined steamAppId
     if (steamAppId) {
-      return `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
+      return `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
     }
 
-    // Then try Key Art
     const keyArt = reportData.relevantLinks?.find(
       (link) => link.type === "Key Art"
     )?.url;
-
     if (keyArt) return keyArt;
 
-    // Then try trailer thumbnail
     const trailerThumb = reportData.relevantLinks?.find(
       (link) => link.type === "Trailer Thumbnail"
     )?.url;
-
     if (trailerThumb) return trailerThumb;
 
-    // Fall back to the same image as cover art if available
+    // Fall back to cover art logic (which also uses steamAppId)
     return findCoverArtImage();
   };
 
