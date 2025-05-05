@@ -24,6 +24,7 @@ import { ExternalLinkIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { FaSteam } from "react-icons/fa";
 import { GameNewsSection } from "@/components/GameNewsSection";
+import { GamePriceDisplay } from "./GamePriceDisplay";
 
 interface IndieGameReportProps {
   gameData: RapidApiGameData;
@@ -163,11 +164,11 @@ export function IndieGameReport({
           <div>
             <div className="font-medium text-foreground">Price</div>
             <div className="text-muted-foreground">
-              {gameData.pricing?.find((p) =>
-                p.name.toLowerCase().includes("play")
-              )?.price ||
-                gameData.pricing?.[0]?.price ||
-                "N/A"}
+              <GamePriceDisplay
+                initialPricing={gameData.pricing}
+                gameName={gameData.name}
+                steamAppId={steamAppId}
+              />
             </div>
           </div>
           {gameData.dev_details?.publisher?.length > 0 && (
@@ -222,7 +223,7 @@ export function IndieGameReport({
                           />
                         </div>
                       </DialogTrigger>
-                      <DialogContent className="p-0 border-none !max-w-[80vw]">
+                      <DialogContent className="p-0 border-none rounded-lg overflow-hidden !max-w-[80vw]">
                         <DialogTitle className="sr-only">
                           {gameData.name} Screenshot {index + 1}
                         </DialogTitle>
