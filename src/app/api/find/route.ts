@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 
 // example string for LLM testing
 // const testString = "https://x.com/Just_Game_Dev/status/1918036677609521466";
+// const steamTestString = "https://store.steampowered.com/app/123456/Some_Game";
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -379,208 +380,283 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
   const userQuery = messages[messages.length - 1].content;
 
-  // 1. Extract Tweet URL and ID
+  // 1. Detect URL Type and Extract ID
   const tweetUrlPattern =
     /https?:\/\/(?:x|twitter)\.com\/[^\/]+\/status\/(\d+)/i;
-  const match = userQuery.match(tweetUrlPattern);
+  const steamUrlPattern =
+    /https?:\/\/store\.steampowered\.com\/app\/(\d+)\/?[^\s]*/i; // Capture AppID
 
-  if (!match || !match[0] || !match[1]) {
+  let primaryUrl: string | null = null;
+  let sourceId: string | null = null;
+  let sourceType: "twitter" | "steam" | null = null;
+
+  const tweetMatch = userQuery.match(tweetUrlPattern);
+  const steamMatch = userQuery.match(steamUrlPattern);
+
+  if (tweetMatch && tweetMatch[0] && tweetMatch[1]) {
+    primaryUrl = tweetMatch[0]; // Full URL
+    sourceId = tweetMatch[1]; // Extracted Tweet ID
+    sourceType = "twitter";
+    console.log(`Detected Twitter URL: ${primaryUrl}, ID: ${sourceId}`);
+  } else if (steamMatch && steamMatch[0] && steamMatch[1]) {
+    primaryUrl = steamMatch[0]; // Full URL
+    sourceId = steamMatch[1]; // Extracted Steam App ID
+    sourceType = "steam";
+    console.log(`Detected Steam URL: ${primaryUrl}, App ID: ${sourceId}`);
+  }
+
+  if (!primaryUrl || !sourceId || !sourceType) {
     return new Response(
       JSON.stringify({
-        error: "No valid Twitter/X status URL found in query.",
+        error: "No valid Twitter/X status URL or Steam App URL found in query.",
       }),
       { status: 400 }
     );
   }
-  const primaryUrl = match[0]; // Full URL
-  const tweetId = match[1]; // Extracted Tweet ID
 
-  // 2. Fetch Raw Tweet and Author JSON data
-  const { tweetText, tweetJson, authorJson } = await fetchRawTweetAndAuthorJson(
-    tweetId
-  );
+  // --- Conditional Logic based on sourceType ---
 
-  if (!tweetText) {
-    return new Response(
-      JSON.stringify({
-        error: `Failed to fetch tweet text content for ${primaryUrl}`,
-      }),
-      { status: 500 }
-    );
-  }
-
-  // 3. Attempt to find Steam App ID AND URL directly from Author JSON
-  console.log("Attempting to find Steam App ID and URL in author profile...");
-  let steamAppId: string | null = null;
-  let profileSteamUrl: string | null = null; // Store the found URL
-  const steamUrlPattern =
-    /(https?:\/\/store\.steampowered\.com\/app\/(\d+)\/?[^\s]*)/i; // Capture group 1 is full URL, group 2 is AppID
-
-  if (authorJson) {
-    try {
-      // Check description entities first
-      const descriptionUrls = (authorJson as any)?.result?.data?.users?.[0]
-        ?.result?.legacy?.entities?.description?.urls;
-      if (Array.isArray(descriptionUrls)) {
-        for (const urlEntity of descriptionUrls) {
-          const match = urlEntity?.expanded_url?.match(steamUrlPattern);
-          if (match && match[1] && match[2]) {
-            profileSteamUrl = match[1]; // Store the full URL
-            steamAppId = match[2]; // Store the App ID
-            console.log(
-              `Found Steam URL ${profileSteamUrl} (App ID ${steamAppId}) in description entities.`
-            );
-            break;
-          }
-        }
-      }
-      // Check description text as fallback
-      if (!steamAppId) {
-        const descText = (authorJson as any)?.result?.data?.users?.[0]?.result
-          ?.legacy?.description;
-        if (descText) {
-          const match = descText.match(steamUrlPattern);
-          if (match && match[1] && match[2]) {
-            profileSteamUrl = match[1];
-            steamAppId = match[2];
-            console.log(
-              `Found Steam URL ${profileSteamUrl} (App ID ${steamAppId}) in description text.`
-            );
-          }
-        }
-      }
-      // Check main profile URL field as another fallback
-      if (!steamAppId) {
-        const profileUrlEntity = (authorJson as any)?.result?.data?.users?.[0]
-          ?.result?.legacy?.entities?.url?.urls?.[0]?.expanded_url;
-        if (profileUrlEntity) {
-          const match = profileUrlEntity.match(steamUrlPattern);
-          if (match && match[1] && match[2]) {
-            profileSteamUrl = match[1];
-            steamAppId = match[2];
-            console.log(
-              `Found Steam URL ${profileSteamUrl} (App ID ${steamAppId}) in profile URL field.`
-            );
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Error accessing properties in authorJson:", e);
-    }
-  }
-
-  if (!steamAppId) {
-    console.log(
-      "No Steam App ID found directly in author profile. Attempting search by name..."
-    );
-    let potentialGameName: string | null = null;
-
-    // Strategy 1: Try author's display name (often contains game title)
-    try {
-      const authorName = (authorJson as any)?.result?.data?.users?.[0]?.result
-        ?.legacy?.name;
-      if (authorName && authorName.length > 2) {
-        // Basic check for non-trivial name
-        potentialGameName = authorName;
-        console.log(
-          `Attempting search using author name: \"${potentialGameName}\".`
-        );
-      }
-    } catch (e) {
-      console.warn(
-        "Could not extract author name for potential game search:",
-        e
-      );
-    }
-
-    // Strategy 2: Look for text in quotes in the tweet (if author name didn't yield results)
-    if (!potentialGameName && tweetText) {
-      const quoteMatch = tweetText.match(/["'](.+?)["']/);
-      if (quoteMatch && quoteMatch[1] && quoteMatch[1].length > 2) {
-        potentialGameName = quoteMatch[1];
-        console.log(
-          `Attempting search using quoted text from tweet: \"${potentialGameName}\".`
-        );
-      }
-    }
-
-    // Strategy 3: Look for hashtags in the tweet (if still no name)
-    // TODO: Could refine this to filter common hashtags like #indiedev, #gamedev
-    if (!potentialGameName && tweetText) {
-      const hashtagMatch = tweetText.match(/#(\w+)/);
-      if (hashtagMatch && hashtagMatch[1] && hashtagMatch[1].length > 2) {
-        potentialGameName = hashtagMatch[1].replace(/_/g, " "); // Replace underscore with space
-        console.log(
-          `Attempting search using first hashtag from tweet: \"${potentialGameName}\".`
-        );
-      }
-    }
-
-    // If we found a potential name, try searching Steam
-    if (potentialGameName) {
-      const searchResult = await searchSteamByName(potentialGameName);
-      if (searchResult) {
-        console.log(
-          `Successfully found Steam game via name search: App ID ${searchResult.appId}`
-        );
-        steamAppId = searchResult.appId;
-        // Use the URL returned by the search API as the primary steam URL
-        profileSteamUrl = searchResult.storeUrl;
-      } else {
-        console.log(
-          `Steam search for \"${potentialGameName}\" did not yield a usable result.`
-        );
-      }
-    } else {
-      console.log(
-        "Could not determine a potential game name from author name, tweet quotes, or hashtags to search."
-      );
-    }
-  }
-
-  // 4. Fetch Steam API Data AND Scrape Demo HTML if App ID was found (either directly or via search)
+  let tweetText: string | null = null;
+  let tweetJson: object | null = null;
+  let authorJson: object | null = null;
+  let steamAppId: string | null = null; // This will store the definitive Steam App ID to use
+  let profileSteamUrl: string | null = null; // Store the *best* Steam URL found/provided
   let steamApiData: any | null = null;
   let rawDemoHtml: string | null = null;
 
-  if (steamAppId) {
+  if (sourceType === "twitter") {
+    console.log("Processing as Twitter URL...");
+    // 2. Fetch Raw Tweet and Author JSON data for Twitter source
+    const twitterData = await fetchRawTweetAndAuthorJson(sourceId); // sourceId is tweetId here
+    tweetText = twitterData.tweetText;
+    tweetJson = twitterData.tweetJson;
+    authorJson = twitterData.authorJson;
+
+    if (!tweetText) {
+      return new Response(
+        JSON.stringify({
+          error: `Failed to fetch tweet text content for ${primaryUrl}`,
+        }),
+        { status: 500 }
+      );
+    }
+
+    // 3. Attempt to find Steam App ID AND URL from Author JSON (for Twitter source)
+    console.log("Attempting to find Steam App ID and URL in author profile...");
+    // Use a separate regex pattern here if needed, but steamUrlPattern should work
+    // const steamProfileUrlPattern = ...
+
+    if (authorJson) {
+      try {
+        // Check description entities first
+        const descriptionUrls = (authorJson as any)?.result?.data?.users?.[0]
+          ?.result?.legacy?.entities?.description?.urls;
+        if (Array.isArray(descriptionUrls)) {
+          for (const urlEntity of descriptionUrls) {
+            const match = urlEntity?.expanded_url?.match(steamUrlPattern); // Use the main steam pattern
+            if (match && match[1] && match[2]) {
+              // match[1] is full URL, match[2] is AppID
+              profileSteamUrl = match[1]; // Store the full URL found in profile
+              steamAppId = match[2]; // Store the App ID
+              console.log(
+                `Found Steam URL ${profileSteamUrl} (App ID ${steamAppId}) in description entities.`
+              );
+              break;
+            }
+          }
+        }
+        // Check description text as fallback
+        if (!steamAppId) {
+          const descText = (authorJson as any)?.result?.data?.users?.[0]?.result
+            ?.legacy?.description;
+          if (descText) {
+            const match = descText.match(steamUrlPattern);
+            if (match && match[1] && match[2]) {
+              profileSteamUrl = match[1];
+              steamAppId = match[2];
+              console.log(
+                `Found Steam URL ${profileSteamUrl} (App ID ${steamAppId}) in description text.`
+              );
+            }
+          }
+        }
+        // Check main profile URL field as another fallback
+        if (!steamAppId) {
+          const profileUrlEntity = (authorJson as any)?.result?.data?.users?.[0]
+            ?.result?.legacy?.entities?.url?.urls?.[0]?.expanded_url;
+          if (profileUrlEntity) {
+            const match = profileUrlEntity.match(steamUrlPattern);
+            if (match && match[1] && match[2]) {
+              profileSteamUrl = match[1];
+              steamAppId = match[2];
+              console.log(
+                `Found Steam URL ${profileSteamUrl} (App ID ${steamAppId}) in profile URL field.`
+              );
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error accessing properties in authorJson:", e);
+      }
+    }
+
+    // Search by name if no direct Steam App ID found
+    if (!steamAppId) {
+      console.log(
+        "No Steam App ID found directly in author profile. Attempting search by name..."
+      );
+      let potentialGameName: string | null = null;
+
+      // Strategy 1: Try author's display name
+      try {
+        const authorName = (authorJson as any)?.result?.data?.users?.[0]?.result
+          ?.legacy?.name;
+        if (authorName && authorName.length > 2) {
+          potentialGameName = authorName;
+          console.log(
+            `Attempting search using author name: \"${potentialGameName}\".`
+          );
+        }
+      } catch (e) {
+        console.warn("Could not extract author name:", e);
+      }
+
+      // Strategy 2: Look for text in quotes in the tweet
+      if (!potentialGameName && tweetText) {
+        const quoteMatch = tweetText.match(/["'](.+?)["']/);
+        if (quoteMatch && quoteMatch[1] && quoteMatch[1].length > 2) {
+          potentialGameName = quoteMatch[1];
+          console.log(
+            `Attempting search using quoted text: \"${potentialGameName}\".`
+          );
+        }
+      }
+
+      // Strategy 3: Look for hashtags
+      if (!potentialGameName && tweetText) {
+        const hashtagMatch = tweetText.match(/#(\w+)/);
+        if (hashtagMatch && hashtagMatch[1] && hashtagMatch[1].length > 2) {
+          potentialGameName = hashtagMatch[1].replace(/_/g, " ");
+          console.log(
+            `Attempting search using first hashtag: \"${potentialGameName}\".`
+          );
+        }
+      }
+
+      if (potentialGameName) {
+        const searchResult = await searchSteamByName(potentialGameName);
+        if (searchResult) {
+          console.log(
+            `Found Steam game via name search: App ID ${searchResult.appId}`
+          );
+          steamAppId = searchResult.appId;
+          profileSteamUrl = searchResult.storeUrl; // Use the URL from search result
+        } else {
+          console.log(`Steam search for \"${potentialGameName}\" failed.`);
+        }
+      } else {
+        console.log("Could not determine game name for search.");
+      }
+    }
+    // At this point for twitter source, steamAppId and profileSteamUrl *might* be populated
+  } else if (sourceType === "steam") {
+    console.log("Processing as Steam URL...");
+    // Directly use the sourceId as the steamAppId and primaryUrl as the profileSteamUrl
+    steamAppId = sourceId;
+    profileSteamUrl = primaryUrl; // The submitted Steam URL is our primary URL
+    console.log(`Using provided Steam App ID: ${steamAppId}`);
+    // tweetText, tweetJson, authorJson remain null
+  }
+
+  // 4. Fetch Steam API Data AND Scrape Demo HTML if App ID was determined (from either source)
+  // Note: profileSteamUrl should hold the URL to scrape (either found or submitted directly)
+
+  if (steamAppId && profileSteamUrl) {
+    // Ensure we have both ID and a URL to scrape
     console.log(`Fetching Steam API data for App ID: ${steamAppId}`);
     steamApiData = await fetchSteamDataFromApi(steamAppId);
     if (steamApiData) {
-      // Scrape the ORIGINAL profileSteamUrl for the demo section
-      console.log(
-        `Scraping verified Steam URL for demo section: ${profileSteamUrl}`
-      );
-      rawDemoHtml = await scrapeSteamDemoSectionHtml(profileSteamUrl); // Pass the original URL
+      console.log(`Scraping Steam URL for demo section: ${profileSteamUrl}`);
+      rawDemoHtml = await scrapeSteamDemoSectionHtml(profileSteamUrl);
     } else {
       console.warn(
         `Failed to fetch Steam API data for App ID ${steamAppId}. Proceeding without it (and without demo check).`
       );
+      // Reset rawDemoHtml if API failed, as we couldn't verify the game exists via API
+      rawDemoHtml = null;
     }
+  } else if (steamAppId && !profileSteamUrl) {
+    console.warn(
+      `Have Steam App ID ${steamAppId} but no URL to scrape for demo.`
+    );
+    // Optionally fetch API data even without a URL to scrape? Let's fetch it.
+    console.log(
+      `Fetching Steam API data for App ID: ${steamAppId} (without demo scrape).`
+    );
+    steamApiData = await fetchSteamDataFromApi(steamAppId);
+  } else {
+    console.log(
+      "No Steam App ID determined. Skipping Steam API fetch and demo scrape."
+    );
   }
 
-  // 5. Final Synthesis (No Web Search, Direct JSON Analysis + Raw Demo HTML)
-  console.log(
-    "Preparing for final synthesis using available data (incl. demo HTML check)..."
-  );
-  let finalSynthesisPrompt = `Analyze the following raw API data for a Twitter tweet, the tweet author's profile, and potentially Steam game details. Your goal is to extract and synthesize this information into a comprehensive, factual report strictly conforming to the DetailedIndieGameReportSchema JSON format. Web search was NOT performed.\n\n**Sources Provided:**\n\nSource 1: Original Tweet Text (for 'sourceTweetText' field and context):\n---\n${tweetText}\n---\n\nSource 2: Tweet JSON Data:\n\`\`\`json\n${
-    JSON.stringify(tweetJson, null, 2) || "Not available"
-  }\n\`\`\`\n\nSource 3: Author Profile JSON Data:\n\`\`\`json\n${
-    JSON.stringify(authorJson, null, 2) || "Not available"
-  }\n\`\`\`\n`;
+  // 5. Final Synthesis (Adjust prompt based on available data)
+  console.log("Preparing for final synthesis...");
 
+  // --- ADJUST PROMPT GENERATION ---
+  let finalSynthesisPrompt = `Analyze the following raw API data`;
+  if (sourceType === "steam") {
+    finalSynthesisPrompt += ` for a Steam game.`;
+  } else {
+    // twitter source
+    finalSynthesisPrompt += ` for a Twitter tweet, the tweet author's profile, and potentially Steam game details.`;
+  }
+  finalSynthesisPrompt += ` Your goal is to extract and synthesize this information into a comprehensive, factual report strictly conforming to the DetailedIndieGameReportSchema JSON format. Web search was NOT performed.\n\n**Sources Provided:**\n`;
+
+  if (sourceType === "twitter" && tweetText) {
+    finalSynthesisPrompt += `\nSource 1: Original Tweet Text (for 'sourceTweetText' field and context):\n---\n${tweetText}\n---\n`;
+    finalSynthesisPrompt += `\nSource 2: Tweet JSON Data:\n\`\`\`json\n${
+      JSON.stringify(tweetJson, null, 2) || "Not available"
+    }\n\`\`\`\n`;
+    finalSynthesisPrompt += `\nSource 3: Author Profile JSON Data:\n\`\`\`json\n${
+      JSON.stringify(authorJson, null, 2) || "Not available"
+    }\n\`\`\`\n`;
+  }
+
+  let steamDataSourceIndex = sourceType === "twitter" ? 4 : 1;
   if (steamApiData) {
-    finalSynthesisPrompt += `\nSource 4: Steam Game Details JSON Data (Derived from link in Author Profile):\n\`\`\`json\n${
+    finalSynthesisPrompt += `\nSource ${steamDataSourceIndex++}: Steam Game Details JSON Data:\n\`\`\`json\n${
       JSON.stringify(steamApiData, null, 2) || "Not available"
     }\n\`\`\`\n`;
   }
 
   if (rawDemoHtml) {
-    finalSynthesisPrompt += `\nSource 5: Raw HTML Snippet of Steam Page Demo Section:\n\`\`\`html\n${rawDemoHtml}\n\`\`\`\n`;
+    finalSynthesisPrompt += `\nSource ${steamDataSourceIndex++}: Raw HTML Snippet of Steam Page Demo Section:\n\`\`\`html\n${rawDemoHtml}\n\`\`\`\n`;
   }
 
-  finalSynthesisPrompt += `\n**Instructions:**\n1.  Analyze all provided sources (Tweet, Author JSON, Steam API JSON, Raw Demo HTML Snippet).\n2.  **Strict Field Mapping:** Populate fields *only* with information that accurately matches the field's description based on the sources. Do **not** substitute information (e.g., do not put a Steam link in a field meant for an official website if the official website URL is not found).\n3.  Identify the primary game, developer, and publisher (if possible) based on the data (prioritize Author JSON name/bio/hashtags and Steam JSON data if present).\n4.  Extract relevant details like descriptions, background info, team members, funding, release status, platforms, genres/tags, website links, social links, community links, store links, etc., directly from the JSON/HTML sources.\n5.  **Link Handling & Classification (VERY IMPORTANT):** Populate the \\\'relevantLinks\\\' array as the primary location for *all* discovered URLs. Find all unique URLs within the sources. Assign the \\\'type\\\' accurately based **strictly** on the URL\\\'s domain and context. \\n    *   **Correct Examples:**\\n        *   \`https://store.steampowered.com/...\` -> \`type: \'Steam\'\`\\n        *   \`https://x.com/username\` -> \`type: \'Twitter Profile\'\`\\n        *   \`https://twitter.com/username\` -> \`type: \'Twitter Profile\'\`\\n        *   \`https://discord.gg/invitecode\` -> \`type: \'Discord\'\`\\n        *   \`https://mycoolgame.com\` -> \`type: \'Official Website\'\`\\n        *   \`https://mydevstudio.com\` -> \`type: \'Official Website\'\`\\n        *   \`https://username.itch.io/gamename\` -> \`type: \'Itch.io\'\`\\n        *   \`https://kickstarter.com/projects/...\` -> \`type: \'Kickstarter\'\`\\n        *   \`https://mypublisher.com\` -> \`type: \'Publisher\'\`\\n        *   \`https://instagram.com/username\` -> \`type: \'Other Social\'\`\\n    *   **Incorrect Examples (DO NOT DO THIS):**\\n        *   \`https://x.com/username\` -> \`type: \'Official Website\'\`  **<-- WRONG**\\n        *   \`https://store.steampowered.com/...\` -> \`type: \'Official Website\'\` **<-- WRONG**\\n    *   **Rules:**\\n        *   Use \\\'Official Website\\\' **only** for a dedicated website for the game or the primary website/landing page for the developer/studio. **It MUST NOT be a social media profile (x.com, twitter.com, facebook.com, instagram.com, etc.) or a store page (steampowered.com, itch.io, etc.).**\\n        *   Use specific types (\\\'Steam\\\', \\\'Twitter Profile\\\', \\\'Discord\\\', \\\'YouTube\\\', \\\'Kickstarter\\\', \\\'Publisher\\\', \\\'Itch.io\\\', \\\'Press Kit\\\') whenever possible.\\n        *   Use \\\'Other Social\\\', \\\'Other Store\\\', \\\'Other Community\\\' for links that don\\\'t fit the specific types above.\\n        *   Use the display_url or inferred context for the \\\'name\\\' field where appropriate (e.g., name: \\\'Developer Blog\\\').
+  // Instructions remain largely the same, but context is different based on sources
+  finalSynthesisPrompt += `\n**Instructions:**\n1.  Analyze all provided sources`;
+  if (sourceType === "twitter") {
+    finalSynthesisPrompt += ` (Tweet, Author JSON, Steam API JSON, Raw Demo HTML Snippet).`;
+  } else {
+    // steam source
+    finalSynthesisPrompt += ` (Steam API JSON, Raw Demo HTML Snippet).`;
+  }
+  finalSynthesisPrompt += `\n2.  **Strict Field Mapping:** Populate fields *only* with information that accurately matches the field's description based on the sources. Do **not** substitute information (e.g., do not put a Steam link in a field meant for an official website if the official website URL is not found).\n3.  Identify the primary game, developer, and publisher (if possible) based on the data`;
+  if (sourceType === "twitter") {
+    finalSynthesisPrompt += ` (prioritize Author JSON name/bio/hashtags and Steam JSON data if present).`;
+  } else {
+    // steam source
+    finalSynthesisPrompt += ` (prioritize Steam JSON data).`;
+  }
+  // Rest of instructions... (keep existing instructions 4-11 from here)
+  finalSynthesisPrompt += `\n4.  Extract relevant details like descriptions, background info, team members, funding, release status, platforms, genres/tags, website links, social links, community links, store links, etc., directly from the JSON/HTML sources.\n5.  **Link Handling & Classification (VERY IMPORTANT):** Populate the \\\'relevantLinks\\\' array as the primary location for *all* discovered URLs. Find all unique URLs within the sources. Assign the \\\'type\\\' accurately based **strictly** on the URL\\\'s domain and context. \\n    *   **Correct Examples:**\\n        *   \`https://store.steampowered.com/...\` -> \`type: \'Steam\'\`\\n        *   \`https://x.com/username\` -> \`type: \'Twitter Profile\'\`\\n        *   \`https://twitter.com/username\` -> \`type: \'Twitter Profile\'\`\\n        *   \`https://discord.gg/invitecode\` -> \`type: \'Discord\'\`\\n        *   \`https://mycoolgame.com\` -> \`type: \'Official Website\'\`\\n        *   \`https://mydevstudio.com\` -> \`type: \'Official Website\'\`\\n        *   \`https://username.itch.io/gamename\` -> \`type: \'Itch.io\'\`\\n        *   \`https://kickstarter.com/projects/...\` -> \`type: \'Kickstarter\'\`\\n        *   \`https://mypublisher.com\` -> \`type: \'Publisher\'\`\\n        *   \`https://instagram.com/username\` -> \`type: \'Other Social\'\`\\n    *   **Incorrect Examples (DO NOT DO THIS):**\\n        *   \`https://x.com/username\` -> \`type: \'Official Website\'\`  **<-- WRONG**\\n        *   \`https://store.steampowered.com/...\` -> \`type: \'Official Website\'\` **<-- WRONG**\\n    *   **Rules:**\\n        *   Use \\\'Official Website\\\' **only** for a dedicated website for the game or the primary website/landing page for the developer/studio. **It MUST NOT be a social media profile (x.com, twitter.com, facebook.com, instagram.com, etc.) or a store page (steampowered.com, itch.io, etc.).**\\n        *   Use specific types (\\\'Steam\\\', \\\'Twitter Profile\\\', \\\'Discord\\\', \\\'YouTube\\\', \\\'Kickstarter\\\', \\\'Publisher\\\', \\\'Itch.io\\\', \\\'Press Kit\\\') whenever possible.\\n        *   Use \\\'Other Social\\\', \\\'Other Store\\\', \\\'Other Community\\\' for links that don\\\'t fit the specific types above.\\n        *   Use the display_url or inferred context for the \\\'name\\\' field where appropriate (e.g., name: \\\'Developer Blog\\\').
 6.  **Image Links (CRITICAL):** ALWAYS extract image URLs from the sources and include them in the \\\'relevantLinks\\\' array with appropriate types:\\n    *   For Steam header images (game_header_image_full): use the type \\\'Key Art\\\'\\n    *   For Steam screenshots: use the type \\\'Screenshot\\\'\\n    *   For Steam capsule images: use the type \\\'Cover Art\\\'\\n    *   For video thumbnail images: use the type \\\'Trailer Thumbnail\\\'\\n    *   If Steam API data is available, ensure you extract BOTH header and screenshots and add them with their appropriate types.\\n    *   **PRIORITY:** Always prioritize extracting official Steam images over any other image source.
-7.  **Demo Check:** Examine Source 5 (Raw Demo HTML Snippet). If it clearly indicates a demo (e.g., a \\\'Download Demo\\\' button), reflect this fact in the \\\'releaseInfo\\\' field (e.g., append \\\"Demo Available\\\") and add a specific entry of type \\\'Steam Demo\\\' to \\\'relevantLinks\\\' if a unique demo link/action is identifiable.\\n8.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.\\n9.  **Use Null for Missing Data:** If information specifically required for a field (e.g., \\\'publisherName\\\', \\\'fundingInfo\\\') cannot be found in the provided sources, set that field to \\\'null\\\'.\\n10. Provide a confidence level in \\\'aiConfidenceAssessment\\\', noting that web search was skipped.\\n11. Write a concise \\\'overallReportSummary\\\'.\\n\\nGenerate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
+7.  **Demo Check:** Examine the Raw Demo HTML Snippet (if available). If it clearly indicates a demo (e.g., a \\\'Download Demo\\\' button), reflect this fact in the \\\'releaseInfo\\\' field (e.g., append \\\"Demo Available\\\") and add a specific entry of type \\\'Steam Demo\\\' to \\\'relevantLinks\\\' if a unique demo link/action is identifiable.\\n8.  Populate the JSON object strictly conforming to DetailedIndieGameReportSchema.\\n9.  **Use Null for Missing Data:** If information specifically required for a field (e.g., \\\'publisherName\\\', \\\'fundingInfo\\\') cannot be found in the provided sources, set that field to \\\'null\\\'.\\n10. Provide a confidence level in \\\'aiConfidenceAssessment\\\', noting that web search was skipped`;
+  if (sourceType === "steam") {
+    finalSynthesisPrompt += ` and the primary source was a Steam URL.`;
+  }
+  finalSynthesisPrompt += `.\n11. Write a concise \\\'overallReportSummary\\\'.\\n\\nGenerate *only* the final JSON object conforming to DetailedIndieGameReportSchema.`;
 
   console.log(
     "Performing final AI synthesis (incl. raw demo HTML analysis)..."
@@ -631,44 +707,68 @@ export async function POST(req: Request) {
   console.log("Attempting to save find to database (Update or Insert)...");
   let findId: number | null = null;
   try {
-    // Check if a find with this tweet ID already exists
-    const existingFind = await db
-      .select({ id: dbSchema.finds.id })
-      .from(dbSchema.finds)
-      .where(eq(dbSchema.finds.sourceTweetId, tweetId))
-      .limit(1);
+    // ** Adjust how we check for existing finds **
+    let existingFind: { id: number }[] | null = null;
+    if (sourceType === "twitter") {
+      // Original logic: check by tweet ID
+      existingFind = await db
+        .select({ id: dbSchema.finds.id })
+        .from(dbSchema.finds)
+        .where(eq(dbSchema.finds.sourceTweetId, sourceId)) // sourceId is tweetId
+        .limit(1);
+    } else if (sourceType === "steam") {
+      // New logic: check by Steam App ID
+      existingFind = await db
+        .select({ id: dbSchema.finds.id })
+        .from(dbSchema.finds)
+        .where(eq(dbSchema.finds.sourceSteamAppId, sourceId)) // sourceId is steamAppId
+        .limit(1);
+      // console.warn(
+      //   "Database check/save for direct Steam submissions is not fully implemented yet (requires schema change). Skipping save for now."
+      // );
+      // For now, skip DB operations for steam type until schema is updated
+      // We can still return the report object below
+    }
 
+    // ** Construct data, potentially including new fields **
     const findDataToSave = {
-      // sourceTweetId is used for lookup/where clause, not set during update/insert here
-      sourceTweetUrl: primaryUrl,
+      sourceTweetUrl: sourceType === "twitter" ? primaryUrl : null,
+      sourceTweetId: sourceType === "twitter" ? sourceId : null,
+      sourceSteamUrl: sourceType === "steam" ? primaryUrl : null, // Use submitted URL
+      sourceSteamAppId: sourceType === "steam" ? sourceId : null, // Use extracted App ID
       rawTweetJson: tweetJson,
       rawAuthorJson: authorJson,
       rawSteamJson: steamApiData,
       rawDemoHtml: rawDemoHtml,
       report: finalResult.object,
-      vectorEmbedding: embeddingVector,
-      updatedAt: new Date(), // Explicitly set updatedAt for both insert and update
+      vectorEmbedding: embeddingVector, // Assuming embedding generation is adapted or handles missing data
+      updatedAt: new Date(),
     };
 
+    // ** Perform DB operations for ALL valid source types **
     if (existingFind && existingFind.length > 0) {
-      // Update existing find
+      // Update existing find (based on tweetId or steamAppId)
       findId = existingFind[0].id;
       console.log(`Found existing find with ID: ${findId}. Updating...`);
+
+      // Determine the where clause based on source type
+      const whereClause =
+        sourceType === "twitter"
+          ? eq(dbSchema.finds.sourceTweetId, sourceId)
+          : eq(dbSchema.finds.sourceSteamAppId, sourceId);
+
       await db
         .update(dbSchema.finds)
-        .set(findDataToSave)
-        .where(eq(dbSchema.finds.id, findId));
+        .set(findDataToSave) // Use the common data object
+        // .where(eq(dbSchema.finds.id, findId)); // Using ID is fine too
+        .where(whereClause); // Update based on the unique source identifier
       console.log(`Successfully updated find with ID: ${findId}`);
     } else {
-      // Insert new find
+      // Insert new find (for tweetId or steamAppId)
       console.log("No existing find found. Inserting new record...");
       const inserted = await db
         .insert(dbSchema.finds)
-        .values({
-          ...findDataToSave,
-          sourceTweetId: tweetId, // Include tweetId only on insert
-          // createdAt will be set by default
-        })
+        .values(findDataToSave) // Use the common data object
         .returning({ id: dbSchema.finds.id });
 
       if (inserted && inserted.length > 0 && inserted[0].id) {
@@ -678,21 +778,23 @@ export async function POST(req: Request) {
         );
       } else {
         console.error("Insert command succeeded but did not return a new ID.");
-        // Throw an error or handle appropriately if ID is crucial
         throw new Error("Failed to retrieve ID after inserting new find.");
       }
     }
   } catch (error) {
-    console.error("Error saving find to database:", error);
-    // Return an error response if DB operation fails
+    console.error("Error during database operation:", error);
+    // Only return 500 if it was a real DB error, not a planned skip
+    // if (sourceType === "twitter") { // REMOVED - Apply to all types
+    // Or check if error is specific DB error type
     return new Response(
       JSON.stringify({
         error: "Failed to save the analysis result to the database.",
       }),
       { status: 500 }
     );
+    // }
   }
 
-  // 7. Return the final report object AND the find ID
+  // 7. Return the final report object AND the find ID (which might be null)
   return Response.json({ report: finalResult.object, findId: findId });
 }

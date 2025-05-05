@@ -7,6 +7,7 @@ import {
   uniqueIndex,
   customType,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Define the custom vector type
 const vector = customType<{ data: number[]; driverData: string }>({
@@ -28,8 +29,12 @@ export const finds = pgTable(
   "finds",
   {
     id: serial("id").primaryKey(),
-    sourceTweetId: text("source_tweet_id").notNull(), // Extracted ID from URL
-    sourceTweetUrl: text("source_tweet_url").notNull(), // The full URL used for the find
+    sourceTweetId: text("source_tweet_id"), // Made nullable
+    sourceTweetUrl: text("source_tweet_url"), // Made nullable
+
+    // ADDED: New source fields for Steam
+    sourceSteamAppId: text("source_steam_app_id"), // Extracted Steam App ID
+    sourceSteamUrl: text("source_steam_url"), // The full Steam URL used for the find
 
     // Raw JSON dumps from APIs
     rawTweetJson: jsonb("raw_tweet_json"), // Storing the raw JSON object from Twitter API
@@ -54,8 +59,16 @@ export const finds = pgTable(
   },
   (table) => {
     return {
-      // Add an index to quickly find finds by their source tweet ID
-      tweetIdIdx: uniqueIndex("tweet_id_idx").on(table.sourceTweetId),
+      // Add unique index for sourceTweetId if it's not null
+      sourceTweetIdIdx: uniqueIndex("source_tweet_id_idx")
+        .on(table.sourceTweetId)
+        .where(sql`${table.sourceTweetId} IS NOT NULL`),
+      // ADDED: Add unique index for sourceSteamAppId if it's not null
+      sourceSteamAppIdIdx: uniqueIndex("source_steam_app_id_idx")
+        .on(table.sourceSteamAppId)
+        .where(sql`${table.sourceSteamAppId} IS NOT NULL`),
+      // Consider adding an index for vectorEmbedding if you plan to use similarity search
+      // vectorEmbeddingIdx: index("vector_embedding_idx").on(table.vectorEmbedding).using("hnsw (vector_embedding vector_l2_ops)") // Example for pgvector
     };
   }
 );
