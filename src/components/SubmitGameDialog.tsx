@@ -43,7 +43,7 @@ export function SubmitGameDialog() {
 
     try {
       const messages = [{ role: "user", content: inputValue }];
-      const response = await fetch("/api/find-simple", {
+      const response = await fetch("/api/find", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

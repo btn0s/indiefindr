@@ -1,5 +1,5 @@
 "use strict";
-// src/app/api/find-simple/route.ts
+// src/app/api/find/route.ts
 
 import { db, schema as dbSchema } from "@/db";
 import { eq } from "drizzle-orm";

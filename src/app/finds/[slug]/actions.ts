@@ -43,7 +43,7 @@ export async function rerunSimpleAnalysisAction(
       process.env.NEXT_PUBLIC_BASE_URL ||
       process.env.VERCEL_URL ||
       "http://localhost:3000";
-    const apiUrl = `${baseUrl}/api/find-simple`;
+    const apiUrl = `${baseUrl}/api/find`;
 
     console.log(`[Action - Simple Rerun] Calling API: ${apiUrl}`);
 
