@@ -84,11 +84,6 @@ export function IndieGameListItem({
             {reportData.gameName ? reportData.gameName.charAt(0) : "G"}
           </div>
         )}
-        {reportData.releaseInfo?.toLowerCase().includes("2024") && (
-          <div className="absolute -top-1 -right-1 bg-green-500 text-white text-[8px] px-1 py-0 rounded-full font-medium leading-none">
-            NEW
-          </div>
-        )}
       </div>
 
       {/* Game Info */}

@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { FaSteam } from "react-icons/fa";
 import { GameNewsSection } from "@/components/GameNewsSection";
 import { GamePriceDisplay } from "./GamePriceDisplay";
+import { GameReviewSentiment } from "./GameReviewSentiment";
 
 interface IndieGameReportProps {
   gameData: RapidApiGameData;
@@ -91,11 +92,6 @@ export function IndieGameReport({
                 </div>
               )}
             </div>
-            {gameData.release_date?.includes("2024") && (
-              <div className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">
-                NEW
-              </div>
-            )}
           </div>
           <div className="flex gap-2 mb-4">
             {[
@@ -128,6 +124,7 @@ export function IndieGameReport({
         <div>
           <h1 className="text-2xl font-bold">
             {gameData.name || "Untitled Game"}
+            {steamAppId && <GameReviewSentiment steamAppId={steamAppId} />}
           </h1>
           <p className="text-muted-foreground">
             by{" "}
@@ -144,21 +141,21 @@ export function IndieGameReport({
           </p>
         </div>
 
-        <div className="">
-          <p className="text-muted-foreground text-sm">
+        <div>
+          <p className="text-muted-foreground text-sm mb-2">
             {gameData.desc || gameData.about_game || ""}
           </p>
-        </div>
 
-        {/* Moved Audience Appeal Section */}
-        {audienceAppeal && (
-          <div className="text-sm">
-            <div className="font-medium text-foreground mb-1.5">
-              You'll like this game if...
+          {/* Moved Audience Appeal Section */}
+          {audienceAppeal && (
+            <div className="text-sm">
+              <div className="font-medium text-foreground mb-2">
+                You'll like this game if...
+              </div>
+              <div className="text-muted-foreground">{audienceAppeal}</div>
             </div>
-            <div className="text-muted-foreground">{audienceAppeal}</div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border bg-muted p-4 text-sm">
           <div>
@@ -261,34 +258,28 @@ export function IndieGameReport({
 
         {steamAppId && <GameNewsSection steamAppId={steamAppId} />}
 
-        <div className="space-y-4">
-          <details className="mt-4 text-xs border-t pt-2">
-            <summary className="font-medium text-gray-500 cursor-pointer">
-              Developer Data & Notes
-            </summary>
-
-            <button
-              onClick={copyJsonToClipboard}
-              className="mt-2 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 text-xs font-medium flex items-center gap-1 transition-colors"
+        {process.env.NODE_ENV === "development" && (
+          <button
+            onClick={copyJsonToClipboard}
+            className="absolute top-2 right-4 w-fit px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 text-xs font-medium flex items-center gap-1 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              {copyStatus || "Copy Raw JSON"}
-            </button>
-          </details>
-        </div>
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            {copyStatus || "Copy Raw JSON"}
+          </button>
+        )}
       </div>
     </div>
   );

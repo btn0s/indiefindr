@@ -212,17 +212,18 @@ export async function POST(req: Request) {
   // --- Generate Audience Appeal using AI SDK ---
   console.log("[Simple Find] Attempting to generate audience appeal via AI...");
   try {
-    const textToAnalyze = `Game Name: ${
-      partialReport.gameName || "Unknown"
-    }\nDescription: ${
-      partialReport.gameDescription || "No description available."
-    }\nTags: ${partialReport.genresAndTags?.join(", ") || "No tags"}`;
+    const textToAnalyze = `Game Name: ${partialReport.gameName || "Unknown"}
+Description: ${partialReport.gameDescription || "No description available."}
+Tags: ${partialReport.genresAndTags?.join(", ") || "No tags"}`;
 
     const { text: audienceAppealText } = await generateText({
       model: openai("gpt-4o-mini"), // Or your preferred model
       system:
-        "You are an assistant writing for a website about indie games. Your goal is to help players discover if they might like a game.",
-      prompt: `Based on the following game details, write a short, engaging \"You'll like this game if...\" statement (1-2 sentences max). Focus on the player experience, genre, and key themes derived from the description and tags. \n\nDetails:\n${textToAnalyze}`,
+        "You are an assistant writing for a website about indie games. Your goal is to help players discover if they might like a game based on its description, tags, and potential mechanics.",
+      prompt: `Based on the following game details, write a short, engaging \"You'll like this game if...\" statement (1-2 sentences max). ALWAYS start the response with a phrase like \"If you like...\", \"If you enjoy...\", \"If you love...\", etc. Be specific about the potential player experience, genre, themes, and especially any inferred or stated game mechanics based on the description and tags. 
+
+Details:
+${textToAnalyze}`,
       maxTokens: 100,
     });
 
