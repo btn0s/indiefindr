@@ -3,7 +3,12 @@
 import { DetailedIndieGameReport } from "@/schema";
 import { Badge } from "./ui/badge";
 import { useState } from "react";
-import { extractSteamAppId } from "@/lib/utils";
+import {
+  extractSteamAppId,
+  groupLinksByType,
+  findGameImage,
+  findGameBackgroundImage,
+} from "@/lib/utils";
 import {
   Carousel,
   CarouselContent,
@@ -11,20 +16,6 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-
-// Helper function to group links by type
-const groupLinksByType = (links: DetailedIndieGameReport["relevantLinks"]) => {
-  if (!links) return {};
-  return links.reduce((acc, link) => {
-    if (!link || !link.type || !link.url) return acc;
-    const type = link.type;
-    if (!acc[type]) {
-      acc[type] = [];
-    }
-    acc[type].push(link);
-    return acc;
-  }, {} as { [key: string]: typeof links });
-};
 
 interface IndieGameReportProps {
   reportData: DetailedIndieGameReport;
@@ -69,42 +60,10 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
   const screenshots = groupedLinks["Screenshot"] || [];
 
   // Find the appropriate Steam cover art for the tile
-  const findCoverArtImage = () => {
-    // Use the determined steamAppId (either from report or calculated)
-    if (steamAppId) {
-      return `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
-    }
-    return null;
-  };
+  const coverArtImage = findGameImage(steamAppId);
 
   // Find background image - prefer screenshots over other types
-  const findBackgroundImage = () => {
-    const screenshot = reportData.relevantLinks?.find(
-      (link) => link.type === "Screenshot"
-    )?.url;
-    if (screenshot) return screenshot;
-
-    // Use the determined steamAppId
-    if (steamAppId) {
-      return `https://cdn.cloudflare.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
-    }
-
-    const keyArt = reportData.relevantLinks?.find(
-      (link) => link.type === "Key Art"
-    )?.url;
-    if (keyArt) return keyArt;
-
-    const trailerThumb = reportData.relevantLinks?.find(
-      (link) => link.type === "Trailer Thumbnail"
-    )?.url;
-    if (trailerThumb) return trailerThumb;
-
-    // Fall back to cover art logic (which also uses steamAppId)
-    return findCoverArtImage();
-  };
-
-  const coverArtImage = findCoverArtImage();
-  const backgroundImage = findBackgroundImage();
+  const backgroundImage = findGameBackgroundImage(reportData, steamAppId);
 
   return (
     <div className="w-full mx-auto border border-gray-200 rounded-xl overflow-hidden shadow-md bg-white">
@@ -159,7 +118,7 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
         {/* Game logo/icon - updated to match Steam capsule aspect ratio (616x353) */}
         <div className="flex justify-between items-start -mt-8 mb-3">
           <div className="relative">
-            <div className="w-[100px] h-[57px] rounded-lg border-4 border-white bg-gray-100 overflow-hidden shadow-lg">
+            <div className="aspect-cover-art w-[200px] rounded-lg border-4 border-white bg-gray-100 overflow-hidden shadow-lg">
               {/* Use Steam cover art if available, otherwise fall back to first letter */}
               {coverArtImage ? (
                 <img
