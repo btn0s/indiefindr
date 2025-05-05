@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation"; // Import useSearchParams
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -33,7 +34,9 @@ function createSlug(title: string, id: string | number): string {
 }
 
 export default function SearchPage() {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams(); // Get search params
+  const initialQuery = searchParams.get("query") || ""; // Get initial query from URL
+  const [query, setQuery] = useState(initialQuery); // Initialize state with URL query
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +91,17 @@ export default function SearchPage() {
   useEffect(() => {
     performSearch(debouncedQuery);
   }, [debouncedQuery, performSearch]);
+
+  // Effect to handle initial load with query param (runs only once)
+  // This is removed because initialization is now handled in useState
+  // useEffect(() => {
+  //   const initialQueryFromUrl = searchParams.get("query");
+  //   if (initialQueryFromUrl) {
+  //     // Set query state directly, which will trigger the debounced search
+  //     setQuery(initialQueryFromUrl);
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []); // Empty dependency array ensures this runs only once on mount
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">

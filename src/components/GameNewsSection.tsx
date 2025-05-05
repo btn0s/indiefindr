@@ -54,7 +54,7 @@ export function GameNewsSection({ steamAppId }: GameNewsSectionProps) {
       setNews(null); // Clear previous news on new fetch
 
       // Update the URL to point to the local API route
-      const url = `/api/game-news/${steamAppId}`;
+      const url = `/api/game-news?steamAppId=${steamAppId}`;
 
       try {
         // Remove RapidAPI specific headers
