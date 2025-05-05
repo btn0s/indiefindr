@@ -12,6 +12,7 @@ import type {
   RapidApiGameData,
   RapidApiExternalLink,
 } from "@/lib/rapidapi/types";
+import { generateEmbedding } from "@/lib/embeddings"; // Import the embedding function
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -200,7 +201,41 @@ export async function POST(req: Request) {
   // Add the source URL to the report
   partialReport.sourceSteamUrl = primaryUrl;
 
-  // 4. Database Saving
+  // 4. Generate Embedding
+  console.log("[Simple Find] Attempting to generate embedding...");
+  let embeddingVector: number[] | null = null;
+  try {
+    // Construct text for embedding (combine key fields from the partial report)
+    const textToEmbed = [
+      partialReport.gameName,
+      partialReport.gameDescription,
+      partialReport.developerName,
+      partialReport.publisherName,
+      Array.isArray(partialReport.genresAndTags)
+        ? partialReport.genresAndTags.join(", ")
+        : null,
+    ]
+      .filter(Boolean) // Remove null/undefined/empty strings
+      .join("\n\n"); // Join with double newline for separation
+
+    if (textToEmbed) {
+      embeddingVector = await generateEmbedding(textToEmbed);
+      console.log("[Simple Find] Embedding generated successfully.");
+    } else {
+      console.warn(
+        "[Simple Find] Could not generate embedding: No text content found in partial report."
+      );
+    }
+  } catch (embeddingError) {
+    console.error(
+      "[Simple Find] Failed to generate embedding:",
+      embeddingError
+    );
+    // Decide if you want to fail the whole process or just log and continue
+    // For now, we log and continue, saving the find without an embedding.
+  }
+
+  // 5. Database Saving
   console.log(
     "[Simple Find] Attempting to save find to database (Update or Insert Steam)..."
   );
@@ -221,7 +256,7 @@ export async function POST(req: Request) {
       rawSteamJson: steamApiData,
       rawDemoHtml: null, // Not scraped in this version
       report: partialReport as DetailedIndieGameReport,
-      vectorEmbedding: null, // Not generated in this version
+      vectorEmbedding: embeddingVector, // Use the generated embedding vector
       updatedAt: new Date(),
     };
 
@@ -274,7 +309,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // 5. Return the partial report object AND the find ID
+  // 6. Return the partial report object AND the find ID
   console.log(`[Simple Find] Responding with report for find ID: ${findId}`);
   // Ensure partialReport is cast or fits the expected return structure
   return Response.json({

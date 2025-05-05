@@ -5,8 +5,8 @@ import { IndieGameReport } from "@/components/IndieGameReport";
 import { DetailedIndieGameReport } from "@/schema";
 import { RerunFormClient } from "@/components/RerunFormClient";
 
-// Import the server action from the separate file
-import { rerunAnalysisAction } from "./actions";
+// Import only the simple rerun server action
+import { rerunSimpleAnalysisAction } from "./actions";
 
 // Helper function to extract numeric ID from slug
 function extractIdFromSlug(slug: string): number | null {
@@ -20,7 +20,7 @@ function extractIdFromSlug(slug: string): number | null {
 // Type for the data fetched by getFindById
 interface FindPageData {
   id: number;
-  sourceTweetUrl: string;
+  sourceSteamUrl: string | null;
   reportData: DetailedIndieGameReport;
   createdAt: Date;
 }
@@ -47,7 +47,7 @@ export default async function Page({
         id: schema.finds.id,
         reportData: schema.finds.report,
         createdAt: schema.finds.createdAt,
-        sourceTweetUrl: schema.finds.sourceTweetUrl,
+        sourceSteamUrl: schema.finds.sourceSteamUrl,
       })
       .from(schema.finds)
       .where(eq(schema.finds.id, findId))
@@ -85,7 +85,7 @@ export default async function Page({
       id: find.id,
       reportData: reportData,
       createdAt: find.createdAt,
-      sourceTweetUrl: find.sourceTweetUrl ?? "",
+      sourceSteamUrl: find.sourceSteamUrl ?? null,
     };
   } catch (error) {
     console.error(`Error fetching find with ID ${findId}:`, error);
@@ -93,17 +93,20 @@ export default async function Page({
     notFound(); // Or throw error to trigger error.tsx
   }
 
-  // We ensured findData is not null by calling notFound() otherwise
-  // Pass the initial data and the *imported* server action to the client component
+  // Rerun is only possible if we have a source Steam URL
+  const sourceUrlForRerun: string | null =
+    initialFindData?.sourceSteamUrl ?? null;
+
   return initialFindData ? (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8 bg-gray-50">
       <div className="w-full max-w-5xl">
-        {/* Minimal client component for the form/button */}
-        {/* <RerunFormClient
+        {/* Pass the Steam URL and simple action */}
+        {/* The form component will handle disabling if URL is null */}
+        <RerunFormClient
           findId={initialFindData.id}
-          sourceTweetUrl={initialFindData.sourceTweetUrl}
-          rerunAnalysisAction={rerunAnalysisAction}
-        /> */}
+          sourceSteamUrl={sourceUrlForRerun}
+          rerunSimpleAction={rerunSimpleAnalysisAction}
+        />
         {/* Render the report directly in the server component */}
         <IndieGameReport reportData={initialFindData.reportData} />
       </div>
