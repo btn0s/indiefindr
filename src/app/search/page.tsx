@@ -112,13 +112,13 @@ export default function SearchPage() {
           placeholder="Search for games, descriptions, genres..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="flex-grow"
+          className="flex-grow bg-background"
         />
         {/* Optional: Add a manual search button if debouncing isn't desired */}
-        {/* <Button onClick={() => performSearch(query)} disabled={isLoading}>
+        <Button onClick={() => performSearch(query)} disabled={isLoading}>
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Search
-        </Button> */}
+        </Button>
       </div>
       {/* --- Results Area --- */}
       <div className="flex flex-col gap-2">
