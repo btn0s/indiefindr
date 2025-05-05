@@ -1,0 +1,23 @@
+{
+  "name": "steam-link-discord-bot",
+  "version": "1.0.0",
+  "description": "Discord bot to find Steam links and post app IDs to an API.",
+  "main": "steam_link_bot.js",
+  "type": "module",
+  "scripts": {
+    "start": "node steam_link_bot.js",
+    "dev": "NODE_ENV=development node steam_link_bot.js",
+    "register-commands": "node register-commands.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "steam"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.7.1",
+    "dotenv": "^16.3.1"
+  }
+}

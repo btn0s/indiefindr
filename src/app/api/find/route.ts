@@ -162,18 +162,31 @@ function createPartialReportFromSteamApi(
 // --- Simplified POST Handler ---
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
-  const userQuery = messages[messages.length - 1].content;
-  const primaryUrl = userQuery; // The submitted URL
+  // Expect a JSON body with { steam_link: "url" }
+  const body = await req.json();
+  const primaryUrl = body.steam_link;
+
+  if (!primaryUrl || typeof primaryUrl !== "string") {
+    console.error(
+      '[Simple Find] Invalid request body. Expected { steam_link: "url" }',
+      body
+    );
+    return new Response(
+      JSON.stringify({
+        error: 'Invalid request body. Expected { steam_link: "url" }. ',
+      }),
+      { status: 400 }
+    );
+  }
 
   // 1. Validate input as a Steam URL and Extract App ID
-  console.log(`[Simple Find] Validating user query as Steam URL: ${userQuery}`);
-  const steamAppId = extractSteamAppId(userQuery);
+  console.log(`[Simple Find] Validating Steam URL from request: ${primaryUrl}`);
+  const steamAppId = extractSteamAppId(primaryUrl); // Use the extracted URL
 
   if (!steamAppId) {
     console.error(
       "[Simple Find] Invalid input: Not a valid Steam App URL.",
-      userQuery
+      primaryUrl
     );
     return new Response(
       JSON.stringify({

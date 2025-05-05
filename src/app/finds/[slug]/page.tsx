@@ -8,15 +8,6 @@ import { RerunFormClient } from "@/components/RerunFormClient";
 // Import only the simple rerun server action
 import { rerunSimpleAnalysisAction } from "./actions";
 
-// Helper function to extract numeric ID from slug
-function extractIdFromSlug(slug: string): number | null {
-  const parts = slug.split("-");
-  const idStr = parts[parts.length - 1];
-
-  const id = parseInt(idStr, 10);
-  return isNaN(id) ? null : id;
-}
-
 // Type for the data fetched by getFindById
 interface FindPageData {
   id: number;
@@ -27,20 +18,40 @@ interface FindPageData {
 }
 
 // This is now an async Server Component
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const findId = extractIdFromSlug(slug);
+export default async function Page({ params }: { params: { slug: string } }) {
+  // Directly use the slug from params
+  const { slug } = params;
+  let findId: number | null = null;
 
+  // Try parsing the slug directly as an integer
+  const directId = parseInt(slug, 10);
+  if (!isNaN(directId) && String(directId) === slug) {
+    // If the slug is purely numeric, use it as the ID
+    findId = directId;
+    console.log(`[Find Page] Using direct numeric ID from slug: ${findId}`);
+  } else {
+    // Otherwise, try extracting ID from the end after the last dash (existing logic)
+    const parts = slug.split("-");
+    const idStr = parts[parts.length - 1];
+    const extractedId = parseInt(idStr, 10);
+    if (!isNaN(extractedId)) {
+      findId = extractedId;
+      console.log(`[Find Page] Extracted ID from slug ending: ${findId}`);
+    } else {
+      console.log(
+        `[Find Page] Could not determine valid ID from slug: ${slug}`
+      );
+    }
+  }
+
+  // Original check remains the same
   if (findId === null) {
-    console.error("Invalid ID format in slug:", slug);
-    notFound(); // Use Next.js built-in notFound helper
+    console.error("Invalid or non-extractable ID format in slug:", slug);
+    notFound();
   }
 
   // Fetch data directly on the server
+  console.log(`[Find Page] Fetching data for resolved find ID: ${findId}`);
   let initialFindData: FindPageData | null = null;
   try {
     const result = await db

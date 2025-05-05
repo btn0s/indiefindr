@@ -42,13 +42,14 @@ export function SubmitGameDialog() {
     setError(null);
 
     try {
-      const messages = [{ role: "user", content: inputValue }];
+      const payload = { steam_link: inputValue };
+
       const response = await fetch("/api/find", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
