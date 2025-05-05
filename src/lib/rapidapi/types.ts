@@ -56,3 +56,24 @@ export interface RapidApiResponse {
   message: string;
   data: RapidApiGameData | null; // Data can potentially be null for non-existent IDs
 }
+
+// Basic placeholder for review data - Structure needs verification
+export interface RapidApiReview {
+  // Assuming some common review fields - adjust based on actual API response
+  title?: string;
+  author?: string;
+  date?: string;
+  review_text?: string;
+  rating?: string; // e.g., "Recommended", "Not Recommended"
+  // Add other fields as discovered (e.g., playtime, helpful votes)
+}
+
+export interface RapidApiReviewsResponse {
+  status: number;
+  message: string;
+  data?: {
+    reviews: RapidApiReview[];
+    limit?: string;
+    offset?: string;
+  };
+}

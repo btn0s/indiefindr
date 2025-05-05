@@ -22,6 +22,7 @@ interface FindPageData {
   id: number;
   sourceSteamUrl: string | null;
   gameData: RapidApiGameData | null;
+  audienceAppeal: string | null;
   createdAt: Date;
 }
 
@@ -48,6 +49,7 @@ export default async function Page({
         rawSteamJson: schema.finds.rawSteamJson,
         createdAt: schema.finds.createdAt,
         sourceSteamUrl: schema.finds.sourceSteamUrl,
+        audienceAppeal: schema.finds.audienceAppeal,
       })
       .from(schema.finds)
       .where(eq(schema.finds.id, findId))
@@ -88,6 +90,7 @@ export default async function Page({
       gameData: gameData,
       createdAt: find.createdAt,
       sourceSteamUrl: find.sourceSteamUrl ?? null,
+      audienceAppeal: find.audienceAppeal ?? null,
     };
   } catch (error) {
     console.error(`Error fetching find with ID ${findId}:`, error);
@@ -115,6 +118,7 @@ export default async function Page({
         <IndieGameReport
           gameData={initialFindData.gameData}
           sourceSteamUrl={initialFindData.sourceSteamUrl}
+          audienceAppeal={initialFindData.audienceAppeal}
         />
       </div>
     </div>
