@@ -8,7 +8,7 @@ import {
   customType,
   boolean,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { sql, isNotNull } from "drizzle-orm";
 
 // Define the custom vector type
 const vector = customType<{ data: number[]; driverData: string }>({
@@ -57,7 +57,7 @@ export const finds = pgTable(
       // Add unique index for sourceSteamAppId if it's not null
       sourceSteamAppIdIdx: uniqueIndex("source_steam_app_id_idx")
         .on(table.sourceSteamAppId)
-        .where(sql`${table.sourceSteamAppId} IS NOT NULL`),
+        .where(isNotNull(table.sourceSteamAppId)),
       // Consider adding an index for vectorEmbedding if you plan to use similarity search
       // vectorEmbeddingIdx: index("vector_embedding_idx").on(table.vectorEmbedding).using("hnsw (vector_embedding vector_l2_ops)") // Example for pgvector
     };
