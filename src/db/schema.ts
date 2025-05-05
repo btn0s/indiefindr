@@ -6,6 +6,7 @@ import {
   jsonb,
   uniqueIndex,
   customType,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -29,18 +30,12 @@ export const finds = pgTable(
   "finds",
   {
     id: serial("id").primaryKey(),
-    sourceTweetId: text("source_tweet_id"), // Made nullable
-    sourceTweetUrl: text("source_tweet_url"), // Made nullable
 
-    // ADDED: New source fields for Steam
+    // --- Steam ---
     sourceSteamAppId: text("source_steam_app_id"), // Extracted Steam App ID
     sourceSteamUrl: text("source_steam_url"), // The full Steam URL used for the find
-
-    // Raw JSON dumps from APIs
-    rawTweetJson: jsonb("raw_tweet_json"), // Storing the raw JSON object from Twitter API
-    rawAuthorJson: jsonb("raw_author_json"), // Storing the raw JSON object for the author profile
     rawSteamJson: jsonb("raw_steam_json"), // Storing the raw JSON from Steam API (if found)
-    rawDemoHtml: text("raw_demo_html"), // Storing the raw HTML snippet for demo check (if found)
+    hasSteamDemo: boolean("has_steam_demo"), // Storing the raw HTML snippet for demo check (if found)
 
     // The processed report conforming to DetailedIndieGameReportSchema
     report: jsonb("report").$type<DetailedIndieGameReport>().notNull(),
@@ -59,11 +54,7 @@ export const finds = pgTable(
   },
   (table) => {
     return {
-      // Add unique index for sourceTweetId if it's not null
-      sourceTweetIdIdx: uniqueIndex("source_tweet_id_idx")
-        .on(table.sourceTweetId)
-        .where(sql`${table.sourceTweetId} IS NOT NULL`),
-      // ADDED: Add unique index for sourceSteamAppId if it's not null
+      // Add unique index for sourceSteamAppId if it's not null
       sourceSteamAppIdIdx: uniqueIndex("source_steam_app_id_idx")
         .on(table.sourceSteamAppId)
         .where(sql`${table.sourceSteamAppId} IS NOT NULL`),
