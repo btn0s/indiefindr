@@ -4,6 +4,13 @@ import { DetailedIndieGameReport } from "@/schema";
 import { Badge } from "./ui/badge";
 import { useState } from "react";
 import { extractSteamAppId } from "@/lib/utils";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 // Helper function to group links by type
 const groupLinksByType = (links: DetailedIndieGameReport["relevantLinks"]) => {
@@ -57,6 +64,7 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
   };
 
   const steamAppId = getSteamAppId();
+  const screenshots = groupedLinks["Screenshot"] || [];
 
   // Find the appropriate Steam cover art for the tile
   const findCoverArtImage = () => {
@@ -304,6 +312,39 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
           </div>
         )}
 
+        {/* Screenshots Carousel */}
+        {screenshots.length > 0 && (
+          <div className="mb-4">
+            <h3 className="font-medium text-gray-900 mb-2">Screenshots</h3>
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+              }}
+              className="w-full max-w-full"
+            >
+              <CarouselContent className="-ml-2">
+                {screenshots.map((link, index) => (
+                  <CarouselItem
+                    key={`screenshot-${index}`}
+                    className="pl-2 md:basis-1/2 lg:basis-1/3"
+                  >
+                    <div className="aspect-video overflow-hidden rounded-lg border border-gray-200">
+                      <img
+                        src={link?.url || ""}
+                        alt={`Screenshot ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="-left-4 top-1/2 -translate-y-1/2" />
+              <CarouselNext className="-right-4 top-1/2 -translate-y-1/2" />
+            </Carousel>
+          </div>
+        )}
+
         {/* Main content sections */}
         <div className="space-y-4">
           {/* Release info */}
@@ -390,49 +431,42 @@ export function IndieGameReport({ reportData }: IndieGameReportProps) {
           )}
 
           {/* Source data (hidden in collapsible) */}
-          {reportData.sourceTweetText && (
-            <details className="mt-4 text-xs border-t pt-2">
-              <summary className="font-medium text-gray-500 cursor-pointer">
-                Source Data
-              </summary>
+          <details className="mt-4 text-xs border-t pt-2">
+            <summary className="font-medium text-gray-500 cursor-pointer">
+              Developer Data & Notes
+            </summary>
+
+            {reportData.overallReportSummary && (
               <div className="mt-2">
-                <p className="whitespace-pre-wrap bg-gray-50 p-2 rounded font-mono text-gray-600">
-                  {reportData.sourceTweetText}
+                <h3 className="font-medium text-gray-500">Report Summary:</h3>
+                <p className="whitespace-pre-wrap bg-gray-50 p-2 rounded text-gray-600">
+                  {reportData.overallReportSummary}
                 </p>
               </div>
+            )}
 
-              {reportData.overallReportSummary && (
-                <div className="mt-2">
-                  <h3 className="font-medium text-gray-500">Report Summary:</h3>
-                  <p className="whitespace-pre-wrap bg-gray-50 p-2 rounded text-gray-600">
-                    {reportData.overallReportSummary}
-                  </p>
-                </div>
-              )}
-
-              {/* Copy Raw JSON button */}
-              <button
-                onClick={copyJsonToClipboard}
-                className="mt-2 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 text-xs font-medium flex items-center gap-1 transition-colors"
+            {/* Copy Raw JSON button */}
+            <button
+              onClick={copyJsonToClipboard}
+              className="mt-2 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 text-xs font-medium flex items-center gap-1 transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                {copyStatus || "Copy Raw JSON"}
-              </button>
-            </details>
-          )}
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              {copyStatus || "Copy Raw JSON"}
+            </button>
+          </details>
         </div>
       </div>
     </div>
