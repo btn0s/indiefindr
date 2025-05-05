@@ -1,10 +1,12 @@
 "use server";
 
 import { db, schema } from "@/db";
-import type { DetailedIndieGameReport } from "@/schema";
+// Remove import of DetailedIndieGameReport
+// Import RapidApiGameData type
+import type { RapidApiGameData } from "@/lib/rapidapi/types";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-// import { redirect } from "next/navigation"; // No longer needed for redirect
+// import { redirect } from "next/navigation"; // Still not needed
 
 // Updated type definition to include success status and potential new slug
 export type RerunState = {
@@ -13,16 +15,15 @@ export type RerunState = {
   newSlug?: string;
 };
 
-// Removed rerunAnalysisAction as it handled Twitter URLs which are no longer supported for rerun
+// Removed original rerunAnalysisAction
 
 // Action for the simple find endpoint (Steam URLs only)
 export async function rerunSimpleAnalysisAction(
   prevState: RerunState,
   formData: FormData
 ): Promise<RerunState> {
-  // Return type remains RerunState, but we'll populate new fields
   const sourceSteamUrl = formData.get("sourceSteamUrl") as string;
-  const currentFindId = formData.get("currentFindId") as string; // Keep for potential future use or logging
+  const currentFindId = formData.get("currentFindId") as string; // Keep for logging
 
   if (!sourceSteamUrl) {
     return { message: "Source Steam URL is missing." };
@@ -72,15 +73,20 @@ export async function rerunSimpleAnalysisAction(
       );
     }
 
-    // The simple endpoint returns { report: ..., findId: ... }
-    const result = await response.json();
+    // Expect the API to return { gameData: RapidApiGameData | null, findId: number }
+    const result: { gameData: RapidApiGameData | null; findId: number } =
+      await response.json();
     const updatedFindId = result.findId;
-    const report = result.report as Partial<DetailedIndieGameReport>; // Cast to partial as it's not the full AI report
+    const gameData = result.gameData; // Extract the game data object
 
-    if (!updatedFindId || !report) {
-      console.error("[Action - Simple Rerun] Invalid API response:", result);
+    // Check if essential data for slug generation is present
+    if (!updatedFindId || !gameData || !gameData.name) {
+      console.error(
+        "[Action - Simple Rerun] Invalid API response (missing ID, gameData, or game name):",
+        result
+      );
       throw new Error(
-        "Analysis completed, but invalid data (ID or report) was returned from the simple API."
+        "Analysis completed, but invalid data was returned from the simple API."
       );
     }
 
@@ -92,26 +98,18 @@ export async function rerunSimpleAnalysisAction(
     revalidatePath(`/finds/[slug]`, "page");
     console.log(`[Action - Simple Rerun] Path revalidated: /finds/[slug]`);
 
-    // Generate slug from the returned report
-    let gameNameSlug = "game";
-    if (report.gameName) {
-      gameNameSlug =
-        report.gameName
-          ?.toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "") || "game";
-    }
+    // Generate slug from gameData.name
+    const gameNameSlug =
+      gameData.name
+        ?.toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphen
+        .replace(/^-+|-+$/g, "") || "game"; // Trim leading/trailing hyphens
 
     const newSlug = `${gameNameSlug}-${updatedFindId}`;
     console.log(`[Action - Simple Rerun] Generated new slug: ${newSlug}`);
 
-    // Redirect to the new find page - REMOVED
-    // redirect(`/finds/${newSlug}`);
-
     // Return success state with the new slug
     return { message: null, success: true, newSlug: newSlug };
-
-    // Note: redirect() throws an error, so code below won't execute
   } catch (err: any) {
     console.error("[Action - Simple Rerun] Error:", err);
     return {

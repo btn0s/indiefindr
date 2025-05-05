@@ -2,7 +2,7 @@ import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { IndieGameReport } from "@/components/IndieGameReport";
-import { DetailedIndieGameReport } from "@/schema";
+import { type RapidApiGameData } from "@/lib/rapidapi/types";
 import { RerunFormClient } from "@/components/RerunFormClient";
 
 // Import only the simple rerun server action
@@ -21,7 +21,7 @@ function extractIdFromSlug(slug: string): number | null {
 interface FindPageData {
   id: number;
   sourceSteamUrl: string | null;
-  reportData: DetailedIndieGameReport;
+  gameData: RapidApiGameData | null;
   createdAt: Date;
 }
 
@@ -45,7 +45,7 @@ export default async function Page({
     const result = await db
       .select({
         id: schema.finds.id,
-        reportData: schema.finds.report,
+        rawSteamJson: schema.finds.rawSteamJson,
         createdAt: schema.finds.createdAt,
         sourceSteamUrl: schema.finds.sourceSteamUrl,
       })
@@ -58,32 +58,34 @@ export default async function Page({
     }
 
     const find = result[0];
-    let reportData: DetailedIndieGameReport | null = null;
+    let gameData: RapidApiGameData | null = null;
 
-    // Parse the reportData JSON
-    if (find.reportData) {
-      if (typeof find.reportData === "string") {
+    // Parse the rawSteamJson
+    if (find.rawSteamJson) {
+      if (typeof find.rawSteamJson === "object" && find.rawSteamJson !== null) {
+        gameData = find.rawSteamJson as RapidApiGameData;
+      } else if (typeof find.rawSteamJson === "string") {
         try {
-          reportData = JSON.parse(find.reportData);
+          gameData = JSON.parse(find.rawSteamJson) as RapidApiGameData;
         } catch (e) {
-          console.error(`Failed to parse reportData for find ${find.id}:`, e);
-          // If parsing fails, treat as not found or show error?
-          // For now, let's treat it as critical and call notFound
+          console.error(`Failed to parse rawSteamJson for find ${find.id}:`, e);
+          // If parsing fails, treat as critical
           notFound();
         }
-      } else {
-        reportData = find.reportData as DetailedIndieGameReport;
       }
     }
 
-    if (!reportData) {
-      console.error(`Report data is null or invalid for find ${find.id}`);
-      notFound(); // Treat missing report data as not found
+    // If gameData couldn't be derived, treat as not found
+    if (!gameData) {
+      console.error(
+        `Game data is null or invalid after parsing for find ${find.id}`
+      );
+      notFound();
     }
 
     initialFindData = {
       id: find.id,
-      reportData: reportData,
+      gameData: gameData,
       createdAt: find.createdAt,
       sourceSteamUrl: find.sourceSteamUrl ?? null,
     };
@@ -97,7 +99,7 @@ export default async function Page({
   const sourceUrlForRerun: string | null =
     initialFindData?.sourceSteamUrl ?? null;
 
-  return initialFindData ? (
+  return initialFindData?.gameData ? (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8 bg-gray-50">
       <div className="w-full max-w-5xl">
         {/* Pass the Steam URL and simple action */}
@@ -107,11 +109,15 @@ export default async function Page({
           sourceSteamUrl={sourceUrlForRerun}
           rerunSimpleAction={rerunSimpleAnalysisAction}
         />
-        {/* Render the report directly in the server component */}
-        <IndieGameReport reportData={initialFindData.reportData} />
+        {/* Render the report directly, passing gameData and sourceSteamUrl */}
+        <IndieGameReport
+          gameData={initialFindData.gameData}
+          sourceSteamUrl={initialFindData.sourceSteamUrl}
+        />
       </div>
     </div>
   ) : (
-    <div>No data found</div>
+    // This condition might be less likely now due to earlier notFound calls
+    <div>No data found or data is invalid</div>
   );
 }
