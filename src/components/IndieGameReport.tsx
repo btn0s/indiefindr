@@ -18,6 +18,10 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ExternalLinkIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
 
 interface IndieGameReportProps {
   gameData: RapidApiGameData;
@@ -71,26 +75,25 @@ export function IndieGameReport({
     ) || [];
 
   return (
-    <div className="w-full mx-auto border border-gray-200 rounded-xl overflow-hidden shadow-md bg-white">
-      <div className="relative">
-        <div className="w-full h-[150px] relative">
-          {backgroundImage ? (
-            <div className="w-full h-full relative">
-              <img
-                src={backgroundImage}
-                alt={gameData.name || "Game image"}
-                className="w-full h-full object-cover blur-md opacity-80"
-              />
-            </div>
-          ) : (
-            <div className="w-full h-full bg-gradient-to-b from-indigo-500/90 to-purple-700/90"></div>
-          )}
-        </div>
+    <div className="w-full mx-auto border rounded-xl overflow-hidden shadow-md bg-background">
+      <div className="w-full h-[150px] relative">
+        {backgroundImage ? (
+          <div className="w-full h-full relative">
+            <img
+              src={backgroundImage}
+              alt={gameData.name || "Game image"}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="w-full h-full bg-gradient-to-b from-indigo-500/90 to-purple-700/90"></div>
+        )}
+        <div className="absolute inset-0 bg-foreground/50"></div>
       </div>
 
-      <div className="px-4 pt-2 pb-4 relative">
-        <div className="flex justify-between items-start -mt-8 mb-3">
-          <div className="relative">
+      <div className="px-4 pb-4 relative flex flex-col gap-4">
+        <div className="relative -mt-16 mb-4 flex items-center justify-between">
+          <div>
             <div className="aspect-cover-art w-[200px] rounded-lg border-4 border-white bg-gray-100 overflow-hidden shadow-lg">
               {coverArtImage ? (
                 <img
@@ -110,20 +113,46 @@ export function IndieGameReport({
               </div>
             )}
           </div>
+          <div className="flex gap-2 mb-4">
+            {[
+              {
+                name: "Steam",
+                link: sourceSteamUrl,
+              },
+              ...gameData.external_links,
+            ].map((link) => (
+              <Button
+                key={link?.name}
+                variant="secondary"
+                className="bg-background/30 backdrop-blur-sm text-background hover:bg-background/50"
+                size="sm"
+                asChild
+              >
+                <Link
+                  href={link?.link || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="capitalize">{link?.name}</span>
+                  <ExternalLinkIcon className="size-3" />
+                </Link>
+              </Button>
+            ))}
+          </div>
         </div>
 
-        <div className="mb-3">
-          <h1 className="text-2xl font-bold text-gray-900">
+        <div>
+          <h1 className="text-2xl font-bold">
             {gameData.name || "Untitled Game"}
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             by{" "}
             <span className="font-medium">
               {gameData.dev_details?.developer_name?.join(", ") ||
                 "Unknown Developer"}
             </span>
             {gameData.dev_details?.publisher?.length > 0 && (
-              <span className="text-gray-500">
+              <span className="opacity-70">
                 {" "}
                 • Published by {gameData.dev_details.publisher.join(", ")}
               </span>
@@ -131,8 +160,8 @@ export function IndieGameReport({
           </p>
         </div>
 
-        <div className="mb-4">
-          <p className="text-gray-700 text-sm">
+        <div className="">
+          <p className="text-muted-foreground text-sm">
             {(gameData.desc || gameData.about_game || "").substring(0, 300)}
             {(gameData.desc || gameData.about_game || "").length > 300
               ? "..."
@@ -191,21 +220,18 @@ export function IndieGameReport({
         )}
 
         {gameData.tags && gameData.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-4">
+          <div className="flex flex-wrap gap-1.5">
             {gameData.tags.map((item, index) => (
-              <span
-                key={index}
-                className="bg-gray-100 text-gray-800 px-2 py-1 rounded-md text-xs font-medium"
-              >
+              <Badge key={index} variant="outline">
                 {item}
-              </span>
+              </Badge>
             ))}
           </div>
         )}
 
         {screenshots.length > 0 && (
-          <div className="mb-4">
-            <h3 className="font-medium text-gray-900 mb-2">Screenshots</h3>
+          <div className="">
+            <h3 className="font-medium mb-2">Screenshots</h3>
             <Carousel
               opts={{
                 align: "start",
@@ -219,20 +245,34 @@ export function IndieGameReport({
                     key={`screenshot-${index}`}
                     className="pl-2 md:basis-1/2 lg:basis-1/3"
                   >
-                    <div className="aspect-video overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                      <img
-                        src={screenshotUrl || ""}
-                        alt={`Screenshot ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+                    <Dialog>
+                      <DialogTrigger>
+                        <div className="aspect-video overflow-hidden rounded-lg border bg-muted-foreground">
+                          <img
+                            src={screenshotUrl || ""}
+                            alt={`Screenshot ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="p-0 border-none !max-w-[80vw]">
+                        <DialogTitle className="sr-only">
+                          {gameData.name} Screenshot {index + 1}
+                        </DialogTitle>
+                        <img
+                          src={screenshotUrl || ""}
+                          alt={`Screenshot ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </DialogContent>
+                    </Dialog>
                   </CarouselItem>
                 ))}
               </CarouselContent>
               {screenshots.length > 1 && (
                 <>
-                  <CarouselPrevious className="-left-4 top-1/2 -translate-y-1/2" />
-                  <CarouselNext className="-right-4 top-1/2 -translate-y-1/2" />
+                  <CarouselPrevious className="-left-2 shadow-md top-1/2 -translate-y-1/2" />
+                  <CarouselNext className="-right-2 shadow-md top-1/2 -translate-y-1/2" />
                 </>
               )}
             </Carousel>
