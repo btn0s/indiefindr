@@ -1,0 +1,1 @@
+ALTER TABLE "finds" DROP COLUMN "has_steam_demo";

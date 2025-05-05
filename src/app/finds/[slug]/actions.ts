@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 // Remove import of DetailedIndieGameReport
 // Import RapidApiGameData type
 import type { RapidApiGameData } from "@/lib/rapidapi/types";
+import { DetailedIndieGameReport } from "@/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 // import { redirect } from "next/navigation"; // Still not needed
@@ -73,16 +74,18 @@ export async function rerunSimpleAnalysisAction(
       );
     }
 
-    // Expect the API to return { gameData: RapidApiGameData | null, findId: number }
-    const result: { gameData: RapidApiGameData | null; findId: number } =
-      await response.json();
+    // Expect the API to return { report: DetailedIndieGameReport, findId: number }
+    const result: {
+      report: Partial<DetailedIndieGameReport>; // Use Partial to avoid strict typing issues if needed
+      findId: number;
+    } = await response.json();
     const updatedFindId = result.findId;
-    const gameData = result.gameData; // Extract the game data object
+    const reportData = result.report; // Extract the report object
 
-    // Check if essential data for slug generation is present
-    if (!updatedFindId || !gameData || !gameData.name) {
+    // Check if essential data for slug generation is present in the report
+    if (!updatedFindId || !reportData || !reportData.gameName) {
       console.error(
-        "[Action - Simple Rerun] Invalid API response (missing ID, gameData, or game name):",
+        "[Action - Simple Rerun] Invalid API response (missing ID, report, or game name):",
         result
       );
       throw new Error(
@@ -98,9 +101,9 @@ export async function rerunSimpleAnalysisAction(
     revalidatePath(`/finds/[slug]`, "page");
     console.log(`[Action - Simple Rerun] Path revalidated: /finds/[slug]`);
 
-    // Generate slug from gameData.name
+    // Generate slug from reportData.gameName
     const gameNameSlug =
-      gameData.name
+      reportData.gameName
         ?.toLowerCase()
         .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphen
         .replace(/^-+|-+$/g, "") || "game"; // Trim leading/trailing hyphens

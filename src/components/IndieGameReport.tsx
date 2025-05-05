@@ -29,11 +29,13 @@ import { GamePriceDisplay } from "./GamePriceDisplay";
 interface IndieGameReportProps {
   gameData: RapidApiGameData;
   sourceSteamUrl: string | null;
+  audienceAppeal: string | null;
 }
 
 export function IndieGameReport({
   gameData,
   sourceSteamUrl,
+  audienceAppeal,
 }: IndieGameReportProps) {
   const steamAppId = sourceSteamUrl ? extractSteamAppId(sourceSteamUrl) : null;
 
@@ -147,6 +149,16 @@ export function IndieGameReport({
             {gameData.desc || gameData.about_game || ""}
           </p>
         </div>
+
+        {/* Moved Audience Appeal Section */}
+        {audienceAppeal && (
+          <div className="text-sm">
+            <div className="font-medium text-foreground mb-1.5">
+              You'll like this game if...
+            </div>
+            <div className="text-muted-foreground">{audienceAppeal}</div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border bg-muted p-4 text-sm">
           <div>

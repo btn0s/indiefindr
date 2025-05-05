@@ -35,13 +35,15 @@ export const finds = pgTable(
     sourceSteamAppId: text("source_steam_app_id"), // Extracted Steam App ID
     sourceSteamUrl: text("source_steam_url"), // The full Steam URL used for the find
     rawSteamJson: jsonb("raw_steam_json"), // Storing the raw JSON from Steam API (if found)
-    hasSteamDemo: boolean("has_steam_demo"), // Storing the raw HTML snippet for demo check (if found)
 
     // The processed report conforming to DetailedIndieGameReportSchema
     report: jsonb("report").$type<DetailedIndieGameReport>().notNull(),
 
     // Add the vector column
     vectorEmbedding: vector("vector_embedding"),
+
+    // Add the audience appeal column
+    audienceAppeal: text("audience_appeal"),
 
     // Timestamps
     createdAt: timestamp("created_at", { withTimezone: true })
