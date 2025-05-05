@@ -1,100 +1,120 @@
 "use server";
 
 import { db, schema } from "@/db";
-import type { DetailedIndieGameReport } from "@/schema";
+// Remove import of DetailedIndieGameReport
+// Import RapidApiGameData type
+import type { RapidApiGameData } from "@/lib/rapidapi/types";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+// import { redirect } from "next/navigation"; // Still not needed
 
-// Type definition for the state/return value
-export type RerunState = { message: string | null };
+// Updated type definition to include success status and potential new slug
+export type RerunState = {
+  message: string | null;
+  success?: boolean;
+  newSlug?: string;
+};
 
-export async function rerunAnalysisAction(
+// Removed original rerunAnalysisAction
+
+// Action for the simple find endpoint (Steam URLs only)
+export async function rerunSimpleAnalysisAction(
   prevState: RerunState,
   formData: FormData
 ): Promise<RerunState> {
-  const sourceTweetUrl = formData.get("sourceTweetUrl") as string;
-  const currentFindId = formData.get("currentFindId") as string;
+  const sourceSteamUrl = formData.get("sourceSteamUrl") as string;
+  const currentFindId = formData.get("currentFindId") as string; // Keep for logging
 
-  if (!sourceTweetUrl) {
-    return { message: "Source Tweet URL is missing." };
+  if (!sourceSteamUrl) {
+    return { message: "Source Steam URL is missing." };
   }
 
+  if (!sourceSteamUrl.includes("store.steampowered.com/app/")) {
+    return { message: "Invalid Steam URL provided." };
+  }
+
+  console.log(
+    `[Action - Simple Rerun] Rerunning analysis for Steam URL: ${sourceSteamUrl}`
+  );
+
   try {
-    // Call the existing API route that performs the analysis
-    // Use environment variables securely on the server
     const baseUrl =
       process.env.NEXT_PUBLIC_BASE_URL ||
       process.env.VERCEL_URL ||
       "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/find`, {
+    const apiUrl = `${baseUrl}/api/find-simple`;
+
+    console.log(`[Action - Simple Rerun] Calling API: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        messages: [{ role: "user", content: sourceTweetUrl }],
+        // Match the expected structure for the simple endpoint
+        messages: [{ role: "user", content: sourceSteamUrl }],
       }),
     });
 
+    console.log(
+      `[Action - Simple Rerun] API response status: ${response.status}`
+    );
+
     if (!response.ok) {
-      const errorData = await response
-        .json()
-        .catch(() => ({ error: "Unknown error occurred" }));
+      const errorText = await response.text();
+      console.error(
+        `[Action - Simple Rerun] API Error Response Text: ${errorText}`
+      );
+      const errorData = JSON.parse(errorText || "{}");
       throw new Error(
-        errorData.error || `HTTP error! status: ${response.status}`
+        errorData.error ||
+          `HTTP error calling find-simple API! status: ${response.status}`
       );
     }
 
-    const result = await response.json();
+    // Expect the API to return { gameData: RapidApiGameData | null, findId: number }
+    const result: { gameData: RapidApiGameData | null; findId: number } =
+      await response.json();
     const updatedFindId = result.findId;
+    const gameData = result.gameData; // Extract the game data object
 
-    if (!updatedFindId) {
-      throw new Error("Analysis completed, but no new Find ID was returned.");
+    // Check if essential data for slug generation is present
+    if (!updatedFindId || !gameData || !gameData.name) {
+      console.error(
+        "[Action - Simple Rerun] Invalid API response (missing ID, gameData, or game name):",
+        result
+      );
+      throw new Error(
+        "Analysis completed, but invalid data was returned from the simple API."
+      );
     }
 
-    // Revalidate the path of the *old* page in case user navigates back
-    // Using 'page' ensures it targets the page component cache
+    console.log(
+      `[Action - Simple Rerun] Successfully processed. New Find ID: ${updatedFindId}`
+    );
+
+    // Revalidate the path of the *old* page
     revalidatePath(`/finds/[slug]`, "page");
+    console.log(`[Action - Simple Rerun] Path revalidated: /finds/[slug]`);
 
-    // Fetch the new report briefly to get the game name for the slug
-    const newFindResult = await db
-      .select({ reportData: schema.finds.report })
-      .from(schema.finds)
-      .where(eq(schema.finds.id, updatedFindId))
-      .limit(1);
-
-    let gameNameSlug = "game";
-    if (newFindResult.length > 0 && newFindResult[0].reportData) {
-      try {
-        const report = (
-          typeof newFindResult[0].reportData === "string"
-            ? JSON.parse(newFindResult[0].reportData)
-            : newFindResult[0].reportData
-        ) as DetailedIndieGameReport;
-        gameNameSlug =
-          report.gameName
-            ?.toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-+|-+$/g, "") || "game";
-      } catch (e) {
-        console.error(
-          "Failed to parse new report data for slug generation:",
-          e
-        );
-        // Fallback if parsing fails
-        gameNameSlug = "game";
-      }
-    }
+    // Generate slug from gameData.name
+    const gameNameSlug =
+      gameData.name
+        ?.toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphen
+        .replace(/^-+|-+$/g, "") || "game"; // Trim leading/trailing hyphens
 
     const newSlug = `${gameNameSlug}-${updatedFindId}`;
+    console.log(`[Action - Simple Rerun] Generated new slug: ${newSlug}`);
 
-    // Redirect to the new find page
-    redirect(`/finds/${newSlug}`);
-
-    // Note: redirect() throws an error, so code below won't execute
+    // Return success state with the new slug
+    return { message: null, success: true, newSlug: newSlug };
   } catch (err: any) {
-    console.error("Error in rerunAnalysisAction:", err);
-    return { message: err.message || "Failed to rerun analysis." }; // Return error message
+    console.error("[Action - Simple Rerun] Error:", err);
+    return {
+      message:
+        err.message || "Failed to rerun analysis using the simple endpoint.",
+    };
   }
 }

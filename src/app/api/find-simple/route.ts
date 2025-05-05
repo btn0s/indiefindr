@@ -1,0 +1,321 @@
+"use strict";
+// src/app/api/find-simple/route.ts
+
+import { db, schema as dbSchema } from "@/db";
+import { eq } from "drizzle-orm";
+import {
+  DetailedIndieGameReportSchema, // Keep for type validation if needed, though not strictly used by AI here
+  type DetailedIndieGameReport,
+} from "@/schema";
+import { extractSteamAppId } from "@/lib/utils";
+import type {
+  RapidApiGameData,
+  RapidApiExternalLink,
+} from "@/lib/rapidapi/types";
+import { generateEmbedding } from "@/lib/embeddings"; // Import the embedding function
+
+// Allow streaming responses up to 60 seconds
+export const maxDuration = 60;
+
+const rapidApiKey = process.env.RAPIDAPI_KEY;
+
+if (!rapidApiKey) {
+  console.error("RAPIDAPI_KEY environment variable is not set.");
+}
+
+// --- Core Functions (Copied from original find route) ---
+
+async function fetchSteamDataFromApi(appId: string): Promise<any | null> {
+  // Return type 'any' for now, can be refined
+  if (!rapidApiKey) {
+    console.error("RAPIDAPI_KEY not configured for Steam API call.");
+    return null;
+  }
+  if (!appId || !/^[0-9]+$/.test(appId)) {
+    console.error(`Invalid Steam App ID provided: ${appId}`);
+    return null;
+  }
+
+  const url = `https://games-details.p.rapidapi.com/gameinfo/single_game/${appId}`;
+  const options = {
+    method: "GET",
+    headers: {
+      "x-rapidapi-key": rapidApiKey,
+      "x-rapidapi-host": "games-details.p.rapidapi.com",
+    },
+  };
+
+  console.log(`[Simple Find] Fetching Steam data via API for App ID: ${appId}`);
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      const errorBody = await response
+        .text()
+        .catch(() => "Failed to read error body");
+      console.error(`[Simple Find] Steam API Error Body: ${errorBody}`);
+      throw new Error(
+        `[Simple Find] RapidAPI (games-details) failed for App ID ${appId}: ${response.status} ${response.statusText}`
+      );
+    }
+    const result = await response.json();
+    if (result?.status !== 200 || !result?.data) {
+      console.warn(
+        `[Simple Find] Steam API returned non-success status or no data for App ID ${appId}:`,
+        result
+      );
+      return null;
+    }
+    console.log(
+      `[Simple Find] Successfully fetched Steam API data for App ID: ${appId}`
+    );
+    return result.data; // Return the nested 'data' object
+  } catch (error) {
+    console.error(
+      `[Simple Find] Error fetching Steam data for App ID ${appId} via API:`,
+      error
+    );
+    return null;
+  }
+}
+
+function createPartialReportFromSteamApi(
+  steamApiData: RapidApiGameData
+): Partial<DetailedIndieGameReport> {
+  // Helper to safely access nested properties
+  const get = (obj: any, path: string, defaultValue: any = null) =>
+    path.split(".").reduce((acc, part) => acc?.[part], obj) ?? defaultValue;
+
+  const report: Partial<DetailedIndieGameReport> = {
+    gameName: get(steamApiData, "name"),
+    gameDescription: get(steamApiData, "desc"),
+    developerName: get(steamApiData, "dev_details.developer_name.0"),
+    publisherName: get(steamApiData, "dev_details.publisher.0"),
+    releaseInfo: get(steamApiData, "release_date"),
+    genresAndTags: get(steamApiData, "tags", []),
+    relevantLinks: [],
+    overallReportSummary: null,
+    aiConfidenceAssessment: "Report generated from Steam API data only.",
+    fundingInfo: null,
+    teamMembers: null,
+    developerBackground: null,
+    publisherInfo: null,
+    sourceSteamUrl: null,
+  };
+
+  // Add direct links from Steam API data
+  const linksToAdd: Array<{
+    url: string | null;
+    type: string;
+    name: string | null;
+  }> = [];
+
+  const externalLinks: RapidApiExternalLink[] = get(
+    steamApiData,
+    "external_links",
+    []
+  );
+  externalLinks.forEach((link) => {
+    let type = "Other Link";
+    const lowerCaseName = link.name.toLowerCase();
+    const lowerCaseUrl = link.link.toLowerCase();
+
+    if (lowerCaseName === "website" || lowerCaseUrl.includes("notion.site")) {
+      type = "Official Website";
+    } else if (lowerCaseName === "x" || lowerCaseUrl.includes("twitter.com")) {
+      type = "Twitter Profile";
+    } else if (
+      lowerCaseName === "instagram" ||
+      lowerCaseUrl.includes("instagram.com")
+    ) {
+      type = "Instagram";
+    }
+
+    linksToAdd.push({ url: link.link, type: type, name: link.name });
+  });
+
+  const screenshots: string[] = get(steamApiData, "media.screenshot", []);
+  screenshots.forEach((url, index) => {
+    linksToAdd.push({
+      url: url,
+      type: "Screenshot",
+      name: `Screenshot ${index + 1}`,
+    });
+  });
+
+  const videos: string[] = get(steamApiData, "media.videos", []);
+  videos.forEach((url, index) => {
+    linksToAdd.push({ url: url, type: "Video", name: `Video ${index + 1}` });
+  });
+
+  report.relevantLinks = linksToAdd;
+
+  return report;
+}
+
+// --- Simplified POST Handler ---
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  const userQuery = messages[messages.length - 1].content;
+  const primaryUrl = userQuery; // The submitted URL
+
+  // 1. Validate input as a Steam URL and Extract App ID
+  console.log(`[Simple Find] Validating user query as Steam URL: ${userQuery}`);
+  const steamAppId = extractSteamAppId(userQuery);
+
+  if (!steamAppId) {
+    console.error(
+      "[Simple Find] Invalid input: Not a valid Steam App URL.",
+      userQuery
+    );
+    return new Response(
+      JSON.stringify({
+        error:
+          "Invalid input. Please provide a valid Steam App URL (e.g., store.steampowered.com/app/...).",
+      }),
+      { status: 400 }
+    );
+  }
+
+  console.log(
+    `[Simple Find] Processing Steam URL: ${primaryUrl}, App ID: ${steamAppId}`
+  );
+
+  // 2. Fetch Steam API Data
+  const steamApiData: RapidApiGameData | null = await fetchSteamDataFromApi(
+    steamAppId
+  );
+
+  if (!steamApiData) {
+    console.error(
+      `[Simple Find] Cannot generate report: Failed to fetch initial Steam API data for App ID ${steamAppId}.`
+    );
+    return new Response(
+      JSON.stringify({ error: "Failed to fetch game data from Steam API." }),
+      { status: 502 } // Bad Gateway or appropriate error
+    );
+  }
+
+  // 3. Create Partial Report from API Data
+  const partialReport = createPartialReportFromSteamApi(steamApiData);
+  // Add the source URL to the report
+  partialReport.sourceSteamUrl = primaryUrl;
+  // Add the extracted Steam App ID
+  partialReport.steamAppId = steamAppId;
+
+  // 4. Generate Embedding
+  console.log("[Simple Find] Attempting to generate embedding...");
+  let embeddingVector: number[] | null = null;
+  try {
+    // Construct text for embedding (combine key fields from the partial report)
+    const textToEmbed = [
+      partialReport.gameName,
+      partialReport.gameDescription,
+      partialReport.developerName,
+      partialReport.publisherName,
+      Array.isArray(partialReport.genresAndTags)
+        ? partialReport.genresAndTags.join(", ")
+        : null,
+    ]
+      .filter(Boolean) // Remove null/undefined/empty strings
+      .join("\n\n"); // Join with double newline for separation
+
+    if (textToEmbed) {
+      embeddingVector = await generateEmbedding(textToEmbed);
+      console.log("[Simple Find] Embedding generated successfully.");
+    } else {
+      console.warn(
+        "[Simple Find] Could not generate embedding: No text content found in partial report."
+      );
+    }
+  } catch (embeddingError) {
+    console.error(
+      "[Simple Find] Failed to generate embedding:",
+      embeddingError
+    );
+    // Decide if you want to fail the whole process or just log and continue
+    // For now, we log and continue, saving the find without an embedding.
+  }
+
+  // 5. Database Saving
+  console.log(
+    "[Simple Find] Attempting to save find to database (Update or Insert Steam)..."
+  );
+  let findId: number | null = null;
+  try {
+    // Check for existing find using Steam App ID
+    const existingFind = await db
+      .select({ id: dbSchema.finds.id })
+      .from(dbSchema.finds)
+      .where(eq(dbSchema.finds.sourceSteamAppId, steamAppId))
+      .limit(1);
+
+    // Construct data for saving
+    // Ensure the structure matches your db schema, setting unused fields to null
+    const findDataToSave = {
+      sourceSteamUrl: primaryUrl,
+      sourceSteamAppId: steamAppId,
+      rawSteamJson: steamApiData,
+      rawDemoHtml: null, // Not scraped in this version
+      report: partialReport as DetailedIndieGameReport,
+      vectorEmbedding: embeddingVector, // Use the generated embedding vector
+      updatedAt: new Date(),
+    };
+
+    if (existingFind && existingFind.length > 0) {
+      // Update existing find based on steamAppId
+      findId = existingFind[0].id;
+      console.log(
+        `[Simple Find] Found existing find with ID: ${findId}. Updating...`
+      );
+      await db
+        .update(dbSchema.finds)
+        .set(findDataToSave)
+        .where(eq(dbSchema.finds.sourceSteamAppId, steamAppId));
+      console.log(`[Simple Find] Successfully updated find with ID: ${findId}`);
+    } else {
+      // Insert new find
+      console.log(
+        "[Simple Find] No existing find found. Inserting new record..."
+      );
+      const inserted = await db
+        .insert(dbSchema.finds)
+        .values({
+          ...findDataToSave,
+          createdAt: new Date(), // Add createdAt on insert
+        })
+        .returning({ id: dbSchema.finds.id });
+
+      if (inserted && inserted.length > 0 && inserted[0].id) {
+        findId = inserted[0].id;
+        console.log(
+          `[Simple Find] Successfully saved new find to database with ID: ${findId}`
+        );
+      } else {
+        console.error(
+          "[Simple Find] Insert command succeeded but did not return a new ID."
+        );
+        throw new Error(
+          "[Simple Find] Failed to retrieve ID after inserting new find."
+        );
+      }
+    }
+  } catch (error) {
+    console.error("[Simple Find] Error during database operation:", error);
+    return new Response(
+      JSON.stringify({
+        error:
+          "[Simple Find] Failed to save the analysis result to the database.",
+      }),
+      { status: 500 }
+    );
+  }
+
+  // 6. Return the partial report object AND the find ID
+  console.log(`[Simple Find] Responding with report for find ID: ${findId}`);
+  // Ensure partialReport is cast or fits the expected return structure
+  return Response.json({
+    report: partialReport as DetailedIndieGameReport,
+    findId: findId,
+  });
+}

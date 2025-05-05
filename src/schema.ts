@@ -93,9 +93,13 @@ export const DetailedIndieGameReportSchema = z.object({
     ),
 
   // --- Source Data & Confidence ---
-  sourceTweetText: z
+  sourceSteamUrl: z.string().url().nullable(),
+  steamAppId: z
     .string()
-    .describe("The original tweet text provided as input."),
+    .nullable()
+    .describe(
+      "The extracted Steam Application ID, if a Steam store page link was found."
+    ),
   aiConfidenceAssessment: z
     .string()
     .nullable()

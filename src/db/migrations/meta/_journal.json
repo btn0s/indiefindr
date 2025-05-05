@@ -15,6 +15,20 @@
       "when": 1746310184087,
       "tag": "0001_messy_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1746463482796,
+      "tag": "0002_tired_hellfire_club",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1746468825673,
+      "tag": "0003_third_dark_phoenix",
+      "breakpoints": true
     }
   ]
 }
