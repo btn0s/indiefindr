@@ -104,11 +104,13 @@ export default async function Page({
       <div className="w-full max-w-5xl">
         {/* Pass the Steam URL and simple action */}
         {/* The form component will handle disabling if URL is null */}
-        <RerunFormClient
-          findId={initialFindData.id}
-          sourceSteamUrl={sourceUrlForRerun}
-          rerunSimpleAction={rerunSimpleAnalysisAction}
-        />
+        {process.env.NODE_ENV === "development" && (
+          <RerunFormClient
+            findId={initialFindData.id}
+            sourceSteamUrl={sourceUrlForRerun}
+            rerunSimpleAction={rerunSimpleAnalysisAction}
+          />
+        )}
         {/* Render the report directly, passing gameData and sourceSteamUrl */}
         <IndieGameReport
           gameData={initialFindData.gameData}
