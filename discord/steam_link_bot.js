@@ -124,13 +124,19 @@ client.on(Events.MessageCreate, async (message) => {
 
       } catch (error) {
         // Construct error message using the payload keys
-        const linkOrIdForLog = payload.steam_link || payload.app_id || 'unknown identifier'; 
-        let errorMessage = `Failed to post data (${Object.keys(payload).join('=...')}) to ${API_ENDPOINT}. Link/ID: ${linkOrIdForLog}.`;
+        const linkOrIdForLog = payload.steam_link || payload.app_id || 'unknown identifier';
+        let errorMessage = `Failed to post data to ${API_ENDPOINT}. Link/ID: ${linkOrIdForLog}.`;
+
+        // Log request details
+        errorMessage += `\n  Request Method: POST`;
+        errorMessage += `\n  Request Headers: ${JSON.stringify({ 'Content-Type': 'application/json' })}`;
+        errorMessage += `\n  Request Payload: ${JSON.stringify(payload)}`;
+
         // Updated error handling for fetch
         if (error instanceof Error) {
-          errorMessage += ` Error: ${error.message}`;
+          errorMessage += `\n  Error: ${error.message}`; // Includes status and body if thrown from response.ok check
         } else {
-            errorMessage += ` Unknown error: ${error}`
+          errorMessage += `\n  Unknown error object: ${error}`;
         }
         logger.error(errorMessage);
       }
