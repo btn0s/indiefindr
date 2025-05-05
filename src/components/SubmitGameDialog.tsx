@@ -41,7 +41,7 @@ export function SubmitGameDialog() {
 
     try {
       const messages = [{ role: "user", content: inputValue }];
-      const response = await fetch("/api/find", {
+      const response = await fetch("/api/find-simple", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +127,7 @@ export function SubmitGameDialog() {
                   type="url"
                   value={inputValue}
                   onChange={handleInputChange}
-                  placeholder="https://twitter.com/user/status/123456 or https://store.steampowered.com/app/123"
+                  placeholder="https://store.steampowered.com/app/12345"
                   required
                   disabled={isLoading}
                 />
@@ -136,12 +136,6 @@ export function SubmitGameDialog() {
               <div className="bg-slate-100 rounded-lg p-4 text-xs text-slate-600">
                 <p className="font-medium mb-2">Example URLs:</p>
                 <div className="space-y-3">
-                  <div>
-                    <div className="text-slate-700 mb-1">Twitter/X Post:</div>
-                    <code className="block bg-white p-2 rounded border border-slate-200 overflow-hidden text-ellipsis">
-                      https://twitter.com/GameDevName/status/1234567890
-                    </code>
-                  </div>
                   <div>
                     <div className="text-slate-700 mb-1">Steam Page:</div>
                     <code className="block bg-white p-2 rounded border border-slate-200 overflow-hidden text-ellipsis">

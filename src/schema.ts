@@ -93,9 +93,7 @@ export const DetailedIndieGameReportSchema = z.object({
     ),
 
   // --- Source Data & Confidence ---
-  sourceTweetText: z
-    .string()
-    .describe("The original tweet text provided as input."),
+  sourceSteamUrl: z.string().url().nullable(),
   aiConfidenceAssessment: z
     .string()
     .nullable()

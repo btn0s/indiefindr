@@ -85,7 +85,7 @@ export default async function Page({
       id: find.id,
       reportData: reportData,
       createdAt: find.createdAt,
-      sourceTweetUrl: find.sourceTweetUrl,
+      sourceTweetUrl: find.sourceTweetUrl ?? "",
     };
   } catch (error) {
     console.error(`Error fetching find with ID ${findId}:`, error);
@@ -95,18 +95,20 @@ export default async function Page({
 
   // We ensured findData is not null by calling notFound() otherwise
   // Pass the initial data and the *imported* server action to the client component
-  return (
+  return initialFindData ? (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8 bg-gray-50">
       <div className="w-full max-w-5xl">
         {/* Minimal client component for the form/button */}
-        <RerunFormClient
+        {/* <RerunFormClient
           findId={initialFindData.id}
           sourceTweetUrl={initialFindData.sourceTweetUrl}
           rerunAnalysisAction={rerunAnalysisAction}
-        />
+        /> */}
         {/* Render the report directly in the server component */}
         <IndieGameReport reportData={initialFindData.reportData} />
       </div>
     </div>
+  ) : (
+    <div>No data found</div>
   );
 }
