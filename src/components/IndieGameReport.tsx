@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ExternalLinkIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { FaSteam } from "react-icons/fa";
 
 interface IndieGameReportProps {
   gameData: RapidApiGameData;
@@ -205,6 +206,60 @@ export function IndieGameReport({
                 </>
               )}
             </Carousel>
+          </div>
+        )}
+
+        {(sourceSteamUrl ||
+          (gameData.external_links && gameData.external_links.length > 0)) && (
+          <div className="p-3 rounded-lg text-sm border border-green-500 bg-green-100">
+            <h3 className="font-medium mb-2">Ways to Play</h3>
+            <div className="grid grid-cols-1 gap-2">
+              {sourceSteamUrl && (
+                <Button
+                  asChild
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  <Link
+                    href={sourceSteamUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <FaSteam className="mr-2 size-3" />
+                    Play on Steam
+                  </Link>
+                </Button>
+              )}
+
+              {gameData.external_links
+                ?.filter(
+                  (link) =>
+                    link.name.toLowerCase().includes("store") ||
+                    link.name.toLowerCase().includes("play") ||
+                    link.name.toLowerCase().includes("itch") ||
+                    link.name.toLowerCase().includes("epic") ||
+                    link.name.toLowerCase().includes("gog")
+                )
+                .map((link, index) => (
+                  <Button
+                    key={`platform-${index}`}
+                    asChild
+                    variant="outline"
+                    className="border-green-500 hover:bg-green-200"
+                  >
+                    <Link
+                      href={link.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLinkIcon className="mr-2 size-3" />
+                      {link.name.startsWith("play") ||
+                      link.name.startsWith("Play")
+                        ? link.name
+                        : `Play on ${link.name}`}
+                    </Link>
+                  </Button>
+                ))}
+            </div>
           </div>
         )}
 
