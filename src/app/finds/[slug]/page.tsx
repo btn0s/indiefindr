@@ -18,9 +18,13 @@ interface FindPageData {
 }
 
 // This is now an async Server Component
-export default async function Page({ params }: { params: { slug: string } }) {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   // Directly use the slug from params
-  const { slug } = params;
+  const { slug } = await params;
   let findId: number | null = null;
 
   // Split by dash and check length
