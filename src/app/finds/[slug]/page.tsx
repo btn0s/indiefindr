@@ -155,11 +155,11 @@ export async function generateMetadata(
     finalDescription = findData.gameDescription;
   }
 
-  // Ensure total length isn't excessively long (optional refinement)
-  if (finalDescription.length > 200) {
-    // Adjust max length as needed
-    finalDescription = finalDescription.substring(0, 197) + "...";
-  }
+  // // Ensure total length isn't excessively long (optional refinement)
+  // if (finalDescription.length > 200) {
+  //   // Adjust max length as needed
+  //   finalDescription = finalDescription.substring(0, 197) + "...";
+  // }
 
   // Determine Open Graph image
   const images = [];
