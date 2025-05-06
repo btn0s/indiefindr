@@ -184,13 +184,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const recentFindsUrl = `${API_ENDPOINT}/finds/recent?range=month`; // Construct URL
       logger.info(`Fetching monthly finds from API: ${recentFindsUrl}`);
 
-      const response = await axios.get(recentFindsUrl); // Use constructed URL
+      const response = await fetch(recentFindsUrl); // Use fetch instead of axios.get
 
-      if (response.status !== 200) {
-          throw new Error(`API error! Status: ${response.status} - ${response.statusText}`);
+      if (!response.ok) { // Check response.ok for fetch
+          const errorText = await response.text(); // Get error text if available
+          throw new Error(`API error! Status: ${response.status} - ${response.statusText}. Body: ${errorText}`);
       }
 
-      const finds = response.data;
+      const finds = await response.json(); // Parse JSON from fetch response
       if (!Array.isArray(finds)) {
           logger.error('API response for monthly finds was not an array:', finds);
           throw new Error('Received invalid data format from API.');
@@ -226,7 +227,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     } catch (error) {
       logger.error(`Error processing /monthly_finds command: ${error}`);
-      const errorMessage = error.response?.data?.error || error.message || 'There was an error fetching the monthly finds.';
+      // Adjust error message handling slightly as fetch errors might not have response.data
+      const errorMessage = error instanceof Error ? error.message : 'There was an error fetching the monthly finds.';
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ content: `Error: ${errorMessage}`, ephemeral: true });
       } else {
