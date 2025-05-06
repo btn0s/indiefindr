@@ -8,7 +8,8 @@ import {
   type DetailedIndieGameReport,
 } from "@/schema";
 import { extractSteamAppId } from "@/lib/utils";
-import { generateEmbedding } from "@/lib/embeddings"; // Import the embedding function
+// Re-import OpenAI text embedding function
+import { generateEmbedding } from "@/lib/embeddings";
 import { openai } from "@ai-sdk/openai"; // Import AI SDK OpenAI provider
 import { generateText } from "ai"; // Import generateText
 import {
@@ -22,7 +23,17 @@ import {
 import type {
   RapidApiReview,
   RapidApiPricing, // Import the specific pricing object type from game data
+  RapidApiGameData, // Make sure this is imported if used directly for steamApiData type
 } from "@/lib/rapidapi/types";
+
+// Disable local models for now to simplify deployment/environment
+// env.allowLocalModels = false;
+// Use Filesystem cache for models
+// env.useFSCache = true;
+
+// --- CLIP Model Singleton ---
+// Use a class to manage singleton instance and lazy loading
+// class ClipSingleton { ... }
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -81,7 +92,9 @@ export async function POST(req: Request) {
 
   // --- Fetch ALL Data Upfront ---
   // Fetch core game details (includes pricing)
-  const steamApiData = await fetchSteamDataFromApi(steamAppId);
+  const steamApiData: RapidApiGameData | null = await fetchSteamDataFromApi(
+    steamAppId
+  );
   if (!steamApiData) {
     // Handle error: cannot proceed without core data
     console.error(
@@ -134,27 +147,26 @@ export async function POST(req: Request) {
   // Process Pricing - with Fallback
   let processedPricingInfo = "";
   let foundPrimaryPrice = false;
-  if (steamApiData?.pricing && steamApiData.pricing.length > 0) {
+  const pricing = steamApiData.pricing;
+  if (pricing && pricing.length > 0) {
     const basePriceObj =
-      steamApiData.pricing.find(
+      pricing.find(
         (p) =>
           p.name.toLowerCase().startsWith("buy ") ||
           p.name.toLowerCase().startsWith("play ")
-      ) || steamApiData.pricing[0];
+      ) || pricing[0];
 
-    if (basePriceObj?.price.toLowerCase() === "free to play") {
-      processedPricingInfo = "Free to Play";
-      foundPrimaryPrice = true;
-    } else if (basePriceObj?.price) {
+    if (basePriceObj?.price) {
       processedPricingInfo = `Price: ${basePriceObj.price}`;
       foundPrimaryPrice = true;
+      console.log(`[Simple Find] Extracted price: ${basePriceObj.price}`);
     }
   }
 
   // If primary pricing was empty or invalid, try the fallback
   if (!foundPrimaryPrice && partialReport.gameName) {
     console.log(
-      `[Simple Find] Primary pricing not found for ${partialReport.gameName}, attempting fallback search...`
+      `[Simple Find] Primary price not found, attempting fallback search for "${partialReport.gameName}"...`
     );
     const fallbackPrice = await fetchPriceFromSearchApi(partialReport.gameName);
 
@@ -230,47 +242,87 @@ ${textToAnalyze}`,
   }
   // --- End Generate Audience Appeal ---
 
-  // --- Generate Embedding (using processed data) ---
-  console.log("[Simple Find] Attempting to generate embedding...");
+  // --- Generate Embedding (using GPT-4o caption -> text embedding) ---
+  console.log(
+    "[Simple Find] Attempting to generate embedding via GPT-4o caption..."
+  );
   let embeddingVector: number[] | null = null;
   try {
-    const textToEmbed = [
-      partialReport.gameName,
-      partialReport.gameDescription,
-      `Developer: ${partialReport.developerName || "Unknown"}`,
-      `Publisher: ${partialReport.publisherName || "Unknown"}`,
-      Array.isArray(partialReport.genresAndTags)
-        ? `Tags: ${partialReport.genresAndTags.join(", ")}`
-        : null,
-      // Use the concatenated review text if available
-      processedReviewText || null,
-      // Use pricing info if meaningful
-      processedPricingInfo !== "Price not available"
-        ? processedPricingInfo
-        : null,
-    ]
-      .filter(Boolean) // Remove null/undefined/empty strings
-      .join("\n\n"); // Join with double newline for separation
+    const screenshots = steamApiData?.media?.screenshot || [];
+    let imageUrlToDescribe: string | null = null;
+    for (const url of screenshots) {
+      console.log(`[Simple Find][Debug] Checking screenshot URL: ${url}`);
+      if (await isValidImageUrl(url)) {
+        imageUrlToDescribe = url;
+        break;
+      }
+    }
 
-    if (textToEmbed) {
-      embeddingVector = await generateEmbedding(textToEmbed);
+    if (imageUrlToDescribe) {
       console.log(
-        `[Simple Find] Embedding generated successfully from text: "${textToEmbed.substring(
-          0,
-          200 // Show more context including potential review start
-        )}..."`
+        `[Simple Find][Caption] Using image URL: ${imageUrlToDescribe}`
       );
+      const systemPrompt =
+        "You are an expert game analyst. Describe the provided game screenshot concisely but with detail, focusing on visual style, genre indicators, mood, color palette, and any discernible gameplay elements. Aim for 2-3 sentences.";
+      console.log(`[Simple Find][Caption] Sending prompt to GPT-4o...`);
+
+      // Use generateText with image input via messages array
+      const { text: imageCaption } = await generateText({
+        model: openai("gpt-4o"),
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              // Content is an array for multimodal input
+              { type: "text", text: "Describe this game screenshot:" },
+              { type: "image", image: new URL(imageUrlToDescribe) },
+            ],
+          },
+        ],
+        // system: systemPrompt, // Remove system param when using messages
+        // prompt: userPrompt, // Remove prompt param when using messages
+        maxTokens: 150,
+      });
+
+      if (imageCaption && imageCaption.trim().length > 0) {
+        const trimmedCaption = imageCaption.trim();
+        console.log(
+          `[Simple Find][Caption] Raw Caption Received: "${trimmedCaption}"`
+        );
+
+        // Embed the generated caption using the standard text embedding model
+        console.log(
+          "[Simple Find][Caption] Attempting to embed generated caption..."
+        );
+        embeddingVector = await generateEmbedding(trimmedCaption);
+
+        if (embeddingVector) {
+          console.log(
+            `[Simple Find][Caption] Caption embedding generated successfully (Dim: ${embeddingVector.length}).`
+          );
+        } else {
+          console.warn(
+            `[Simple Find][Caption] Text embedding generation failed for caption.`
+          );
+        }
+      } else {
+        console.warn(
+          "[Simple Find][Caption] GPT-4o returned an empty caption for the image."
+        );
+      }
     } else {
       console.warn(
-        "[Simple Find] Could not generate embedding: No text content found after processing."
+        "[Simple Find][Caption] Could not generate embedding: No valid screenshot URL found."
       );
     }
   } catch (embeddingError) {
     console.error(
-      "[Simple Find] Failed to generate embedding:",
+      "[Simple Find] Error during caption generation or embedding process:",
       embeddingError
     );
   }
+  // --- End Generate Embedding ---
 
   // --- Database Saving ---
   console.log(
@@ -305,17 +357,8 @@ ${textToAnalyze}`,
     };
 
     // Filter out null/undefined optional values for update/insert cleanliness
-    const optionalFieldsToClean = {
-      sourceSteamUrl: baseFindData.sourceSteamUrl,
-      sourceSteamAppId: baseFindData.sourceSteamAppId,
-      rawSteamJson: baseFindData.rawSteamJson,
-      rawReviewJson: baseFindData.rawReviewJson,
-      rawDemoHtml: baseFindData.rawDemoHtml,
-      vectorEmbedding: baseFindData.vectorEmbedding,
-      audienceAppeal: baseFindData.audienceAppeal,
-    };
     const cleanedOptionalFields = Object.fromEntries(
-      Object.entries(optionalFieldsToClean).filter(
+      Object.entries(baseFindData).filter(
         ([_, v]) => v !== undefined && v !== null
       )
     );
@@ -392,4 +435,27 @@ ${textToAnalyze}`,
     findId: findId,
     // rawReviewData: reviewData, // Optionally return for debugging
   });
+}
+
+// Helper function to check if a URL is potentially valid and accessible
+async function isValidImageUrl(
+  url: string | undefined | null
+): Promise<boolean> {
+  if (!url) return false;
+  try {
+    // Check if URL path ends with a common image extension, ignoring query parameters
+    const urlPath = new URL(url).pathname;
+    if (!/\.(jpg|jpeg|png|webp)$/i.test(urlPath)) {
+      console.log(`[isValidImageUrl] URL Path "${urlPath}" failed regex test.`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    // Handle potential URL parsing errors
+    console.error(
+      `[isValidImageUrl] Error parsing or testing URL ${url}:`,
+      error instanceof Error ? error.message : String(error)
+    );
+    return false;
+  }
 }

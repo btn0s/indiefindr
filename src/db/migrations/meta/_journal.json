@@ -50,6 +50,20 @@
       "when": 1746496408638,
       "tag": "0006_sloppy_sue_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1746499470070,
+      "tag": "0007_amused_abomination",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1746500038554,
+      "tag": "0008_daily_meltdown",
+      "breakpoints": true
     }
   ]
 }

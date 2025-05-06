@@ -1,31 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, schema } from "@/db";
+// Use OpenAI text embedding
 import { generateEmbedding } from "@/lib/embeddings";
 import { sql, and, or, ilike, asc } from "drizzle-orm";
+
+// Remove Transformers.js imports and setup
+// import {
+//   pipeline,
+//   env,
+//   type PipelineType,
+// } from "@xenova/transformers";
+// env.allowLocalModels = false;
+// env.useFSCache = true;
 
 // Add type for the report structure within the JSONB column
 import type { DetailedIndieGameReport } from "@/schema";
 
-const SEARCH_LIMIT = 10; // Limit the number of search results
-const DISTANCE_THRESHOLD = 0.6; // Slightly increase threshold to allow more semantic matches
+// Remove CLIP Singleton
+// class ClipSingleton { ... }
+
+const SEARCH_LIMIT = 10;
+// Reset threshold for text embeddings
+const DISTANCE_THRESHOLD = 0.6;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("q");
 
   if (!query || query.trim().length === 0) {
-    // Added trim() check
     return NextResponse.json(
       { error: 'Missing or empty search query parameter "q"' },
       { status: 400 }
     );
   }
 
-  const trimmedQuery = query.trim(); // Use trimmed query
+  const trimmedQuery = query.trim();
 
   try {
-    // 1. Generate embedding for the user query
+    // 1. Generate OpenAI text embedding for the user query
+    console.log(
+      `[Search] Generating OpenAI text embedding for query: "${trimmedQuery}"`
+    );
     const queryEmbedding = await generateEmbedding(trimmedQuery);
+
+    if (!queryEmbedding) {
+      console.error(
+        `[Search] Failed to generate OpenAI embedding for query: ${trimmedQuery}`
+      );
+      return NextResponse.json(
+        { error: "Failed to process search query embedding." },
+        { status: 500 }
+      );
+    }
+    console.log(
+      `[Search] OpenAI Query Embedding generated (Dim: ${queryEmbedding.length})`
+    );
     const queryEmbeddingString = `[${queryEmbedding.join(",")}]`;
 
     // 2. Define conditions for keyword search
@@ -33,24 +62,42 @@ export async function GET(req: NextRequest) {
       sql`${schema.finds.report}->>'gameName'`,
       `%${trimmedQuery}%`
     );
-    const tagKeywordCondition = sql`(
-      ${schema.finds.report}->>'genresAndTags'
-    )::text @@ plainto_tsquery('english', ${trimmedQuery})`;
+    const tagKeywordCondition = sql`(${schema.finds.report}->>'genresAndTags')::text @@ plainto_tsquery('english', ${trimmedQuery})`;
+    const descriptionKeywordCondition = sql`(${schema.finds.report}->>'description')::text @@ plainto_tsquery('english', ${trimmedQuery})`;
 
-    // We might still use the combined keyword condition for the flag if needed
-    const keywordConditions = or(nameKeywordCondition, tagKeywordCondition);
+    // Add ILIKE conditions for tags and description as well
+    const tagIlikeCondition = ilike(
+      sql`${schema.finds.report}->>'genresAndTags'`,
+      `%${trimmedQuery}%`
+    );
+    const descriptionIlikeCondition = ilike(
+      sql`${schema.finds.report}->>'description'`,
+      `%${trimmedQuery}%`
+    );
 
-    // 3. Define condition for vector search
+    // Combine ALL keyword conditions (ILIKE on name/tags/desc OR plainto_tsquery on tags/desc)
+    const combinedKeywordConditions = or(
+      nameKeywordCondition,
+      tagKeywordCondition,
+      descriptionKeywordCondition,
+      tagIlikeCondition, // Add ILIKE check for tags
+      descriptionIlikeCondition // Add ILIKE check for description
+    );
+
+    // 3. Define condition for vector search (using OpenAI embeddings)
     const vectorCondition = and(
       sql`${schema.finds.vectorEmbedding} IS NOT NULL`,
+      // Using cosine distance: <=>
       sql`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector < ${DISTANCE_THRESHOLD}`
     );
 
-    // 4. Combine conditions: Find matches that are semantically close OR have an exact tag match
-    const combinedCondition = or(vectorCondition, tagKeywordCondition);
-    // const combinedCondition = vectorCondition; // Use only vector search
+    // 4. Combine conditions: Semantically close (text-to-caption) OR keyword match
+    const combinedCondition = or(vectorCondition, combinedKeywordConditions);
+    // TEMPORARY: Test ONLY keyword conditions
+    // const combinedCondition = combinedKeywordConditions;
 
     // 5. Perform the combined search
+    console.log("[Search] Performing database query...");
     const searchResults = await db
       .select({
         id: schema.finds.id,
@@ -60,10 +107,11 @@ export async function GET(req: NextRequest) {
         rawReviewJson: schema.finds.rawReviewJson,
         distance: sql<
           number | null
-        >`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector`.as(
+          // Calculate cosine distance for vector(1536)
+        >`(1 - (${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector))`.as(
           "distance"
         ),
-        isKeywordMatch: sql<boolean>`${keywordConditions}`.as(
+        isKeywordMatch: sql<boolean>`${combinedKeywordConditions}`.as(
           "is_keyword_match"
         ),
         isTagMatch: sql<boolean>`${tagKeywordCondition}`.as("is_tag_match"),
@@ -71,15 +119,14 @@ export async function GET(req: NextRequest) {
       .from(schema.finds)
       .where(combinedCondition)
       .orderBy(
-        // Prioritize exact tag matches first
-        sql`CASE WHEN ${tagKeywordCondition} THEN 0 ELSE 1 END ASC`,
-        // Then sort by vector distance
+        // Prioritize keyword matches first
+        sql`CASE WHEN ${combinedKeywordConditions} THEN 0 ELSE 1 END ASC`,
+        // Then sort by vector distance (ascending)
         sql`(${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector) ASC NULLS LAST`
       )
       .limit(SEARCH_LIMIT);
 
-    // 6. Post-process results (optional, e.g., removing duplicates if necessary, though ORDER BY should handle priority)
-    // The current query returns a single list prioritized by keyword match then vector similarity.
+    console.log(`[Search] Found ${searchResults.length} results.`);
 
     return NextResponse.json(searchResults);
   } catch (error) {

@@ -9,7 +9,8 @@
     "lint": "next lint",
     "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
     "db:migrate": "dotenv -e .env.local -- tsx src/db/migrate.ts",
-    "db:apply": "dotenv -e .env.local -- npm run db:generate && npm run db:migrate"
+    "db:apply": "dotenv -e .env.local -- npm run db:generate && npm run db:migrate",
+    "db:re-embed": "dotenv -e .env.local -- tsx scripts/re-embed-all.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.21",
@@ -43,6 +44,7 @@
     "@radix-ui/react-tooltip": "^1.2.4",
     "@supabase/ssr": "^0.6.1",
     "@types/cheerio": "^0.22.35",
+    "@xenova/transformers": "^2.17.2",
     "ai": "^4.3.13",
     "cheerio": "^1.0.0",
     "class-variance-authority": "^0.7.1",
@@ -65,6 +67,7 @@
     "react-resizable-panels": "^3.0.0",
     "recharts": "^2.15.3",
     "scrapingbee": "^1.7.5",
+    "sharp": "^0.34.1",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.2.0",
     "twitter-api-v2": "^1.15.0",
