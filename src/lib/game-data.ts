@@ -222,3 +222,67 @@ export async function fetchReviewData(
     return null;
   }
 }
+
+// --- Fallback Pricing Fetch --- 
+
+// Fetches price using the /search endpoint as a fallback
+// Export this function so it can be imported
+export async function fetchPriceFromSearchApi(gameName: string): Promise<string | null> {
+  if (!rapidApiKey) {
+    console.error("[Game Data] RAPIDAPI_KEY not configured for search API call.");
+    return null;
+  }
+  if (!gameName || gameName.trim() === "") {
+      console.warn("[Game Data] Cannot fetch price from search: gameName is empty.");
+      return null;
+  }
+
+  const trimmedGameName = gameName.trim();
+  const searchUrl = `https://games-details.p.rapidapi.com/search?sugg=${encodeURIComponent(trimmedGameName)}`;
+  const options = {
+    method: "GET",
+    headers: {
+      "x-rapidapi-key": rapidApiKey,
+      "x-rapidapi-host": "games-details.p.rapidapi.com",
+    },
+  };
+
+  console.log(`[Game Data] Fetching fallback price via Search API for: ${trimmedGameName}`);
+  try {
+    const response = await fetch(searchUrl, options);
+    if (!response.ok) {
+        const errorBody = await response.text().catch(() => "Failed to read error body");
+        console.error(`[Game Data] Search API Error (${searchUrl}): ${response.status}, Body: ${errorBody}`);
+        return null; // Don't throw, just return null for fallback failure
+    }
+    const result = await response.json();
+
+    let foundPrice: string | null = null;
+    const searchResults = result?.data?.search;
+
+    if (Array.isArray(searchResults) && searchResults.length > 0) {
+      const targetNameLower = trimmedGameName.toLowerCase();
+      // Find exact match first
+      const foundGame = searchResults.find(
+        (game) => game.name?.toLowerCase() === targetNameLower
+      );
+
+      if (
+        foundGame &&
+        typeof foundGame.price === "string" &&
+        foundGame.price.trim() !== ""
+      ) {
+        foundPrice = foundGame.price.trim();
+        console.log(`[Game Data] Found fallback price "${foundPrice}" for ${trimmedGameName}`);
+      } else {
+          console.log(`[Game Data] No exact match or price found in search results for ${trimmedGameName}`);
+          // Optional: Add logic for partial matches if needed
+      }
+    }
+
+    return foundPrice;
+  } catch (error) {
+    console.error(`[Game Data] Error fetching fallback price for ${trimmedGameName} via Search API:`, error);
+    return null;
+  }
+}

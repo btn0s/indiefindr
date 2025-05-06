@@ -140,22 +140,12 @@ export default async function Page({
       );
     }
   }
-  // --- End Parsing ---
-
-  const sourceUrlForRerun: string | null = fetchedFind.sourceSteamUrl ?? null;
 
   return (
     <div className="min-h-screen flex flex-col items-center sm:p-4 md:p-8 bg-gray-50">
       <div className="w-full max-w-5xl sm:px-4 relative">
-        {process.env.NODE_ENV === "development" && (
-          <div className="absolute top-4 right-4 z-10">
-            <RerunFormClient
-              findId={fetchedFind.id}
-              sourceSteamUrl={sourceUrlForRerun}
-            />
-          </div>
-        )}
         <IndieGameReport
+          id={fetchedFind.id}
           gameData={gameData}
           sourceSteamUrl={fetchedFind.sourceSteamUrl}
           audienceAppeal={fetchedFind.audienceAppeal}

@@ -15,6 +15,7 @@ import {
   fetchSteamDataFromApi,
   createPartialReportFromSteamApi,
   fetchReviewData, // Keep review fetch
+  fetchPriceFromSearchApi, // Import the fallback function
 } from "@/lib/game-data"; // Import the moved functions
 
 // Import the specific Review type, Price is part of GameData now
@@ -130,8 +131,9 @@ export async function POST(req: Request) {
   // Keep processedReviewSummary for potential display logic if needed, or remove
   // let processedReviewSummary = processedReviewText ? "Reviews available" : "No recent reviews available";
 
-  // Process Pricing
+  // Process Pricing - with Fallback
   let processedPricingInfo = "";
+  let foundPrimaryPrice = false;
   if (steamApiData?.pricing && steamApiData.pricing.length > 0) {
     const basePriceObj =
       steamApiData.pricing.find(
@@ -142,12 +144,55 @@ export async function POST(req: Request) {
 
     if (basePriceObj?.price.toLowerCase() === "free to play") {
       processedPricingInfo = "Free to Play";
+      foundPrimaryPrice = true;
     } else if (basePriceObj?.price) {
       processedPricingInfo = `Price: ${basePriceObj.price}`;
-    } else {
-      processedPricingInfo = "Price not available";
+      foundPrimaryPrice = true;
     }
-  } else {
+  }
+
+  // If primary pricing was empty or invalid, try the fallback
+  if (!foundPrimaryPrice && partialReport.gameName) {
+    console.log(
+      `[Simple Find] Primary pricing not found for ${partialReport.gameName}, attempting fallback search...`
+    );
+    const fallbackPrice = await fetchPriceFromSearchApi(partialReport.gameName);
+
+    if (fallbackPrice) {
+      // Update display info
+      processedPricingInfo = `Price: ${fallbackPrice}`;
+      console.log(`[Simple Find] Found fallback price: ${fallbackPrice}`);
+
+      // --- Splice fallback price into steamApiData ---
+      if (steamApiData) {
+        // Should always exist if we have partialReport.gameName
+        if (!Array.isArray(steamApiData.pricing)) {
+          console.warn(
+            `[Simple Find] Initial steamApiData.pricing was not an array for ${partialReport.gameName}. Initializing.`
+          );
+          steamApiData.pricing = []; // Initialize if needed
+        }
+        // Add the fallback price as a new entry
+        steamApiData.pricing.push({
+          name: partialReport.gameName || "Base Game", // Use game name or a default
+          price: fallbackPrice,
+        });
+        console.log(
+          `[Simple Find] Spliced fallback price into steamApiData.pricing`
+        );
+      } else {
+        console.error(
+          `[Simple Find] Cannot splice fallback price: steamApiData is unexpectedly null/undefined.`
+        );
+      }
+      // --- End Splicing ---
+    } else {
+      processedPricingInfo = "Price not available"; // Still N/A if fallback fails
+      console.log(
+        `[Simple Find] Fallback price search failed or yielded no result.`
+      );
+    }
+  } else if (!foundPrimaryPrice) {
     processedPricingInfo = "Price not available";
   }
   // --- End Processing Logic ---

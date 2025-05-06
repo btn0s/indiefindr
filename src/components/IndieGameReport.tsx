@@ -23,14 +23,16 @@ import {
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ExternalLinkIcon } from "lucide-react";
+import { Copy, ExternalLinkIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { FaSteam } from "react-icons/fa";
 import { GameNewsSection } from "@/components/GameNewsSection";
 import { GameReviewSentiment } from "./GameReviewSentiment";
 import { ImageWithFallbacks } from "./ImageWithFallbacks";
+import { RerunFormClient } from "./RerunFormClient";
 
 interface IndieGameReportProps {
+  id: number;
   gameData: RapidApiGameData;
   sourceSteamUrl: string | null;
   audienceAppeal: string | null;
@@ -58,6 +60,7 @@ const getDisplayPrice = (
 };
 
 export function IndieGameReport({
+  id,
   gameData,
   sourceSteamUrl,
   audienceAppeal,
@@ -92,7 +95,22 @@ export function IndieGameReport({
   const displayPrice = getDisplayPrice(gameData.pricing);
 
   return (
-    <div className="w-full mx-auto sm:border sm:rounded-xl overflow-hidden shadow-md bg-background">
+    <div className="w-full relative mx-auto sm:border sm:rounded-xl overflow-hidden shadow-md bg-background">
+      {process.env.NODE_ENV === "development" && (
+        <div className="absolute top-4 flex gap-2 right-4 z-10 items-center">
+          <span className="text-xs text-muted-foreground">DEBUG</span>
+          <RerunFormClient findId={id} sourceSteamUrl={sourceSteamUrl} />
+          <Button
+            onClick={copyJsonToClipboard}
+            variant="secondary"
+            size="sm"
+            className="text-xs"
+          >
+            <Copy className="size-3" />
+            {copyStatus || "Copy Raw JSON"}
+          </Button>
+        </div>
+      )}
       <div className="w-full h-[150px] relative">
         {imageSources.length > 0 ? (
           <ImageWithFallbacks
@@ -281,29 +299,6 @@ export function IndieGameReport({
         )}
 
         {steamAppId && <GameNewsSection steamAppId={steamAppId} />}
-
-        {process.env.NODE_ENV === "development" && (
-          <button
-            onClick={copyJsonToClipboard}
-            className="absolute top-2 right-4 w-fit px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 text-xs font-medium flex items-center gap-1 transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            {copyStatus || "Copy Raw JSON"}
-          </button>
-        )}
       </div>
     </div>
   );
