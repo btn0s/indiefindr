@@ -10,6 +10,13 @@ import { useDebounce } from "use-debounce"; // Using a hook for debouncing
 import { IndieGameListItem } from "@/components/IndieGameListItem"; // Import the component
 import { DetailedIndieGameReport } from "@/schema"; // Import the report type
 import { RapidApiGameData } from "@/lib/rapidapi/types"; // Add this import
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // Import Select components
 
 // Define the shape of the search result items from our API (updated)
 interface SearchResultFromApi {
@@ -52,6 +59,9 @@ export default function SearchClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false); // Track if a search has been performed
+  const [sortOrder, setSortOrder] = useState<"relevance" | "newest" | "oldest">(
+    "relevance"
+  ); // Add state for sorting
 
   // Debounce the query state by 500ms
   const [debouncedQuery] = useDebounce(query, 500);
@@ -115,21 +125,26 @@ export default function SearchClient() {
     performSearch(debouncedQuery);
   }, [debouncedQuery, performSearch]);
 
-  // Effect to handle initial load with query param (runs only once)
-  // This is removed because initialization is now handled in useState
-  // useEffect(() => {
-  //   const initialQueryFromUrl = searchParams.get("query");
-  //   if (initialQueryFromUrl) {
-  //     // Set query state directly, which will trigger the debounced search
-  //     setQuery(initialQueryFromUrl);
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []); // Empty dependency array ensures this runs only once on mount
+  // Prepare sorted results for rendering
+  const sortedResults = [...results].sort((a, b) => {
+    switch (sortOrder) {
+      case "newest":
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      case "oldest":
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      case "relevance":
+      default:
+        // API results are already sorted by relevance (distance),
+        // but explicitly sort by distance to be sure if needed.
+        // Assuming lower distance is more relevant.
+        return a.distance - b.distance;
+    }
+  });
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Search Finds</h1>
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-col sm:flex-row gap-2 mb-6">
         <Input
           type="search"
           placeholder="Search for games, descriptions, genres..."
@@ -137,11 +152,27 @@ export default function SearchClient() {
           onChange={(e) => setQuery(e.target.value)}
           className="flex-grow bg-background"
         />
-        {/* Optional: Add a manual search button if debouncing isn't desired */}
+        {/* Manual search button remains */}
         <Button onClick={() => performSearch(query)} disabled={isLoading}>
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Search
         </Button>
+        {/* Add Sort Dropdown */}
+        <Select
+          value={sortOrder}
+          onValueChange={(value) =>
+            setSortOrder(value as "relevance" | "newest" | "oldest")
+          }
+        >
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="relevance">Sort by Relevance</SelectItem>
+            <SelectItem value="newest">Sort by Newest</SelectItem>
+            <SelectItem value="oldest">Sort by Oldest</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       {/* --- Results Area --- */}
       <div className="flex flex-col gap-2">
@@ -161,16 +192,16 @@ export default function SearchClient() {
           </div>
         )}
 
-        {/* Results Display */}
+        {/* Results Display - Use sortedResults */}
         {!isLoading && !error && hasSearched && (
           <div>
-            {results.length > 0 ? (
+            {sortedResults.length > 0 ? ( // Use sortedResults
               <>
                 {/* Add results heading */}
                 <h2 className="text-lg font-semibold mb-2">Search Results</h2>
                 {/* Use ul styling from homepage */}
                 <ul className="flex flex-col gap-2">
-                  {results
+                  {sortedResults // Use sortedResults
                     .filter(
                       (result) =>
                         result.reportData &&
@@ -190,7 +221,7 @@ export default function SearchClient() {
                               ...result,
                               gameData: result.gameData ?? undefined, // Map null to undefined
                             }}
-                            showCreatedAt={false}
+                            showCreatedAt={false} // Keep this false unless needed
                           />
                         </Link>
                       </li>
@@ -199,7 +230,7 @@ export default function SearchClient() {
               </>
             ) : (
               <p className="text-center text-muted-foreground py-6">
-                No results found for "{debouncedQuery}".
+                No results found for \"{debouncedQuery}\".
               </p>
             )}
           </div>
