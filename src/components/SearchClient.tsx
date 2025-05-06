@@ -9,7 +9,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { useDebounce } from "use-debounce"; // Using a hook for debouncing
 import { IndieGameListItem } from "@/components/IndieGameListItem"; // Import the component
 import { DetailedIndieGameReport } from "@/schema"; // Import the report type
-import { RapidApiGameData } from "@/lib/rapidapi/types"; // Add this import
+import { RapidApiGameData, RapidApiReview } from "@/lib/rapidapi/types"; // Add this import
 import {
   Select,
   SelectContent,
@@ -24,7 +24,8 @@ interface SearchResultFromApi {
   report: DetailedIndieGameReport | string; // API might return string initially
   createdAt: string;
   distance: number;
-  rawSteamJson?: any;
+  rawSteamJson?: any; // Core game data from Steam API
+  rawReviewJson?: any; // Review data from Review API
 }
 
 // Define the shape after parsing
@@ -33,7 +34,8 @@ interface ParsedSearchResult {
   reportData: DetailedIndieGameReport;
   createdAt: Date;
   distance: number;
-  gameData?: RapidApiGameData | null;
+  gameData?: RapidApiGameData | null; // Parsed core game data
+  rawReviewJson?: RapidApiReview[] | null; // Parsed review data
 }
 
 // Function to create SEO-friendly slugs (copied from src/app/page.tsx)
@@ -90,16 +92,23 @@ export default function SearchClient() {
         );
       }
       const data: SearchResultFromApi[] = await response.json();
-      // Ensure report and gameData are parsed
+      // Ensure report, gameData, and reviewData are parsed
       const parsedResults: ParsedSearchResult[] = data.map((item) => {
         const reportData =
           typeof item.report === "string"
             ? JSON.parse(item.report)
             : item.report;
+        // Parse gameData from rawSteamJson
         const gameData = item.rawSteamJson
           ? typeof item.rawSteamJson === "string"
             ? JSON.parse(item.rawSteamJson)
             : item.rawSteamJson
+          : null;
+        // Parse reviewData from rawReviewJson
+        const reviewData = item.rawReviewJson
+          ? typeof item.rawReviewJson === "string"
+            ? JSON.parse(item.rawReviewJson)
+            : item.rawReviewJson
           : null;
 
         return {
@@ -108,6 +117,7 @@ export default function SearchClient() {
           createdAt: new Date(item.createdAt),
           distance: item.distance,
           gameData: gameData as RapidApiGameData | null,
+          rawReviewJson: reviewData as RapidApiReview[] | null, // Add parsed reviews
         };
       });
       setResults(parsedResults);
@@ -195,13 +205,13 @@ export default function SearchClient() {
         {/* Results Display - Use sortedResults */}
         {!isLoading && !error && hasSearched && (
           <div>
-            {sortedResults.length > 0 ? ( // Use sortedResults
+            {sortedResults.length > 0 ? (
               <>
                 {/* Add results heading */}
                 <h2 className="text-lg font-semibold mb-2">Search Results</h2>
                 {/* Use ul styling from homepage */}
                 <ul className="flex flex-col gap-2">
-                  {sortedResults // Use sortedResults
+                  {sortedResults
                     .filter(
                       (result) =>
                         result.reportData &&
@@ -218,10 +228,13 @@ export default function SearchClient() {
                         >
                           <IndieGameListItem
                             find={{
-                              ...result,
-                              gameData: result.gameData ?? undefined, // Map null to undefined
+                              id: result.id,
+                              reportData: result.reportData,
+                              createdAt: result.createdAt,
+                              gameData: result.gameData ?? undefined,
+                              rawReviewJson: result.rawReviewJson ?? undefined,
                             }}
-                            showCreatedAt={false} // Keep this false unless needed
+                            showCreatedAt={false}
                           />
                         </Link>
                       </li>

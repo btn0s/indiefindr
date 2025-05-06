@@ -43,6 +43,13 @@
       "when": 1746482546766,
       "tag": "0005_mixed_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1746496408638,
+      "tag": "0006_sloppy_sue_storm",
+      "breakpoints": true
     }
   ]
 }

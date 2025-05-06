@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 // Import the report schema for type checking the response
 import type { DetailedIndieGameReport } from "@/schema";
+import { Recycle } from "lucide-react";
 
 // Props for the client component
 interface RerunFormClientProps {
@@ -26,16 +27,22 @@ function RerunButton({
     <Button
       type="submit"
       disabled={isSubmitting || !sourceSteamUrl}
-      variant="outline"
+      variant="secondary"
       aria-disabled={isSubmitting || !sourceSteamUrl}
+      size="sm"
+      className="text-xs"
     >
+      <Recycle className="size-3" />
       {isSubmitting ? "Rerunning..." : "Rerun Analysis"}
     </Button>
   );
 }
 
 // The minimal client component for the form
-export function RerunFormClient({ findId, sourceSteamUrl }: RerunFormClientProps) {
+export function RerunFormClient({
+  findId,
+  sourceSteamUrl,
+}: RerunFormClientProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -89,10 +96,7 @@ export function RerunFormClient({ findId, sourceSteamUrl }: RerunFormClientProps
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mb-4 flex justify-end items-center gap-2"
-    >
+    <form onSubmit={handleSubmit}>
       {error && <p className="text-red-600 text-sm mr-auto">{error}</p>}
 
       {!sourceSteamUrl && !error && (

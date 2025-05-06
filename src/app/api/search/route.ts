@@ -57,17 +57,15 @@ export async function GET(req: NextRequest) {
         report: schema.finds.report,
         createdAt: schema.finds.createdAt,
         rawSteamJson: schema.finds.rawSteamJson,
-        // Calculate distance for sorting (will be null if only keyword match)
+        rawReviewJson: schema.finds.rawReviewJson,
         distance: sql<
           number | null
         >`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector`.as(
           "distance"
         ),
-        // Add a flag to know if it was a keyword match (useful for potential re-ranking)
         isKeywordMatch: sql<boolean>`${keywordConditions}`.as(
           "is_keyword_match"
         ),
-        // Add a specific flag for tag matching
         isTagMatch: sql<boolean>`${tagKeywordCondition}`.as("is_tag_match"),
       })
       .from(schema.finds)

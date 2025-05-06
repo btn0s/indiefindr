@@ -2,7 +2,10 @@ import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { IndieGameReport } from "@/components/IndieGameReport";
-import { type RapidApiGameData } from "@/lib/rapidapi/types";
+import {
+  type RapidApiGameData,
+  type RapidApiReview,
+} from "@/lib/rapidapi/types";
 import { RerunFormClient } from "@/components/RerunFormClient";
 
 // Import only the simple rerun server action
@@ -47,12 +50,21 @@ export default async function Page({
 
   // Fetch data directly on the server
   console.log(`[Find Page] Fetching data for resolved find ID: ${findId}`);
-  let initialFindData: FindPageData | null = null;
+  let fetchedFind: {
+    id: number;
+    rawSteamJson: any;
+    rawReviewJson: any;
+    createdAt: Date;
+    sourceSteamUrl: string | null;
+    audienceAppeal: string | null;
+  } | null = null;
+
   try {
     const result = await db
       .select({
         id: schema.finds.id,
         rawSteamJson: schema.finds.rawSteamJson,
+        rawReviewJson: schema.finds.rawReviewJson,
         createdAt: schema.finds.createdAt,
         sourceSteamUrl: schema.finds.sourceSteamUrl,
         audienceAppeal: schema.finds.audienceAppeal,
@@ -62,75 +74,84 @@ export default async function Page({
       .limit(1);
 
     if (result.length === 0) {
-      notFound(); // Not found
-    }
-
-    const find = result[0];
-    let gameData: RapidApiGameData | null = null;
-
-    // Parse the rawSteamJson
-    if (find.rawSteamJson) {
-      if (typeof find.rawSteamJson === "object" && find.rawSteamJson !== null) {
-        gameData = find.rawSteamJson as RapidApiGameData;
-      } else if (typeof find.rawSteamJson === "string") {
-        try {
-          gameData = JSON.parse(find.rawSteamJson) as RapidApiGameData;
-        } catch (e) {
-          console.error(`Failed to parse rawSteamJson for find ${find.id}:`, e);
-          // If parsing fails, treat as critical
-          notFound();
-        }
-      }
-    }
-
-    // If gameData couldn't be derived, treat as not found
-    if (!gameData) {
-      console.error(
-        `Game data is null or invalid after parsing for find ${find.id}`
-      );
       notFound();
     }
-
-    initialFindData = {
-      id: find.id,
-      gameData: gameData,
-      createdAt: find.createdAt,
-      sourceSteamUrl: find.sourceSteamUrl ?? null,
-      audienceAppeal: find.audienceAppeal ?? null,
-    };
+    fetchedFind = result[0];
   } catch (error) {
     console.error(`Error fetching find with ID ${findId}:`, error);
-    // Consider showing a generic error page instead of notFound for DB errors
-    notFound(); // Or throw error to trigger error.tsx
+    notFound();
   }
 
-  // Rerun is only possible if we have a source Steam URL
-  const sourceUrlForRerun: string | null =
-    initialFindData?.sourceSteamUrl ?? null;
+  // --- Parse Fetched Data ---
+  if (!fetchedFind) {
+    notFound();
+  }
 
-  return initialFindData?.gameData ? (
+  let gameData: RapidApiGameData | null = null;
+  if (fetchedFind.rawSteamJson) {
+    if (
+      typeof fetchedFind.rawSteamJson === "object" &&
+      fetchedFind.rawSteamJson !== null
+    ) {
+      gameData = fetchedFind.rawSteamJson as RapidApiGameData;
+    } else if (typeof fetchedFind.rawSteamJson === "string") {
+      try {
+        gameData = JSON.parse(fetchedFind.rawSteamJson) as RapidApiGameData;
+      } catch (e) {
+        console.error(
+          `Failed to parse rawSteamJson for find ${fetchedFind.id}:`,
+          e
+        );
+        notFound();
+      }
+    }
+  }
+  if (!gameData) {
+    console.error(
+      `Game data is null or invalid after parsing for find ${fetchedFind.id}`
+    );
+    notFound();
+  }
+
+  // Parse Review Data
+  let reviewData: RapidApiReview[] | null = null;
+  if (fetchedFind.rawReviewJson) {
+    if (Array.isArray(fetchedFind.rawReviewJson)) {
+      reviewData = fetchedFind.rawReviewJson as RapidApiReview[];
+    } else if (typeof fetchedFind.rawReviewJson === "string") {
+      try {
+        reviewData = JSON.parse(fetchedFind.rawReviewJson) as RapidApiReview[];
+        if (!Array.isArray(reviewData)) {
+          console.warn(
+            `Parsed rawReviewJson is not an array for find ${fetchedFind.id}`
+          );
+          reviewData = null;
+        }
+      } catch (e) {
+        console.error(
+          `Failed to parse rawReviewJson for find ${fetchedFind.id}:`,
+          e
+        );
+        reviewData = null;
+      }
+    } else {
+      console.warn(
+        `rawReviewJson is not an array or string for find ${fetchedFind.id}`
+      );
+    }
+  }
+
+  return (
     <div className="min-h-screen flex flex-col items-center sm:p-4 md:p-8 bg-gray-50">
       <div className="w-full max-w-5xl sm:px-4 relative">
-        {/* Pass the Steam URL and simple action */}
-        {/* The form component will handle disabling if URL is null */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="absolute top-4 right-4 z-10">
-            <RerunFormClient
-              findId={initialFindData.id}
-              sourceSteamUrl={sourceUrlForRerun}
-            />
-          </div>
-        )}
-        {/* Render the report directly, passing gameData and sourceSteamUrl */}
         <IndieGameReport
-          gameData={initialFindData.gameData}
-          sourceSteamUrl={initialFindData.sourceSteamUrl}
-          audienceAppeal={initialFindData.audienceAppeal}
+          id={fetchedFind.id}
+          gameData={gameData}
+          sourceSteamUrl={fetchedFind.sourceSteamUrl}
+          audienceAppeal={fetchedFind.audienceAppeal}
+          rawReviewJson={reviewData}
         />
       </div>
     </div>
-  ) : (
-    // This condition might be less likely now due to earlier notFound calls
-    <div>No data found or data is invalid</div>
   );
 }

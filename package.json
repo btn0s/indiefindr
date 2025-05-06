@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
-    "db:migrate": "dotenv -e .env.local -- tsx src/db/migrate.ts"
+    "db:migrate": "dotenv -e .env.local -- tsx src/db/migrate.ts",
+    "db:apply": "dotenv -e .env.local -- npm run db:generate && npm run db:migrate"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.21",
