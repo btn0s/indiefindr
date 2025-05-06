@@ -75,7 +75,7 @@ See our [contribution guidelines](CONTRIBUTING.md) for more information.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) - see the [LICENSE](LICENSE) file for details. This license ensures that anyone who uses or modifies IndieFinder must also make their code available under the same terms, even when the software is accessed over a network.
 
 ## Acknowledgments
 
