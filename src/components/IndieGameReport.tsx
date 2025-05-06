@@ -66,7 +66,7 @@ export function IndieGameReport({
   const backgroundImage = findGameBackgroundImage(gameData, steamAppId);
 
   return (
-    <div className="w-full mx-auto border rounded-xl overflow-hidden shadow-md bg-background">
+    <div className="w-full mx-auto sm:border sm:rounded-xl overflow-hidden shadow-md bg-background">
       <div className="w-full h-[150px] relative">
         {imageSources.length > 0 ? (
           <ImageWithFallbacks
