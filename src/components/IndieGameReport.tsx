@@ -190,7 +190,7 @@ export function IndieGameReport({
         </div>
 
         <div>
-          <p className="text-muted-foreground text-sm mb-2">
+          <p className="text-muted-foreground text-sm mb-6">
             {gameData.desc || gameData.about_game || ""}
           </p>
 
@@ -202,49 +202,6 @@ export function IndieGameReport({
               </div>
               <div className="text-muted-foreground text-sm">
                 {audienceAppeal}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border bg-muted p-4 text-sm">
-          <div>
-            <div className="font-medium text-foreground">Release Date</div>
-            <div className="text-muted-foreground">
-              {gameData.release_date || "N/A"}
-            </div>
-          </div>
-          <div>
-            <div className="font-medium text-foreground">Developer</div>
-            <div className="text-muted-foreground truncate">
-              {gameData.dev_details?.developer_name?.join(", ") || "Unknown"}
-            </div>
-          </div>
-          <div>
-            <div className="font-medium text-foreground">Price</div>
-            <div className="text-muted-foreground">{displayPrice}</div>
-          </div>
-          {gameData.dev_details?.publisher?.length > 0 && (
-            <div>
-              <div className="font-medium text-foreground">Publisher</div>
-              <div className="text-muted-foreground truncate">
-                {gameData.dev_details.publisher.join(", ") || "Unknown"}
-              </div>
-            </div>
-          )}
-          {gameData.tags && gameData.tags.length > 0 && (
-            <div className="col-span-2 mt-2">
-              <div className="font-medium text-foreground mb-1.5">Tags</div>
-              <div className="flex flex-wrap gap-1.5">
-                {gameData.tags.map((item, index) => (
-                  <Badge
-                    key={index}
-                    variant="outline"
-                    className="bg-background"
-                  >
-                    {item}
-                  </Badge>
-                ))}
               </div>
             </div>
           )}
@@ -299,6 +256,49 @@ export function IndieGameReport({
             </Carousel>
           </div>
         )}
+
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border bg-muted p-4 text-sm">
+          <div>
+            <div className="font-medium text-foreground">Release Date</div>
+            <div className="text-muted-foreground">
+              {gameData.release_date || "N/A"}
+            </div>
+          </div>
+          <div>
+            <div className="font-medium text-foreground">Developer</div>
+            <div className="text-muted-foreground truncate">
+              {gameData.dev_details?.developer_name?.join(", ") || "Unknown"}
+            </div>
+          </div>
+          <div>
+            <div className="font-medium text-foreground">Price</div>
+            <div className="text-muted-foreground">{displayPrice}</div>
+          </div>
+          {gameData.dev_details?.publisher?.length > 0 && (
+            <div>
+              <div className="font-medium text-foreground">Publisher</div>
+              <div className="text-muted-foreground truncate">
+                {gameData.dev_details.publisher.join(", ") || "Unknown"}
+              </div>
+            </div>
+          )}
+          {gameData.tags && gameData.tags.length > 0 && (
+            <div className="col-span-2 mt-2">
+              <div className="font-medium text-foreground mb-1.5">Tags</div>
+              <div className="flex flex-wrap gap-1.5">
+                {gameData.tags.map((item, index) => (
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className="bg-background"
+                  >
+                    {item}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {steamAppId && <GameNewsSection steamAppId={steamAppId} />}
       </div>
