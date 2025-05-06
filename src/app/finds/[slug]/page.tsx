@@ -7,6 +7,8 @@ import {
   type RapidApiGameData,
   type RapidApiReview,
 } from "@/lib/rapidapi/types";
+// Import utils for image handling and ID extraction
+import { extractSteamAppId, findGameImage } from "@/lib/utils";
 // We don't need RerunFormClient or actions here for metadata
 
 // Type for the props received by both Page and generateMetadata
@@ -14,10 +16,14 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-// Helper function to extract ID and fetch basic find data
-async function getFindBasics(
-  slug: string
-): Promise<{ id: number; gameName: string | null } | null> {
+// Enhanced helper function to fetch data needed for metadata
+async function getFindMetadataData(slug: string): Promise<{
+  id: number;
+  gameName: string | null;
+  steamAppId: string | null;
+  headerImageUrl: string | null;
+  firstScreenshotUrl: string | null;
+} | null> {
   let findId: number | null = null;
   const parts = slug.split("-");
   const idStr = parts.length === 1 ? parts[0] : parts[parts.length - 1];
@@ -35,9 +41,11 @@ async function getFindBasics(
   }
 
   try {
+    // Fetch id, steam url, and the raw json containing name/images
     const result = await db
       .select({
         id: schema.finds.id,
+        sourceSteamUrl: schema.finds.sourceSteamUrl,
         rawSteamJson: schema.finds.rawSteamJson,
       })
       .from(schema.finds)
@@ -50,31 +58,62 @@ async function getFindBasics(
 
     const find = result[0];
     let gameName: string | null = null;
+    let headerImageUrl: string | null = null;
+    let firstScreenshotUrl: string | null = null;
+    let steamAppId: string | null = null;
 
+    // Extract Steam App ID first
+    if (find.sourceSteamUrl) {
+      steamAppId = extractSteamAppId(find.sourceSteamUrl);
+    }
+
+    // Attempt to parse rawSteamJson for name and images
     if (find.rawSteamJson) {
-      // Basic check for game name within the JSON structure
-      if (
-        typeof find.rawSteamJson === "object" &&
-        find.rawSteamJson !== null &&
-        typeof (find.rawSteamJson as any).name === "string"
-      ) {
-        gameName = (find.rawSteamJson as any).name;
-      } else if (typeof find.rawSteamJson === "string") {
-        try {
-          const parsedData = JSON.parse(find.rawSteamJson);
-          if (typeof parsedData?.name === "string") {
-            gameName = parsedData.name;
-          }
-        } catch (e) {
-          console.error(
-            `[Metadata] Failed to parse rawSteamJson for find ${find.id}:`,
-            e
-          );
+      let parsedData: Partial<RapidApiGameData> | null = null;
+      try {
+        if (
+          typeof find.rawSteamJson === "object" &&
+          find.rawSteamJson !== null
+        ) {
+          parsedData = find.rawSteamJson as Partial<RapidApiGameData>;
+        } else if (typeof find.rawSteamJson === "string") {
+          parsedData = JSON.parse(
+            find.rawSteamJson
+          ) as Partial<RapidApiGameData>;
         }
+
+        if (parsedData) {
+          gameName =
+            typeof parsedData.name === "string" ? parsedData.name : null;
+          // Get first screenshot if available
+          firstScreenshotUrl =
+            Array.isArray(parsedData.media?.screenshot) &&
+            parsedData.media.screenshot.length > 0 &&
+            typeof parsedData.media.screenshot[0] === "string"
+              ? parsedData.media.screenshot[0]
+              : null;
+        }
+      } catch (e) {
+        console.error(
+          `[Metadata] Failed to parse rawSteamJson for find ${find.id}:`,
+          e
+        );
+        // Continue without parsed data, rely on steamAppId for header image later
       }
     }
 
-    return { id: find.id, gameName };
+    // Fallback/override: Use steamAppId to construct the canonical header image URL
+    if (steamAppId) {
+      headerImageUrl = findGameImage(steamAppId);
+    }
+
+    return {
+      id: find.id,
+      gameName,
+      steamAppId,
+      headerImageUrl,
+      firstScreenshotUrl,
+    };
   } catch (error) {
     console.error(`[Metadata] Error fetching find with ID ${findId}:`, error);
     return null;
@@ -87,26 +126,48 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const { slug } = await params;
-  const findBasics = await getFindBasics(slug);
+  const findData = await getFindMetadataData(slug);
 
-  // Default title if find not found or name unavailable
   const defaultTitle = "Indie Game Find | IndieFindr";
-  const title = findBasics?.gameName
-    ? `${findBasics.gameName} | IndieFindr Find`
+  const title = findData?.gameName
+    ? `${findData.gameName} | IndieFindr Find`
     : defaultTitle;
-  const description = findBasics?.gameName
-    ? `Analysis and audience appeal report for the indie game: ${findBasics.gameName}.`
-    : "Detailed analysis of an indie game found on Steam.";
+  const description = findData?.gameName
+    ? `Analysis and audience appeal report for the indie game: ${findData.gameName}. Found via IndieFindr.`
+    : "Detailed analysis of an indie game found on Steam, discovered via IndieFindr.";
 
-  // Optionally, you can fetch and add Open Graph images, etc.
-  // const previousImages = (await parent).openGraph?.images || []
+  // Determine Open Graph image
+  const images = [];
+  if (findData?.headerImageUrl) {
+    // Prioritize the direct/constructed Steam header image
+    images.push({ url: findData.headerImageUrl });
+  } else if (findData?.firstScreenshotUrl) {
+    // Fallback to the first screenshot if header isn't available
+    images.push({ url: findData.firstScreenshotUrl });
+  }
+  // Add a default OG image if no specific game image was found
+  if (images.length === 0) {
+    images.push({ url: "/og.png", width: 1200, height: 630 }); // Reference default layout image
+  }
 
   return {
     title: title,
     description: description,
-    // openGraph: {
-    //   images: ['/some-specific-page-image.jpg', ...previousImages],
-    // },
+    openGraph: {
+      title: title,
+      description: description,
+      images: images, // Use the determined image(s)
+      type: "article", // More specific type for a game page
+    },
+    twitter: {
+      card:
+        images.length > 0 && images[0].url !== "/og.png"
+          ? "summary_large_image"
+          : "summary",
+      title: title,
+      description: description,
+      images: images.map((img) => img.url), // Twitter uses image URL directly
+    },
   };
 }
 
@@ -125,15 +186,19 @@ export default async function Page({ params }: PageProps) {
     console.log(`[Find Page] Resolved ID from slug: ${findId}`);
   } else {
     console.log(`[Find Page] Could not determine valid ID from slug: ${slug}`);
-  }
-
-  // Original check remains the same
-  if (findId === null) {
+    // Keep the original slug check
     console.error("Invalid or non-extractable ID format in slug:", slug);
     notFound();
   }
 
-  // Fetch data directly on the server
+  // Original check remains the same
+  if (findId === null) {
+    // This path might be redundant now due to the check above, but keep for safety
+    console.error("Invalid or non-extractable ID format in slug:", slug);
+    notFound();
+  }
+
+  // Fetch data directly on the server for the page content
   console.log(`[Find Page] Fetching data for resolved find ID: ${findId}`);
   let fetchedFind: {
     id: number;
