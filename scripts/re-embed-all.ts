@@ -111,6 +111,7 @@ async function runReEmbed() {
     // We don't explicitly have the client here, but Node should exit.
     // If it hangs, we might need to explicitly get and end the postgres client.
     console.log("[Re-Embed] Script finished.");
+    process.exit(0);
   }
 }
 

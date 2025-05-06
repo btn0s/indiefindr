@@ -21,7 +21,7 @@ import type { DetailedIndieGameReport } from "@/schema";
 
 const SEARCH_LIMIT = 10;
 // Reset threshold for text embeddings
-const DISTANCE_THRESHOLD = 0.6;
+const DISTANCE_THRESHOLD = 0.8;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -123,6 +123,8 @@ export async function GET(req: NextRequest) {
         sql`CASE WHEN ${combinedKeywordConditions} THEN 0 ELSE 1 END ASC`,
         // Then sort by vector distance (ascending)
         sql`(${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector) ASC NULLS LAST`
+        // Simple order by creation date for now
+        // asc(schema.finds.createdAt)
       )
       .limit(SEARCH_LIMIT);
 
