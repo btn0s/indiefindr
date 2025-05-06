@@ -1,20 +1,32 @@
-import { Client, GatewayIntentBits, Events, Collection, REST, Routes } from 'discord.js';
+import { Client, GatewayIntentBits, Events, Collection, REST, Routes, SlashCommandBuilder } from 'discord.js';
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'node:fs';
+import winston from 'winston';
+import axios from 'axios';
 
 // Configure logging
-const logger = {
-  info: (message) => console.log(`[INFO] ${new Date().toISOString()}: ${message}`),
-  error: (message) => console.error(`[ERROR] ${new Date().toISOString()}: ${message}`),
-  debug: (message) => process.env.NODE_ENV === 'development' ? console.debug(`[DEBUG] ${new Date().toISOString()}: ${message}`) : null,
-};
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    // Optional: Add file transport
+    // new winston.transports.File({ filename: 'discord-bot.log' })
+  ],
+});
 
 // Load environment variables from .env file
-dotenv.config();
-
+dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
+dotenv.config(); // Load default .env
 
 // Get configuration from environment variables
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
-const API_ENDPOINT = process.env.API_ENDPOINT || 'http://localhost:3000/api/find'; // Default if not set
+const API_ENDPOINT = process.env.API_ENDPOINT;
+const SITE_URL = 'https://indiefindr.gg';
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const GUILD_ID = process.env.DISCORD_GUILD_ID; // Optional: For registering commands instantly to one guild
 
@@ -24,6 +36,10 @@ if (!DISCORD_BOT_TOKEN) {
 }
 if (!CLIENT_ID) {
   logger.error('Error: DISCORD_CLIENT_ID environment variable not set (needed for command registration).');
+  process.exit(1);
+}
+if (!API_ENDPOINT) {
+  logger.error('Error: API_ENDPOINT environment variable not set (should be the base URL for your API, e.g., http://localhost:3000/api).');
   process.exit(1);
 }
 
@@ -84,11 +100,12 @@ client.on(Events.MessageCreate, async (message) => {
 
       // Prepare data for the API request with the full link
       const payload = { steam_link: fullLink }; // Send the full link
-      logger.debug(`Preparing to send payload: ${JSON.stringify(payload)} to ${API_ENDPOINT}`);
+      const submitUrl = `${API_ENDPOINT}/find`; // Construct URL
+      logger.debug(`Preparing to send payload: ${JSON.stringify(payload)} to ${submitUrl}`);
 
       try {
         // Make POST request to the API endpoint using fetch
-        const response = await fetch(API_ENDPOINT, {
+        const response = await fetch(submitUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -102,7 +119,7 @@ client.on(Events.MessageCreate, async (message) => {
            throw new Error(`HTTP error! Status: ${response.status}, Body: ${errorData}`);
         }
 
-        logger.info(`Successfully posted data (${Object.keys(payload).join('=...')}) to ${API_ENDPOINT}. Status: ${response.status}`);
+        logger.info(`Successfully posted data (${Object.keys(payload).join('=...')}) to ${submitUrl}. Status: ${response.status}`);
 
         // --- Add Reply Logic --- 
         try {
@@ -110,7 +127,8 @@ client.on(Events.MessageCreate, async (message) => {
           const findId = responseData.findId;
 
           if (findId) {
-            const findUrl = `https://indiefindr.gg/find/${findId}`;
+            // Construct URL using the SITE_URL (which should be the site URL)
+            const findUrl = `${SITE_URL}/finds/${findId}`;
             const replyMessage = `Nice find! Check it out here: ${findUrl}`;
             await message.reply(replyMessage);
             logger.info(`Replied to message ${message.id} with find link: ${findUrl}`);
@@ -125,7 +143,7 @@ client.on(Events.MessageCreate, async (message) => {
       } catch (error) {
         // Construct error message using the payload keys
         const linkOrIdForLog = payload.steam_link || payload.app_id || 'unknown identifier';
-        let errorMessage = `Failed to post data to ${API_ENDPOINT}. Link/ID: ${linkOrIdForLog}.`;
+        let errorMessage = `Failed to post data to ${submitUrl} for link ${linkOrIdForLog}.`;
 
         // Log request details
         errorMessage += `\n  Request Method: POST`;
@@ -158,15 +176,130 @@ client.on(Events.InteractionCreate, async (interaction) => {
       logger.error(`Error replying to /ping command: ${error}`);
     }
   }
-  // Add handlers for other commands here if needed
+  // --- MONTHLY FINDS COMMAND --- (Simplified API URL)
+  else if (interaction.commandName === 'monthly_finds') {
+    try {
+      await interaction.deferReply();
+
+      const recentFindsUrl = `${API_ENDPOINT}/finds/recent?range=month`; // Construct URL
+      logger.info(`Fetching monthly finds from API: ${recentFindsUrl}`);
+
+      const response = await axios.get(recentFindsUrl); // Use constructed URL
+
+      if (response.status !== 200) {
+          throw new Error(`API error! Status: ${response.status} - ${response.statusText}`);
+      }
+
+      const finds = response.data;
+      if (!Array.isArray(finds)) {
+          logger.error('API response for monthly finds was not an array:', finds);
+          throw new Error('Received invalid data format from API.');
+      }
+      logger.info(`Received ${finds.length} finds from the API.`);
+
+      if (finds.length === 0) {
+        await interaction.editReply('No indie games found this month yet.');
+        return;
+      }
+
+      const displayLimit = 20;
+      const limitedFinds = finds.slice(0, displayLimit);
+
+      let replyMessage = `**Indie Game Finds This Month (${limitedFinds.length}${finds.length > displayLimit ? ' of ' + finds.length : ''} results):**\n\n`;
+
+      limitedFinds.forEach((find, index) => {
+        const findId = find.id || 'UnknownID';
+        const findTitle = find.title || `Find ID ${findId}`;
+        const steamAppId = find.steamAppId;
+
+        const findUrl = `${SITE_URL}/finds/${findId}`; // Use hardcoded SITE_URL
+        const steamLink = steamAppId ? ` | [Steam Store](https://store.steampowered.com/app/${steamAppId})` : '';
+        replyMessage += `${index + 1}. **${findTitle}** - [View Details](${findUrl})${steamLink}\n`;
+      });
+
+      if (replyMessage.length > 2000) {
+        replyMessage = replyMessage.substring(0, 1990) + '... (list truncated)';
+      }
+
+      await interaction.editReply(replyMessage);
+      logger.info(`Replied to /monthly_finds for ${interaction.user.tag} with ${limitedFinds.length} results.`);
+
+    } catch (error) {
+      logger.error(`Error processing /monthly_finds command: ${error}`);
+      const errorMessage = error.response?.data?.error || error.message || 'There was an error fetching the monthly finds.';
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content: `Error: ${errorMessage}`, ephemeral: true });
+      } else {
+        await interaction.reply({ content: `Error: ${errorMessage}`, ephemeral: true });
+      }
+    }
+  }
+
+  // Handle commands loaded from files (if any)
+  const command = client.commands.get(interaction.commandName);
+  // Update the check here to exclude only handled commands ('ping', 'monthly_finds')
+  if (command && interaction.commandName !== 'ping' && interaction.commandName !== 'monthly_finds') {
+    try {
+      await command.execute(interaction);
+    } catch (error) {
+      logger.error(`Error executing command ${interaction.commandName}: ${error}`);
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+      } else {
+        await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+      }
+    }
+  }
 });
 
-// Log in to Discord with your client's token
-client.login(DISCORD_BOT_TOKEN)
-  .catch(error => {
-    logger.error(`Failed to log in: ${error}`);
-    if (error.code === 'TokenInvalid') {
-        logger.error("Login failed: Invalid Discord Bot Token provided.");
+// --- Define Slash Commands --- (Moved from register-commands.js)
+const commandsToRegister = [
+    new SlashCommandBuilder()
+        .setName('monthly_finds')
+        .setDescription('Lists indie games found this month.'),
+    // Add other commands here if needed
+].map(command => command.toJSON());
+
+// --- Register Commands Function ---
+async function registerCommands() {
+    const rest = new REST({ version: '10' }).setToken(DISCORD_BOT_TOKEN);
+    try {
+        logger.info(`Started refreshing ${commandsToRegister.length} application (/) commands.`);
+
+        let route;
+        // Use guild-specific route if GUILD_ID is set for faster testing
+        // Ensure GUILD_ID is defined if you uncomment the check above
+        if (GUILD_ID) {
+             logger.info(`Registering commands to guild ${GUILD_ID}`);
+             route = Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID);
+        } else {
+            logger.info('Registering commands globally (can take up to an hour to propagate).');
+            route = Routes.applicationCommands(CLIENT_ID);
+        }
+
+        // The put method is used to fully refresh all commands with the current set
+        const data = await rest.put(
+            route,
+            { body: commandsToRegister },
+        );
+
+        logger.info(`Successfully reloaded ${data.length} application (/) commands.`);
+    } catch (error) {
+        logger.error('Failed to register application commands:', error);
     }
-    process.exit(1); // Exit if login fails
-}); 
+}
+
+// --- Main Execution: Register Commands then Login ---
+(async () => {
+    await registerCommands(); // Register commands before logging in
+    
+    // Log in to Discord
+    client.login(DISCORD_BOT_TOKEN)
+      .catch(error => {
+        logger.error(`Failed to log in: ${error}`);
+        if (error.code === 'TokenInvalid') {
+            logger.error("Login failed: Invalid Discord Bot Token provided.");
+        }
+        process.exit(1);
+    });
+})(); 

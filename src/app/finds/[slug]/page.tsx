@@ -113,7 +113,6 @@ export default async function Page({ params }: { params: { slug: string } }) {
           <RerunFormClient
             findId={initialFindData.id}
             sourceSteamUrl={sourceUrlForRerun}
-            rerunSimpleAction={rerunSimpleAnalysisAction}
           />
         )}
         {/* Render the report directly, passing gameData and sourceSteamUrl */}
