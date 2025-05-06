@@ -2,25 +2,9 @@ import { Client, GatewayIntentBits, Events, Collection, REST, Routes, SlashComma
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'node:fs';
-import winston from 'winston';
-import axios from 'axios';
-
-// Configure logging
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(),
-    // Optional: Add file transport
-    // new winston.transports.File({ filename: 'discord-bot.log' })
-  ],
-});
+import fetch from 'node-fetch';
 
 // Load environment variables from .env file
-dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 dotenv.config(); // Load default .env
 
 // Get configuration from environment variables
@@ -31,15 +15,15 @@ const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const GUILD_ID = process.env.DISCORD_GUILD_ID; // Optional: For registering commands instantly to one guild
 
 if (!DISCORD_BOT_TOKEN) {
-  logger.error('Error: DISCORD_BOT_TOKEN environment variable not set.');
+  console.error('Error: DISCORD_BOT_TOKEN environment variable not set.');
   process.exit(1);
 }
 if (!CLIENT_ID) {
-  logger.error('Error: DISCORD_CLIENT_ID environment variable not set (needed for command registration).');
+  console.error('Error: DISCORD_CLIENT_ID environment variable not set (needed for command registration).');
   process.exit(1);
 }
 if (!API_ENDPOINT) {
-  logger.error('Error: API_ENDPOINT environment variable not set (should be the base URL for your API, e.g., http://localhost:3000/api).');
+  console.error('Error: API_ENDPOINT environment variable not set (should be the base URL for your API, e.g., http://localhost:3000/api).');
   process.exit(1);
 }
 
@@ -61,29 +45,24 @@ client.commands = new Collection();
 const steamLinkRegex = /https?:\/\/store\.steampowered\.com\/app\/(\d+)/g; // Added 'g' flag for global search
 
 client.once(Events.ClientReady, (readyClient) => {
-  logger.info(`Logged in as ${readyClient.user.tag} (ID: ${readyClient.user.id})`);
-  logger.info('------');
+  console.log(`Logged in as ${readyClient.user.tag} (ID: ${readyClient.user.id})`);
+  console.log('------');
 });
 
 client.on(Events.MessageCreate, async (message) => {
   // Ignore messages sent by the bot itself or messages without content
   if (message.author.bot) {
-    logger.debug(`Ignoring message from bot: ${message.author.tag}`);
     return;
   }
   if (!message.content) {
-    logger.debug(`Ignoring empty message from: ${message.author.tag}`);
     return;
   }
-
-  logger.debug(`Received message from ${message.author.tag}: ${message.content}`);
 
   // Find all Steam links in the message using matchAll for global regex
   const matches = [...message.content.matchAll(steamLinkRegex)]; // Convert iterator to array to check length
   const appIdsFound = new Set(); // Use a set to avoid duplicate posts for the same ID in one message
 
   if (matches.length === 0) {
-    logger.debug(`No Steam links found in message from ${message.author.tag}`);
     return; // No links found, no need to proceed further
   }
 
@@ -96,12 +75,11 @@ client.on(Events.MessageCreate, async (message) => {
       appIdsFound.add(fullLink);
       // Extract app ID just for logging if needed, but use fullLink for payload
       const appId = match[1];
-      logger.info(`Found Steam Link: ${fullLink} (App ID: ${appId}) in message from ${message.author.tag}`);
+      console.log(`Found Steam Link: ${fullLink} (App ID: ${appId}) in message from ${message.author.tag}`);
 
       // Prepare data for the API request with the full link
       const payload = { steam_link: fullLink }; // Send the full link
       const submitUrl = `${API_ENDPOINT}/find`; // Construct URL
-      logger.debug(`Preparing to send payload: ${JSON.stringify(payload)} to ${submitUrl}`);
 
       try {
         // Make POST request to the API endpoint using fetch
@@ -119,9 +97,9 @@ client.on(Events.MessageCreate, async (message) => {
            throw new Error(`HTTP error! Status: ${response.status}, Body: ${errorData}`);
         }
 
-        logger.info(`Successfully posted data (${Object.keys(payload).join('=...')}) to ${submitUrl}. Status: ${response.status}`);
+        console.log(`Successfully posted data (${Object.keys(payload).join('=...')}) to ${submitUrl}. Status: ${response.status}`);
 
-        // --- Add Reply Logic --- 
+        // --- Add Reply Logic ---
         try {
           const responseData = await response.json();
           const findId = responseData.findId;
@@ -131,12 +109,12 @@ client.on(Events.MessageCreate, async (message) => {
             const findUrl = `${SITE_URL}/finds/${findId}`;
             const replyMessage = `Nice find! Check it out here: ${findUrl}`;
             await message.reply(replyMessage);
-            logger.info(`Replied to message ${message.id} with find link: ${findUrl}`);
+            console.log(`Replied to message ${message.id} with find link: ${findUrl}`);
           } else {
-            logger.warn(`API response for ${fullLink} did not include a findId. Cannot reply.`);
+            console.warn(`API response for ${fullLink} did not include a findId. Cannot reply.`);
           }
         } catch (replyError) {
-          logger.error(`Error processing API response or sending reply for message ${message.id}: ${replyError}`);
+          console.error(`Error processing API response or sending reply for message ${message.id}: ${replyError}`);
         }
         // --- End Reply Logic ---
 
@@ -156,7 +134,7 @@ client.on(Events.MessageCreate, async (message) => {
         } else {
           errorMessage += `\n  Unknown error object: ${error}`;
         }
-        logger.error(errorMessage);
+        console.error(errorMessage);
       }
     }
   }
@@ -166,14 +144,12 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  logger.debug(`Received interaction: ${interaction.commandName} from ${interaction.user.tag}`);
-
   if (interaction.commandName === 'ping') {
     try {
       await interaction.reply('Pong!');
-      logger.info(`Replied to /ping command from ${interaction.user.tag}`);
+      console.log(`Replied to /ping command from ${interaction.user.tag}`);
     } catch (error) {
-      logger.error(`Error replying to /ping command: ${error}`);
+      console.error(`Error replying to /ping command: ${error}`);
     }
   }
   // --- MONTHLY FINDS COMMAND --- (Simplified API URL)
@@ -182,7 +158,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.deferReply();
 
       const recentFindsUrl = `${API_ENDPOINT}/finds/recent?range=month`; // Construct URL
-      logger.info(`Fetching monthly finds from API: ${recentFindsUrl}`);
+      console.log(`Fetching monthly finds from API: ${recentFindsUrl}`);
 
       const response = await fetch(recentFindsUrl); // Use fetch instead of axios.get
 
@@ -193,10 +169,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const finds = await response.json(); // Parse JSON from fetch response
       if (!Array.isArray(finds)) {
-          logger.error('API response for monthly finds was not an array:', finds);
+          console.error('API response for monthly finds was not an array:', finds);
           throw new Error('Received invalid data format from API.');
       }
-      logger.info(`Received ${finds.length} finds from the API.`);
+      console.log(`Received ${finds.length} finds from the API.`);
 
       if (finds.length === 0) {
         await interaction.editReply('No indie games found this month yet.');
@@ -223,10 +199,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       await interaction.editReply(replyMessage);
-      logger.info(`Replied to /monthly_finds for ${interaction.user.tag} with ${limitedFinds.length} results.`);
+      console.log(`Replied to /monthly_finds for ${interaction.user.tag} with ${limitedFinds.length} results.`);
 
     } catch (error) {
-      logger.error(`Error processing /monthly_finds command: ${error}`);
+      console.error(`Error processing /monthly_finds command: ${error}`);
       // Adjust error message handling slightly as fetch errors might not have response.data
       const errorMessage = error instanceof Error ? error.message : 'There was an error fetching the monthly finds.';
       if (interaction.deferred || interaction.replied) {
@@ -244,7 +220,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     try {
       await command.execute(interaction);
     } catch (error) {
-      logger.error(`Error executing command ${interaction.commandName}: ${error}`);
+      console.error(`Error executing command ${interaction.commandName}: ${error}`);
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
       } else {
@@ -266,16 +242,16 @@ const commandsToRegister = [
 async function registerCommands() {
     const rest = new REST({ version: '10' }).setToken(DISCORD_BOT_TOKEN);
     try {
-        logger.info(`Started refreshing ${commandsToRegister.length} application (/) commands.`);
+        console.log(`Started refreshing ${commandsToRegister.length} application (/) commands.`);
 
         let route;
         // Use guild-specific route if GUILD_ID is set for faster testing
         // Ensure GUILD_ID is defined if you uncomment the check above
         if (GUILD_ID) {
-             logger.info(`Registering commands to guild ${GUILD_ID}`);
+             console.log(`Registering commands to guild ${GUILD_ID}`);
              route = Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID);
         } else {
-            logger.info('Registering commands globally (can take up to an hour to propagate).');
+            console.log('Registering commands globally (can take up to an hour to propagate).');
             route = Routes.applicationCommands(CLIENT_ID);
         }
 
@@ -285,9 +261,9 @@ async function registerCommands() {
             { body: commandsToRegister },
         );
 
-        logger.info(`Successfully reloaded ${data.length} application (/) commands.`);
+        console.log(`Successfully reloaded ${data.length} application (/) commands.`);
     } catch (error) {
-        logger.error('Failed to register application commands:', error);
+        console.error('Failed to register application commands:', error);
     }
 }
 
