@@ -1,8 +1,5 @@
 import { Client, GatewayIntentBits, Events, Collection, REST, Routes, SlashCommandBuilder } from 'discord.js';
 import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'node:fs';
-import fetch from 'node-fetch';
 
 // Load environment variables from .env file
 dotenv.config(); // Load default .env
