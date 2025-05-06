@@ -110,6 +110,11 @@ export function GameNewsSection({ steamAppId }: GameNewsSectionProps) {
     return text.substring(0, maxLength) + "...";
   };
 
+  if (error) {
+    console.error("Error in GameNewsSection:", error);
+    return null;
+  }
+
   return (
     // Replace Card with a simple div
     <div className="">
