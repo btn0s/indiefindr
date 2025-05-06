@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { type RapidApiReview } from "@/lib/rapidapi/types";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils"; // For conditional classes
-
+import { Skeleton } from "./ui/skeleton";
 interface GameReviewSentimentProps {
   steamAppId: string | undefined | null;
 }
@@ -44,40 +44,41 @@ const calculateSentiment = (reviews: RapidApiReview[]): Sentiment => {
     return {
       label: "Overwhelmingly Positive",
       className:
-        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-500",
     };
   }
   if (positiveRatio >= 0.8) {
     return {
       label: "Very Positive",
       className:
-        "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200",
+        "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200 border-green-200",
     };
   }
   if (positiveRatio >= 0.7) {
     return {
       label: "Mostly Positive",
       className:
-        "bg-lime-100 text-lime-700 dark:bg-lime-800 dark:text-lime-200",
+        "bg-lime-100 text-lime-700 dark:bg-lime-800 dark:text-lime-200 border-lime-200",
     };
   }
   if (positiveRatio >= 0.4) {
     return {
       label: "Mixed",
       className:
-        "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-200",
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-200 border-yellow-200",
     };
   }
   if (positiveRatio >= 0.2) {
     return {
       label: "Mostly Negative",
       className:
-        "bg-orange-100 text-orange-700 dark:bg-orange-800 dark:text-orange-200",
+        "bg-orange-100 text-orange-700 dark:bg-orange-800 dark:text-orange-200 border-orange-200",
     };
   }
   return {
     label: "Overwhelmingly Negative",
-    className: "bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-200",
+    className:
+      "bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-200 border-red-200",
   };
 };
 
@@ -141,10 +142,6 @@ export function GameReviewSentiment({ steamAppId }: GameReviewSentimentProps) {
     fetchAndCalculateSentiment();
   }, [steamAppId]);
 
-  if (loading) {
-    return null;
-  }
-
   if (error) {
     console.warn(`GameReviewSentiment error for ${steamAppId}: ${error}`);
     console.log("[GameReviewSentiment] Returning null due to error.");
@@ -153,9 +150,13 @@ export function GameReviewSentiment({ steamAppId }: GameReviewSentimentProps) {
 
   return (
     <Badge
-      className={cn("text-xs font-medium align-middle", sentiment?.className)}
+      variant="outline"
+      className={cn(
+        "text-xs font-medium align-middle transition-all duration-200",
+        sentiment?.className
+      )}
     >
-      {sentiment?.label}
+      {loading ? <Skeleton className="w-16 h-4" /> : sentiment?.label}
     </Badge>
   );
 }

@@ -118,10 +118,14 @@ export function IndieGameListItem({
             </span>
           )}
         </div>
+        {actualAppId && (
+          <div className="mb-2">
+            <GameReviewSentiment steamAppId={actualAppId} />
+          </div>
+        )}
         <p className="text-sm text-muted-foreground mb-2">
           {reportData.gameDescription}
         </p>
-        {actualAppId && <GameReviewSentiment steamAppId={actualAppId} />}
         {reportData.genresAndTags && reportData.genresAndTags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {reportData.genresAndTags.slice(0, 2).map((item, index) => (
