@@ -23,7 +23,7 @@ async function getFindMetadataData(slug: string): Promise<{
   steamAppId: string | null;
   headerImageUrl: string | null;
   firstScreenshotUrl: string | null;
-  shortDescription: string | null;
+  gameDescription: string | null;
 } | null> {
   let findId: number | null = null;
   const parts = slug.split("-");
@@ -42,7 +42,7 @@ async function getFindMetadataData(slug: string): Promise<{
   }
 
   try {
-    // Fetch id, steam url, and the raw json containing name/images/description
+    // Fetch id, steam url, and the raw json containing relevant data
     const result = await db
       .select({
         id: schema.finds.id,
@@ -62,7 +62,7 @@ async function getFindMetadataData(slug: string): Promise<{
     let headerImageUrl: string | null = null;
     let firstScreenshotUrl: string | null = null;
     let steamAppId: string | null = null;
-    let shortDescription: string | null = null;
+    let gameDescription: string | null = null;
 
     // Extract Steam App ID first
     if (find.sourceSteamUrl) {
@@ -71,38 +71,38 @@ async function getFindMetadataData(slug: string): Promise<{
 
     // Attempt to parse rawSteamJson for name, images, and description
     if (find.rawSteamJson) {
-      let parsedData:
-        | (Partial<RapidApiGameData> & { short_description?: string })
-        | null = null;
       try {
-        if (
-          typeof find.rawSteamJson === "object" &&
-          find.rawSteamJson !== null
-        ) {
-          parsedData = find.rawSteamJson as Partial<RapidApiGameData> & {
-            short_description?: string;
-          };
-        } else if (typeof find.rawSteamJson === "string") {
-          parsedData = JSON.parse(
-            find.rawSteamJson
-          ) as Partial<RapidApiGameData> & { short_description?: string };
-        }
+        let dataToParse = find.rawSteamJson;
+        // If it's already an object, use it directly, otherwise parse the string
+        const parsedJson =
+          typeof dataToParse === "object" && dataToParse !== null
+            ? dataToParse
+            : JSON.parse(String(dataToParse)); // Ensure it's a string before parsing
 
-        if (parsedData) {
-          gameName =
-            typeof parsedData.name === "string" ? parsedData.name : null;
-          shortDescription =
-            typeof parsedData.short_description === "string"
-              ? parsedData.short_description
-              : null;
-          // Get first screenshot if available
-          firstScreenshotUrl =
-            Array.isArray(parsedData.media?.screenshot) &&
-            parsedData.media.screenshot.length > 0 &&
-            typeof parsedData.media.screenshot[0] === "string"
-              ? parsedData.media.screenshot[0]
-              : null;
-        }
+        // Assert the parsed JSON to a simple object structure containing expected fields
+        const potentialData = parsedJson as {
+          name?: string;
+          desc?: string;
+          about_game?: string;
+          media?: { screenshot?: string[] };
+        };
+
+        // Now safely access properties
+        gameName =
+          typeof potentialData.name === "string" ? potentialData.name : null;
+        gameDescription =
+          (typeof potentialData.desc === "string"
+            ? potentialData.desc
+            : null) ||
+          (typeof potentialData.about_game === "string"
+            ? potentialData.about_game
+            : null);
+        firstScreenshotUrl =
+          Array.isArray(potentialData.media?.screenshot) &&
+          potentialData.media.screenshot.length > 0 &&
+          typeof potentialData.media.screenshot[0] === "string"
+            ? potentialData.media.screenshot[0]
+            : null;
       } catch (e) {
         console.error(
           `[Metadata] Failed to parse rawSteamJson for find ${find.id}:`,
@@ -123,7 +123,7 @@ async function getFindMetadataData(slug: string): Promise<{
       steamAppId,
       headerImageUrl,
       firstScreenshotUrl,
-      shortDescription,
+      gameDescription,
     };
   } catch (error) {
     console.error(`[Metadata] Error fetching find with ID ${findId}:`, error);
@@ -149,10 +149,17 @@ export async function generateMetadata(
     ? `Discover ${findData.gameName} on IndieFindr! Could this be your next favorite indie game?`
     : "Uncover a hidden gem on IndieFindr! Explore this exciting indie game, found on the best platform for discovering new favorites.";
 
-  // Simple append if short description exists
+  // Append game description if available (using the correct fields)
   let finalDescription = baseDescription;
-  if (findData?.shortDescription) {
-    finalDescription = `${findData.shortDescription} /n ${baseDescription}`; // Just append with a separator
+  if (findData?.gameDescription) {
+    // Simple append - consider cleaning/truncating if needed for length/format
+    finalDescription = `${baseDescription} - ${findData.gameDescription}`;
+  }
+
+  // Ensure total length isn't excessively long (optional refinement)
+  if (finalDescription.length > 200) {
+    // Adjust max length as needed
+    finalDescription = finalDescription.substring(0, 197) + "...";
   }
 
   // Determine Open Graph image
@@ -171,12 +178,12 @@ export async function generateMetadata(
 
   return {
     title: title,
-    description: finalDescription,
+    description: finalDescription, // Use the final description with game desc appended
     openGraph: {
       title: title,
-      description: finalDescription,
-      images: images,
-      type: "article",
+      description: finalDescription, // Use the final description with game desc appended
+      images: images, // Use the determined image(s)
+      type: "article", // More specific type for a game page
     },
     twitter: {
       card:
@@ -184,8 +191,8 @@ export async function generateMetadata(
           ? "summary_large_image"
           : "summary",
       title: title,
-      description: finalDescription,
-      images: images.map((img) => img.url),
+      description: finalDescription, // Use the final description with game desc appended
+      images: images.map((img) => img.url), // Twitter uses image URL directly
     },
   };
 }
