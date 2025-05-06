@@ -110,7 +110,7 @@ export default async function Page({
 
   return initialFindData?.gameData ? (
     <div className="min-h-screen flex flex-col items-center sm:p-4 md:p-8 bg-gray-50">
-      <div className="w-full max-w-5xl px-4">
+      <div className="w-full max-w-5xl sm:px-4">
         {/* Pass the Steam URL and simple action */}
         {/* The form component will handle disabling if URL is null */}
         {process.env.NODE_ENV === "development" && (

@@ -81,7 +81,7 @@ export function IndieGameReport({
       </div>
 
       <div className="px-4 pb-4 relative flex flex-col gap-4">
-        <div className="relative -mt-16 flex items-center justify-between">
+        <div className="relative -mt-16 flex flex-col gap-2 sm:flex-row sm:items-center justify-between">
           <div>
             <div className="aspect-cover-art w-[200px] rounded-lg border-4 border-white bg-gray-100 overflow-hidden shadow">
               {imageSources.length > 0 ? (
@@ -108,7 +108,7 @@ export function IndieGameReport({
               <Button
                 key={link?.name}
                 variant="secondary"
-                className="bg-background/30 backdrop-blur-sm text-background hover:bg-background/50"
+                className="sm:bg-background/30 backdrop-blur-sm text-sm sm:text-background hover:bg-background/50"
                 size="sm"
                 asChild
               >
