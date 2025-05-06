@@ -165,10 +165,7 @@ export function GameReviewSentiment({ steamAppId }: GameReviewSentimentProps) {
 
   return (
     <Badge
-      className={cn(
-        "text-xs font-medium ml-2 align-middle",
-        sentiment.className
-      )}
+      className={cn("text-xs font-medium align-middle", sentiment.className)}
     >
       {sentiment.label}
     </Badge>

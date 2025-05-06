@@ -126,7 +126,7 @@ export function IndieGameReport({
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             {gameData.name || "Untitled Game"}
             {steamAppId && <GameReviewSentiment steamAppId={steamAppId} />}
           </h1>

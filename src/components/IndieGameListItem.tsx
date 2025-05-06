@@ -6,10 +6,9 @@ import {
   findGameImage,
   getGameImageSources,
 } from "@/lib/utils";
-import { Button } from "./ui/button";
-import { ArrowRightIcon } from "lucide-react";
 import { RapidApiGameData } from "@/lib/rapidapi/types";
 import { ImageWithFallbacks } from "./ImageWithFallbacks";
+import { GameReviewSentiment } from "./GameReviewSentiment";
 // Helper functions moved outside component for cleaner organization
 // const extractSteamAppId = (url: string): string | null => {
 //   const match = url.match(/store\\.steampowered\\.com\\/app\\/(\\d+)/i);
@@ -122,6 +121,7 @@ export function IndieGameListItem({
         <p className="text-sm text-muted-foreground mb-2">
           {reportData.gameDescription}
         </p>
+        {actualAppId && <GameReviewSentiment steamAppId={actualAppId} />}
         {reportData.genresAndTags && reportData.genresAndTags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {reportData.genresAndTags.slice(0, 2).map((item, index) => (
