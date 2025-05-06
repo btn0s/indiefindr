@@ -85,9 +85,9 @@ export function IndieGameListItem({
       : null;
 
   return (
-    <div className="flex gap-4 p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white w-full">
-      {/* Game Cover Art - Updated */}
-      <div className="flex-shrink-0 max-w-1/2 w-1/2 aspect-cover-art rounded bg-gray-100 overflow-hidden border border-gray-200 relative">
+    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white w-full">
+      {/* Game Cover Art - Updated for responsiveness */}
+      <div className="flex-shrink-0 w-full sm:w-1/2 sm:max-w-1/2 aspect-cover-art rounded bg-gray-100 overflow-hidden border border-gray-200 relative">
         {imageSources.length > 0 ? (
           <ImageWithFallbacks
             sources={imageSources}
@@ -101,8 +101,8 @@ export function IndieGameListItem({
         )}
       </div>
 
-      {/* Game Info */}
-      <div className="flex-grow min-w-0 flex flex-col gap-2 items-start">
+      {/* Game Info - Ensure it takes full width when stacked */}
+      <div className="flex-grow min-w-0 flex flex-col gap-2 items-start w-full">
         <div className="flex justify-between w-full">
           <div className="flex flex-col">
             <h3 className="text-sm font-semibold truncate">
