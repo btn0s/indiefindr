@@ -145,15 +145,14 @@ export async function generateMetadata(
     : defaultTitle;
 
   // Base description
-  let baseDescription = findData?.gameName
-    ? ``
-    : "Uncover a hidden gem on IndieFindr! Explore this exciting indie game, found on the best platform for discovering new favorites.";
+  let baseDescription =
+    "Uncover a hidden gem on IndieFindr! Explore this exciting indie game, found on the best platform for discovering new favorites.";
 
   // Append game description if available (using the correct fields)
   let finalDescription = baseDescription;
   if (findData?.gameDescription) {
     // Simple append - consider cleaning/truncating if needed for length/format
-    finalDescription = `${baseDescription} - ${findData.gameDescription}`;
+    finalDescription = findData.gameDescription;
   }
 
   // Ensure total length isn't excessively long (optional refinement)
