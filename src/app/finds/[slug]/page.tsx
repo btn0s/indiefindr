@@ -130,11 +130,11 @@ export async function generateMetadata(
 
   const defaultTitle = "Indie Game Find | IndieFindr";
   const title = findData?.gameName
-    ? `${findData.gameName} | IndieFindr Find`
+    ? `${findData.gameName} | Found on IndieFindr`
     : defaultTitle;
   const description = findData?.gameName
-    ? `Analysis and audience appeal report for the indie game: ${findData.gameName}. Found via IndieFindr.`
-    : "Detailed analysis of an indie game found on Steam, discovered via IndieFindr.";
+    ? `Discover ${findData.gameName} on IndieFindr! Could this be your next favorite indie game?`
+    : "Uncover a hidden gem on IndieFindr! Explore this exciting indie game, found on the best platform for discovering new favorites.";
 
   // Determine Open Graph image
   const images = [];
