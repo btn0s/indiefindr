@@ -146,7 +146,7 @@ export async function generateMetadata(
 
   // Base description
   let baseDescription = findData?.gameName
-    ? `Discover ${findData.gameName} on IndieFindr! Could this be your next favorite indie game?`
+    ? ``
     : "Uncover a hidden gem on IndieFindr! Explore this exciting indie game, found on the best platform for discovering new favorites.";
 
   // Append game description if available (using the correct fields)
