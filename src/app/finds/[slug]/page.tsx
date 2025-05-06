@@ -141,7 +141,7 @@ export async function generateMetadata(
 
   const defaultTitle = "Indie Game Find | IndieFindr";
   const title = findData?.gameName
-    ? `${findData.gameName} has been found on IndieFindr`
+    ? `${findData.gameName} | Found on IndieFindr`
     : defaultTitle;
 
   // Base description
@@ -149,23 +149,10 @@ export async function generateMetadata(
     ? `Discover ${findData.gameName} on IndieFindr! Could this be your next favorite indie game?`
     : "Uncover a hidden gem on IndieFindr! Explore this exciting indie game, found on the best platform for discovering new favorites.";
 
-  // Add flair using the short description if available
+  // Simple append if short description exists
   let finalDescription = baseDescription;
   if (findData?.shortDescription) {
-    // Clean up potential HTML entities (basic example)
-    const cleanedDesc = findData.shortDescription
-      .replace(/&quot;/g, '"')
-      .replace(/<[^>]*>?/gm, ""); // Remove simple tags
-    const truncatedDesc =
-      cleanedDesc.length > 100
-        ? cleanedDesc.substring(0, 97) + "..."
-        : cleanedDesc;
-    finalDescription = `${baseDescription} // ${truncatedDesc}`;
-  }
-
-  // Ensure total length isn't excessively long (optional refinement)
-  if (finalDescription.length > 160) {
-    finalDescription = finalDescription.substring(0, 157) + "...";
+    finalDescription = `${findData.shortDescription} /n ${baseDescription}`; // Just append with a separator
   }
 
   // Determine Open Graph image
