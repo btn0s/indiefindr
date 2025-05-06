@@ -23,6 +23,7 @@ async function getFindMetadataData(slug: string): Promise<{
   steamAppId: string | null;
   headerImageUrl: string | null;
   firstScreenshotUrl: string | null;
+  shortDescription: string | null;
 } | null> {
   let findId: number | null = null;
   const parts = slug.split("-");
@@ -41,7 +42,7 @@ async function getFindMetadataData(slug: string): Promise<{
   }
 
   try {
-    // Fetch id, steam url, and the raw json containing name/images
+    // Fetch id, steam url, and the raw json containing name/images/description
     const result = await db
       .select({
         id: schema.finds.id,
@@ -61,30 +62,39 @@ async function getFindMetadataData(slug: string): Promise<{
     let headerImageUrl: string | null = null;
     let firstScreenshotUrl: string | null = null;
     let steamAppId: string | null = null;
+    let shortDescription: string | null = null;
 
     // Extract Steam App ID first
     if (find.sourceSteamUrl) {
       steamAppId = extractSteamAppId(find.sourceSteamUrl);
     }
 
-    // Attempt to parse rawSteamJson for name and images
+    // Attempt to parse rawSteamJson for name, images, and description
     if (find.rawSteamJson) {
-      let parsedData: Partial<RapidApiGameData> | null = null;
+      let parsedData:
+        | (Partial<RapidApiGameData> & { short_description?: string })
+        | null = null;
       try {
         if (
           typeof find.rawSteamJson === "object" &&
           find.rawSteamJson !== null
         ) {
-          parsedData = find.rawSteamJson as Partial<RapidApiGameData>;
+          parsedData = find.rawSteamJson as Partial<RapidApiGameData> & {
+            short_description?: string;
+          };
         } else if (typeof find.rawSteamJson === "string") {
           parsedData = JSON.parse(
             find.rawSteamJson
-          ) as Partial<RapidApiGameData>;
+          ) as Partial<RapidApiGameData> & { short_description?: string };
         }
 
         if (parsedData) {
           gameName =
             typeof parsedData.name === "string" ? parsedData.name : null;
+          shortDescription =
+            typeof parsedData.short_description === "string"
+              ? parsedData.short_description
+              : null;
           // Get first screenshot if available
           firstScreenshotUrl =
             Array.isArray(parsedData.media?.screenshot) &&
@@ -98,7 +108,7 @@ async function getFindMetadataData(slug: string): Promise<{
           `[Metadata] Failed to parse rawSteamJson for find ${find.id}:`,
           e
         );
-        // Continue without parsed data, rely on steamAppId for header image later
+        // Continue without parsed data
       }
     }
 
@@ -113,6 +123,7 @@ async function getFindMetadataData(slug: string): Promise<{
       steamAppId,
       headerImageUrl,
       firstScreenshotUrl,
+      shortDescription,
     };
   } catch (error) {
     console.error(`[Metadata] Error fetching find with ID ${findId}:`, error);
@@ -130,11 +141,32 @@ export async function generateMetadata(
 
   const defaultTitle = "Indie Game Find | IndieFindr";
   const title = findData?.gameName
-    ? `${findData.gameName} | Found on IndieFindr`
+    ? `${findData.gameName} has been found on IndieFindr`
     : defaultTitle;
-  const description = findData?.gameName
+
+  // Base description
+  let baseDescription = findData?.gameName
     ? `Discover ${findData.gameName} on IndieFindr! Could this be your next favorite indie game?`
     : "Uncover a hidden gem on IndieFindr! Explore this exciting indie game, found on the best platform for discovering new favorites.";
+
+  // Add flair using the short description if available
+  let finalDescription = baseDescription;
+  if (findData?.shortDescription) {
+    // Clean up potential HTML entities (basic example)
+    const cleanedDesc = findData.shortDescription
+      .replace(/&quot;/g, '"')
+      .replace(/<[^>]*>?/gm, ""); // Remove simple tags
+    const truncatedDesc =
+      cleanedDesc.length > 100
+        ? cleanedDesc.substring(0, 97) + "..."
+        : cleanedDesc;
+    finalDescription = `${baseDescription} // ${truncatedDesc}`;
+  }
+
+  // Ensure total length isn't excessively long (optional refinement)
+  if (finalDescription.length > 160) {
+    finalDescription = finalDescription.substring(0, 157) + "...";
+  }
 
   // Determine Open Graph image
   const images = [];
@@ -152,12 +184,12 @@ export async function generateMetadata(
 
   return {
     title: title,
-    description: description,
+    description: finalDescription,
     openGraph: {
       title: title,
-      description: description,
-      images: images, // Use the determined image(s)
-      type: "article", // More specific type for a game page
+      description: finalDescription,
+      images: images,
+      type: "article",
     },
     twitter: {
       card:
@@ -165,8 +197,8 @@ export async function generateMetadata(
           ? "summary_large_image"
           : "summary",
       title: title,
-      description: description,
-      images: images.map((img) => img.url), // Twitter uses image URL directly
+      description: finalDescription,
+      images: images.map((img) => img.url),
     },
   };
 }
