@@ -14,7 +14,15 @@ import { generateText } from "ai"; // Import generateText
 import {
   fetchSteamDataFromApi,
   createPartialReportFromSteamApi,
+  fetchReviewData, // Import new function
+  fetchPricingData, // Import new function
 } from "@/lib/game-data"; // Import the moved functions
+
+// Placeholder types (ideally import from game-data or types file if defined there)
+import type {
+  RapidApiReviewData,
+  RapidApiPricingData,
+} from "@/lib/rapidapi/types";
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -71,24 +79,43 @@ export async function POST(req: Request) {
     `[Simple Find] Processing Steam URL: ${primaryUrl}, App ID: ${steamAppId}`
   );
 
-  // 2. Fetch Steam API Data (using imported function)
-  const steamApiData = await fetchSteamDataFromApi(steamAppId); // Use imported function
-
+  // --- Fetch ALL Data Upfront ---
+  // Fetch core game details
+  const steamApiData = await fetchSteamDataFromApi(steamAppId);
   if (!steamApiData) {
+    // Handle error: cannot proceed without core data
     console.error(
       `[Simple Find] Cannot generate report: Failed to fetch initial Steam API data for App ID ${steamAppId}.`
     );
     return new Response(
-      JSON.stringify({ error: "Failed to fetch game data from Steam API." }),
-      { status: 502 } // Bad Gateway or appropriate error
+      JSON.stringify({ error: "Failed to fetch core game data from API." }),
+      { status: 502 }
     );
   }
 
-  // 3. Create Partial Report from API Data (using imported function)
-  const partialReport = createPartialReportFromSteamApi(steamApiData); // Use imported function
-  // Add the source URL and Steam App ID to the report
+  // Fetch reviews and pricing (using placeholder functions for now)
+  // Use Promise.all for concurrent fetching
+  const [reviewData, pricingData] = await Promise.all([
+    fetchReviewData(steamAppId),
+    fetchPricingData(steamAppId),
+  ]);
+
+  console.log(
+    `[Simple Find] Fetched review data (exists: ${!!reviewData}), pricing data (exists: ${!!pricingData})`
+  );
+
+  // --- Process Data & Generate Report ---
+
+  // Create initial report from core data
+  const partialReport = createPartialReportFromSteamApi(steamApiData);
   partialReport.sourceSteamUrl = primaryUrl;
   partialReport.steamAppId = steamAppId;
+
+  // TODO: Add processing logic for reviewData and pricingData
+  // Example: Extract review summary, pricing info, etc.
+  // and potentially add them to the partialReport object if the schema supports it.
+  // e.g., partialReport.reviewSummary = reviewData?.summary?.review_score_desc;
+  // e.g., partialReport.price = pricingData?.price_overview?.final_price;
 
   // --- Generate Audience Appeal using AI SDK ---
   console.log("[Simple Find] Attempting to generate audience appeal via AI...");
@@ -123,29 +150,45 @@ ${textToAnalyze}`,
   }
   // --- End Generate Audience Appeal ---
 
-  // 4. Generate Embedding
+  // --- Generate Embedding (using richer data placeholder) ---
   console.log("[Simple Find] Attempting to generate embedding...");
   let embeddingVector: number[] | null = null;
   try {
-    // Construct text for embedding (combine key fields from the partial report)
+    // Placeholder for processed review text
+    let reviewSummaryText = "";
+    if (reviewData?.summary?.review_score_desc) {
+      reviewSummaryText += `Review Summary: ${reviewData.summary.review_score_desc}. `;
+    }
+    // Add more sophisticated review processing here - e.g., key phrases from reviews
+    // const topReviewSnippets = reviewData?.reviews?.slice(0, 3).map(r => r.review_text).join(" ");
+    // if (topReviewSnippets) reviewSummaryText += ` Top Reviews: ${topReviewSnippets}`;
+
+    // Construct text for embedding - NOW includes placeholder for reviews
     const textToEmbed = [
       partialReport.gameName,
       partialReport.gameDescription,
       partialReport.developerName,
       partialReport.publisherName,
       Array.isArray(partialReport.genresAndTags)
-        ? partialReport.genresAndTags.join(", ")
+        ? `Tags: ${partialReport.genresAndTags.join(", ")}`
         : null,
+      reviewSummaryText.trim() || null, // Add processed review text if available
+      // Potentially add pricing info if relevant? e.g., `Price: ${pricingData?.price_overview?.final_price}`
     ]
-      .filter(Boolean) // Remove null/undefined/empty strings
-      .join("\n\n"); // Join with double newline for separation
+      .filter(Boolean)
+      .join("\n\n");
 
     if (textToEmbed) {
       embeddingVector = await generateEmbedding(textToEmbed);
-      console.log("[Simple Find] Embedding generated successfully.");
+      console.log(
+        `[Simple Find] Embedding generated successfully from text: "${textToEmbed.substring(
+          0,
+          100
+        )}..."`
+      );
     } else {
       console.warn(
-        "[Simple Find] Could not generate embedding: No text content found in partial report."
+        "[Simple Find] Could not generate embedding: No text content found after processing."
       );
     }
   } catch (embeddingError) {
@@ -153,38 +196,36 @@ ${textToAnalyze}`,
       "[Simple Find] Failed to generate embedding:",
       embeddingError
     );
-    // Decide if you want to fail the whole process or just log and continue
-    // For now, we log and continue, saving the find without an embedding.
   }
 
-  // 5. Database Saving
+  // --- Database Saving (including raw data) ---
   console.log(
     "[Simple Find] Attempting to save find to database (Update or Insert Steam)..."
   );
   let findId: number | null = null;
   try {
-    // Check for existing find using Steam App ID
     const existingFind = await db
       .select({ id: dbSchema.finds.id })
       .from(dbSchema.finds)
       .where(eq(dbSchema.finds.sourceSteamAppId, steamAppId))
       .limit(1);
 
-    // Construct data for saving
-    // Ensure the structure matches your db schema, setting unused fields to null
+    // Construct data for saving, including raw JSON
+    // **ASSUMES your schema has `rawReviewJson` and `rawPricingJson` columns of type JSONB**
     const findDataToSave = {
       sourceSteamUrl: primaryUrl,
       sourceSteamAppId: steamAppId,
-      rawSteamJson: steamApiData, // Still save the raw data fetched
+      rawSteamJson: steamApiData,
+      rawReviewJson: reviewData, // Save the raw review JSON
+      rawPricingJson: pricingData, // Save the raw pricing JSON
       rawDemoHtml: null, // Not scraped in this version
       report: partialReport as DetailedIndieGameReport,
-      vectorEmbedding: embeddingVector, // Use the generated embedding vector
+      vectorEmbedding: embeddingVector,
       updatedAt: new Date(),
-      audienceAppeal: partialReport.audienceAppeal, // Ensure it's included here
+      audienceAppeal: partialReport.audienceAppeal,
     };
 
     if (existingFind && existingFind.length > 0) {
-      // Update existing find based on steamAppId
       findId = existingFind[0].id;
       console.log(
         `[Simple Find] Found existing find with ID: ${findId}. Updating...`
@@ -195,7 +236,6 @@ ${textToAnalyze}`,
         .where(eq(dbSchema.finds.sourceSteamAppId, steamAppId));
       console.log(`[Simple Find] Successfully updated find with ID: ${findId}`);
     } else {
-      // Insert new find
       console.log(
         "[Simple Find] No existing find found. Inserting new record..."
       );
@@ -203,7 +243,7 @@ ${textToAnalyze}`,
         .insert(dbSchema.finds)
         .values({
           ...findDataToSave,
-          createdAt: new Date(), // Add createdAt on insert
+          createdAt: new Date(),
         })
         .returning({ id: dbSchema.finds.id });
 
@@ -232,11 +272,15 @@ ${textToAnalyze}`,
     );
   }
 
-  // 6. Return the partial report object AND the find ID
+  // --- Return Response ---
   console.log(`[Simple Find] Responding with report for find ID: ${findId}`);
-  // Ensure partialReport is cast or fits the expected return structure
   return Response.json({
+    // Return the enriched report if you added review/price fields to it,
+    // otherwise, return the partialReport as before.
     report: partialReport as DetailedIndieGameReport,
     findId: findId,
+    // Optionally include raw data in response for debugging?
+    // rawReviewData: reviewData,
+    // rawPricingData: pricingData,
   });
 }

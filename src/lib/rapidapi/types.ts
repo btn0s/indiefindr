@@ -77,3 +77,38 @@ export interface RapidApiReviewsResponse {
     offset?: string;
   };
 }
+
+// Placeholder type for Steam review data from an API
+export interface RapidApiReviewData {
+  // Structure depends heavily on the chosen API endpoint
+  // Example structure:
+  summary?: {
+    total_reviews?: number;
+    positive_percent?: number;
+    review_score_desc?: string;
+  };
+  reviews?: Array<{
+    author?: string;
+    review_text?: string;
+    votes_up?: number;
+    language?: string;
+    timestamp_created?: number;
+  }>;
+  // Add other relevant fields based on the actual API response
+  [key: string]: any; // Allow other properties
+}
+
+// Placeholder type for Steam pricing data from an API
+export interface RapidApiPricingData {
+  // Structure depends heavily on the chosen API endpoint
+  // Example structure:
+  price_overview?: {
+    currency?: string;
+    initial_price?: number; // Price in cents/smallest unit
+    final_price?: number; // Price in cents/smallest unit
+    discount_percent?: number;
+  };
+  is_free?: boolean;
+  // Add other relevant fields based on the actual API response
+  [key: string]: any; // Allow other properties
+}

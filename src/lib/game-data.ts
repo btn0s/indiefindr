@@ -1,7 +1,12 @@
 "use strict";
 // src/lib/game-data.ts
 
-import type { RapidApiGameData, RapidApiExternalLink } from "./rapidapi/types";
+import type {
+  RapidApiGameData,
+  RapidApiExternalLink,
+  RapidApiReviewData,
+  RapidApiPricingData,
+} from "@/lib/rapidapi/types";
 import type { DetailedIndieGameReport } from "@/schema";
 
 const rapidApiKey = process.env.RAPIDAPI_KEY;
@@ -197,4 +202,62 @@ export function createPartialReportFromSteamApi(
 //     // rawPricingData: pricing,
 //     // textForEmbedding: generatedText,
 //   };
+// }
+
+// Placeholder function to fetch review data
+// Replace with actual API call logic once endpoint is known
+export async function fetchReviewData(
+  appId: string
+): Promise<RapidApiReviewData | null> {
+  // Implementation needed:
+  // 1. Determine the correct RapidAPI (or other service) endpoint for reviews.
+  // 2. Make the fetch call with necessary headers/auth.
+  // 3. Handle response and errors.
+  // 4. Parse the JSON response and return data matching RapidApiReviewData or null.
+  console.log(`[Game Data] TODO: Fetch review data for App ID: ${appId}`);
+  // Example (requires endpoint and headers):
+  /*
+  if (!rapidApiKey) {
+    console.error("[Game Data] RAPIDAPI_KEY not configured for review API call.");
+    return null;
+  }
+  const url = `https://your-review-api-endpoint.p.rapidapi.com/reviews/${appId}`;
+  const options = {
+    method: "GET",
+    headers: {
+      "x-rapidapi-key": rapidApiKey,
+      "x-rapidapi-host": "your-review-api-endpoint.p.rapidapi.com",
+    },
+  };
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) { /* ... error handling ... *\/ return null; }\n    const result = await response.json();\n    return result as RapidApiReviewData; // Adjust based on actual structure\n  } catch (error) {\n    console.error(`[Game Data] Error fetching review data for ${appId}:`, error);\n    return null;\n  }\n  */
+  return null; // Return null for now
+}
+
+// Placeholder function to fetch pricing data
+// Replace with actual API call logic once endpoint is known
+export async function fetchPricingData(
+  appId: string
+): Promise<RapidApiPricingData | null> {
+  // Implementation needed (similar to fetchReviewData):
+  // 1. Find API endpoint for pricing.
+  // 2. Fetch, handle errors, parse.
+  // 3. Return data matching RapidApiPricingData or null.
+  console.log(`[Game Data] TODO: Fetch pricing data for App ID: ${appId}`);
+  // Example (requires endpoint and headers):
+  /*
+   if (!rapidApiKey) {
+     console.error("[Game Data] RAPIDAPI_KEY not configured for pricing API call.");
+     return null;
+   }
+  const url = `https://your-pricing-api-endpoint.p.rapidapi.com/pricing/${appId}`;
+   // ... fetch logic ...
+  */
+  return null; // Return null for now
+}
+
+// Placeholder for the combined function (optional, can be done in route handler too)
+// export async function fetchAndProcessGameData(appId: string) {
+// ... existing commented code ...
 // }
