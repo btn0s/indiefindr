@@ -23,25 +23,16 @@ export default async function Page({ params }: { params: { slug: string } }) {
   const { slug } = params;
   let findId: number | null = null;
 
-  // Try parsing the slug directly as an integer
-  const directId = parseInt(slug, 10);
-  if (!isNaN(directId) && String(directId) === slug) {
-    // If the slug is purely numeric, use it as the ID
-    findId = directId;
-    console.log(`[Find Page] Using direct numeric ID from slug: ${findId}`);
+  // Split by dash and check length
+  const parts = slug.split("-");
+  const idStr = parts.length === 1 ? parts[0] : parts[parts.length - 1];
+  const parsedId = parseInt(idStr, 10);
+
+  if (!isNaN(parsedId)) {
+    findId = parsedId;
+    console.log(`[Find Page] Resolved ID from slug: ${findId}`);
   } else {
-    // Otherwise, try extracting ID from the end after the last dash (existing logic)
-    const parts = slug.split("-");
-    const idStr = parts[parts.length - 1];
-    const extractedId = parseInt(idStr, 10);
-    if (!isNaN(extractedId)) {
-      findId = extractedId;
-      console.log(`[Find Page] Extracted ID from slug ending: ${findId}`);
-    } else {
-      console.log(
-        `[Find Page] Could not determine valid ID from slug: ${slug}`
-      );
-    }
+    console.log(`[Find Page] Could not determine valid ID from slug: ${slug}`);
   }
 
   // Original check remains the same
