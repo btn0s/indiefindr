@@ -2,9 +2,8 @@
 
 import { type RapidApiReview } from "@/lib/rapidapi/types";
 import { Badge } from "./ui/badge";
-import { cn } from "@/lib/utils"; // For conditional classes
-// Skeleton is no longer needed if we pass data directly
-// import { Skeleton } from "./ui/skeleton";
+import { cn } from "@/lib/utils";
+import { FaSteam } from "react-icons/fa";
 
 // Define the props to accept the reviews array
 interface GameReviewSentimentProps {
@@ -105,6 +104,7 @@ export function GameReviewSentiment({ reviews }: GameReviewSentimentProps) {
         sentiment.className // Apply calculated sentiment class
       )}
     >
+      <FaSteam />
       {sentiment.label} {/* Display the calculated label */}
     </Badge>
   );
