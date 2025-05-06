@@ -113,36 +113,36 @@ export async function POST(req: Request) {
   partialReport.steamAppId = steamAppId;
 
   // --- Process Review and Pricing Data ---
-  let processedReviewSummary = "";
-  // Placeholder: Process the first review text if available
-  // TODO: More sophisticated review summary (e.g., sentiment, keywords)
-  if (reviewData && reviewData.length > 0 && reviewData[0].review_text) {
-    processedReviewSummary = `First Review Snippet: "${reviewData[0].review_text.substring(
-      0,
-      150
-    )}..."`;
-    // We don't have a summary score from this endpoint, need to generate or fetch separately if desired
-  } else {
-    processedReviewSummary = "No recent reviews available";
-  }
+  // Process Reviews for Embedding Text
+  let processedReviewText = "";
+  const maxReviewsForEmbedding = 5; // How many review texts to include
+  if (reviewData && reviewData.length > 0) {
+    const reviewSnippets = reviewData
+      .slice(0, maxReviewsForEmbedding)
+      .map((review) => review.review_text?.trim()) // Get trimmed text
+      .filter(Boolean); // Filter out empty reviews
 
+    if (reviewSnippets.length > 0) {
+      processedReviewText =
+        "Recent Reviews:\n" + reviewSnippets.join("\n---\n"); // Join with a separator
+    }
+  }
+  // Keep processedReviewSummary for potential display logic if needed, or remove
+  // let processedReviewSummary = processedReviewText ? "Reviews available" : "No recent reviews available";
+
+  // Process Pricing
   let processedPricingInfo = "";
-  // Extract pricing from the main steamApiData object
   if (steamApiData?.pricing && steamApiData.pricing.length > 0) {
-    // Find the base game price (heuristics might be needed)
-    // Simple approach: Look for "Play..." or "Buy...", prioritize non-free?
     const basePriceObj =
       steamApiData.pricing.find(
         (p) =>
           p.name.toLowerCase().startsWith("buy ") ||
-          p.name.toLowerCase().startsWith("play ") // Could be Free to Play
-      ) || steamApiData.pricing[0]; // Fallback to first item
+          p.name.toLowerCase().startsWith("play ")
+      ) || steamApiData.pricing[0];
 
     if (basePriceObj?.price.toLowerCase() === "free to play") {
       processedPricingInfo = "Free to Play";
     } else if (basePriceObj?.price) {
-      // Assuming price is a string like "$14.99" - needs parsing
-      // More robust parsing might be needed for different currencies/formats
       processedPricingInfo = `Price: ${basePriceObj.price}`;
     } else {
       processedPricingInfo = "Price not available";
@@ -192,28 +192,27 @@ ${textToAnalyze}`,
     const textToEmbed = [
       partialReport.gameName,
       partialReport.gameDescription,
-      partialReport.developerName,
-      partialReport.publisherName,
+      `Developer: ${partialReport.developerName || "Unknown"}`,
+      `Publisher: ${partialReport.publisherName || "Unknown"}`,
       Array.isArray(partialReport.genresAndTags)
         ? `Tags: ${partialReport.genresAndTags.join(", ")}`
         : null,
-      // Add processed review and pricing info if available and meaningful
-      processedReviewSummary !== "No recent reviews available"
-        ? `Reviews: ${processedReviewSummary}`
-        : null,
+      // Use the concatenated review text if available
+      processedReviewText || null,
+      // Use pricing info if meaningful
       processedPricingInfo !== "Price not available"
         ? processedPricingInfo
         : null,
     ]
-      .filter(Boolean)
-      .join("\n\n");
+      .filter(Boolean) // Remove null/undefined/empty strings
+      .join("\n\n"); // Join with double newline for separation
 
     if (textToEmbed) {
       embeddingVector = await generateEmbedding(textToEmbed);
       console.log(
         `[Simple Find] Embedding generated successfully from text: "${textToEmbed.substring(
           0,
-          150 // Show a bit more context
+          200 // Show more context including potential review start
         )}..."`
       );
     } else {
