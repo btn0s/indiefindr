@@ -1,102 +1,110 @@
 "use client";
 
-import React, { useEffect, useRef, useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import React, { useState, useEffect, useRef, FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
 
-// Import the action state type from the actions file
-import type { RerunState } from "../app/finds/[slug]/actions";
-
-// Type for the server action prop (now specific to simple rerun)
-type RerunSimpleAction = (
-  prevState: RerunState,
-  formData: FormData
-) => Promise<RerunState>;
+// Import the report schema for type checking the response
+import type { DetailedIndieGameReport } from "@/schema";
 
 // Props for the client component
 interface RerunFormClientProps {
   findId: number;
-  sourceSteamUrl: string | null; // Specific prop name
-  rerunSimpleAction: RerunSimpleAction; // Specific action prop name
+  sourceSteamUrl: string | null;
 }
 
 // Submit button component
-function RerunButton({ sourceSteamUrl }: { sourceSteamUrl: string | null }) {
-  const { pending } = useFormStatus();
-
-  useEffect(() => {
-    if (pending) {
-      toast.info("Rerunning analysis for Steam URL...", { duration: 15000 });
-    }
-  }, [pending]);
-
+function RerunButton({
+  sourceSteamUrl,
+  isSubmitting,
+}: {
+  sourceSteamUrl: string | null;
+  isSubmitting: boolean;
+}) {
   return (
     <Button
       type="submit"
-      disabled={pending || !sourceSteamUrl} // Disable if no URL or pending
+      disabled={isSubmitting || !sourceSteamUrl}
       variant="outline"
-      aria-disabled={pending || !sourceSteamUrl}
+      aria-disabled={isSubmitting || !sourceSteamUrl}
     >
-      {pending ? "Rerunning..." : "Rerun Analysis"}
+      {isSubmitting ? "Rerunning..." : "Rerun Analysis"}
     </Button>
   );
 }
 
 // The minimal client component for the form
-export function RerunFormClient({
-  findId,
-  sourceSteamUrl,
-  rerunSimpleAction, // Use specific prop
-}: RerunFormClientProps) {
-  const [state, formAction] = useActionState<RerunState, FormData>(
-    rerunSimpleAction, // Use the passed simple action
-    { message: null }
-  );
+export function RerunFormClient({ findId, sourceSteamUrl }: RerunFormClientProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const initialRender = useRef(true);
-  const router = useRouter(); // Get router instance
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
 
-  useEffect(() => {
-    if (initialRender.current) {
-      initialRender.current = false;
+    if (!sourceSteamUrl) {
+      setError("Source Steam URL is missing.");
+      toast.error("Cannot rerun analysis: Source Steam URL is missing.");
       return;
     }
 
-    // Handle state updates from the action
-    if (state?.success && state.newSlug) {
-      // On success, navigate to the new slug
+    setIsSubmitting(true);
+    toast.info("Rerunning analysis for Steam URL...", { duration: 15000 });
+
+    try {
+      const response = await fetch("/api/find", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ steam_link: sourceSteamUrl }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const errorMessage =
+          result?.error || `HTTP error! Status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      const returnedFindId = result?.findId;
+
+      if (!returnedFindId) {
+        throw new Error("API did not return a Find ID after successful run.");
+      }
+
       toast.success("Analysis rerun successful! Navigating...");
-      router.push(`/finds/${state.newSlug}`);
-    } else if (state?.message) {
-      // On error, show toast
-      toast.error(`Rerun failed: ${state.message}`);
+      router.push(`/finds/${returnedFindId}`);
+    } catch (err: any) {
+      const message = err.message || "An unexpected error occurred.";
+      setError(message);
+      toast.error(`Rerun failed: ${message}`);
+      console.error("Rerun failed:", err);
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [state, router]); // Add router to dependency array
+  };
 
   return (
     <form
-      action={formAction}
+      onSubmit={handleSubmit}
       className="mb-4 flex justify-end items-center gap-2"
     >
-      {/* Always use sourceSteamUrl as input name */}
-      <input type="hidden" name="sourceSteamUrl" value={sourceSteamUrl ?? ""} />
-      <input type="hidden" name="currentFindId" value={findId} />
+      {error && <p className="text-red-600 text-sm mr-auto">{error}</p>}
 
-      {/* Display Server Action Error Message */}
-      {state?.message && (
-        <p className="text-red-600 text-sm mr-auto">{state.message}</p>
-      )}
-
-      {/* Client-side check for missing URL before allowing submit */}
-      {!sourceSteamUrl && (
+      {!sourceSteamUrl && !error && (
         <p className="text-orange-600 text-sm mr-auto">
           Cannot rerun analysis: Source Steam URL is missing.
         </p>
       )}
 
-      <RerunButton sourceSteamUrl={sourceSteamUrl} />
+      <RerunButton
+        sourceSteamUrl={sourceSteamUrl}
+        isSubmitting={isSubmitting}
+      />
     </form>
   );
 }
