@@ -150,9 +150,9 @@ export function GameReviewSentiment({ steamAppId }: GameReviewSentimentProps) {
 
   return (
     <Badge
-      variant="outline"
+      variant="secondary"
       className={cn(
-        "text-xs font-medium align-middle transition-all duration-200",
+        "text-xs font-medium align-middle transition-all duration-200 px-1.5 py-0.5",
         sentiment?.className
       )}
     >

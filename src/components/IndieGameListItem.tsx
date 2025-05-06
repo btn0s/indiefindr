@@ -108,9 +108,14 @@ export function IndieGameListItem({
             <h3 className="text-sm font-semibold truncate">
               {reportData.gameName || "Untitled Game"}
             </h3>
-            <p className="text-xs text-muted-foreground truncate">
+            <p className="text-xs text-muted-foreground truncate mb-1">
               by {reportData.developerName || "Unknown Developer"}
             </p>
+            {actualAppId && (
+              <div className="mb-2">
+                <GameReviewSentiment steamAppId={actualAppId} />
+              </div>
+            )}
           </div>
           {formattedDate && (
             <span className="text-xs text-muted-foreground">
@@ -118,11 +123,7 @@ export function IndieGameListItem({
             </span>
           )}
         </div>
-        {actualAppId && (
-          <div className="mb-2">
-            <GameReviewSentiment steamAppId={actualAppId} />
-          </div>
-        )}
+
         <p className="text-sm text-muted-foreground mb-2">
           {reportData.gameDescription}
         </p>
