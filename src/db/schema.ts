@@ -34,7 +34,9 @@ export const finds = pgTable(
     // --- Steam ---
     sourceSteamAppId: text("source_steam_app_id"), // Extracted Steam App ID
     sourceSteamUrl: text("source_steam_url"), // The full Steam URL used for the find
-    rawSteamJson: jsonb("raw_steam_json"), // Storing the raw JSON from Steam API (if found)
+    rawSteamJson: jsonb("raw_steam_json"), // Raw JSON from core Steam API
+    rawReviewJson: jsonb("raw_review_json"), // Raw JSON from reviews API
+    rawPricingJson: jsonb("raw_pricing_json"), // Raw JSON from pricing API
 
     // The processed report conforming to DetailedIndieGameReportSchema
     report: jsonb("report").$type<DetailedIndieGameReport>().notNull(),

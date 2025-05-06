@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { type RapidApiReview } from "@/lib/rapidapi/types";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils"; // For conditional classes
-import { Skeleton } from "./ui/skeleton";
+// Skeleton is no longer needed if we pass data directly
+// import { Skeleton } from "./ui/skeleton";
+
+// Define the props to accept the reviews array
 interface GameReviewSentimentProps {
-  steamAppId: string | undefined | null;
+  reviews: RapidApiReview[] | null | undefined;
 }
 
 interface Sentiment {
@@ -14,8 +16,10 @@ interface Sentiment {
   className: string; // Tailwind class for color
 }
 
-// Function to calculate sentiment from reviews
-const calculateSentiment = (reviews: RapidApiReview[]): Sentiment => {
+// Function to calculate sentiment from reviews (remains the same)
+const calculateSentiment = (
+  reviews: RapidApiReview[] | null | undefined
+): Sentiment => {
   if (!reviews || reviews.length === 0) {
     return { label: "No Reviews", className: "bg-muted text-muted-foreground" };
   }
@@ -23,140 +27,85 @@ const calculateSentiment = (reviews: RapidApiReview[]): Sentiment => {
   let recommendedCount = 0;
   let notRecommendedCount = 0;
 
+  // Use title field for sentiment (adjust if API provides a different field)
   reviews.forEach((review) => {
-    if (review.title?.toLowerCase() === "recommended") {
+    // Handle potential variations in casing and wording
+    const titleLower = review.title?.trim().toLowerCase();
+    if (titleLower === "recommended") {
       recommendedCount++;
-    } else if (review.title?.toLowerCase() === "not recommended") {
+    } else if (titleLower === "not recommended") {
       notRecommendedCount++;
     }
+    // Add more robust checks if needed (e.g., check rating field)
   });
 
   const totalRated = recommendedCount + notRecommendedCount;
 
   if (totalRated === 0) {
-    // If reviews exist but none have a rating
     return { label: "Not Rated", className: "bg-muted text-muted-foreground" };
   }
 
   const positiveRatio = recommendedCount / totalRated;
 
+  // Sentiment calculation logic (remains the same)
   if (positiveRatio >= 0.95) {
     return {
       label: "Overwhelmingly Positive",
       className:
-        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-500",
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border border-green-300",
     };
   }
   if (positiveRatio >= 0.8) {
     return {
       label: "Very Positive",
       className:
-        "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200 border-green-200",
+        "bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-200 border border-green-200",
     };
   }
   if (positiveRatio >= 0.7) {
     return {
       label: "Mostly Positive",
       className:
-        "bg-lime-100 text-lime-700 dark:bg-lime-800 dark:text-lime-200 border-lime-200",
+        "bg-lime-100 text-lime-700 dark:bg-lime-800 dark:text-lime-200 border border-lime-200",
     };
   }
   if (positiveRatio >= 0.4) {
     return {
       label: "Mixed",
       className:
-        "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-200 border-yellow-200",
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-800 dark:text-yellow-200 border border-yellow-200",
     };
   }
   if (positiveRatio >= 0.2) {
     return {
       label: "Mostly Negative",
       className:
-        "bg-orange-100 text-orange-700 dark:bg-orange-800 dark:text-orange-200 border-orange-200",
+        "bg-orange-100 text-orange-700 dark:bg-orange-800 dark:text-orange-200 border border-orange-200",
     };
   }
   return {
     label: "Overwhelmingly Negative",
     className:
-      "bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-200 border-red-200",
+      "bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-200 border border-red-200",
   };
 };
 
-export function GameReviewSentiment({ steamAppId }: GameReviewSentimentProps) {
-  const [sentiment, setSentiment] = useState<Sentiment | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+// Updated component: Receives reviews via props, no internal fetching
+export function GameReviewSentiment({ reviews }: GameReviewSentimentProps) {
+  // Calculate sentiment directly from props
+  const sentiment = calculateSentiment(reviews);
 
-  useEffect(() => {
-    if (!steamAppId) {
-      setLoading(false);
-      setError(null);
-      setSentiment(null);
-      return;
-    }
-
-    const fetchAndCalculateSentiment = async () => {
-      setLoading(true);
-      setSentiment(null);
-      setError(null);
-      try {
-        // Fetch more reviews to get a better sample size for sentiment
-        const response = await fetch(
-          `/api/game-reviews?appId=${steamAppId}&limit=30`
-        );
-        if (!response.ok) {
-          let errorMsg = `API Error: ${response.status}`;
-          try {
-            const errData = await response.json();
-            errorMsg = errData.error || errorMsg;
-          } catch {
-            /* ignore */
-          }
-          throw new Error(errorMsg);
-        }
-        const data = await response.json();
-        console.log("[GameReviewSentiment] Fetched data:", data);
-        if (Array.isArray(data.reviews)) {
-          const calculatedSentiment = calculateSentiment(data.reviews);
-          console.log(
-            "[GameReviewSentiment] Calculated sentiment:",
-            calculatedSentiment
-          );
-          setSentiment(calculatedSentiment);
-        } else {
-          console.warn("API did not return an array of reviews", data);
-          setError("Invalid data format");
-          setSentiment(null);
-        }
-      } catch (err) {
-        console.error("Failed to fetch/calculate sentiment:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load sentiment"
-        );
-        setSentiment(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAndCalculateSentiment();
-  }, [steamAppId]);
-
-  if (error) {
-    console.warn(`GameReviewSentiment error for ${steamAppId}: ${error}`);
-    console.log("[GameReviewSentiment] Returning null due to error.");
-    return null;
-  }
+  // No loading or error state needed here as data comes from parent
 
   return (
     <Badge
-      variant="secondary"
+      variant="secondary" // Base variant
       className={cn(
-        "text-xs font-medium align-middle transition-all duration-200 px-1.5 py-0.5",
-        sentiment?.className
+        "text-xs font-medium align-middle transition-colors duration-200 px-1.5 py-0.5",
+        sentiment.className // Apply calculated sentiment class
       )}
     >
-      {loading ? <Skeleton className="w-16 h-4" /> : sentiment?.label}
+      {sentiment.label} {/* Display the calculated label */}
     </Badge>
   );
 }

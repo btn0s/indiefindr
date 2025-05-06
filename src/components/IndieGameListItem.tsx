@@ -6,7 +6,7 @@ import {
   findGameImage,
   getGameImageSources,
 } from "@/lib/utils";
-import { RapidApiGameData } from "@/lib/rapidapi/types";
+import { RapidApiGameData, RapidApiReview } from "@/lib/rapidapi/types";
 import { ImageWithFallbacks } from "./ImageWithFallbacks";
 import { GameReviewSentiment } from "./GameReviewSentiment";
 // Helper functions moved outside component for cleaner organization
@@ -34,7 +34,8 @@ interface GameFind {
   id: string | number;
   reportData: DetailedIndieGameReport;
   createdAt: Date | string;
-  gameData?: RapidApiGameData; // Add optional gameData field
+  gameData?: RapidApiGameData; // Contains core data like pricing
+  rawReviewJson?: RapidApiReview[] | null; // Add the raw review data
 }
 
 interface IndieGameListItemProps {
@@ -46,7 +47,7 @@ export function IndieGameListItem({
   find,
   showCreatedAt = false,
 }: IndieGameListItemProps) {
-  const { reportData, createdAt, gameData } = find;
+  const { reportData, createdAt, gameData, rawReviewJson } = find;
 
   // --- Updated steamAppId logic ---
   // Prioritize steamAppId from reportData, then fall back to link extraction
@@ -84,6 +85,21 @@ export function IndieGameListItem({
       ? formatDistanceToNow(new Date(createdAt), { addSuffix: true })
       : null;
 
+  // --- Optional: Extract Pricing Info ---
+  let displayPrice: string | null = null;
+  if (gameData?.pricing && gameData.pricing.length > 0) {
+    const basePriceObj =
+      gameData.pricing.find(
+        (p) =>
+          p.name.toLowerCase().startsWith("buy ") ||
+          p.name.toLowerCase().startsWith("play ")
+      ) || gameData.pricing[0];
+
+    if (basePriceObj?.price) {
+      displayPrice = basePriceObj.price; // e.g., "$14.99" or "Free To Play"
+    }
+  }
+
   return (
     <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white w-full">
       {/* Game Cover Art - Updated for responsiveness */}
@@ -111,9 +127,16 @@ export function IndieGameListItem({
             <p className="text-xs text-muted-foreground truncate mb-1">
               by {reportData.developerName || "Unknown Developer"}
             </p>
+            {/* Conditionally display price */}
+            {displayPrice && (
+              <p className="text-xs font-medium text-gray-700 mb-1">
+                {displayPrice}
+              </p>
+            )}
+            {/* Pass rawReviewJson to GameReviewSentiment */}
             {actualAppId && (
               <div className="mb-2">
-                <GameReviewSentiment steamAppId={actualAppId} />
+                <GameReviewSentiment reviews={rawReviewJson} />
               </div>
             )}
           </div>

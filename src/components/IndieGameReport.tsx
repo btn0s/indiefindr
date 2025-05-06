@@ -5,6 +5,8 @@ import { useState } from "react";
 import {
   type RapidApiGameData,
   type RapidApiExternalLink,
+  type RapidApiPricing,
+  type RapidApiReview,
 } from "@/lib/rapidapi/types";
 import {
   extractSteamAppId,
@@ -25,7 +27,6 @@ import { ExternalLinkIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { FaSteam } from "react-icons/fa";
 import { GameNewsSection } from "@/components/GameNewsSection";
-import { GamePriceDisplay } from "./GamePriceDisplay";
 import { GameReviewSentiment } from "./GameReviewSentiment";
 import { ImageWithFallbacks } from "./ImageWithFallbacks";
 
@@ -33,12 +34,34 @@ interface IndieGameReportProps {
   gameData: RapidApiGameData;
   sourceSteamUrl: string | null;
   audienceAppeal: string | null;
+  rawReviewJson?: RapidApiReview[] | null;
 }
+
+const getDisplayPrice = (
+  pricing: RapidApiPricing[] | undefined | null
+): string => {
+  if (!pricing || pricing.length === 0) {
+    return "N/A";
+  }
+  const basePriceObj =
+    pricing.find(
+      (p) =>
+        p.name.toLowerCase().startsWith("buy ") ||
+        p.name.toLowerCase().startsWith("play ")
+    ) || pricing[0];
+
+  if (basePriceObj?.price) {
+    return basePriceObj.price;
+  } else {
+    return "N/A";
+  }
+};
 
 export function IndieGameReport({
   gameData,
   sourceSteamUrl,
   audienceAppeal,
+  rawReviewJson,
 }: IndieGameReportProps) {
   const steamAppId = sourceSteamUrl ? extractSteamAppId(sourceSteamUrl) : null;
 
@@ -64,6 +87,9 @@ export function IndieGameReport({
   // For backward compatibility
   const coverArtImage = imageSources.length > 0 ? imageSources[0] : null;
   const backgroundImage = findGameBackgroundImage(gameData, steamAppId);
+
+  // Calculate display price
+  const displayPrice = getDisplayPrice(gameData.pricing);
 
   return (
     <div className="w-full mx-auto sm:border sm:rounded-xl overflow-hidden shadow-md bg-background">
@@ -128,7 +154,7 @@ export function IndieGameReport({
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             {gameData.name || "Untitled Game"}
-            {steamAppId && <GameReviewSentiment steamAppId={steamAppId} />}
+            {steamAppId && <GameReviewSentiment reviews={rawReviewJson} />}
           </h1>
           <p className="text-muted-foreground">
             by{" "}
@@ -176,13 +202,7 @@ export function IndieGameReport({
           </div>
           <div>
             <div className="font-medium text-foreground">Price</div>
-            <div className="text-muted-foreground">
-              <GamePriceDisplay
-                initialPricing={gameData.pricing}
-                gameName={gameData.name}
-                steamAppId={steamAppId}
-              />
-            </div>
+            <div className="text-muted-foreground">{displayPrice}</div>
           </div>
           {gameData.dev_details?.publisher?.length > 0 && (
             <div>
