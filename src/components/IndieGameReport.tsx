@@ -10,6 +10,7 @@ import {
   extractSteamAppId,
   findGameImage,
   findGameBackgroundImage,
+  getGameImageSources,
 } from "@/lib/utils";
 import {
   Carousel,
@@ -26,6 +27,7 @@ import { FaSteam } from "react-icons/fa";
 import { GameNewsSection } from "@/components/GameNewsSection";
 import { GamePriceDisplay } from "./GamePriceDisplay";
 import { GameReviewSentiment } from "./GameReviewSentiment";
+import { ImageWithFallbacks } from "./ImageWithFallbacks";
 
 interface IndieGameReportProps {
   gameData: RapidApiGameData;
@@ -56,20 +58,22 @@ export function IndieGameReport({
 
   const screenshots = gameData.media?.screenshot || [];
 
-  const coverArtImage = findGameImage(steamAppId);
+  // Get all image sources in priority order
+  const imageSources = getGameImageSources(gameData, steamAppId);
+
+  // For backward compatibility
+  const coverArtImage = imageSources.length > 0 ? imageSources[0] : null;
   const backgroundImage = findGameBackgroundImage(gameData, steamAppId);
 
   return (
     <div className="w-full mx-auto border rounded-xl overflow-hidden shadow-md bg-background">
       <div className="w-full h-[150px] relative">
-        {backgroundImage ? (
-          <div className="w-full h-full relative">
-            <img
-              src={backgroundImage}
-              alt={gameData.name || "Game image"}
-              className="w-full h-full object-cover"
-            />
-          </div>
+        {imageSources.length > 0 ? (
+          <ImageWithFallbacks
+            sources={imageSources}
+            alt={gameData.name || "Game background"}
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-b from-indigo-500/90 to-purple-700/90"></div>
         )}
@@ -80,9 +84,9 @@ export function IndieGameReport({
         <div className="relative -mt-16 flex items-center justify-between">
           <div>
             <div className="aspect-cover-art w-[200px] rounded-lg border-4 border-white bg-gray-100 overflow-hidden shadow">
-              {coverArtImage ? (
-                <img
-                  src={coverArtImage}
+              {imageSources.length > 0 ? (
+                <ImageWithFallbacks
+                  sources={imageSources}
                   alt={gameData.name || "Game cover"}
                   className="w-full h-full object-cover"
                 />

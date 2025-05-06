@@ -1,9 +1,15 @@
 import { DetailedIndieGameReport } from "@/schema";
 import { Badge } from "./ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { extractSteamAppId, findGameImage } from "@/lib/utils";
+import {
+  extractSteamAppId,
+  findGameImage,
+  getGameImageSources,
+} from "@/lib/utils";
 import { Button } from "./ui/button";
 import { ArrowRightIcon } from "lucide-react";
+import { RapidApiGameData } from "@/lib/rapidapi/types";
+import { ImageWithFallbacks } from "./ImageWithFallbacks";
 // Helper functions moved outside component for cleaner organization
 // const extractSteamAppId = (url: string): string | null => {
 //   const match = url.match(/store\\.steampowered\\.com\\/app\\/(\\d+)/i);
@@ -29,6 +35,7 @@ interface GameFind {
   id: string | number;
   reportData: DetailedIndieGameReport;
   createdAt: Date | string;
+  gameData?: RapidApiGameData; // Add optional gameData field
 }
 
 interface IndieGameListItemProps {
@@ -40,7 +47,7 @@ export function IndieGameListItem({
   find,
   showCreatedAt = false,
 }: IndieGameListItemProps) {
-  const { reportData, createdAt } = find;
+  const { reportData, createdAt, gameData } = find;
 
   // --- Updated steamAppId logic ---
   // Prioritize steamAppId from reportData, then fall back to link extraction
@@ -60,8 +67,17 @@ export function IndieGameListItem({
       })();
   // --- End updated logic ---
 
-  // Use the imported utility function
-  const coverArtImage = findGameImage(actualAppId);
+  // Use game data sources if available
+  let imageSources: string[] = [];
+
+  if (gameData) {
+    // If we have full game data, use the utility function
+    imageSources = getGameImageSources(gameData, actualAppId);
+  } else {
+    // Fall back to just the Steam image
+    const coverArtImage = findGameImage(actualAppId);
+    if (coverArtImage) imageSources.push(coverArtImage);
+  }
 
   // Format the creation date if it exists and is requested
   const formattedDate =
@@ -71,16 +87,16 @@ export function IndieGameListItem({
 
   return (
     <div className="flex gap-4 p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white w-full">
-      {/* Game Cover Art */}
-      <div className="flex-shrink-0 aspect-cover-art rounded bg-gray-100 overflow-hidden border border-gray-200 relative">
-        {coverArtImage ? (
-          <img
-            src={coverArtImage}
+      {/* Game Cover Art - Updated */}
+      <div className="flex-shrink-0 max-w-1/2 w-1/2 aspect-cover-art rounded bg-gray-100 overflow-hidden border border-gray-200 relative">
+        {imageSources.length > 0 ? (
+          <ImageWithFallbacks
+            sources={imageSources}
             alt={reportData.gameName || "Game cover"}
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-200 text-gray-500 text-xs font-bold">
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-200 text-muted-foreground text-xs font-bold">
             {reportData.gameName ? reportData.gameName.charAt(0) : "G"}
           </div>
         )}

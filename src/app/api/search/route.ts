@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
         id: schema.finds.id,
         report: schema.finds.report,
         createdAt: schema.finds.createdAt,
+        rawSteamJson: schema.finds.rawSteamJson,
         // Calculate distance for sorting (will be null if only keyword match)
         distance: sql<
           number | null

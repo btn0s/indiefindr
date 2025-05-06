@@ -9,13 +9,24 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { useDebounce } from "use-debounce"; // Using a hook for debouncing
 import { IndieGameListItem } from "@/components/IndieGameListItem"; // Import the component
 import { DetailedIndieGameReport } from "@/schema"; // Import the report type
+import { RapidApiGameData } from "@/lib/rapidapi/types"; // Add this import
 
 // Define the shape of the search result items from our API (updated)
-interface SearchResult {
-  id: string; // Assuming ID is UUID or number adjusted based on schema
-  report: DetailedIndieGameReport;
-  createdAt: string; // Assuming API returns date as string
+interface SearchResultFromApi {
+  id: string;
+  report: DetailedIndieGameReport | string; // API might return string initially
+  createdAt: string;
   distance: number;
+  rawSteamJson?: any;
+}
+
+// Define the shape after parsing
+interface ParsedSearchResult {
+  id: string;
+  reportData: DetailedIndieGameReport;
+  createdAt: Date;
+  distance: number;
+  gameData?: RapidApiGameData | null;
 }
 
 // Function to create SEO-friendly slugs (copied from src/app/page.tsx)
@@ -37,7 +48,7 @@ export default function SearchPage() {
   const searchParams = useSearchParams(); // Get search params
   const initialQuery = searchParams.get("query") || ""; // Get initial query from URL
   const [query, setQuery] = useState(initialQuery); // Initialize state with URL query
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<ParsedSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false); // Track if a search has been performed
@@ -68,15 +79,27 @@ export default function SearchPage() {
           errorData.error || `HTTP error! status: ${response.status}`
         );
       }
-      const data: SearchResult[] = await response.json();
-      // Ensure report is parsed if API returns it as string (unlikely with current API setup but good practice)
-      const parsedResults = data.map((item) => ({
-        ...item,
-        report:
+      const data: SearchResultFromApi[] = await response.json();
+      // Ensure report and gameData are parsed
+      const parsedResults: ParsedSearchResult[] = data.map((item) => {
+        const reportData =
           typeof item.report === "string"
             ? JSON.parse(item.report)
-            : item.report,
-      }));
+            : item.report;
+        const gameData = item.rawSteamJson
+          ? typeof item.rawSteamJson === "string"
+            ? JSON.parse(item.rawSteamJson)
+            : item.rawSteamJson
+          : null;
+
+        return {
+          id: item.id,
+          reportData: reportData as DetailedIndieGameReport,
+          createdAt: new Date(item.createdAt),
+          distance: item.distance,
+          gameData: gameData as RapidApiGameData | null,
+        };
+      });
       setResults(parsedResults);
     } catch (err: any) {
       console.error("Search fetch error:", err);
@@ -150,23 +173,22 @@ export default function SearchPage() {
                   {results
                     .filter(
                       (result) =>
-                        result.report && typeof result.report === "object"
+                        result.reportData &&
+                        typeof result.reportData === "object"
                     )
                     .map((result) => (
                       <li key={result.id}>
                         <Link
                           href={`/finds/${createSlug(
-                            result.report?.gameName || "untitled-game",
+                            result.reportData?.gameName || "untitled-game",
                             result.id
                           )}`}
                           className="block hover:bg-gray-100 rounded-lg transition-colors duration-150 border border-transparent hover:border-gray-200"
                         >
                           <IndieGameListItem
                             find={{
-                              id: result.id,
-                              reportData:
-                                result.report as DetailedIndieGameReport,
-                              createdAt: new Date(result.createdAt),
+                              ...result,
+                              gameData: result.gameData ?? undefined, // Map null to undefined
                             }}
                             showCreatedAt={false}
                           />

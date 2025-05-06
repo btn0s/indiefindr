@@ -45,3 +45,29 @@ export const findGameBackgroundImage = (
   // Fallback to null
   return null;
 };
+
+// Get all game images in order of priority (for fallback chains)
+export const getGameImageSources = (
+  gameData: RapidApiGameData,
+  steamAppId: string | null
+): string[] => {
+  const sources: string[] = [];
+  
+  // 1. Add Steam header if available
+  const steamHeader = findGameImage(steamAppId);
+  if (steamHeader) sources.push(steamHeader);
+  
+  // 2. Add first screenshot if available
+  if (gameData.media?.screenshot?.length > 0) {
+    sources.push(gameData.media.screenshot[0]);
+  }
+  
+  // 3. Add any other screenshots
+  if (gameData.media?.screenshot?.length > 1) {
+    gameData.media.screenshot.slice(1).forEach(screenshot => {
+      sources.push(screenshot);
+    });
+  }
+  
+  return sources;
+};

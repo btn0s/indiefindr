@@ -35,6 +35,7 @@ async function getRecentFinds() {
         id: schema.finds.id,
         reportData: schema.finds.report,
         createdAt: schema.finds.createdAt,
+        rawSteamJson: schema.finds.rawSteamJson,
       })
       .from(schema.finds)
       .orderBy(desc(schema.finds.createdAt))
@@ -62,10 +63,33 @@ async function getRecentFinds() {
             reportData = find.reportData;
           }
         }
+
+        // Parse rawSteamJson if available
+        let gameData = null;
+        if (find.rawSteamJson) {
+          if (
+            typeof find.rawSteamJson === "object" &&
+            find.rawSteamJson !== null
+          ) {
+            gameData = find.rawSteamJson;
+          } else if (typeof find.rawSteamJson === "string") {
+            try {
+              gameData = JSON.parse(find.rawSteamJson);
+            } catch (e) {
+              console.error(
+                `Failed to parse rawSteamJson for find ${find.id}:`,
+                e
+              );
+              // Keep gameData as null if parsing fails
+            }
+          }
+        }
+
         return {
           ...find,
           // Ensure reportData is always in the expected object format or null
           reportData: reportData as any, // Cast needed if DetailedIndieGameReport type isn't perfectly aligned
+          gameData: gameData, // Include parsed gameData
         };
       })
       .filter((find) => find.reportData !== null); // Filter out finds with null/invalid reportData
