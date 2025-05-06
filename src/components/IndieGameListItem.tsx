@@ -6,7 +6,11 @@ import {
   findGameImage,
   getGameImageSources,
 } from "@/lib/utils";
-import { RapidApiGameData, RapidApiReview } from "@/lib/rapidapi/types";
+import {
+  RapidApiGameData,
+  RapidApiReview,
+  RapidApiPricing,
+} from "@/lib/rapidapi/types";
 import { ImageWithFallbacks } from "./ImageWithFallbacks";
 import { GameReviewSentiment } from "./GameReviewSentiment";
 // Helper functions moved outside component for cleaner organization
@@ -36,6 +40,7 @@ interface GameFind {
   createdAt: Date | string;
   gameData?: RapidApiGameData; // Contains core data like pricing
   rawReviewJson?: RapidApiReview[] | null; // Add the raw review data
+  audienceAppeal?: string | null;
 }
 
 interface IndieGameListItemProps {
@@ -47,7 +52,8 @@ export function IndieGameListItem({
   find,
   showCreatedAt = false,
 }: IndieGameListItemProps) {
-  const { reportData, createdAt, gameData, rawReviewJson } = find;
+  const { reportData, createdAt, gameData, rawReviewJson, audienceAppeal } =
+    find;
 
   // --- Updated steamAppId logic ---
   // Prioritize steamAppId from reportData, then fall back to link extraction

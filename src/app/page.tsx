@@ -9,6 +9,7 @@ import { IndieGameListItem } from "@/components/IndieGameListItem";
 // import { Input } from "@/components/ui/input"; // Assuming shadcn/ui Input
 // import { Button } from "@/components/ui/button"; // Assuming shadcn/ui Button
 import { HeroSearchForm } from "@/components/HeroSearchForm"; // Import the new client component
+import { type RapidApiReview } from "@/lib/rapidapi/types"; // Import review type
 
 // Revalidate data every 60 seconds (or choose your preferred interval)
 // Or set to 0 for dynamic rendering on every request
@@ -36,16 +37,15 @@ async function getRecentFinds() {
         reportData: schema.finds.report,
         createdAt: schema.finds.createdAt,
         rawSteamJson: schema.finds.rawSteamJson,
+        rawReviewJson: schema.finds.rawReviewJson, // Select reviews
       })
       .from(schema.finds)
       .orderBy(desc(schema.finds.createdAt))
-      .limit(20); // Example limit
+      .limit(20);
 
-    // Drizzle returns reportData as potentially string | null | Json,
-    // we need to ensure it's parsed if stored as a string.
-    // Also handle potential nulls gracefully.
     const parsedFinds = finds
       .map((find) => {
+        // Parse reportData
         let reportData = null;
         if (find.reportData) {
           if (typeof find.reportData === "string") {
@@ -56,15 +56,13 @@ async function getRecentFinds() {
                 `Failed to parse reportData for find ${find.id}:`,
                 e
               );
-              // Keep reportData as null if parsing fails
             }
           } else {
-            // Assume it's already JSON
             reportData = find.reportData;
           }
         }
 
-        // Parse rawSteamJson if available
+        // Parse rawSteamJson (gameData)
         let gameData = null;
         if (find.rawSteamJson) {
           if (
@@ -80,24 +78,51 @@ async function getRecentFinds() {
                 `Failed to parse rawSteamJson for find ${find.id}:`,
                 e
               );
-              // Keep gameData as null if parsing fails
             }
+          }
+        }
+
+        // Parse rawReviewJson
+        let reviewData: RapidApiReview[] | null = null;
+        if (find.rawReviewJson) {
+          if (Array.isArray(find.rawReviewJson)) {
+            reviewData = find.rawReviewJson as RapidApiReview[];
+          } else if (typeof find.rawReviewJson === "string") {
+            try {
+              reviewData = JSON.parse(find.rawReviewJson) as RapidApiReview[];
+              if (!Array.isArray(reviewData)) {
+                console.warn(
+                  `Parsed rawReviewJson is not an array for find ${find.id} on homepage`
+                );
+                reviewData = null;
+              }
+            } catch (e) {
+              console.error(
+                `Failed to parse rawReviewJson for find ${find.id} on homepage:`,
+                e
+              );
+              reviewData = null;
+            }
+          } else {
+            console.warn(
+              `rawReviewJson is not an array or string for find ${find.id} on homepage`
+            );
           }
         }
 
         return {
           ...find,
-          // Ensure reportData is always in the expected object format or null
-          reportData: reportData as any, // Cast needed if DetailedIndieGameReport type isn't perfectly aligned
+          reportData: reportData as any,
           gameData: gameData, // Include parsed gameData
+          rawReviewJson: reviewData, // Include parsed reviewData
         };
       })
-      .filter((find) => find.reportData !== null); // Filter out finds with null/invalid reportData
+      .filter((find) => find.reportData !== null); // Keep existing filter
 
     return parsedFinds;
   } catch (error) {
     console.error("Error fetching finds:", error);
-    return []; // Return empty array on error
+    return [];
   }
 }
 

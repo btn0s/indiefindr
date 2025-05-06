@@ -98,7 +98,7 @@ export function IndieGameReport({
     <div className="w-full relative mx-auto sm:border sm:rounded-xl overflow-hidden shadow-md bg-background">
       {process.env.NODE_ENV === "development" && (
         <div className="absolute top-4 flex gap-2 right-4 z-10 items-center">
-          <span className="text-xs text-muted-foreground">DEBUG</span>
+          <span className="text-xs text-background font-bold">DEBUG</span>
           <RerunFormClient findId={id} sourceSteamUrl={sourceSteamUrl} />
           <Button
             onClick={copyJsonToClipboard}
