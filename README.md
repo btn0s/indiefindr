@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IndieFinder
+
+IndieFinder is a platform dedicated to helping players discover amazing indie games. Our mission is to create the best resource for finding and exploring indie titles based on your preferences, while also providing a valuable platform for indie developers to showcase their work.
+
+## Features
+
+- **Smart Game Discovery**: Find indie games using semantic search and AI-powered recommendations
+- **Detailed Game Profiles**: Get comprehensive information about games including descriptions, developer details, and community sentiment
+- **Visual Recognition**: Our system analyzes game screenshots to help match visual styles you might enjoy
+- **Steam Integration**: Currently supports importing and analyzing games from Steam
+
+## Roadmap
+
+We have an ambitious roadmap planned for IndieFinder! Check out [our roadmap](docs/roadmap.md) for upcoming features, including:
+
+- User accounts with Steam linking
+- Support for additional platforms (Itch.io, GOG, Epic)
+- Developer profiles and verification
+- Enhanced search and discovery tools
+- Community features and curation
+- And much more!
+
+## Tech Stack
+
+- **Frontend**: Next.js, React, Tailwind CSS
+- **Backend**: Next.js API routes
+- **Database**: PostgreSQL with Drizzle ORM
+- **AI/ML**: OpenAI embeddings for semantic search
+- **API Integrations**: Steam API (with more platforms coming)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js 18+ and pnpm
+- PostgreSQL with pgvector extension
+- OpenAI API key
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Clone the repository
+   ```bash
+   git clone https://github.com/your-username/indiefindr.git
+   cd indiefindr
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. Install dependencies
+   ```bash
+   pnpm install
+   ```
 
-## Learn More
+3. Set up environment variables
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with your API keys and database connection
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. Run database migrations
+   ```bash
+   pnpm db:migrate
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. Start the development server
+   ```bash
+   pnpm dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+6. Open [http://localhost:3000](http://localhost:3000) to see the app
 
-## Deploy on Vercel
+## Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+We welcome contributions to IndieFinder! Whether it's adding new features, fixing bugs, or improving documentation, please feel free to make a pull request.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See our [contribution guidelines](CONTRIBUTING.md) for more information.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Thanks to all the indie developers creating amazing games
+- Built with Next.js and powered by Vercel
