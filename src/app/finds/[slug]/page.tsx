@@ -11,7 +11,7 @@ import {
 
 // Type for the props received by both Page and generateMetadata
 type PageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 // Helper function to extract ID and fetch basic find data
@@ -86,7 +86,7 @@ export async function generateMetadata(
   { params }: PageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const { slug } = params;
+  const { slug } = await params;
   const findBasics = await getFindBasics(slug);
 
   // Default title if find not found or name unavailable
@@ -112,7 +112,7 @@ export async function generateMetadata(
 
 // --- Page Component ---
 export default async function Page({ params }: PageProps) {
-  const { slug } = params;
+  const { slug } = await params;
   let findId: number | null = null;
 
   // Split by dash and check length
