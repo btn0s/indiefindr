@@ -101,7 +101,7 @@ export function IndieGameListItem({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white w-full">
+    <div className="flex relative flex-col sm:items-center sm:flex-row gap-3 sm:gap-4 p-3 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 bg-white w-full">
       {/* Game Cover Art - Updated for responsiveness */}
       <div className="flex-shrink-0 w-full sm:w-1/2 sm:max-w-1/2 aspect-cover-art rounded bg-gray-100 overflow-hidden border border-gray-200 relative">
         {imageSources.length > 0 ? (
@@ -127,21 +127,15 @@ export function IndieGameListItem({
             <p className="text-xs text-muted-foreground truncate mb-1">
               by {reportData.developerName || "Unknown Developer"}
             </p>
-            {/* Conditionally display price */}
-            {displayPrice && (
-              <p className="text-xs font-medium text-gray-700 mb-1">
-                {displayPrice}
-              </p>
-            )}
             {/* Pass rawReviewJson to GameReviewSentiment */}
             {actualAppId && (
-              <div className="mb-2">
+              <div className="flex gap-2 items-center absolute top-2 right-2">
                 <GameReviewSentiment reviews={rawReviewJson} />
               </div>
             )}
           </div>
           {formattedDate && (
-            <span className="text-xs text-muted-foreground">
+            <span className="absolute bottom-2 right-2 text-xs text-muted-foreground">
               {formattedDate}
             </span>
           )}
