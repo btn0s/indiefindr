@@ -151,23 +151,11 @@ export function GameReviewSentiment({ steamAppId }: GameReviewSentimentProps) {
     return null;
   }
 
-  if (
-    !sentiment ||
-    sentiment.label === "No Reviews" ||
-    sentiment.label === "Not Rated"
-  ) {
-    console.log(
-      "[GameReviewSentiment] Returning null due to no/invalid sentiment:",
-      sentiment
-    );
-    return null;
-  }
-
   return (
     <Badge
-      className={cn("text-xs font-medium align-middle", sentiment.className)}
+      className={cn("text-xs font-medium align-middle", sentiment?.className)}
     >
-      {sentiment.label}
+      {sentiment?.label}
     </Badge>
   );
 }
