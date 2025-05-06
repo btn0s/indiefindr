@@ -7,7 +7,7 @@ import { sql, and, or, ilike, asc } from "drizzle-orm";
 import type { DetailedIndieGameReport } from "@/schema";
 
 const SEARCH_LIMIT = 10; // Limit the number of search results
-const DISTANCE_THRESHOLD = 0.7; // Slightly increase threshold to allow more semantic matches
+const DISTANCE_THRESHOLD = 0.6; // Slightly increase threshold to allow more semantic matches
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -29,17 +29,16 @@ export async function GET(req: NextRequest) {
     const queryEmbeddingString = `[${queryEmbedding.join(",")}]`;
 
     // 2. Define conditions for keyword search
-    // We need to safely access JSONB fields and check if the tags array contains the query
-    const keywordConditions = or(
-      // Case-insensitive search on game name
-      ilike(sql`${schema.finds.report}->>'gameName'`, `%${trimmedQuery}%`),
-      // Check if genresAndTags array (treated as text) contains the query word(s)
-      // Using @@ plainto_tsquery for basic text search on tags converted to text
-      // Note: This is a basic check. For more complex tag searching, a dedicated FTS index might be better.
-      sql`(${schema.finds.report}->>'genresAndTags')::text @@ plainto_tsquery('english', ${trimmedQuery})`
-      // Alternative/Simpler text check (less efficient than FTS):
-      // ilike(sql`(${schema.finds.report}->>'genresAndTags')::text`, `%${trimmedQuery}%`)
+    const nameKeywordCondition = ilike(
+      sql`${schema.finds.report}->>'gameName'`,
+      `%${trimmedQuery}%`
     );
+    const tagKeywordCondition = sql`(
+      ${schema.finds.report}->>'genresAndTags'
+    )::text @@ plainto_tsquery('english', ${trimmedQuery})`;
+
+    // We might still use the combined keyword condition for the flag if needed
+    const keywordConditions = or(nameKeywordCondition, tagKeywordCondition);
 
     // 3. Define condition for vector search
     const vectorCondition = and(
@@ -47,8 +46,9 @@ export async function GET(req: NextRequest) {
       sql`${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector < ${DISTANCE_THRESHOLD}`
     );
 
-    // 4. Combine conditions: Find matches from EITHER keyword OR vector search
-    const combinedCondition = or(keywordConditions, vectorCondition);
+    // 4. Combine conditions: Find matches that are semantically close OR have an exact tag match
+    const combinedCondition = or(vectorCondition, tagKeywordCondition);
+    // const combinedCondition = vectorCondition; // Use only vector search
 
     // 5. Perform the combined search
     const searchResults = await db
@@ -67,13 +67,16 @@ export async function GET(req: NextRequest) {
         isKeywordMatch: sql<boolean>`${keywordConditions}`.as(
           "is_keyword_match"
         ),
+        // Add a specific flag for tag matching
+        isTagMatch: sql<boolean>`${tagKeywordCondition}`.as("is_tag_match"),
       })
       .from(schema.finds)
       .where(combinedCondition)
       .orderBy(
-        // Prioritize keyword matches, then sort by vector distance
-        sql`CASE WHEN ${keywordConditions} THEN 0 ELSE 1 END ASC`, // Keyword matches first
-        sql`(${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector) ASC NULLS LAST` // Then sort by distance
+        // Prioritize exact tag matches first
+        sql`CASE WHEN ${tagKeywordCondition} THEN 0 ELSE 1 END ASC`,
+        // Then sort by vector distance
+        sql`(${schema.finds.vectorEmbedding} <=> ${queryEmbeddingString}::vector) ASC NULLS LAST`
       )
       .limit(SEARCH_LIMIT);
 
