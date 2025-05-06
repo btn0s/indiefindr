@@ -196,11 +196,13 @@ export function IndieGameReport({
 
           {/* Moved Audience Appeal Section */}
           {audienceAppeal && (
-            <div className="text-sm">
-              <div className="font-medium text-foreground mb-2">
-                You'll like this game if...
+            <div className="border rounded-lg p-3 bg-background/50">
+              <div className="font-medium text-primary mb-1.5 text-sm flex items-center">
+                <span>You'll like this game if...</span>
               </div>
-              <div className="text-muted-foreground">{audienceAppeal}</div>
+              <div className="text-muted-foreground text-sm">
+                {audienceAppeal}
+              </div>
             </div>
           )}
         </div>
