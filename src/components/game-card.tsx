@@ -105,7 +105,7 @@ export function GameCard({
           {" "}
           {/* Wrapper for buttons */}
           <Link
-            href={`/game/${game.id}`}
+            href={`/games/${game.id}/${game.title?.toLowerCase().replace(/\\s+/g, "-") || "untitled"}`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))} // Removed w-full
             title="View Details"
           >
