@@ -7,6 +7,33 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button"; // For potential actions later
 import Link from "next/link";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+
+// Define types for the rawData structure
+interface Screenshot {
+  id: number;
+  path_thumbnail: string;
+  path_full: string;
+}
+
+interface ReleaseDate {
+  date: string;
+  coming_soon: boolean;
+}
+
+interface SteamRawData {
+  screenshots?: Screenshot[];
+  developers?: string[];
+  publishers?: string[];
+  release_date?: ReleaseDate;
+  [key: string]: any; // Allow other properties
+}
 
 // Function to fetch game data server-side
 async function getGame(id: string) {
@@ -23,6 +50,7 @@ async function getGame(id: string) {
         shortDescription: externalSourceTable.descriptionShort, // Corrected field name
         steamAppid: externalSourceTable.steamAppid,
         tags: externalSourceTable.tags,
+        rawData: externalSourceTable.rawData,
         // Add other fields as needed from externalSource schema
       })
       .from(externalSourceTable)
@@ -54,66 +82,113 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
   const { id } = await params;
   const game = await getGame(id); // Fetch game data
 
-  const imageUrl = game.steamAppid
+  console.log(game);
+
+  // Header image from Steam
+  const headerImageUrl = game.steamAppid
     ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
-    : null; // Or a placeholder image URL
+    : null;
+
+  // Cast rawData to our type and extract data
+  const rawData = game.rawData as SteamRawData;
+  const screenshots = rawData?.screenshots || [];
+  const developer = rawData?.developers?.[0] || "Unknown Developer";
+  const publisher = rawData?.publishers?.[0] || "Unknown Publisher";
+  const releaseDate = rawData?.release_date?.date || "TBA";
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-6 max-w-5xl">
+      {/* Game Title */}
+      <h1 className="text-3xl font-bold mb-4">
+        {game.title || "Untitled Game"}
+      </h1>
+
+      {/* Screenshots Gallery (Simple version without carousel component) */}
+      {screenshots.length > 0 && (
+        <div className="mb-6">
+          <div className="relative w-full overflow-hidden rounded-lg aspect-video">
+            <Image
+              src={screenshots[0].path_full}
+              alt={`${game.title} Screenshot`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1000px"
+              priority
+            />
+
+            {/* Thumbnails row below main image */}
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4">
+              {screenshots.slice(0, 5).map((screenshot, index) => (
+                <div
+                  key={index}
+                  className="w-16 h-9 relative rounded overflow-hidden border-2 border-white/80"
+                >
+                  <Image
+                    src={screenshot.path_thumbnail}
+                    alt={`Thumbnail ${index}`}
+                    fill
+                    className="object-cover"
+                    sizes="64px"
+                  />
+                </div>
+              ))}
+              {screenshots.length > 5 && (
+                <div className="w-16 h-9 relative rounded overflow-hidden border-2 border-white/80 bg-black/50 flex items-center justify-center">
+                  <span className="text-white text-xs font-medium">
+                    +{screenshots.length - 5}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row gap-8">
-        {/* Left Column: Image */}
-        <div className="md:w-1/3 lg:w-1/4 shrink-0">
-          <div className="aspect-header-image rounded bg-foreground/50 overflow-hidden border relative w-full">
-            {imageUrl ? (
+        {/* Left Column: Game info and smaller header image */}
+        <div className="md:w-2/3">
+          {/* Game description */}
+          <p className="text-lg text-muted-foreground mb-6">
+            {game.shortDescription || "No description available."}
+          </p>
+
+          {/* Header Image (Smaller version) */}
+          {headerImageUrl && (
+            <div className="mb-6 rounded-md overflow-hidden shadow-sm aspect-[460/215] relative w-full md:w-3/4">
               <Image
-                src={imageUrl}
+                src={headerImageUrl}
                 alt={
                   game.title
                     ? `${game.title} Header Image`
                     : "Game Header Image"
                 }
                 fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
                 className="object-cover"
-                priority // Prioritize loading the main image
               />
-            ) : (
-              <div className="w-full h-full bg-muted flex items-center justify-center">
-                <span className="text-sm text-muted-foreground">
-                  No Image Available
-                </span>
-              </div>
-            )}
-          </div>
-          {/* Steam Store Link Button */}
-          {game.steamAppid && (
-            <Button asChild className="mt-4 w-full">
-              <Link
-                href={`https://store.steampowered.com/app/${game.steamAppid}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View on Steam
-              </Link>
-            </Button>
+            </div>
           )}
-          {/* Add to Library Button (Placeholder/Future) */}
-          {/* <Button variant="outline" className="mt-2 w-full">Add to Library</Button> */}
-        </div>
 
-        {/* Right Column: Details */}
-        <div className="md:w-2/3 lg:w-3/4">
-          <h1 className="text-3xl lg:text-4xl font-bold mb-2">
-            {game.title || "Untitled Game"}
-          </h1>
-          <p className="text-lg text-muted-foreground mb-4">
-            {game.shortDescription || "No description available."}
-          </p>
+          {/* Game Details */}
+          <div className="mb-6 grid grid-cols-2 gap-2 text-sm">
+            <div className="flex flex-col gap-1">
+              <p className="text-muted-foreground">Developer</p>
+              <p className="font-medium">{developer}</p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-muted-foreground">Publisher</p>
+              <p className="font-medium">{publisher}</p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-muted-foreground">Release Date</p>
+              <p className="font-medium">{releaseDate}</p>
+            </div>
+          </div>
 
           {/* Tags Display */}
           {game.tags && game.tags.length > 0 && (
             <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-2">Tags</h2>
+              <h2 className="text-lg font-semibold mb-2">Tags</h2>
               <div className="flex flex-wrap gap-2">
                 {game.tags.map((tag: string) => (
                   <Badge key={tag} variant="secondary" className="text-sm">
@@ -123,13 +198,24 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
               </div>
             </div>
           )}
+        </div>
 
-          {/* Placeholder for more details */}
-          {/* <h2 className="text-xl font-semibold mb-2">Details</h2>
-             <p>Developer: ...</p>
-             <p>Publisher: ...</p>
-             <p>Release Date: ...</p>
-          */}
+        {/* Right Column: Actions */}
+        <div className="md:w-1/3 space-y-4">
+          {game.steamAppid && (
+            <Button asChild className="w-full" size="lg">
+              <Link
+                href={`https://store.steampowered.com/app/${game.steamAppid}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View on Steam
+              </Link>
+            </Button>
+          )}
+          <Button variant="outline" className="w-full" size="lg">
+            Add to Library
+          </Button>
         </div>
       </div>
     </div>
