@@ -86,17 +86,17 @@ export function GameCard({
         {/* Tags Display */}
         {game.tags && game.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {game.tags.slice(0, 3).map(
+            {game.tags.slice(0, 2).map(
               (
-                tag // Limit displayed tags to 3
+                tag // Limit displayed tags to 2
               ) => (
                 <Badge key={tag} variant="secondary">
                   {tag}
                 </Badge>
               )
             )}
-            {game.tags.length > 3 && ( // Check if more than 3 tags exist
-              <Badge variant="outline">+{game.tags.length - 3} more</Badge> // Adjust count
+            {game.tags.length > 2 && ( // Check if more than 2 tags exist
+              <Badge variant="outline">+{game.tags.length - 2} more</Badge> // Adjust count
             )}
           </div>
         )}
