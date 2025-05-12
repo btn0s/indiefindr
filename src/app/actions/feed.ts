@@ -125,9 +125,6 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
       if (averageVector) {
         console.log(`Calculated average vector for user ${user.id}.`);
         // 3. Perform similarity search
-        const avgVectorSqlString = JSON.stringify(averageVector);
-        const avgVectorSql = sql<string>`'${avgVectorSqlString}'`;
-
         recommendations = await db
           .select({
             id: schema.externalSourceTable.id,
@@ -141,7 +138,9 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
               isNotNull(schema.externalSourceTable.embedding)
             )
           )
-          .orderBy(sql`embedding <=> ${avgVectorSql}`)
+          .orderBy(
+            sql`embedding <=> '${sql.raw(JSON.stringify(averageVector))}'`
+          )
           .limit(FEED_SIZE);
 
         console.log(
