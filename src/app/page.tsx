@@ -19,6 +19,8 @@ interface FeedGame {
   id: number;
   title: string | null;
   shortDescription: string | null;
+  steamAppid: string | null; // Add steamAppid
+  tags: string[] | null; // Add tags array
 }
 
 export default async function HomePage() {

@@ -21,6 +21,8 @@ export interface FeedGame {
   id: number;
   title: string | null;
   shortDescription: string | null;
+  steamAppid: string | null; // Add steamAppid
+  tags: string[] | null; // Add tags array
   // Add other necessary fields like imageUrl, genres, etc.
 }
 
@@ -130,6 +132,8 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
             id: schema.externalSourceTable.id,
             title: schema.externalSourceTable.title,
             shortDescription: schema.externalSourceTable.descriptionShort,
+            steamAppid: schema.externalSourceTable.steamAppid,
+            tags: schema.externalSourceTable.tags, // Select tags
           })
           .from(schema.externalSourceTable)
           .where(
@@ -170,6 +174,8 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
           id: schema.externalSourceTable.id,
           title: schema.externalSourceTable.title,
           shortDescription: schema.externalSourceTable.descriptionShort,
+          steamAppid: schema.externalSourceTable.steamAppid,
+          tags: schema.externalSourceTable.tags, // Select tags
         })
         .from(schema.externalSourceTable)
         .where(notInArray(schema.externalSourceTable.id, excludedIds))

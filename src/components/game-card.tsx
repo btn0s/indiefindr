@@ -2,28 +2,23 @@
 
 import React from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
 interface GameCardProps {
   game: {
-    id: number; // Assuming external_source.id is a number
+    id: number;
     title: string | null;
-    shortDescription: string | null; // Placeholder, adjust based on actual data
-    // Add other relevant game properties here, e.g., imageUrl, genres, etc.
+    shortDescription: string | null;
+    steamAppid: string | null;
+    tags: string[] | null;
   };
-  isInLibrary: boolean; // To determine which button to show
-  onAddToLibrary: (gameId: number) => Promise<any>; // Accept Promise<any> for Server Actions
-  onRemoveFromLibrary: (gameId: number) => Promise<any>; // Accept Promise<any> for Server Actions
+  isInLibrary: boolean;
+  onAddToLibrary: (gameId: number) => Promise<any>;
+  onRemoveFromLibrary: (gameId: number) => Promise<any>;
 }
 
 export function GameCard({
@@ -33,59 +28,100 @@ export function GameCard({
   onRemoveFromLibrary,
 }: GameCardProps) {
   const handleAdd = async () => {
-    // TODO: Add loading state/feedback
     try {
       await onAddToLibrary(game.id);
-      // TODO: Add success feedback (e.g., toast)
     } catch (error) {
       console.error("Error adding to library:", error);
-      // TODO: Add error feedback
     }
   };
 
   const handleRemove = async () => {
-    // TODO: Add loading state/feedback
     try {
       await onRemoveFromLibrary(game.id);
-      // TODO: Add success feedback
     } catch (error) {
       console.error("Error removing from library:", error);
-      // TODO: Add error feedback
     }
   };
 
+  const imageUrl = game.steamAppid
+    ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
+    : null; // Or a placeholder image URL
+
   return (
-    <Card className="w-full">
-      {" "}
-      {/* Adjust width as needed */}
-      <CardHeader>
-        <CardTitle>{game.title || "Untitled Game"}</CardTitle>
-        {/* Optional: Add image or other header content here */}
-      </CardHeader>
-      <CardContent>
-        <CardDescription>
-          {game.shortDescription || "No description available."}
-        </CardDescription>
-        {/* TODO: Add Genres/Tags if available */}
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        {/* Link to game detail page, styled as a button */}
-        <Link
-          href={`/game/${game.id}`}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-        >
-          Details
-        </Link>
-        {isInLibrary ? (
-          <Button variant="secondary" size="sm" onClick={handleRemove}>
-            Remove
-          </Button>
+    // Main container: Flex row, align items start
+    <div className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+      {/* Image container */}
+      <div className="shrink-0 w-full sm:w-1/2 sm:max-w-1/2 aspect-cover-art rounded bg-foreground/50 overflow-hidden border relative">
+        {/* Slightly larger image */}
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={
+              game.title ? `${game.title} Header Image` : "Game Header Image"
+            }
+            fill
+            sizes="128px" // Image width
+            className="object-cover"
+          />
         ) : (
-          <Button variant="default" size="sm" onClick={handleAdd}>
-            Add to Library
-          </Button>
+          // Placeholder if no image
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">No Image</span>
+          </div>
         )}
-      </CardFooter>
-    </Card>
+      </div>
+
+      {/* Center Content container (Vertical Stack) */}
+      <div className="flex-grow flex flex-col gap-1 min-w-0">
+        {" "}
+        {/* Ensure takes available space */}
+        <p className="text-lg font-semibold truncate">
+          {game.title || "Untitled Game"}
+        </p>
+        <p className="text-sm text-muted-foreground line-clamp-2">
+          {" "}
+          {/* Allow 2 lines, remove truncate */}
+          {game.shortDescription || "No description."}
+        </p>
+        {/* Tags Display */}
+        {game.tags && game.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {game.tags.slice(0, 5).map(
+              (
+                tag // Limit displayed tags
+              ) => (
+                <Badge key={tag} variant="secondary">
+                  {tag}
+                </Badge>
+              )
+            )}
+            {game.tags.length > 5 && (
+              <Badge variant="outline">+{game.tags.length - 5} more</Badge>
+            )}
+          </div>
+        )}
+        {/* Add Actions within the content flow */}
+        <div className="flex items-center gap-2 mt-2">
+          {" "}
+          {/* Wrapper for buttons */}
+          <Link
+            href={`/game/${game.id}`}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))} // Removed w-full
+            title="View Details"
+          >
+            Details
+          </Link>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleAdd}
+            title="Add to Library"
+            disabled={isInLibrary}
+          >
+            {isInLibrary ? "Saved" : "Save"}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
