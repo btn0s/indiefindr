@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# The 80/20 Rule for Intentional Craft
+
+Apply the Pareto Principle (80/20 rule) to software development to maximize impact and build with intention.
+
+**Core Idea:** Focus 20% of your effort on the features, architecture, and user experience elements that deliver 80% of the value.
+
+**Intentional Craft:**
+-   **Identify the Critical 20%:** What parts of the application are most essential? Where will quality and robustness have the biggest impact? Invest your primary effort and highest level of craft here.
+-   **Manage the Remaining 80%:** This doesn't mean neglecting the rest, but rather making *conscious decisions* about where to invest further effort.
+    -   Is "good enough" sufficient for certain less critical areas?
+    -   Where can polish provide disproportionate value?
+    -   When is technical debt acceptable, and when should it be addressed?
+-   **Goal:** Deliver the most value efficiently by prioritizing rigorously and applying craft *where it matters most*. Avoid over-engineering less critical parts and ensure the core is solid, well-designed, and delivers the intended experience.
