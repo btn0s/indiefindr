@@ -5,14 +5,14 @@ This document outlines the primary sections and routes for the IndieFindr web ap
 ## Main Navigation / Core Sections
 
 *   **`/` (Home / Feed)**
-    *   **Purpose:** Personalized feed of recommended games based on user activity and preferences. Primarily uses RSC for data fetching.
+    *   **Purpose:** Personalized, dynamic feed acting as the primary discovery surface. Blends AI-driven recommendations for new games, relevant updates/content for games in the user's library (e.g., new trailers, devlogs, social buzz), and potentially other highlighted content snippets.
     *   **Target Audience:** Logged-in users.
-    *   **Key Components:** Recommendation rails ("Because you liked...", "Trending"), possibly recently added library items.
+    *   **Key Components:** Algorithmically blended feed cards showing new recommendations, updates on curated games, featured content.
 
 *   **`/discover` (Discover)**
-    *   **Purpose:** Global search and browsing interface for both the *Core Catalogue* and the *Federated Index*.
+    *   **Purpose:** Global search and browsing interface for the unified index of games from all sources.
     *   **Target Audience:** All users (logged-in and anonymous).
-    *   **Key Components:** Search bar, filters (genre, tags, platform), results display (distinguishing Core vs. Federated), AI-driven recommendations.
+    *   **Key Components:** Search bar, filters (genre, tags, platform), results display (differentiating enriched vs. basic results), AI-driven recommendations primarily featuring enriched games.
 
 *   **`/groups` (Groups - Hub)**
     *   **Purpose:** Entry point for accessing user's group memberships.
