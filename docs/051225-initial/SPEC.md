@@ -62,6 +62,8 @@ IndieFindr is **the human-centric, AI-amplified discovery layer for indie games*
 
 ## 4 · System Architecture (High Level - v0 Focus)
 
+*Tech Stack Summary (v0):* Next.js 15 (App Router) with Tailwind CSS/shadcn/ui for frontend; Node.js/Express API; Vercel AI SDK for embedding model calls; Postgres (Supabase) for primary data; Pinecone for vectors.
+
 ```mermaid
 flowchart TB
   subgraph Web Layer (Next.js v0)
@@ -135,6 +137,10 @@ PRIMARY KEY(owner_id, game_id)
 ---
 
 ## 7 · Front-End Design (Next .js - v0 Focus)
+
+*   **Framework:** Next.js 15 (App Router)
+*   **Styling:** Tailwind CSS, shadcn/ui
+*   **AI SDK Usage:** For v0, backend use of Vercel AI SDK (`ai/core` or provider packages) for embedding generation. Frontend will use standard data fetching; `ai/rsc` and advanced `ai/react` features are deferred.
 
 ### Routing (v0)
 ```

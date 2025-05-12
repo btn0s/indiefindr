@@ -8,8 +8,11 @@
 
 *   Runtime: Node.js
 *   API Framework: Express.js (Deployed as Vercel Serverless Functions)
+*   **Frontend Framework:** Next.js 15 (App Router)
+*   **UI:** Tailwind CSS, shadcn/ui
 *   Database (Primary Data): PostgreSQL (Hosted on Supabase)
 *   Database (Vector Embeddings): Pinecone (or similar vector DB)
+*   **AI Model Interaction (Embeddings):** Vercel AI SDK (`ai/core` or provider packages)
 *   Authentication: Supabase Auth
 *   Crawlers/Enrichment: Node.js scripts
 *   Deployment: Vercel, Supabase, Pinecone
