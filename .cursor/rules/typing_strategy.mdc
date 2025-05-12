@@ -1,0 +1,22 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Typing Strategy
+
+To ensure consistency and maintainability, we follow these guidelines for TypeScript types:
+
+1.  **Database Entity Types (Primary):**
+    *   Always use Drizzle's inferred types for data corresponding to database tables.
+    *   Use `typeof schema.tableName.$inferSelect` for selecting data.
+    *   Use `typeof schema.tableName.$inferInsert` for inserting/updating data.
+    *   The source of truth for these types is the schema defined in [src/db/schema.ts](mdc:src/db/schema.ts).
+
+2.  **External API / Local Implementation Types:**
+    *   Define types locally within the relevant file for structures representing data from external sources (e.g., Steam API responses) or types purely internal to a specific function's logic.
+    *   Examples: `SteamAppDetailsData` in [src/lib/workers/steam-enrichment.ts](mdc:src/lib/workers/steam-enrichment.ts), `CsvRow` in [src/lib/workers/csv-ingestion.ts](mdc:src/lib/workers/csv-ingestion.ts).
+
+3.  **Shared Application/API Types (Future):**
+    *   When needed for shared concepts across our application (e.g., API request/response bodies, shared component props), create types in a dedicated shared directory, likely `src/types/`.
+    *   These may adapt or re-export Drizzle inferred types or define new structures.
