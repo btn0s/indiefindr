@@ -1,0 +1,25 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Codebase Structure Highlights
+
+*   **Initial Specs & Requirements:** Located in [docs/051225-initial/](mdc:docs/051225-initial/)
+    *   [SPEC.md](mdc:docs/051225-initial/SPEC.md)
+    *   [BACKEND_MVP.md](mdc:docs/051225-initial/BACKEND_MVP.md)
+    *   [PRODUCT_REQUIREMENTS.md](mdc:docs/051225-initial/PRODUCT_REQUIREMENTS.md)
+    *   [IA.md](mdc:docs/051225-initial/IA.md)
+*   **Next.js App Router:** Core application structure is within [src/app/](mdc:src/app/)
+*   **Authentication:**
+    *   Auth pages: [src/app/(auth-pages)/](mdc:src/app/(auth-pages)/)
+    *   OAuth Callback: [src/app/auth/callback/](mdc:src/app/auth/callback/)
+    *   Middleware for session management: [middleware.ts](mdc:middleware.ts)
+*   **Supabase Integration:** Utility functions for interacting with Supabase are likely in [src/utils/supabase/](mdc:src/utils/supabase/)
+*   **UI Components:** Reusable UI components built with shadcn/ui are in [src/components/ui/](mdc:src/components/ui/)
+*   **Configuration:**
+    *   Next.js config: [next.config.ts](mdc:next.config.ts)
+    *   TypeScript config: [tsconfig.json](mdc:tsconfig.json)
+    *   Tailwind config: [postcss.config.mjs](mdc:postcss.config.mjs) (implicitly via tailwind.config.ts if present, or defaults)
+    *   shadcn/ui config: [components.json](mdc:components.json)
+*   **Dependencies:** Defined in [package.json](mdc:package.json) using PNPM ([pnpm-lock.yaml](mdc:pnpm-lock.yaml)).

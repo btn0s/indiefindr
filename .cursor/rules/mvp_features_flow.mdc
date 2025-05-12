@@ -1,0 +1,27 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Core MVP (v0) Features & Data Flow
+
+The v0 focuses on establishing the data pipeline for semantic recommendations, applying the 80/20 principle:
+
+1.  **Manual CSV Input (20% focus):** Starts with a predefined list of Steam AppIDs. ([SPEC.md](mdc:docs/051225-initial/SPEC.md) section 4)
+2.  **Steam Enrichment Worker (20% focus):** Fetches *essential* game metadata (title, description, tags, genres) from Steam for the given AppIDs. Stores results in the `external_source` table (Postgres/Supabase). ([BACKEND_MVP.md](mdc:docs/051225-initial/BACKEND_MVP.md) section 5)
+3.  **AI Embedding Generation (20% focus):** Generates semantic vector embeddings from the essential text data using a standard AI model. Stores embeddings in the `external_source` table using the `pgvector` extension (Supabase). ([BACKEND_MVP.md](mdc:docs/051225-initial/BACKEND_MVP.md) section 6)
+4.  **API Service (20% focus):** Provides *core* endpoints for:
+    *   Authentication (Supabase Auth)
+    *   Keyword Search (Basic Postgres FTS on `external_source.title`)
+    *   Game Details (Basic info from `external_source`)
+    *   Library Management (Simple CRUD on `library` table)
+    *   **Personalized Feed:** Queries `pgvector` for games semantically similar to those in the user's library. ([BACKEND_MVP.md](mdc:docs/051225-initial/BACKEND_MVP.md) section 4)
+5.  **Frontend Feed (20% focus):** Displays the AI-driven recommendations functionally on the home page (`/`).
+
+**(80% Deferred):** Automated crawlers, multi-platform support, advanced AI features (summaries, vibe check), complex UI/UX, detailed game pages, social features, play tracking are all pushed post-MVP.
+
+**Key Tables (v0):**
+*   `external_source`: Stores basic Steam game metadata + embeddings (`pgvector`).
+*   `library`: User's saved games (wishlist).
+
+Reference: [BACKEND_MVP.md](mdc:docs/051225-initial/BACKEND_MVP.md) for schema details.

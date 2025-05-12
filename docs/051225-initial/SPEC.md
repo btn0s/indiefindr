@@ -62,7 +62,7 @@ IndieFindr is **the human-centric, AI-amplified discovery layer for indie games*
 
 ## 4 · System Architecture (High Level - v0 Focus)
 
-*Tech Stack Summary (v0):* Next.js 15 (App Router) with Tailwind CSS/shadcn/ui for frontend; Node.js/Express API; Vercel AI SDK for embedding model calls; Postgres (Supabase) for primary data; Pinecone for vectors.
+*Tech Stack Summary (v0):* Next.js 15 (App Router) with Tailwind CSS/shadcn/ui for frontend; Node.js/Express API; Vercel AI SDK for embedding model calls; Postgres (Supabase) for primary data; `pgvector` extension (Supabase) for vectors.
 
 ```mermaid
 flowchart TB
@@ -83,7 +83,7 @@ flowchart TB
     CoreAPI[Core API (Express/Vercel)]
     Enrich[Steam Enrichment Worker]
     EmbedGen[AI Embedding Gen]
-    VectorDB[(Vector Store - Pinecone)]
+    VectorDB[(Vector Store - pgvector/Supabase)]
     GameDB[(Game DB - Postgres)]
   end
   Ingest --> Enrich
@@ -94,7 +94,7 @@ flowchart TB
   SearchAPI --> GameDB
   CoreAPI --> GameDB & VectorDB // For recommendations
 ```
-*Description (v0 Focus):* A manual CSV seeds Steam AppIDs. An Enrichment Worker fetches data from Steam for those IDs, storing it in Postgres. An Embedding Generator creates vectors from the text data and stores them in Pinecone. The Core API handles user actions and queries Pinecone for recommendations. Keyword search uses Postgres.
+*Description (v0 Focus):* A manual CSV seeds Steam AppIDs. An Enrichment Worker fetches data from Steam for those IDs, storing it in Postgres. An Embedding Generator creates vectors from the text data and stores them in the same Postgres database using the `pgvector` extension. The Core API handles user actions and queries `pgvector` for recommendations. Keyword search uses Postgres FTS.
 
 ---
 
@@ -116,7 +116,7 @@ raw_data          jsonb     -- original steam data
 media             jsonb     -- basic thumbnails, hero (from Steam data)
 enrichment_status text      -- pending, basic_info_extracted, embedding_generated, embedding_failed
 is_featured       boolean DEFAULT FALSE
--- (Vector itself is stored in Pinecone, linked by id/external_id)
+-- (Vector itself is stored in pgvector, linked by id/external_id)
 
 -- library (Simplified wishlist for v0)
 owner_id    uuid -- User ID
@@ -132,7 +132,7 @@ PRIMARY KEY(owner_id, game_id)
 
 ## 6 · Key AI Components (v0 Focus)
 
-*   **Similarity Vector Generator:** Uses model (e.g., Sentence-BERT) on Steam game data (descriptions, tags) to create embeddings. Stores in Vector DB (Pinecone).
+*   **Similarity Vector Generator:** Uses model (e.g., Sentence-BERT) on Steam game data (descriptions, tags) to create embeddings. Stores in the Supabase Postgres DB using the `pgvector` extension.
 
 ---
 
@@ -166,7 +166,7 @@ PRIMARY KEY(owner_id, game_id)
 
 | Version | Deliverable                                                                 |
 | ------ | --------------------------------------------------------------------------- |
-| **v0 (Pareto MVP)** | Next.js skeleton, **Manual CSV Ingestion**, Steam **Enrichment Worker** (+ embedding data), Vector DB setup, Semantic Embedding generation, basic keyword search (PG FTS), simplified personal library (save/view), core semantic recommendation feed. |
+| **v0 (Pareto MVP)** | Next.js skeleton, **Manual CSV Ingestion**, Steam **Enrichment Worker** (+ embedding data), **Supabase `pgvector` setup**, Semantic Embedding generation, basic keyword search (PG FTS), simplified personal library (save/view), core semantic recommendation feed. |
 
 ---
 

@@ -1,0 +1,21 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Technology Stack (v0)
+
+*   **Frontend:** [Next.js](https://nextjs.org/) 15 (App Router), React 19, TypeScript
+*   **UI:** [Tailwind CSS](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/), Lucide Icons
+*   **Backend API:** Node.js / [Express.js](https://expressjs.com/) (planned for Vercel Serverless Functions)
+*   **Database (Primary):** PostgreSQL (via [Supabase](https://supabase.com/))
+*   **Database (Vector Embeddings):** PostgreSQL with `pgvector` extension (via [Supabase](https://supabase.com/))
+*   **Authentication:** [Supabase Auth](https://supabase.com/auth)
+*   **AI Model Interaction:** [Vercel AI SDK](https://sdk.vercel.ai/) (planned for embedding generation)
+*   **Package Manager:** PNPM
+*   **Deployment:** [Vercel](https://vercel.com/), [Supabase](https://supabase.com/)
+
+References:
+*   [BACKEND_MVP.md](mdc:docs/051225-initial/BACKEND_MVP.md)
+*   [package.json](mdc:package.json)
+*   [tsconfig.json](mdc:tsconfig.json)
