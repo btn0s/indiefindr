@@ -97,7 +97,7 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
   const releaseDate = rawData?.release_date?.date || "TBA";
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-5xl">
+    <div className="container mx-auto max-w-5xl">
       {/* Screenshots Carousel */}
       {screenshots.length > 0 && (
         <div className="mb-6">
