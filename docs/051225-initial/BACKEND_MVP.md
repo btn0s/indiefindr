@@ -1,6 +1,6 @@
 # Backend Design (MVP) - IndieFindr
 
-> **Goal:** Define the core backend components for v0 (MVP) to deliver a **minimal lovable product**. This includes: Steam data ingestion, **generation of semantic game embeddings**, user authentication, personal game libraries, and a dynamic granular feed featuring **semantically relevant new game recommendations** and key content updates (trailers/tweets). This version prioritizes AI-driven discovery from day one, deferring natural language search and other advanced AI features.
+> **Goal:** Define the core backend components for v0 (MVP) to deliver a **minimal lovable product** focused on **AI-driven semantic game discovery**. This includes: Steam data ingestion, generation of semantic game embeddings, user authentication, basic personal game libraries (save/view), and a simple feed featuring **semantically relevant new game recommendations**. All other features (granular content updates, multi-platform support, advanced AI, groups, etc.) are deferred to post-v0.
 
 ---
 
@@ -9,152 +9,125 @@
 *   Runtime: Node.js
 *   API Framework: Express.js (Deployed as Vercel Serverless Functions)
 *   Database (Primary Data): PostgreSQL (Hosted on Supabase)
-*   **Database (Vector Embeddings): Pinecone (or similar vector DB)**
+*   Database (Vector Embeddings): Pinecone (or similar vector DB)
 *   Authentication: Supabase Auth
-*   Crawlers/Monitors: Node.js scripts
+*   Crawlers/Enrichment: Node.js scripts
 *   Deployment: Vercel, Supabase, Pinecone
 
 ---
 
-## 2. Core Components
+## 2. Core Components (v0)
 
-1.  **API Service (`CoreAPI`)**
-    *   Built with Express.js, running as serverless functions on Vercel.
-    *   Handles all incoming requests from the Next.js frontend.
-    *   Interacts with Supabase for database operations and authentication checks.
-
-2.  **Database (PostgreSQL on Supabase)**
-    *   Stores all game data (from various external sources like Steam, itch.io) in a primary table (e.g., `external_source`), with an enrichment status field indicating the level of processing (e.g., `pending`, `processing`, `enriched`).
-    *   A separate table (e.g., `games_core` or `featured_games`) can be used for manually curated/featured titles, which would also have corresponding entries in the primary game data table.
-    *   Stores user data (via Supabase Auth) and user library associations.
-
-3.  **Crawlers (Standalone Scripts)**
-    *   Separate Node.js scripts responsible for fetching data from external platforms (Steam, itch.io).
-    *   Designed to be run independently (manually or scheduled).
-    *   Focus on extracting essential game information initially. **Must respect platform Terms of Service.**
+1.  **API Service (`CoreAPI`):** Handles auth, library saves, feed requests, game detail lookups.
+2.  **Database (PostgreSQL):** Stores `external_source` (Steam games initiated from CSV) and `library` data.
+3.  **Database (Vector DB):** Stores semantic embeddings for games.
+4.  **CSV Ingestion Worker:** Reads initial list of Steam AppIDs from a predefined CSV.
+5.  **Steam Enrichment Worker:** For a given Steam AppID, fetches game data needed for display and embeddings from Steam.
+6.  **AI Embedding Generation Service (v0):** Generates embeddings from enriched data and stores them in the Vector DB.
 
 ---
 
-## 3. Database Schema (MVP - Simplified)
+## 3. Database Schema (v0 - Hyper Simplified)
 
 ```sql
--- Users table (Managed primarily by Supabase Auth)
--- public.users inherits from auth.users
--- Add custom columns if needed, e.g., username
+-- Users table (Managed by Supabase Auth)
 
--- External Sources (Primary game data table)
+-- External Sources (Primary game data table - Steam Only for v0)
 CREATE TABLE external_source (
     id BIGSERIAL PRIMARY KEY,
-    platform TEXT NOT NULL, -- 'steam', 'itch'
-    external_id TEXT NOT NULL, -- Game ID on the external platform
+    platform TEXT DEFAULT 'steam' NOT NULL, -- Hardcoded to steam for v0
+    external_id TEXT NOT NULL UNIQUE, -- Steam AppID
     title TEXT,
     developer TEXT,
-    raw_data JSONB, -- Store raw response for future processing
-    enrichment_status TEXT DEFAULT 'pending' NOT NULL, -- e.g., pending, basic_info_extracted, content_processing, content_enriched, failed
-    is_featured BOOLEAN DEFAULT FALSE, -- Simple flag for manually featuring in Q1
+    -- Key text fields for embedding generation (e.g., short description, detailed description, genres, tags from Steam)
+    description_short TEXT,
+    description_detailed TEXT,
+    genres TEXT[],
+    tags TEXT[],
+    raw_data JSONB, -- Store raw Steam response for reference
+    enrichment_status TEXT DEFAULT 'pending' NOT NULL, -- pending, basic_info_extracted, embedding_generated, embedding_failed
+    is_featured BOOLEAN DEFAULT FALSE, -- Simple flag for potential manual boosting
+    steam_appid TEXT UNIQUE, -- Explicit Steam AppID maybe useful
     last_fetched TIMESTAMPTZ DEFAULT now(),
-    created_at TIMESTAMPTZ DEFAULT now(),
-    UNIQUE(platform, external_id)
-);
-CREATE INDEX idx_external_source_platform_id ON external_source(platform, external_id);
-CREATE INDEX idx_external_source_title ON external_source USING gin(to_tsvector('english', title));
-CREATE INDEX idx_external_source_enrichment_status ON external_source(enrichment_status);
-CREATE INDEX idx_external_source_is_featured ON external_source(is_featured);
-
--- Game Content Updates (For granular feed items like trailers, tweets)
-CREATE TABLE game_content_updates (
-    id BIGSERIAL PRIMARY KEY,
-    fk_game_id BIGINT NOT NULL REFERENCES external_source(id) ON DELETE CASCADE,
-    content_type TEXT NOT NULL, -- 'trailer_youtube', 'tweet'
-    content_url TEXT, -- URL to the content (e.g., YouTube video, tweet URL)
-    title TEXT, -- e.g., Trailer title, first line of tweet
-    thumbnail_url TEXT, -- Optional: for display on cards
-    published_at TIMESTAMPTZ, -- Publication date of the content item
     created_at TIMESTAMPTZ DEFAULT now()
 );
-CREATE INDEX idx_game_content_updates_fk_game_id ON game_content_updates(fk_game_id);
-CREATE INDEX idx_game_content_updates_published_at ON game_content_updates(published_at DESC);
-CREATE INDEX idx_game_content_updates_content_type ON game_content_updates(content_type);
+CREATE INDEX idx_external_source_external_id ON external_source(external_id);
+CREATE INDEX idx_external_source_title ON external_source USING gin(to_tsvector('english', title));
+CREATE INDEX idx_external_source_enrichment_status ON external_source(enrichment_status);
 
--- User Library
+-- User Library (Simplified for v0 - essentially a wishlist)
 CREATE TABLE library (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     game_ref_id BIGINT NOT NULL REFERENCES external_source(id) ON DELETE CASCADE,
-    status TEXT DEFAULT 'wishlist', -- 'wishlist', 'playing', 'finished', etc.
     added_at TIMESTAMPTZ DEFAULT now(),
     PRIMARY KEY(user_id, game_ref_id)
 );
 CREATE INDEX idx_library_user_id ON library(user_id);
 
--- Note: `is_featured` on `external_source` handles simple Q1 featuring.
--- `game_content_updates` stores individual content pieces for the dynamic feed.
+-- Note: `game_content_updates` table is removed for v0 simplicity.
 ```
 
 ---
 
 ## 4. API Endpoints (v0)
 
-*   Authentication: Handled by Supabase client libraries on the frontend, interfacing with Supabase Auth backend. API endpoints will require JWT validation.
-*   Search (Keyword):
-    *   `GET /api/search?q=<query>&platform=steam`
-    *   Performs basic keyword text search against `external_source.title` for Steam games.
-    *   (Natural language 'vibe check' queries are a post-v0 goal).
-*   Game Details:
-    *   `GET /api/games/external/<platform>/<external_id>` or `GET /api/games/<external_source_id>`
-    *   Fetches details for a specific game from the `external_source` table, including any enriched data if available.
-    *   `GET /api/games/core/<slug>` (May query `games_core` and join with `external_source` for full details)
-    *   Fetches details for a manually curated/featured game.
-*   Library Management: (Requires Authentication)
-    *   `GET /api/library`
-    *   Fetches the current user's library (list of game references from `external_source`).
-    *   `POST /api/library`
-    *   Body: `{ gameRefId: <external_source_id> }`
-    *   Adds a game reference (from `external_source`) to the user's library. If the game's `enrichment_status` is 'pending', this action can signal the backend to prioritize its enrichment.
-    *   `DELETE /api/library/<gameRefId>`
-    *   Removes a game reference from the user's library.
-    *   `PUT /api/library/<gameRefId>`
-    *   Body: `{ status: <new_status> }` (Optional: For updating status later)
-    *   Updates the status or other metadata of a library item.
+*   **Authentication:** (As before)
+*   **Search (Keyword):** `GET /api/search?q=<query>` (Searches `external_source.title` via PG FTS).
+*   **Game Details:** `GET /api/games/<external_source_id>` (Fetches from `external_source`, may show Steam link).
+*   **Library Management:**
+    *   `GET /api/library`: Fetches user's saved games (from `library`).
+    *   `POST /api/library`: Body: `{ gameRefId: <external_source_id> }`. Adds game to library.
+    *   `DELETE /api/library/<gameRefId>`: Removes game from library.
 *   **Feed Generation:**
     *   `GET /api/feed` (Requires Authentication)
-    *   Constructs a personalized feed.
-    *   Combines:
-        *   **Semantically relevant new game recommendations:** Identified via vector similarity search (e.g., similar to games in user's library, or globally similar to highly-rated/featured indie games) using embeddings from the vector DB.
-        *   Recent, relevant items from `game_content_updates` (trailers/tweets) for games in the user's library or for recommended new games.
-        *   Potentially other interesting `game_content_updates` from non-library games (e.g., for generally trending or featured games).
-    *   Returns a list of feed items, each with a type and associated data.
+    *   Constructs a personalized feed based on **semantic similarity**.
+    *   Logic: Identify games user has saved (`library`), query Vector DB for similar games, return list of recommended `external_source` game IDs/basic data.
+    *   Returns a list of recommended game items.
 
 ---
 
-## 5. Crawler Logic (High-Level - v0)
+## 5. Ingestion & Enrichment Logic (v0)
 
-*   **Steam Crawler (v0 Focus):**
-    *   Target: Basic game info (ID, name, developer) **plus data needed for embeddings (descriptions, genres, tags, etc.)** into `external_source`.
+*   **Initial Seed:** System starts by reading a predefined CSV containing Steam AppIDs.
+*   **Enrichment Trigger:** For each AppID from the CSV, trigger the Steam Enrichment Worker.
+*   **Steam Enrichment Worker:**
+    *   Input: Steam AppID.
+    *   Action: Fetch game info (ID, name, developer, descriptions, genres, tags) from Steam API/Store pages.
+    *   Output: Store/update data in `external_source` table.
     *   Update `enrichment_status` to 'basic_info_extracted'.
-*   **Content Monitors (Simplified for v0 - Steam Focus):**
-    *   **Trailer Monitor (YouTube):** For known Steam games, periodically check for new trailers. If found, add to `game_content_updates`.
-    *   **Tweet Monitor (Twitter):** For known Steam games, monitor primary dev/game Twitter accounts. If relevant new tweets are found, add to `game_content_updates`.
-    *   These monitors update the `enrichment_status` of the game in `external_source`.
+*   **(No automated Crawlers/Monitors for v0)**
 
 ---
 
-## 6. AI Enrichment Service (v0 Focus)
+## 6. AI Embedding Generation Service (v0 Focus)
 
-*   **Semantic Embedding Generation:**
-    *   For each game in `external_source` (once basic info is extracted), generate a semantic vector embedding (e.g., using Sentence-BERT on descriptions, tags, etc.).
-    *   Store this embedding in the chosen Vector Database (e.g., Pinecone), linked to the game ID.
-    *   Update `enrichment_status` in `external_source` to reflect embedding availability (e.g., 'embeddings_generated').
-*   **Content Monitoring:** (As described in Crawler Logic - populating `game_content_updates` for trailers/tweets).
-*   This service is crucial for enabling the semantically relevant recommendations in the feed.
-
----
-
-## 7. Deployment
-
-*   **API Service (Express):** Deployed as Serverless Functions on Vercel.
-*   **Database/Auth:** Supabase handles hosting, scaling, and backups.
-*   **Crawlers:** Deployed as Vercel Cron Jobs or scheduled via GitHub Actions workflows.
+*   **Trigger:** Runs after `basic_info_extracted` status is set.
+*   **Input:** Text data from `external_source` (description, tags, genres, etc.).
+*   **Action:** Generate semantic vector embedding.
+*   **Output:** Store embedding in the Vector Database, linked to the game ID.
+*   Update `enrichment_status` in `external_source` to 'embedding_generated'.
 
 ---
 
-This MVP backend provides the foundational data ingestion, storage, and access patterns necessary for the initial IndieFindr experience, deferring more complex search and AI features to later iterations. 
+## 7. Deployment (v0)
+
+*   API Service (Express/Vercel)
+*   Database (Supabase Postgres)
+*   Vector Database (Pinecone)
+*   Crawler/Enrichment jobs (Vercel Cron or similar)
+
+---
+
+## 8. Future Plans (v1+)
+
+*   **Automated Steam Crawler:** Build a crawler to automatically discover new Steam games and keep existing ones updated, replacing the manual CSV input.
+*   **Platform Expansion:** Add Itch.io, GOG, Game Pass, Epic crawlers.
+*   **Granular Content Feed:** Introduce `game_content_updates` table and monitors (Trailers, Tweets, Devlogs) to enrich the feed.
+*   **Advanced AI:** LLM Summaries, Explainers, Sentiment Analysis, "Vibe Check" Natural Language Search.
+*   **Enhanced Library:** Statuses (Playing, Finished), Notes, Tags, Sorting/Filtering.
+*   **Social Features:** Groups, Shared Libraries, Voting.
+*   **Enhanced Search:** Integrate Vector Search / ElasticSearch for richer queries.
+*   **Desktop Helper / Play Tracking.**
+*   **Realtime Updates.**
+
+This hyper-focused v0 aims to nail the core semantic discovery loop first. 

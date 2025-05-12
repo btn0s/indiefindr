@@ -29,15 +29,12 @@ IndieFindr is **the human-centric, AI-amplified discovery layer for indie games*
 
 ## 3 · Functional Map
 
-### 3.1 Discover
+### 3.1 Discover (v0 Focus)
 
-*   **Unified search/browse** (Edge Route) queries against an internal index built initially from **Steam (v0)**, expanding later.
-*   **AI Enrichment Service** runs asynchronously to add:
-    *   (v0) **Semantic Embeddings:** Generated from game descriptions/tags, stored in Vector DB.
-    *   (v0) YouTube trailers, Primary Tweets -> `game_content_updates`.
-    *   (v1+) Sentiment summary, Advanced social buzz, LLM Summaries, etc. -> `games.content_ai`.
-    *   (v1+) Platform & price matrix.
-*   **Result layout / Feed Generation**: The primary feed (`/`) uses **semantic embeddings (v0)** for relevant new game recommendations, blended with granular content updates (trailers/tweets) from `game_content_updates`. Basic keyword search available. Natural language / 'vibe check' search queries are a post-v0 goal.
+*   **Semantic Recommendation Feed (`/`):** The primary discovery mechanism. Queries against an internal index of **Steam games** (v0) with semantic embeddings.
+*   **AI Enrichment Service (v0 Core):**
+    *   Generates **Semantic Embeddings** from Steam game descriptions/tags, stored in Vector DB.
+*   **Result layout / Feed Generation (v0):** The main feed (`/`) uses **semantic embeddings** for relevant new game recommendations. Basic keyword search available for direct lookups.
 
 ### 3.2 Curate
 
@@ -63,120 +60,87 @@ IndieFindr is **the human-centric, AI-amplified discovery layer for indie games*
 
 ---
 
-## 4 · System Architecture (High Level)
+## 4 · System Architecture (High Level - v0 Focus)
 
 ```mermaid
 flowchart TB
-  subgraph Web Layer (Next.js 15)
-    Edge[/Edge Route – search/discover/] -- SSR/ISR --> Users
+  subgraph Web Layer (Next.js v0)
+    Edge[/Edge Route – feed/search/] -- SSR/ISR --> Users
     RSC[React Server Components]
     Client[Client Components]
+  end
+  subgraph Data Input (v0)
+    CSV[Manual CSV Input] --> Ingest
   end
   Edge -->|query| SearchAPI
   RSC -->|Server Action| CoreAPI
   Client -->|Action Trigger| CoreAPI
-  subgraph Services
-    SearchAPI[Search Service\n(PG FTS -> Elastic + Pinecone)]
-    CoreAPI[Core API (Express/Vercel node runtime)]
-    Enrich[AI Enrichment Worker]
-    Crawler[Platform Crawlers]
-    RT[Realtime Hub]
+  subgraph Services (v0)
+    Ingest[CSV Ingestion Worker]
+    SearchAPI[Search Service (PG FTS)]
+    CoreAPI[Core API (Express/Vercel)]
+    Enrich[Steam Enrichment Worker]
+    EmbedGen[AI Embedding Gen]
+    VectorDB[(Vector Store - Pinecone)]
+    GameDB[(Game DB - Postgres)]
   end
-  Crawler --> GameDB[(Unified Game DB - Postgres)]
+  Ingest --> Enrich
   Enrich --> GameDB
-  Enrich --> VectorDB[(Vector Store - Pinecone)]
-  SearchAPI --> GameDB & VectorDB
-  CoreAPI --> GameDB & RT & VectorDB
-  RT <--> Client
+  Enrich --> EmbedGen
+  EmbedGen --> VectorDB 
+  EmbedGen --> GameDB // Update status
+  SearchAPI --> GameDB
+  CoreAPI --> GameDB & VectorDB // For recommendations
 ```
-*Description:* Steam Crawler feeds Postgres. The Enrichment Worker adds **semantic embeddings to Pinecone (v0)** and basic content updates (trailers/tweets) to Postgres (v0). Richer AI data (summaries, sentiment) added v1+. The Core API handles actions and reads/writes from Postgres and **queries Pinecone for recommendations (v0)**. Search uses Postgres (v0 keyword search) evolving to use VectorDB/Elastic (v1+ for advanced/NL search). Frontend interacts as before.
+*Description (v0 Focus):* A manual CSV seeds Steam AppIDs. An Enrichment Worker fetches data from Steam for those IDs, storing it in Postgres. An Embedding Generator creates vectors from the text data and stores them in Pinecone. The Core API handles user actions and queries Pinecone for recommendations. Keyword search uses Postgres.
 
 ---
 
-## 5 · Data Model Snap-Shot (simplified)
+## 5 · Data Model Snap-Shot (v0 - Hyper Simplified)
 
 ```sql
--- games (Unified store for all indexed games)
+-- games (Steam Only for v0)
 id                bigint PK
-platform          text      -- source: "steam", "itch", ...
-external_id       text
-slug              text UNIQUE -- generated when enriched/curated
+platform          text DEFAULT 'steam' NOT NULL
+external_id       text UNIQUE -- Steam AppID
+slug              text UNIQUE -- generated for routing
 title             text
-dev_pub           jsonb     -- developer, publisher
-raw_data          jsonb     -- original data from source
-media             jsonb     -- thumbnails, hero image (added by enrichment)
-content_ai        jsonb     -- aiSummary, hypeScore, sentiment (Q2+ enrichment)
-enrichment_status text      -- pending, basic_info_extracted, content_processing, content_enriched, failed
-is_featured      boolean DEFAULT FALSE -- Simple flag for manual featuring (Q1)
-vector            vector(768) -- *Generated in v0, stored in Vector DB (e.g., Pinecone)*
-last_fetched_at   timestamp
-last_enriched_at  timestamp
-UNIQUE(platform, external_id)
+-- Text fields for embeddings:
+dedescription_short TEXT
+description_detailed TEXT
+genres            TEXT[]
+tags              TEXT[]
+raw_data          jsonb     -- original steam data
+media             jsonb     -- basic thumbnails, hero (from Steam data)
+enrichment_status text      -- pending, basic_info_extracted, embedding_generated, embedding_failed
+is_featured       boolean DEFAULT FALSE
+-- (Vector itself is stored in Pinecone, linked by id/external_id)
 
--- game_content_updates (Granular items for feed, v0 focus: trailers, tweets)
-id                bigint PK
-fk_game_id        bigint FK -> games(id)
-content_type      text      -- 'trailer_youtube', 'tweet', 'devlog'(Q2+), etc.
-content_url       text
-title             text
-thumbnail_url     text
-published_at      timestamp
-
--- library (user & group shared - groups v1+)
-owner_type  enum('user','group')
-owner_id    uuid
+-- library (Simplified wishlist for v0)
+owner_id    uuid -- User ID
 game_id     bigint FK -> games(id)
-status      enum('wishlist','playing','finished')
-notes       text
-user_tags   text[]
-PRIMARY KEY(owner_type, owner_id, game_id)
+added_at    timestamp
+PRIMARY KEY(owner_id, game_id)
 
--- play_session (if included in v0)
-user_id     uuid
-game_id     bigint FK -> games(id)
-minutes     int
-source      text
-recorded_at timestamp
+-- NO game_content_updates for v0
+-- NO play_session for v0
 ```
-*Note:* The `vector` field conceptually represents the embedding generated in v0, which is stored and queried in a dedicated Vector DB like Pinecone.
 
 ---
 
-## 6 · Key AI Components
-(Operated by the **AI Enrichment Service** - Phased Rollout)
+## 6 · Key AI Components (v0 Focus)
 
-**v0 (MVP) Focus:**
-*   **Similarity Vector Generator:** Uses model (e.g., Sentence-BERT) on Steam game data (descriptions, tags) to create embeddings. Stores in Vector DB.
-*   **Trailer Finder (Simplified):** Identifies official YouTube trailers for Steam games, stores link/metadata in `game_content_updates`.
-*   **Social Monitor (Simplified):** Identifies key tweets from primary dev/game accounts for Steam games, stores link/text in `game_content_updates`.
-
-**v1 (Q2+) Focus (Deferred Components):**
-
-| Component             | Model / Service                             | Task                                                     |
-| --------------------- | ------------------------------------------- | -------------------------------------------------------- |
-| **"Vibe Check" Search Engine** | Sentiment Models, Embeddings (Game + Query), LLM | Understand natural language search queries, combine sentiment, tags, etc., for semantic matching. |
-| **Tag Extractor**     | MiniLM embeddings + K-means on corpus       | Auto-generate candidate tags from description & reviews. |
-| **Similarity Vector** | Sentence-BERT (all-mpnet-base-v2)           | 768-d game embedding for k-NN recs & 'vibe check'.       |
-| **Trailer Finder (Advanced)**| OpenAI function-calling + Google Search API | Generate YouTube Search query & rank results (broader scope).|
-| **Social Monitor (Advanced)**| Twitter API stream + sentiment LLM          | Track broader buzz; raise "trending" flags, sentiment analysis. |
-| **Explainer**         | Small GPT-3.5 call                          | 1-sentence "Recommended because …" description.          |
-| **Summarizer**        | LLM (e.g., GPT-3.5/4)                       | Rewrite long descriptions into concise blurbs.           |
-
-Semantic recommendations in the v0 feed are driven by querying the Vector DB using the generated Similarity Vectors.
+*   **Similarity Vector Generator:** Uses model (e.g., Sentence-BERT) on Steam game data (descriptions, tags) to create embeddings. Stores in Vector DB (Pinecone).
 
 ---
 
-## 7 · Front-End Design (Next .js)
+## 7 · Front-End Design (Next .js - v0 Focus)
 
-### Routing
-
+### Routing (v0)
 ```
-/                – Personalized feed (RSC)
-/discover         – Global search
-/groups/[id]      – Group hub (children: /discover, /library)
-/game/[slug]      – Game detail (ISR, partial prerender)
-/play/[gameId]    – Launch helper
-/profile          – My stats & settings
+/                – Personalized semantic recommendation feed (RSC)
+/game/[slug]      – Game detail (ISR, shows Steam link)
+/profile          – My saved games (library)
 ```
 
 ### Component Patterns
@@ -187,24 +151,35 @@ Semantic recommendations in the v0 feed are driven by querying the Vector DB usi
 
 ---
 
-## 8 · Operational Concerns
-
-* **Rate limiting** – 3rd-party APIs behind adaptive queue.
-* **Content policy** – Respect Steam assets; cache thumbs only until game curated.
-* **Moderation** – Role-based; audit log tables & soft delete.
-* **Observability** – OpenTelemetry traces from Edge through Search & Core.
-* **Compliance** – GDPR/CCPA ready; data export per user.
+## 8 · Operational Concerns (v0 Simplified)
+* Focus on core API uptime, DB/VectorDB health, Steam crawler reliability.
 
 ---
 
-## 9 · Roadmap Milestones (Quarter-level)
+## 9 · Roadmap Milestones
 
-| Q      | Deliverable                                                                 |
+| Version | Deliverable                                                                 |
 | ------ | --------------------------------------------------------------------------- |
-| **v0 (Q1)** | Next.js skeleton, Steam crawler (+ embedding data), **Vector DB setup, Semantic Embedding generation**, basic search (PG FTS), personal library, **granular feed with semantic recommendations** & basic content updates (trailers/tweets). |
-| **v1 (Q2)** | Itch.io crawler, **"Vibe Check" natural language search (initial)**, AI Enrichment Phase 2 (LLM summary, sentiment?), group rooms. |
-| **v2 (Q3)** | Desktop helper alpha, advanced social buzz tracking, refined "Vibe Check" / ranking & explainer, more platform crawlers. |
-| **v3 (Q4)** | Further platform expansion, monetization hooks, public launch. |
+| **v0 (Pareto MVP)** | Next.js skeleton, **Manual CSV Ingestion**, Steam **Enrichment Worker** (+ embedding data), Vector DB setup, Semantic Embedding generation, basic keyword search (PG FTS), simplified personal library (save/view), core semantic recommendation feed. |
+
+---
+
+## 10 · Future Development (v1+)
+
+*   **Automated Steam Crawler:** Build a crawler to automatically discover new Steam games and keep existing ones updated, replacing the manual CSV input.
+*   **Platform Expansion:** Add Itch.io, GOG, Game Pass, Epic crawlers.
+*   **Granular Content Feed & Richer Game Pages:** Introduce `game_content_updates` table and monitors (Trailers, Tweets, Devlogs) to enrich the feed and game pages. Display this content dynamically.
+*   **Advanced AI & "Vibe Check" Search:** 
+    *   LLM Summaries, Explainers, Sentiment Analysis.
+    *   Natural Language "Vibe Check" Search (e.g., "chill rainy day game") using combined embeddings, sentiment, tags.
+    *   More sophisticated recommendation algorithms (e.g., collaborative filtering, hybrid models).
+*   **Enhanced Library:** Statuses (Playing, Finished), Notes, Tags, Sorting/Filtering.
+*   **Social Features:** Groups, Shared Libraries, Voting, shared recommendations.
+*   **Enhanced Search:** Integrate Vector Search / ElasticSearch for richer keyword and semantic queries.
+*   **Desktop Helper / Play Tracking.**
+*   **Realtime Updates.**
+*   **Richer Media Handling:** More advanced processing of screenshots, videos.
+*   **Detailed User Profiles & Taste Models.**
 
 ---
 
