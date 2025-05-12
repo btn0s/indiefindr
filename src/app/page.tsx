@@ -1,5 +1,10 @@
 import React from "react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { GameCard } from "@/components/game-card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { SearchIcon, AlertCircle } from "lucide-react";
 import {
   addToLibrary,
   removeFromLibrary,
@@ -23,12 +28,12 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    // TODO: Improve this - maybe redirect to sign-in or show public content
-    return <p>Please sign in to see your personalized feed.</p>;
+    // Redirect to sign-in page if not logged in
+    redirect("/sign-in");
   }
 
-  // Fetch feed and library data
-  const feedResultPromise = getPersonalizedFeed(); // Call the server action
+  // Fetch feed and library data concurrently
+  const feedResultPromise = getPersonalizedFeed();
   const libraryResultPromise = getLibraryGameIds();
 
   const [feedResult, libraryResult] = await Promise.all([
@@ -36,44 +41,94 @@ export default async function HomePage() {
     libraryResultPromise,
   ]);
 
+  // Process feed results
   let feedGames: FeedGame[] = [];
+  let feedError: string | null = null;
   if (feedResult.success && feedResult.data) {
     feedGames = feedResult.data;
   } else if (!feedResult.success) {
-    console.error("Failed to fetch personalized feed:", feedResult.message);
-    // TODO: Show error state in UI?
+    feedError = feedResult.message || "Failed to load personalized feed.";
+    console.error("Feed Error:", feedError);
   }
 
+  // Process library results
   let libraryGameIds = new Set<number>();
+  let libraryError: string | null = null;
   if (libraryResult.success && libraryResult.data) {
     libraryGameIds = new Set(libraryResult.data);
   } else if (!libraryResult.success) {
-    console.error("Failed to fetch library game IDs:", libraryResult.error);
-    // Optionally, show an error to the user or handle gracefully
+    libraryError = libraryResult.error || "Failed to load user library.";
+    console.error("Library Error:", libraryError);
+    // If library fails, feed might still work, but isInLibrary will be false.
+    // This is acceptable for v0.
   }
 
-  return (
-    <main className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Your Personalized Feed</h1>
+  const hasError = feedError || libraryError;
 
-      {feedGames.length === 0 ? (
-        <p>
+  return (
+    <main className="">
+      <div className="flex flex-col items-start mb-6 gap-4">
+        <h1 className="text-3xl font-bold">IndieFindr Feed</h1>
+        {/* Search Form - Submits to /search page */}
+        <form
+          action="/search"
+          method="GET"
+          className="flex w-full sm:w-auto gap-2"
+        >
+          <Input
+            type="search"
+            name="q" // Query parameter name
+            placeholder="Search games by title..."
+            className="flex-grow sm:w-64" // Adjust width as needed
+            aria-label="Search games by title"
+          />
+          <Button
+            type="submit"
+            variant="outline"
+            size="icon"
+            aria-label="Search"
+          >
+            <SearchIcon className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
+
+      {/* Error Display */}
+      {hasError && (
+        <div className="mb-4 p-4 border border-destructive/50 rounded-lg bg-destructive/10 text-destructive flex items-center gap-2">
+          <AlertCircle className="h-5 w-5" />
+          <div>
+            <p className="font-semibold">Could not load all data:</p>
+            {feedError && <p className="text-sm">- Feed: {feedError}</p>}
+            {libraryError && (
+              <p className="text-sm">- Library: {libraryError}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Feed Content */}
+      {!feedError && feedGames.length === 0 ? (
+        <p className="text-muted-foreground">
           Your feed is empty. Add some games to your library to get
-          recommendations!
+          recommendations, or try searching!
         </p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      ) : !feedError ? (
+        <div className="flex flex-col gap-4">
+          {/* GameCard now needs to handle linking internally */}
           {feedGames.map((game) => (
             <GameCard
               key={game.id}
-              game={game}
+              game={game} // Pass the whole game object
               isInLibrary={libraryGameIds.has(game.id)}
               onAddToLibrary={addToLibrary}
               onRemoveFromLibrary={removeFromLibrary}
             />
           ))}
         </div>
-      )}
+      ) : // If feedError is present, don't show the empty message or the list
+      // The error message above is sufficient.
+      null}
     </main>
   );
 }

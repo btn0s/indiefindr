@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -10,6 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
 
 interface GameCardProps {
   game: {
@@ -52,7 +55,7 @@ export function GameCard({
   };
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full">
       {" "}
       {/* Adjust width as needed */}
       <CardHeader>
@@ -66,10 +69,13 @@ export function GameCard({
         {/* TODO: Add Genres/Tags if available */}
       </CardContent>
       <CardFooter className="flex justify-between">
-        {/* TODO: Link to game detail page */}
-        <Button variant="outline" size="sm">
+        {/* Link to game detail page, styled as a button */}
+        <Link
+          href={`/game/${game.id}`}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+        >
           Details
-        </Button>
+        </Link>
         {isInLibrary ? (
           <Button variant="secondary" size="sm" onClick={handleRemove}>
             Remove
