@@ -78,25 +78,25 @@ export function GameCard({
         <p className="text-lg font-semibold truncate">
           {game.title || "Untitled Game"}
         </p>
-        <p className="text-sm text-muted-foreground line-clamp-2">
+        <p className="text-sm text-muted-foreground line-clamp-3">
           {" "}
-          {/* Allow 2 lines, remove truncate */}
+          {/* Allow 3 lines, changed from line-clamp-2 */}
           {game.shortDescription || "No description."}
         </p>
         {/* Tags Display */}
         {game.tags && game.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {game.tags.slice(0, 5).map(
+            {game.tags.slice(0, 3).map(
               (
-                tag // Limit displayed tags
+                tag // Limit displayed tags to 3
               ) => (
                 <Badge key={tag} variant="secondary">
                   {tag}
                 </Badge>
               )
             )}
-            {game.tags.length > 5 && (
-              <Badge variant="outline">+{game.tags.length - 5} more</Badge>
+            {game.tags.length > 3 && ( // Check if more than 3 tags exist
+              <Badge variant="outline">+{game.tags.length - 3} more</Badge> // Adjust count
             )}
           </div>
         )}
