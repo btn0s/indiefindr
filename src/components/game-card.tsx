@@ -105,7 +105,12 @@ export function GameCard({
           {" "}
           {/* Wrapper for buttons */}
           <Link
-            href={`/games/${game.id}/${game.title?.toLowerCase().replace(/\\s+/g, "-") || "untitled"}`}
+            href={`/games/${game.id}/${
+              game.title
+                ?.toLowerCase()
+                .replace(/\s+/g, "-")
+                .replace(/[^a-z0-9-]/g, "") || "untitled"
+            }`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))} // Removed w-full
             title="View Details"
           >
