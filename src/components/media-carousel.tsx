@@ -81,7 +81,7 @@ export function MediaCarousel({ mediaItems, gameTitle }: MediaCarouselProps) {
       </Carousel>
 
       {/* Thumbnails row with active state */}
-      <div className="mt-2 flex gap-2 px-4 overflow-x-auto py-2 snap-x snap-mandatory">
+      <div className="mt-2 flex gap-2 overflow-x-auto py-2 snap-x snap-mandatory">
         {mediaItems.map((item, index) => (
           <div
             key={index}
