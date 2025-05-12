@@ -1,0 +1,153 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Motion Animation Library Integration
+
+Motion (previously Framer Motion) is the animation library used in IndieFindr for creating fluid UI animations, transitions, and interactive elements. This guide covers the essential patterns for using Motion in our project.
+
+## Installation
+
+Motion is already installed in the project. If you need to add it to a new project:
+
+```bash
+pnpm add motion
+```
+
+## Documentation
+
+For comprehensive documentation, refer to the official Motion documentation site:
+https://llms.motion.dev/
+
+## Core Components & Usage Patterns
+
+### Basic Animations
+
+Use the `motion` component as a drop-in replacement for HTML elements:
+
+```tsx
+import { motion } from "motion/react";
+
+// Simple fade-in animation
+<motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ duration: 0.5 }}
+>
+  Content here
+</motion.div>
+```
+
+### Page Transitions
+
+For page transitions in Next.js App Router:
+
+```tsx
+// In layout or page component:
+import { motion } from "motion/react";
+
+export default function Page() {
+  return (
+    <motion.main
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Page content */}
+    </motion.main>
+  );
+}
+```
+
+### Gesture Animations
+
+For interactive elements like buttons or cards:
+
+```tsx
+import { motion } from "motion/react";
+
+<motion.button
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.95 }}
+  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+>
+  Click me
+</motion.button>
+```
+
+### Shared Layouts & Transitions
+
+For elements that change position or size:
+
+```tsx
+import { motion, AnimatePresence } from "motion/react";
+
+// Use layoutId for shared element transitions between states
+<motion.div layoutId="unique-id">
+  {/* Content */}
+</motion.div>
+```
+
+### Scroll-Based Animations
+
+```tsx
+import { motion, useScroll } from "motion/react";
+
+function MyComponent() {
+  const { scrollYProgress } = useScroll();
+  
+  return (
+    <motion.div
+      style={{
+        opacity: scrollYProgress
+      }}
+    >
+      Fades in as you scroll
+    </motion.div>
+  );
+}
+```
+
+## Best Practices for IndieFindr
+
+1. **Performance First**: Use hardware-accelerated properties when possible (transform, opacity).
+2. **Consistent Transitions**: Define common transition presets in `src/lib/utils.ts` for reuse.
+3. **Mobile Considerations**: Keep animations subtle on mobile and ensure they work well with touch interactions.
+4. **Accessibility**: Always respect user preferences with `useReducedMotion`.
+
+```tsx
+import { useReducedMotion } from "motion/react";
+
+function MyComponent() {
+  const shouldReduceMotion = useReducedMotion();
+  
+  // Use this to conditionally apply animations
+  const animationSettings = shouldReduceMotion 
+    ? { x: 0 } // No animation
+    : { x: 100 }; // Full animation
+  
+  return <motion.div animate={animationSettings} />;
+}
+```
+
+## Integration with shadcn/ui
+
+When adding animations to shadcn components, wrap with Motion or use Motion variants:
+
+```tsx
+import { Button } from "@/components/ui/button";
+import { motion } from "motion/react";
+
+// Method 1: Wrap with motion
+<motion.div whileHover={{ scale: 1.05 }}>
+  <Button>Click me</Button>
+</motion.div>
+
+// Method 2: Use as prop if component forwards refs
+const MotionButton = motion(Button);
+<MotionButton whileHover={{ scale: 1.05 }}>
+  Click me
+</MotionButton>
+```
