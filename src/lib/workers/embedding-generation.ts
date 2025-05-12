@@ -1,7 +1,7 @@
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateEmbeddings } from "ai";
+import { embed } from "ai";
 import * as dotenv from "dotenv";
 
 // Ensure env vars are loaded (especially OPENAI_API_KEY)
@@ -82,7 +82,7 @@ export async function generateEmbeddingForGame(gameId: number): Promise<void> {
     );
 
     // 4. Generate embedding
-    const { embedding } = await generateEmbeddings({
+    const { embedding } = await embed({
       model: embeddingModel,
       value: inputText,
     });

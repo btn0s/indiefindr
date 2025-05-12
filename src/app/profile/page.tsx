@@ -1,0 +1,80 @@
+import React from "react";
+import { createClient } from "@/utils/supabase/server";
+import {
+  getLibraryGameIds,
+  removeFromLibrary,
+  addToLibrary,
+} from "@/app/actions/library";
+import { GameCard } from "@/components/game-card";
+import { db, schema } from "@/db";
+import { inArray } from "drizzle-orm";
+
+async function getUserLibraryGames(userId: string) {
+  const libraryResult = await getLibraryGameIds();
+
+  if (
+    !libraryResult.success ||
+    !libraryResult.data ||
+    libraryResult.data.length === 0
+  ) {
+    return [];
+  }
+
+  const gameIds = libraryResult.data;
+
+  try {
+    const gamesFromDb = await db
+      .select({
+        id: schema.externalSourceTable.id,
+        title: schema.externalSourceTable.title,
+        descriptionShort: schema.externalSourceTable.descriptionShort,
+      })
+      .from(schema.externalSourceTable)
+      .where(inArray(schema.externalSourceTable.id, gameIds))
+      .execute();
+
+    return gamesFromDb.map((game) => ({
+      id: game.id,
+      title: game.title,
+      shortDescription: game.descriptionShort,
+    }));
+  } catch (error) {
+    console.error("Error fetching library game details:", error);
+    return [];
+  }
+}
+
+export default async function ProfilePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return <p>Please sign in to view your profile and library.</p>;
+  }
+
+  const libraryGames = await getUserLibraryGames(user.id);
+
+  return (
+    <main className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">Your Game Library</h1>
+
+      {libraryGames.length === 0 ? (
+        <p>Your library is empty. Discover games and add them!</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {libraryGames.map((game) => (
+            <GameCard
+              key={game.id}
+              game={game}
+              isInLibrary={true}
+              onAddToLibrary={addToLibrary}
+              onRemoveFromLibrary={removeFromLibrary}
+            />
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}

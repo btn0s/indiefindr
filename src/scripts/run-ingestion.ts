@@ -102,6 +102,7 @@ async function main() {
   }
 
   console.log("\n--- IndieFindr data ingestion process finished. ---");
+  process.exit(0);
 }
 
 main().catch((error) => {
