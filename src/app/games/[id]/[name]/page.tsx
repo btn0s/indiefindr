@@ -98,79 +98,45 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-5xl">
-      {/* Game Title */}
-      <h1 className="text-3xl font-bold mb-4">
-        {game.title || "Untitled Game"}
-      </h1>
-
-      {/* Screenshots Gallery (Simple version without carousel component) */}
+      {/* Screenshots Carousel */}
       {screenshots.length > 0 && (
         <div className="mb-6">
-          <div className="relative w-full overflow-hidden rounded-lg aspect-video">
-            <Image
-              src={screenshots[0].path_full}
-              alt={`${game.title} Screenshot`}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1000px"
-              priority
-            />
-
-            {/* Thumbnails row below main image */}
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4">
-              {screenshots.slice(0, 5).map((screenshot, index) => (
-                <div
-                  key={index}
-                  className="w-16 h-9 relative rounded overflow-hidden border-2 border-white/80"
-                >
-                  <Image
-                    src={screenshot.path_thumbnail}
-                    alt={`Thumbnail ${index}`}
-                    fill
-                    className="object-cover"
-                    sizes="64px"
-                  />
-                </div>
+          <Carousel className="w-full">
+            <CarouselContent>
+              {screenshots.map((screenshot, index) => (
+                <CarouselItem key={index}>
+                  <div className="aspect-video relative rounded-lg overflow-hidden">
+                    <Image
+                      src={screenshot.path_full}
+                      alt={`${game.title} Screenshot ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1000px"
+                    />
+                  </div>
+                </CarouselItem>
               ))}
-              {screenshots.length > 5 && (
-                <div className="w-16 h-9 relative rounded overflow-hidden border-2 border-white/80 bg-black/50 flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">
-                    +{screenshots.length - 5}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
+            </CarouselContent>
+            <CarouselPrevious className="left-2" />
+            <CarouselNext className="right-2" />
+          </Carousel>
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Left Column: Game info and smaller header image */}
+      {/* Description and Header Image Row */}
+      <div className="flex flex-col md:flex-row gap-6 mb-6">
+        {/* Game description */}
         <div className="md:w-2/3">
-          {/* Game description */}
+          {/* Game Title */}
+          <h1 className="text-3xl font-bold mb-4">
+            {game.title || "Untitled Game"}
+          </h1>
           <p className="text-lg text-muted-foreground mb-6">
             {game.shortDescription || "No description available."}
           </p>
 
-          {/* Header Image (Smaller version) */}
-          {headerImageUrl && (
-            <div className="mb-6 rounded-md overflow-hidden shadow-sm aspect-[460/215] relative w-full md:w-3/4">
-              <Image
-                src={headerImageUrl}
-                alt={
-                  game.title
-                    ? `${game.title} Header Image`
-                    : "Game Header Image"
-                }
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
-                className="object-cover"
-              />
-            </div>
-          )}
-
           {/* Game Details */}
-          <div className="mb-6 grid grid-cols-2 gap-2 text-sm">
+          <div className="mb-6 grid grid-cols-3 gap-4 text-sm">
             <div className="flex flex-col gap-1">
               <p className="text-muted-foreground">Developer</p>
               <p className="font-medium">{developer}</p>
@@ -200,10 +166,27 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
           )}
         </div>
 
-        {/* Right Column: Actions */}
-        <div className="md:w-1/3 space-y-4">
+        {/* Header Image with Action Buttons */}
+        <div className="md:w-1/3 shrink-0 space-y-4">
+          {headerImageUrl && (
+            <div className="rounded-md overflow-hidden shadow-sm aspect-[460/215] relative w-full">
+              <Image
+                src={headerImageUrl}
+                alt={
+                  game.title
+                    ? `${game.title} Header Image`
+                    : "Game Header Image"
+                }
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
+                className="object-cover"
+              />
+            </div>
+          )}
+
+          {/* Action Buttons - Moved under header image */}
           {game.steamAppid && (
-            <Button asChild className="w-full" size="lg">
+            <Button asChild className="w-full">
               <Link
                 href={`https://store.steampowered.com/app/${game.steamAppid}`}
                 target="_blank"
@@ -213,7 +196,7 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
               </Link>
             </Button>
           )}
-          <Button variant="outline" className="w-full" size="lg">
+          <Button variant="outline" className="w-full">
             Add to Library
           </Button>
         </div>
