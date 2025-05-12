@@ -4,13 +4,14 @@ import React, { useEffect, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { Home, Search, Library, Send } from "lucide-react";
+import { Home, Search, Library, Send, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useClickOutside from "@/hooks/useClickOutside";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Input } from "./ui/input";
+import { createClient } from "@/utils/supabase/client";
 import dynamic from "next/dynamic";
 
 // Dynamically import the AuthButton to avoid server/client mismatch
@@ -37,6 +38,8 @@ export function Nav() {
   const ref = useRef<HTMLDivElement>(null);
   const [maxWidth, setMaxWidth] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [user, setUser] = useState<any>(null);
+  const [userLoading, setUserLoading] = useState(true);
 
   useClickOutside(ref, () => {
     setSearchOpen(false);
@@ -46,6 +49,29 @@ export function Nav() {
     if (!widthContainer || maxWidth > 0) return;
     setMaxWidth(widthContainer);
   }, [widthContainer, maxWidth]);
+
+  // Fetch user data
+  useEffect(() => {
+    async function getUser() {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        setUser(data.user);
+      } catch (error) {
+        console.error("Error getting user:", error);
+      } finally {
+        setUserLoading(false);
+      }
+    }
+
+    getUser();
+  }, []);
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user?.email) return "?";
+    return user.email.charAt(0).toUpperCase();
+  };
 
   // Focus input when search opens
   useEffect(() => {
@@ -64,7 +90,7 @@ export function Nav() {
     }
   };
 
-  const NAV_ITEMS = [
+  const createNavItems = () => [
     {
       id: 1,
       label: "Discover",
@@ -87,15 +113,28 @@ export function Nav() {
       id: 4,
       label: "Profile",
       href: "/profile",
-      icon: (
+      icon: userLoading ? (
+        <div className="h-5 w-5 bg-muted rounded-full animate-pulse" />
+      ) : user ? (
         <Avatar className="h-5 w-5 border border-border">
-          <AvatarFallback className="text-[10px]">U</AvatarFallback>
+          <AvatarFallback className="text-[10px]">
+            {getUserInitials()}
+          </AvatarFallback>
         </Avatar>
+      ) : (
+        <User className="h-5 w-5" />
       ),
     },
   ];
 
+  const NAV_ITEMS = createNavItems();
+
   const isNavActive = (item: (typeof NAV_ITEMS)[0]) => {
+    // When search is open, only the search icon should be active
+    if (searchOpen) {
+      return item.id === 2;
+    }
+
     if (item.href === "/" && pathname === "/") return true;
     if (item.href !== "/" && pathname.startsWith(item.href)) {
       // Special case for library
@@ -112,6 +151,10 @@ export function Nav() {
       // Search
       setSearchOpen(!searchOpen);
     } else {
+      // Close search if it's open when navigating to another page
+      if (searchOpen) {
+        setSearchOpen(false);
+      }
       router.push(item.href);
     }
   };
@@ -142,7 +185,13 @@ export function Nav() {
           transition={{ type: "spring", damping: 20 }}
           ref={ref}
         >
-          <div className="rounded-xl border border-border/40 bg-background/95 backdrop-blur shadow-lg">
+          <motion.div
+            className="rounded-xl border border-border/40 bg-background/95 backdrop-blur shadow-lg"
+            animate={{
+              width: searchOpen ? "min(320px, 90vw)" : "auto",
+            }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          >
             <div className="overflow-hidden">
               <AnimatePresence initial={false} mode="sync">
                 {searchOpen && (
@@ -152,9 +201,6 @@ export function Nav() {
                     animate={{ height: heightContent || 0 }}
                     exit={{ height: 0 }}
                     transition={transition}
-                    style={{
-                      width: maxWidth,
-                    }}
                   >
                     <div ref={contentRef} className="p-3">
                       <form onSubmit={handleSearch} className="flex gap-2">
@@ -162,7 +208,7 @@ export function Nav() {
                           ref={inputRef}
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Type a game title, genre, or tag..."
+                          placeholder="Search games..."
                           className="flex-1 text-sm"
                         />
                       </form>
@@ -171,13 +217,15 @@ export function Nav() {
                 )}
               </AnimatePresence>
             </div>
-            <div className="flex gap-2 p-2" ref={menuRef}>
+            <div className="flex gap-2 p-2 justify-center" ref={menuRef}>
               {NAV_ITEMS.map((item) => {
                 const isItemActive = isNavActive(item);
-                const isSelected = item.id === 2 && searchOpen;
+                const isSearchItem = item.id === 2;
+                const isSelected = isSearchItem && searchOpen;
+                const isDimmed = searchOpen && !isSearchItem;
 
                 return (
-                  <button
+                  <motion.button
                     key={item.id}
                     aria-label={item.label}
                     className={cn(
@@ -186,14 +234,19 @@ export function Nav() {
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
+                    animate={{
+                      opacity: isDimmed ? 0.3 : 1,
+                      scale: isSelected ? 1.1 : 1,
+                    }}
+                    transition={{ duration: 0.2 }}
                     onClick={() => handleNavClick(item)}
                   >
                     {item.icon}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
         </motion.div>
       </div>
     </>
