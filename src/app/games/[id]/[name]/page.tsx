@@ -7,13 +7,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button"; // For potential actions later
 import Link from "next/link";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+import { MediaCarousel } from "@/components/media-carousel";
 
 // Define types for the rawData structure
 interface Screenshot {
@@ -52,7 +46,7 @@ interface SteamRawData {
 }
 
 // Define a media item type that can be either screenshot or movie
-type MediaItem = {
+export type MediaItem = {
   type: "image" | "video";
   data: Screenshot | Movie;
 };
@@ -138,84 +132,11 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-5xl">
+    <div className="container mx-auto">
       {/* Media Carousel */}
       {mediaItems.length > 0 && (
-        <div className="mb-6 relative">
-          <Carousel className="w-full">
-            <CarouselContent>
-              {mediaItems.map((item, index) => (
-                <CarouselItem key={index}>
-                  <div className="aspect-video relative rounded-lg overflow-hidden bg-black">
-                    {item.type === "image" ? (
-                      <Image
-                        src={(item.data as Screenshot).path_full}
-                        alt={`${game.title} Media ${index + 1}`}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1000px"
-                      />
-                    ) : (
-                      <video
-                        src={(item.data as Movie).mp4.max}
-                        poster={(item.data as Movie).thumbnail}
-                        autoPlay
-                        muted
-                        controls
-                        loop
-                        playsInline
-                        className="w-full h-full object-contain"
-                      />
-                    )}
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="left-2" />
-            <CarouselNext className="right-2" />
-          </Carousel>
-
-          {/* Thumbnails row */}
-          <div className="mt-4 flex justify-center gap-2 px-4 overflow-x-auto py-2">
-            {mediaItems.slice(0, 10).map((item, index) => (
-              <div
-                key={index}
-                className="w-20 h-12 relative rounded overflow-hidden border-2 border-white/80 flex-shrink-0 cursor-pointer"
-              >
-                {item.type === "image" ? (
-                  <Image
-                    src={(item.data as Screenshot).path_thumbnail}
-                    alt={`Thumbnail ${index}`}
-                    fill
-                    className="object-cover"
-                    sizes="80px"
-                  />
-                ) : (
-                  <div className="relative w-full h-full">
-                    <Image
-                      src={(item.data as Movie).thumbnail}
-                      alt={`Video Thumbnail ${index}`}
-                      fill
-                      className="object-cover"
-                      sizes="80px"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-6 h-6 bg-black/60 rounded-full flex items-center justify-center">
-                        <div className="w-0 h-0 border-y-4 border-y-transparent border-l-6 border-l-white ml-0.5"></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            {mediaItems.length > 10 && (
-              <div className="w-20 h-12 relative rounded overflow-hidden border-2 border-white/80 bg-black/50 flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs font-medium">
-                  +{mediaItems.length - 10}
-                </span>
-              </div>
-            )}
-          </div>
+        <div className="mb-6">
+          <MediaCarousel mediaItems={mediaItems} gameTitle={game.title || ""} />
         </div>
       )}
 
