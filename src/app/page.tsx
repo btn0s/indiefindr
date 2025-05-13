@@ -19,8 +19,8 @@ export default async function HomePage() {
               Discover Your Next Favorite Indie Game
             </h1>
             <p className="mx-auto mt-4 max-w-[700px] text-lg text-muted-foreground md:text-xl">
-              Personalized recommendations powered by AI. Stop searching, start
-              playing.
+              A simple, personalized way to discover and play unique indie games
+              you'll love.
             </p>
           </div>
         </section>
