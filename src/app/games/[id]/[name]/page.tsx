@@ -87,7 +87,7 @@ export async function generateMetadata({
     title: `${game.title} | IndieFindr`,
     description,
     openGraph: {
-      title: game.title || "Game Details",
+      title: `${game.title} | IndieFindr` || "Game Details",
       description: game.shortDescription || "No description available.",
       images: [
         {
