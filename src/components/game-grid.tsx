@@ -11,6 +11,7 @@ type GameForGrid = {
   title: string | null;
   steamAppid: string | null;
   descriptionShort?: string | null;
+  rawData?: any | null; // Add rawData, ideally use SteamRawData type
   // Add any other fields GameCardMini might eventually need (e.g., tags)
 };
 
@@ -44,6 +45,7 @@ export function GameGrid({
             title: game.title,
             steamAppid: game.steamAppid,
             descriptionShort: game.descriptionShort,
+            rawData: game.rawData,
           }}
           detailsLinkHref={getGameUrl(game.id, game.title)}
           isInLibrary={loggedInUserLibraryIds.has(game.id)}

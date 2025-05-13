@@ -9,12 +9,13 @@ import { db, schema } from "@/db";
 import { inArray } from "drizzle-orm";
 import { GameGrid } from "@/components/game-grid";
 
-// Define the shape needed by GameGrid
+// Define the shape needed by GameGrid and GameCardMini (including rawData)
 type LibraryGameForGrid = {
   id: number;
   title: string | null;
   steamAppid: string | null;
   descriptionShort: string | null;
+  rawData: any | null; // Using any for now, ideally import SteamRawData
 };
 
 async function getUserLibraryGames(
@@ -39,6 +40,7 @@ async function getUserLibraryGames(
         title: schema.externalSourceTable.title,
         descriptionShort: schema.externalSourceTable.descriptionShort,
         steamAppid: schema.externalSourceTable.steamAppid,
+        rawData: schema.externalSourceTable.rawData, // Select the rawData field
       })
       .from(schema.externalSourceTable)
       .where(inArray(schema.externalSourceTable.id, gameIds))
@@ -49,6 +51,7 @@ async function getUserLibraryGames(
       title: game.title,
       descriptionShort: game.descriptionShort,
       steamAppid: game.steamAppid,
+      rawData: game.rawData, // Map rawData to the returned object
     }));
   } catch (error) {
     console.error("Error fetching library game details:", error);
@@ -72,8 +75,8 @@ export default async function ProfilePage() {
   const loggedInUserLibraryIds = new Set<number>(libraryGames.map((g) => g.id));
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Your Game Library</h1>
+    <main className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-6">My finds</h1>
 
       {libraryGames.length === 0 ? (
         <p>Your library is empty. Discover games and add them!</p>
