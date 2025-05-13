@@ -12,10 +12,27 @@ const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:3000";
 
+const defaultTitle = "Discover your next favorite indie game.";
+const defaultDescription =
+  "Find and curate hidden gems easily missed on Steam.";
+
 export const metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "IndieFindr - AI-Powered Indie Game Discovery",
-  description: "Discover your next favorite indie game.",
+  title: defaultTitle,
+  description: defaultDescription,
+  openGraph: {
+    title: defaultTitle,
+    description: defaultDescription,
+    url: defaultUrl,
+    siteName: "IndieFindr",
+    images: [
+      {
+        url: `${defaultUrl}/og-image.png`,
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
 };
 
 const geistSans = Geist({
