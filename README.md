@@ -12,6 +12,7 @@
   <a href="#demo"><strong>Demo</strong></a> ·
   <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
   <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
+  <a href="#environment-variables"><strong>Environment Variables</strong></a> ·
   <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
   <a href="#more-supabase-examples"><strong>More Examples</strong></a>
 </p>
@@ -29,6 +30,10 @@
 - supabase-ssr. A package to configure Supabase Auth to use cookies
 - Styling with [Tailwind CSS](https://tailwindcss.com)
 - Components with [shadcn/ui](https://ui.shadcn.com/)
+- Complete onboarding flow for new users
+  - Profile setup with username, full name, and bio
+  - Game selection with search functionality
+  - Proper redirect to feed after completion
 - Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
   - Environment variables automatically assigned to Vercel project
 
@@ -92,6 +97,25 @@ If you wish to just develop locally and not deploy to Vercel, [follow the steps 
 6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
 
 > Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+
+## Environment Variables
+
+This project uses the following environment variables:
+
+```
+# Required: Supabase connection details
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Optional: Site URL for auth redirects (important for production)
+NEXT_PUBLIC_SITE_URL=https://your-site-url.com
+```
+
+### NEXT_PUBLIC_SITE_URL
+
+This variable is used for authentication redirects, particularly in emails sent by Supabase Auth. When deploying to production, you should set this to your actual domain to prevent localhost URLs in emails.
+
+If not provided, the application will fall back to using the request origin, which works for local development but may cause issues in production environments.
 
 ## Feedback and issues
 

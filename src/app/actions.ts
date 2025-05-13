@@ -10,6 +10,9 @@ export const signUpAction = async (formData: FormData) => {
   const password = formData.get("password")?.toString();
   const supabase = await createClient();
   const origin = (await headers()).get("origin");
+  
+  // Use NEXT_PUBLIC_SITE_URL if available, otherwise fall back to origin
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
 
   if (!email || !password) {
     return encodedRedirect(
@@ -23,7 +26,7 @@ export const signUpAction = async (formData: FormData) => {
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${siteUrl}/auth/callback`,
     },
   });
 
@@ -53,7 +56,7 @@ export const signInAction = async (formData: FormData) => {
     return encodedRedirect("error", "/sign-in", error.message);
   }
 
-  return redirect("/protected");
+  return redirect("/");
 };
 
 export const forgotPasswordAction = async (formData: FormData) => {
@@ -61,13 +64,16 @@ export const forgotPasswordAction = async (formData: FormData) => {
   const supabase = await createClient();
   const origin = (await headers()).get("origin");
   const callbackUrl = formData.get("callbackUrl")?.toString();
+  
+  // Use NEXT_PUBLIC_SITE_URL if available, otherwise fall back to origin
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
 
   if (!email) {
     return encodedRedirect("error", "/forgot-password", "Email is required");
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?redirect_to=/protected/reset-password`,
+    redirectTo: `${siteUrl}/auth/callback?redirect_to=/protected/reset-password`,
   });
 
   if (error) {
