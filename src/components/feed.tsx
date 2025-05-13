@@ -148,8 +148,13 @@ export function Feed({ isLoggedIn }: FeedDisplayProps) {
     <div className="flex flex-col gap-4">
       {games.map((game, index) => {
         const detailsLinkHref = getGameUrl(game.id, game.title);
-        if (games.length === index + 1) {
-          // Attach ref to the last element for infinite scroll detection
+
+        // Determine the index to attach the observer trigger
+        // Trigger on the 3rd to last item if available, otherwise the last item.
+        const triggerIndex = Math.max(0, games.length - 3);
+
+        if (index === triggerIndex) {
+          // Attach ref to the designated trigger element
           return (
             <div ref={lastGameElementRef} key={game.id}>
               <GameCard game={game} detailsLinkHref={detailsLinkHref} />
