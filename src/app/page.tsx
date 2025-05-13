@@ -32,11 +32,6 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    // Redirect to sign-in page if not logged in
-    redirect("/sign-in");
-  }
-
   // Fetch feed and library data concurrently
   const feedResultPromise = getPersonalizedFeed();
   const libraryResultPromise = getLibraryGameIds();

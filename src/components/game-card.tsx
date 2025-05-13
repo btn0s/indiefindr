@@ -22,9 +22,12 @@ import {
   Eye,
   ImageOff,
   Share2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { MediaCarousel } from "@/components/media-carousel"; // Import MediaCarousel
 import type { MediaItem, SteamRawData, Movie, Screenshot } from "@/types/steam"; // Updated import path
+import { toast } from "sonner";
 
 interface GameCardProps {
   game: {
@@ -52,8 +55,15 @@ export function GameCard({
   className,
   style,
 }: GameCardProps) {
+  const [hasCopied, setHasCopied] = React.useState(false);
+  const [canShare, setCanShare] = React.useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Check if sharing is available
+  useEffect(() => {
+    setCanShare(!!navigator.share);
+  }, []);
 
   // Set up intersection observer for video autoplay
   useEffect(() => {
@@ -112,34 +122,35 @@ export function GameCard({
     }
   };
 
-  const handleShare = async (e: React.MouseEvent) => {
+  const handleNativeShare = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const shareUrl = window.location.origin + detailsLinkHref;
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: game.title || "Check out this game",
-          text:
-            game.shortDescription ||
-            "Found this interesting game on IndieFindr",
-          url: window.location.origin + detailsLinkHref,
-        });
-      } catch (error) {
-        if ((error as Error).name !== "AbortError") {
-          console.error("Error sharing:", error);
-        }
+    try {
+      await navigator.share({
+        title: game.title || "Check out this game",
+        text: `Check out ${game.title || "this game"} on IndieFindr!`,
+        url: shareUrl,
+      });
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        console.error("Error sharing:", error);
       }
-    } else {
-      // Fallback to copying link to clipboard
-      try {
-        await navigator.clipboard.writeText(
-          window.location.origin + detailsLinkHref
-        );
-        // You might want to show a toast notification here
-      } catch (error) {
-        console.error("Error copying to clipboard:", error);
-      }
+    }
+  };
+
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const shareUrl = window.location.origin + detailsLinkHref;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setHasCopied(true);
+      setTimeout(() => setHasCopied(false), 2000);
+    } catch (error) {
+      console.error("Error copying to clipboard:", error);
     }
   };
 
@@ -272,7 +283,7 @@ export function GameCard({
           Details
         </Button>
         <Button
-          variant={"secondary"}
+          variant="secondary"
           size="sm"
           onClick={isInLibrary ? handleRemove : handleAdd}
           className="flex-1"
@@ -284,14 +295,29 @@ export function GameCard({
           )}
           {isInLibrary ? "Saved" : "Save"}
         </Button>
+        {/* Mobile/Touch Share Button */}
         <Button
           variant="secondary"
           size="sm"
-          onClick={handleShare}
-          className="flex-1"
+          onClick={handleNativeShare}
+          className="flex-1 md:hidden"
         >
           <Share2 className="mr-1.5 h-3.5 w-3.5" />
           Share
+        </Button>
+        {/* Desktop Copy Link Button */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleCopyLink}
+          className="flex-1 hidden md:flex"
+        >
+          {hasCopied ? (
+            <Check className="mr-1.5 h-3.5 w-3.5" />
+          ) : (
+            <Share2 className="mr-1.5 h-3.5 w-3.5" />
+          )}
+          {hasCopied ? "Link copied!" : "Share"}
         </Button>
       </CardFooter>
     </Card>
