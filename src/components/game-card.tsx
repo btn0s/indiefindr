@@ -105,8 +105,8 @@ export function GameCard({
       )}
       style={style} // Added style prop
     >
-      {/* Header: Tighter spacing applied via Card override + p-3 */}
-      <CardHeader className="flex flex-row items-center gap-2 p-3 space-y-0">
+      {/* Content: Tighter spacing applied via Card override + p-3 */}
+      <CardContent className="p-3 flex-grow flex flex-col gap-2">
         <Link
           href={detailsLinkHref}
           className="block group shrink-0 rounded overflow-hidden relative bg-muted w-24 aspect-cover-art" // Adjusted size and aspect ratio
@@ -141,10 +141,6 @@ export function GameCard({
           </Link>
           {/* Could add a subtitle here if needed, e.g., a primary genre or developer */}
         </div>
-      </CardHeader>
-
-      {/* Content: Tighter spacing applied via Card override + p-3 */}
-      <CardContent className="p-3 flex-grow flex flex-col gap-2">
         <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3">
           {game.shortDescription || "No description available."}
         </p>

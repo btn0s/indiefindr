@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
-import { type MediaItem } from "../app/games/[id]/[name]/page";
+import { type MediaItem } from "@/types/steam";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 
 interface MediaCarouselProps {
@@ -17,36 +18,114 @@ interface MediaCarouselProps {
 }
 
 export function MediaCarousel({ mediaItems, gameTitle }: MediaCarouselProps) {
-  const [emblaApi, setEmblaApi] = useState<any>(null);
+  const [emblaApi, setEmblaApi] = useState<CarouselApi | undefined>(undefined);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isCarouselVisible, setIsCarouselVisible] = useState(false);
 
-  // Handle thumbnail click
-  const scrollToSlide = (index: number) => {
-    if (emblaApi) {
-      emblaApi.scrollTo(index);
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+
+  useEffect(() => {
+    videoRefs.current = videoRefs.current.slice(0, mediaItems.length);
+  }, [mediaItems]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsCarouselVisible(entry.isIntersecting);
+      },
+      {
+        root: null,
+        rootMargin: "0px",
+        threshold: 0.1,
+      }
+    );
+
+    const currentCarouselRef = carouselRef.current;
+    if (currentCarouselRef) {
+      observer.observe(currentCarouselRef);
     }
-  };
 
-  // Update current index when slide changes
-  const onSelect = () => {
+    return () => {
+      if (currentCarouselRef) {
+        observer.unobserve(currentCarouselRef);
+      }
+      observer.disconnect();
+    };
+  }, []);
+
+  const pauseAllVideos = useCallback(() => {
+    videoRefs.current.forEach((videoEl) => {
+      if (videoEl && !videoEl.paused) {
+        videoEl.pause();
+      }
+    });
+  }, []);
+
+  const playVideoAtIndex = useCallback(
+    (index: number) => {
+      const videoEl = videoRefs.current[index];
+      if (isCarouselVisible && videoEl) {
+        videoEl.play().catch((error) => {
+          // Autoplay prevention is common, log error if needed
+          // console.error("Video play failed:", error);
+        });
+      }
+    },
+    [isCarouselVisible]
+  );
+
+  const onSelect = useCallback(() => {
     if (!emblaApi) return;
-    setCurrentIndex(emblaApi.selectedScrollSnap());
-  };
+    const selectedIndex = emblaApi.selectedScrollSnap();
+    setCurrentIndex(selectedIndex);
 
-  // Set up slide change listener
+    pauseAllVideos();
+
+    const currentItem = mediaItems[selectedIndex];
+    if (currentItem?.type === "video") {
+      playVideoAtIndex(selectedIndex);
+    }
+  }, [emblaApi, mediaItems, pauseAllVideos, playVideoAtIndex]);
+
   useEffect(() => {
     if (!emblaApi) return;
 
     onSelect();
     emblaApi.on("select", onSelect);
+    emblaApi.on("reInit", onSelect);
 
     return () => {
       emblaApi.off("select", onSelect);
+      emblaApi.off("reInit", onSelect);
+      pauseAllVideos();
     };
-  }, [emblaApi]);
+  }, [emblaApi, onSelect, pauseAllVideos]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    const currentItem = mediaItems[currentIndex];
+    if (currentItem?.type === "video") {
+      if (isCarouselVisible) {
+        playVideoAtIndex(currentIndex);
+      } else {
+        pauseAllVideos();
+      }
+    } else if (!isCarouselVisible) {
+      pauseAllVideos();
+    }
+  }, [
+    isCarouselVisible,
+    currentIndex,
+    mediaItems,
+    emblaApi,
+    playVideoAtIndex,
+    pauseAllVideos,
+  ]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={carouselRef}>
       <Carousel setApi={setEmblaApi} className="w-full">
         <CarouselContent>
           {mediaItems.map((item, index) => (
@@ -62,9 +141,11 @@ export function MediaCarousel({ mediaItems, gameTitle }: MediaCarouselProps) {
                   />
                 ) : (
                   <video
+                    ref={(el: HTMLVideoElement | null) => {
+                      videoRefs.current[index] = el;
+                    }}
                     src={(item.data as any).mp4.max}
                     poster={(item.data as any).thumbnail}
-                    autoPlay
                     muted
                     controls
                     loop
@@ -80,7 +161,6 @@ export function MediaCarousel({ mediaItems, gameTitle }: MediaCarouselProps) {
         <CarouselNext className="right-2" />
       </Carousel>
 
-      {/* Thumbnails row with active state */}
       <div className="mt-2 flex gap-2 overflow-x-auto py-2 snap-x snap-mandatory">
         {mediaItems.map((item, index) => (
           <div
@@ -90,7 +170,7 @@ export function MediaCarousel({ mediaItems, gameTitle }: MediaCarouselProps) {
                 ? "shadow-md border-white border-2"
                 : "border-white/20 hover:border-white"
             }`}
-            onClick={() => scrollToSlide(index)}
+            onClick={() => emblaApi?.scrollTo(index)}
             role="button"
             aria-label={`Go to slide ${index + 1}`}
           >
