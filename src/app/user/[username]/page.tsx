@@ -88,36 +88,17 @@ export async function generateMetadata(
         ? `${profileData.username}'s bio: ${profileData.bio.substring(0, 150)}${profileData.bio.length > 150 ? "..." : ""}`
         : `${profileData.username}'s profile page on IndieFindr, featuring their game library and finds.`;
 
-      // Build search params for the OG image
-      const ogImageSearchParams = new URLSearchParams({
-        username: profileData.username || "",
-        fullName: profileData.fullName || "",
-        avatarUrl: profileData.avatarUrl || "",
-        findsCount: findsCount.toString(),
-      });
-
-      const ogImageUrl = `/user/${encodeURIComponent(profileData.username)}/opengraph-image?${ogImageSearchParams.toString()}`;
-
       return {
         title: title,
         description: description,
         openGraph: {
           title: title,
           description: description,
-          images: [
-            {
-              url: ogImageUrl,
-              width: 1200,
-              height: 630,
-              alt: `${profileData.username}'s profile on IndieFindr`,
-            },
-          ],
         },
         twitter: {
           title: title,
           description: description,
           card: "summary_large_image",
-          images: [ogImageUrl],
         },
       };
     }
