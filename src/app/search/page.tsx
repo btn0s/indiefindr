@@ -284,17 +284,11 @@ async function getPopularGames(limit: number = 6): Promise<DisplayGame[]> {
   }
 }
 
-// --- Dynamic Metadata Generation ---
-type Props = {
-  params: {}; // No dynamic route params for this page
-  searchParams: { q?: string; tags?: string };
-};
-
 export async function generateMetadata({
   searchParams,
-}: Props): Promise<Metadata> {
-  const query = searchParams.q;
-  const tags = searchParams.tags;
+}: SearchPageProps): Promise<Metadata> {
+  const query = (await searchParams)?.q;
+  const tags = (await searchParams)?.tags;
 
   if (tags) {
     const capitalizedTags = tags
