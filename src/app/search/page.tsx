@@ -1,15 +1,26 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SearchIcon, ArrowLeft } from "lucide-react";
+import { SearchIcon, ArrowLeft, X } from "lucide-react";
 import { db, schema } from "@/db";
-import { ilike, or, desc, count, sql, inArray } from "drizzle-orm";
+import {
+  ilike,
+  or,
+  desc,
+  count,
+  sql,
+  inArray,
+  and,
+  arrayOverlaps,
+} from "drizzle-orm";
 import { GameCardMini } from "@/components/game-card-mini";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { SteamRawData } from "@/types/steam";
 import { getGameUrl } from "@/utils/game-url";
+import type { Metadata } from "next";
 
 const Loading = () => {
   return (
@@ -42,24 +53,66 @@ interface SearchResultGame {
 interface SearchPageProps {
   searchParams?: {
     q?: string;
+    tags?: string;
   };
 }
 
-async function performSearch(query: string): Promise<{
+async function performSearch(
+  query?: string,
+  tagsQuery?: string
+): Promise<{
   results: SearchResultGame[];
   error: string | null;
 }> {
-  if (!query || query.trim() === "") {
-    return {
-      results: [],
-      error: null,
-    };
+  const queryTrimmed = query?.trim();
+  const tagsArray = tagsQuery
+    ?.split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  if (!queryTrimmed && (!tagsArray || tagsArray.length === 0)) {
+    return { results: [], error: null };
   }
 
-  console.log(`[Server Search] Received search query: "${query}"`);
+  console.log(
+    `[Server Search] Received query: "${queryTrimmed}", tags: "${tagsQuery}"`
+  );
 
   try {
-    const queryTerms = query.trim().split(/\s+/).filter(Boolean);
+    const conditions = [];
+
+    if (queryTrimmed) {
+      const queryTerms = queryTrimmed.split(/\s+/).filter(Boolean);
+      if (queryTerms.length === 1) {
+        conditions.push(
+          or(
+            ilike(schema.externalSourceTable.title, `%${queryTrimmed}%`),
+            ilike(
+              schema.externalSourceTable.descriptionShort,
+              `%${queryTrimmed}%`
+            )
+          )
+        );
+      } else if (queryTerms.length > 1) {
+        const termConditions = queryTerms.map((term) =>
+          or(
+            ilike(schema.externalSourceTable.title, `%${term}%`),
+            ilike(schema.externalSourceTable.descriptionShort, `%${term}%`)
+          )
+        );
+        conditions.push(or(...termConditions));
+      }
+    }
+
+    if (tagsArray && tagsArray.length > 0) {
+      conditions.push(
+        arrayOverlaps(schema.externalSourceTable.tags, tagsArray)
+      );
+    }
+
+    if (conditions.length === 0) {
+      return { results: [], error: "No search criteria provided." };
+    }
 
     let searchResultsDb = await db
       .select({
@@ -71,12 +124,7 @@ async function performSearch(query: string): Promise<{
         rawData: schema.externalSourceTable.rawData,
       })
       .from(schema.externalSourceTable)
-      .where(
-        or(
-          ilike(schema.externalSourceTable.title, `%${query}%`),
-          ilike(schema.externalSourceTable.descriptionShort, `%${query}%`)
-        )
-      )
+      .where(and(...conditions))
       .limit(20)
       .execute();
 
@@ -85,36 +133,8 @@ async function performSearch(query: string): Promise<{
       searchResultsDb
     );
 
-    if (searchResultsDb.length === 0 && queryTerms.length > 1) {
-      const conditions = queryTerms.map((term) =>
-        or(
-          ilike(schema.externalSourceTable.title, `%${term}%`),
-          ilike(schema.externalSourceTable.descriptionShort, `%${term}%`)
-        )
-      );
-
-      searchResultsDb = await db
-        .select({
-          id: schema.externalSourceTable.id,
-          title: schema.externalSourceTable.title,
-          externalId: schema.externalSourceTable.externalId,
-          steamAppid: schema.externalSourceTable.steamAppid,
-          descriptionShort: schema.externalSourceTable.descriptionShort,
-          rawData: schema.externalSourceTable.rawData,
-        })
-        .from(schema.externalSourceTable)
-        .where(or(...conditions))
-        .limit(20)
-        .execute();
-
-      console.log(
-        "[Server Search] DB results after fallback query:",
-        searchResultsDb
-      );
-    }
-
     console.log(
-      `[Server Search] Found ${searchResultsDb.length} results for query "${query}".`
+      `[Server Search] Found ${searchResultsDb.length} results for query: "${queryTrimmed}", tags: "${tagsQuery}".`
     );
 
     const formattedResults: SearchResultGame[] = searchResultsDb.map(
@@ -264,18 +284,60 @@ async function getPopularGames(limit: number = 6): Promise<DisplayGame[]> {
   }
 }
 
+// --- Dynamic Metadata Generation ---
+type Props = {
+  params: {}; // No dynamic route params for this page
+  searchParams: { q?: string; tags?: string };
+};
+
+export async function generateMetadata({
+  searchParams,
+}: Props): Promise<Metadata> {
+  const query = searchParams.q;
+  const tags = searchParams.tags;
+
+  if (tags) {
+    const capitalizedTags = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .map((tag) => tag.charAt(0).toUpperCase() + tag.slice(1))
+      .join(", "); // Capitalize for title
+    return {
+      title: `${capitalizedTags} Games | IndieFindr`,
+      description: `Find and discover ${capitalizedTags} games, and more indie titles on IndieFindr.`,
+    };
+  } else if (query) {
+    return {
+      title: `Search results for "${query}" | IndieFindr`,
+      description: `Discover games matching "${query}" on IndieFindr.`,
+    };
+  }
+
+  return {
+    title: "Search Indie Games | IndieFindr",
+    description:
+      "Search, filter, and discover your next favorite indie game on IndieFindr.",
+  };
+}
+
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const query = searchParams?.q || "";
+  const { results, error } = await performSearch(query);
 
-  // Fetch search results OR initial page data based on query presence
+  console.log("results being passed to page component:", results);
+  console.log("error being passed to page component:", error);
+
   let searchResults: SearchResultGame[] = [];
   let searchError: string | null = null;
   let popularCategories: string[] = [];
   let recentGames: DisplayGame[] = [];
   let popularGames: DisplayGame[] = [];
 
-  if (query) {
-    const searchData = await performSearch(query);
+  const searchQuery = searchParams?.q || "";
+  const tagsSearch = searchParams?.tags;
+
+  if (searchQuery || tagsSearch) {
+    const searchData = await performSearch(searchQuery, tagsSearch);
     searchResults = searchData.results;
     searchError = searchData.error;
   } else {
@@ -292,10 +354,26 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   console.log("recent games being passed:", recentGames);
   console.log("popular games being passed:", popularGames);
 
+  const currentSearchTags = searchParams?.tags || "";
+
+  // Determine dynamic H1 title
+  let pageTitle = "Search Games";
+  if (tagsSearch && !searchQuery) {
+    const capitalizedTagsHeader = tagsSearch
+      .split(",")
+      .map((tag) => tag.trim())
+      .map((tag) => tag.charAt(0).toUpperCase() + tag.slice(1))
+      .join(", ");
+    pageTitle = `Explore ${capitalizedTagsHeader} Games`;
+  } else if (searchQuery || tagsSearch) {
+    // If any search is active
+    pageTitle = "Search Results";
+  }
+
   return (
     <div className="container max-w-5xl mx-auto py-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-6">Search Games</h1>
+        <h1 className="text-3xl font-bold mb-6">{pageTitle}</h1>
 
         <form method="GET" action="/search" className="flex gap-2">
           <Input
@@ -307,11 +385,41 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             aria-label="Search games by title"
             autoFocus
           />
+          {currentSearchTags && (
+            <input type="hidden" name="tags" value={currentSearchTags} />
+          )}
           <Button type="submit">
             <SearchIcon className="mr-2 h-4 w-4" />
             Search
           </Button>
         </form>
+
+        {/* Active Filter Display & Clear Button */}
+        {tagsSearch && (
+          <div className="mt-4 flex items-center gap-2 text-sm">
+            <span>Filtering by Tag:</span>
+            <Badge variant="secondary" className="text-sm">
+              {tagsSearch}
+            </Badge>
+            <Link
+              href={
+                searchQuery
+                  ? `/search?q=${encodeURIComponent(searchQuery)}`
+                  : "/search"
+              }
+              passHref
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                aria-label="Clear tag filter"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        )}
 
         {/* Popular Categories - Show only when no query */}
         {!query && popularCategories.length > 0 && (
@@ -327,7 +435,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 className="h-7"
                 asChild
               >
-                <Link href={`/search?q=${encodeURIComponent(category)}`}>
+                <Link href={`/search?tags=${encodeURIComponent(category)}`}>
                   {category}
                 </Link>
               </Button>
@@ -337,7 +445,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       </div>
 
       <Suspense fallback={<Loading />}>
-        {query ? (
+        {searchQuery || tagsSearch ? (
           <>
             {searchError && (
               <div className="bg-destructive/10 text-destructive rounded-md p-4 mb-6">
@@ -348,7 +456,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             {searchResults.length === 0 && !searchError && (
               <div className="text-center py-12">
                 <p className="text-lg text-muted-foreground">
-                  No games found matching "{query}"
+                  No games found matching "{searchQuery}"
+                  {tagsSearch && ` with tags "${tagsSearch}"`}
                 </p>
               </div>
             )}
@@ -372,52 +481,54 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         ) : (
           <div className="space-y-8">
             {/* Recently Added Games */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recently Added</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {recentGames.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {recentGames.map((game) => (
-                      <GameCardMini
-                        key={game.id}
-                        game={game}
-                        detailsLinkHref={getGameUrl(game.id, game.title)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">
-                    No recently added games found.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recently Added</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {recentGames.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {recentGames.map((game) => (
+                        <GameCardMini
+                          key={game.id}
+                          game={game}
+                          detailsLinkHref={getGameUrl(game.id, game.title)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No recently added games found.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
-            {/* Popular Games (Most Saved) */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Popular Games</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {popularGames.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {popularGames.map((game) => (
-                      <GameCardMini
-                        key={game.id}
-                        game={game}
-                        detailsLinkHref={getGameUrl(game.id, game.title)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">
-                    No popular games found (based on saves).
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+              {/* Popular Games (Most Saved) */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Popular Games</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {popularGames.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {popularGames.map((game) => (
+                        <GameCardMini
+                          key={game.id}
+                          game={game}
+                          detailsLinkHref={getGameUrl(game.id, game.title)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No popular games found (based on saves).
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )}
       </Suspense>
