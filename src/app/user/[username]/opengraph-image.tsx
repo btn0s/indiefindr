@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { db } from "@/db";
 import { profilesTable, externalSourceTable } from "@/db/schema";
 import { eq, count } from "drizzle-orm";
@@ -34,6 +36,20 @@ export default async function Image({
 }: {
   params: { username: string };
 }) {
+  // Load the font files from src/assets/fonts
+  const geistRegular = await readFile(
+    join(process.cwd(), "src/assets/fonts/Geist/ttf/Geist-Regular.ttf")
+  );
+  const geistMedium = await readFile(
+    join(process.cwd(), "src/assets/fonts/Geist/ttf/Geist-Medium.ttf")
+  );
+  const geistSemiBold = await readFile(
+    join(process.cwd(), "src/assets/fonts/Geist/ttf/Geist-SemiBold.ttf")
+  );
+  const geistBold = await readFile(
+    join(process.cwd(), "src/assets/fonts/Geist/ttf/Geist-Bold.ttf")
+  );
+
   const decodedUsername = decodeURIComponent(params.username);
   let profile = null;
   let findsCount = 0;
@@ -88,134 +104,211 @@ export default async function Image({
           width: "100%",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#1A202C", // Dark background
-          color: "white",
-          fontFamily: "sans-serif", // Using a common sans-serif font
-          padding: "40px",
+          backgroundColor: "#FFFFFF", // Light background like card
+          color: "#09090B", // Dark text like card
+          fontFamily: "Geist, sans-serif",
+          padding: "48px",
         }}
       >
-        {/* Avatar or Initials */}
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={`${username}'s avatar`}
-            width={160}
-            height={160}
-            style={{
-              borderRadius: "50%",
-              border: "4px solid #4A5568", // Slightly lighter border
-              marginBottom: "30px",
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 160,
-              height: 160,
-              borderRadius: "50%",
-              backgroundColor: "#4A5568", // Fallback background for initials
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "72px",
-              fontWeight: "bold",
-              color: "white",
-              border: "4px solid #2D3748",
-              marginBottom: "30px",
-            }}
-          >
-            {initials}
-          </div>
-        )}
-
-        {/* Username */}
-        <div
-          style={{
-            fontSize: "72px",
-            fontWeight: "bold",
-            marginBottom: "10px",
-            textAlign: "center",
-          }}
-        >
-          {username}
-        </div>
-
-        {/* Full Name (if available) */}
-        {fullName && (
-          <div
-            style={{
-              fontSize: "42px",
-              color: "#A0AEC0",
-              marginBottom: "20px",
-              textAlign: "center",
-            }}
-          >
-            {fullName}
-          </div>
-        )}
-
-        {/* Badge with Finds Count */}
+        {/* Header with logo */}
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
             alignItems: "center",
-            marginTop: "10px",
-            marginBottom: "20px",
+            justifyContent: "space-between",
+            width: "100%",
+            marginBottom: "48px",
           }}
         >
-          {/* Rank Badge */}
           <div
             style={{
-              backgroundColor: rank.color,
-              paddingLeft: "16px",
-              paddingRight: "16px",
-              paddingTop: "8px",
-              paddingBottom: "8px",
-              borderRadius: "9999px",
-              fontSize: "28px",
-              fontWeight: "bold",
-              marginBottom: "15px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              fontSize: "32px",
+              fontWeight: "700",
+              color: "#000000",
             }}
           >
-            {rank.title}
-          </div>
-
-          {/* Finds Count */}
-          <div
-            style={{
-              fontSize: "36px",
-              color: "#E2E8F0",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <strong>{findsCount}</strong>&nbsp;Game Discoveries
+            IndieFindr
           </div>
         </div>
 
-        {/* IndieFindr Branding */}
+        {/* Profile Content */}
         <div
           style={{
-            position: "absolute",
-            bottom: "30px",
-            right: "40px",
-            fontSize: "28px",
-            color: "#718096",
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            flex: "1",
+            gap: "48px",
           }}
         >
-          IndieFindr
+          {/* Avatar Column */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: "24px",
+            }}
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={`${username}'s avatar`}
+                width={180}
+                height={180}
+                style={{
+                  borderRadius: "50%",
+                  border: "4px solid #E2E8F0",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: 180,
+                  height: 180,
+                  borderRadius: "50%",
+                  backgroundColor: "#E2E8F0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "72px",
+                  fontWeight: "bold",
+                  color: "#64748B",
+                }}
+              >
+                {initials}
+              </div>
+            )}
+          </div>
+
+          {/* Info Column */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              flex: "1",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "64px",
+                fontWeight: "600",
+                marginBottom: "16px",
+                color: "#000000",
+              }}
+            >
+              {username}
+            </div>
+
+            {fullName && (
+              <div
+                style={{
+                  fontSize: "32px",
+                  color: "#64748B", // Muted foreground
+                  marginBottom: "24px",
+                }}
+              >
+                {fullName}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginTop: "16px",
+                gap: "16px",
+              }}
+            >
+              {/* Rank Badge */}
+              <div
+                style={{
+                  backgroundColor: rank.color,
+                  paddingLeft: "16px",
+                  paddingRight: "16px",
+                  paddingTop: "8px",
+                  paddingBottom: "8px",
+                  borderRadius: "9999px",
+                  fontSize: "20px",
+                  fontWeight: "500",
+                  color: "white",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {rank.title}
+              </div>
+
+              {/* Discoveries Counter */}
+              <div
+                style={{
+                  fontSize: "20px",
+                  color: "#64748B",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <strong style={{ marginRight: "4px", color: "#1E293B" }}>
+                  {findsCount}
+                </strong>
+                &nbsp;Games Discovered
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            width: "100%",
+            marginTop: "48px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "16px",
+              color: "#94A3B8", // Very muted foreground for footer
+            }}
+          >
+            Discover indie games you'll love at indiefindr.com
+          </div>
         </div>
       </div>
     ),
     {
       ...size,
+      fonts: [
+        {
+          name: "Geist",
+          data: geistRegular,
+          style: "normal",
+          weight: 400,
+        },
+        {
+          name: "Geist",
+          data: geistMedium,
+          style: "normal",
+          weight: 500,
+        },
+        {
+          name: "Geist",
+          data: geistSemiBold,
+          style: "normal",
+          weight: 600,
+        },
+        {
+          name: "Geist",
+          data: geistBold,
+          style: "normal",
+          weight: 700,
+        },
+      ],
     }
   );
 }
