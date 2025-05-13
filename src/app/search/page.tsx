@@ -125,7 +125,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const { results, error } = await performSearch(query);
 
   return (
-    <div className="container max-w-5xl mx-auto py-6 px-4">
+    <div className="container max-w-5xl mx-auto py-6">
       <div className="mb-8">
         <Link
           href="/"

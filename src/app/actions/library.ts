@@ -56,8 +56,8 @@ export async function addToLibrary(gameRefId: number): Promise<ActionResult> {
     .execute();
 
   // Revalidate paths to update UI
-  revalidatePath("/");
-  revalidatePath("/profile"); // Or specific library path
+  // revalidatePath("/"); // Removed to allow optimistic UI
+  revalidatePath("/profile"); // Keep profile revalidation if needed
 
   return { success: true, message: "Game added to library." };
 }
@@ -99,8 +99,8 @@ export async function removeFromLibrary(
     .execute(); // Assume success if no error thrown
 
   // Revalidate paths
-  revalidatePath("/");
-  revalidatePath("/profile");
+  // revalidatePath("/"); // Removed to allow optimistic UI
+  revalidatePath("/profile"); // Keep profile revalidation if needed
 
   return { success: true, message: "Game removed from library." };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
 import { MediaCarousel } from "@/components/media-carousel"; // Import MediaCarousel
 import type { MediaItem, SteamRawData, Movie, Screenshot } from "@/types/steam"; // Updated import path
 import { toast } from "sonner";
+import { useLibrary } from "@/contexts/LibraryContext"; // Import the hook
 
 interface GameCardProps {
   game: {
@@ -39,26 +40,34 @@ interface GameCardProps {
     rawData?: SteamRawData | null; // Add rawData prop (optional for now)
   };
   detailsLinkHref: string; // Add href prop for consistency
-  isInLibrary: boolean;
-  onAddToLibrary?: (gameId: number) => Promise<any>;
-  onRemoveFromLibrary?: (gameId: number) => Promise<any>;
   className?: string;
   style?: React.CSSProperties; // Allow passing style
 }
 
-export function GameCard({
-  game,
-  detailsLinkHref,
-  isInLibrary,
-  onAddToLibrary,
-  onRemoveFromLibrary,
-  className,
-  style,
-}: GameCardProps) {
+export function GameCard({ game, detailsLinkHref, className, style }: GameCardProps) {
   const [hasCopied, setHasCopied] = React.useState(false);
   const [canShare, setCanShare] = React.useState(false);
+  const [mediaError, setMediaError] = useState(false);
+  const [coverArtError, setCoverArtError] = useState(false);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Use the library context
+  const {
+    isGameInLibrary,
+    addToLibrary: addToLibraryCtx,
+    removeFromLibrary: removeFromLibraryCtx,
+    isLoading: isLibraryLoading,
+  } = useLibrary();
+
+  const isInLibrary = isGameInLibrary(game.id);
+
+  // Reset media error state if the game data changes
+  useEffect(() => {
+    setMediaError(false);
+    setCoverArtError(false);
+  }, [game.id]);
 
   // Check if sharing is available
   useEffect(() => {
@@ -97,28 +106,24 @@ export function GameCard({
     };
   }, []);
 
-  // Reuse handleAdd and handleRemove logic from GameCardMini
+  // Update handleAdd and handleRemove to use context functions
   const handleAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (onAddToLibrary) {
-      try {
-        await onAddToLibrary(game.id);
-      } catch (error) {
-        console.error("Error adding to library:", error);
-      }
+    try {
+      await addToLibraryCtx(game.id);
+    } catch (error) {
+      console.error("Error adding to library (handled by context):", error);
     }
   };
 
   const handleRemove = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (onRemoveFromLibrary) {
-      try {
-        await onRemoveFromLibrary(game.id);
-      } catch (error) {
-        console.error("Error removing from library:", error);
-      }
+    try {
+      await removeFromLibraryCtx(game.id);
+    } catch (error) {
+      console.error("Error removing from library (handled by context):", error);
     }
   };
 
@@ -163,6 +168,14 @@ export function GameCard({
   const firstVideo = rawData?.movies?.[0];
   const firstScreenshot = rawData?.screenshots?.[0];
 
+  const handleMediaError = () => {
+    setMediaError(true);
+  };
+
+  const handleCoverArtError = () => {
+    setCoverArtError(true);
+  };
+
   return (
     <Card
       ref={cardRef}
@@ -176,21 +189,27 @@ export function GameCard({
       <Link href={detailsLinkHref} className="flex-grow">
         <CardContent className="p-3 flex flex-col gap-4">
           {/* Media Preview */}
-          {firstVideo ? (
-            <div className="rounded-md overflow-hidden aspect-video relative bg-black">
+          <div className="rounded-md overflow-hidden aspect-video relative bg-black flex items-center justify-center">
+            {mediaError ? (
+              <div className="text-muted-foreground flex flex-col items-center gap-1">
+                <ImageOff className="h-8 w-8" />
+                <span className="text-xs">Preview unavailable</span>
+              </div>
+            ) : firstVideo ? (
               <video
                 ref={videoRef}
+                key={firstVideo.mp4.max}
                 src={firstVideo.mp4.max}
                 poster={firstVideo.thumbnail}
                 muted
                 playsInline
                 loop
                 className="w-full h-full object-contain"
+                onError={handleMediaError}
               />
-            </div>
-          ) : firstScreenshot ? (
-            <div className="rounded-md overflow-hidden aspect-video relative bg-black">
+            ) : firstScreenshot ? (
               <Image
+                key={firstScreenshot.path_full}
                 src={firstScreenshot.path_full}
                 alt={
                   game.title ? `${game.title} Screenshot` : "Game Screenshot"
@@ -198,19 +217,27 @@ export function GameCard({
                 fill
                 sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
                 className="object-contain"
+                onError={handleMediaError}
+                unoptimized
               />
-            </div>
-          ) : imageUrl ? (
-            <div className="rounded-md overflow-hidden aspect-video relative bg-black">
+            ) : imageUrl ? (
               <Image
+                key={imageUrl}
                 src={imageUrl}
                 alt={game.title ? `${game.title} Header` : "Game Header"}
                 fill
                 sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
                 className="object-contain"
+                onError={handleMediaError}
+                unoptimized
               />
-            </div>
-          ) : null}
+            ) : (
+              <div className="text-muted-foreground flex flex-col items-center gap-1">
+                <ImageOff className="h-8 w-8" />
+                <span className="text-xs">No preview</span>
+              </div>
+            )}
+          </div>
 
           {/* Two column layout */}
           <div className="flex gap-4">
@@ -242,24 +269,25 @@ export function GameCard({
                 </div>
               )}
             </div>
-            <div className="h-full w-auto flex-1 border-white/20 border rounded overflow-hidden relative bg-muted aspect-cover-art">
-              {imageUrl ? (
-                <Image
-                  src={imageUrl}
-                  alt={game.title ? `${game.title} Icon` : "Game Icon"}
-                  fill
-                  sizes="500px"
-                  className="object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      "/placeholder-game.jpg";
-                    (e.target as HTMLImageElement).classList.add("opacity-50");
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-muted">
-                  <ImageOff className="h-6 w-6 text-muted-foreground" />
+            <div className="h-full w-auto flex-1 border-white/20 border rounded overflow-hidden relative bg-muted aspect-cover-art flex items-center justify-center">
+              {coverArtError || !imageUrl ? (
+                <div className="text-muted-foreground flex flex-col items-center gap-1">
+                  <ImageOff className="h-6 w-6" />
+                  <span className="text-xs">No cover</span>
                 </div>
+              ) : (
+                <Image
+                  key={`${imageUrl}-cover`}
+                  src={imageUrl}
+                  alt={
+                    game.title ? `${game.title} Cover Art` : "Game Cover Art"
+                  }
+                  fill
+                  sizes="150px"
+                  className="object-cover"
+                  onError={handleCoverArtError}
+                  unoptimized
+                />
               )}
             </div>
           </div>
@@ -283,6 +311,7 @@ export function GameCard({
           variant="secondary"
           size="sm"
           onClick={isInLibrary ? handleRemove : handleAdd}
+          disabled={isLibraryLoading}
           className="flex-1"
         >
           {isInLibrary ? (

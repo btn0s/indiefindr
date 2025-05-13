@@ -107,7 +107,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   }
 
   return (
-    <div className="container max-w-5xl mx-auto px-4 py-8">
+    <div className="container max-w-5xl mx-auto py-8">
       <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
         <Avatar className="h-24 w-24 md:h-32 md:w-32 border">
           <AvatarImage

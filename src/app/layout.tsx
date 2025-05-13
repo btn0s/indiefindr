@@ -1,9 +1,9 @@
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Geist } from "next/font/google";
-import { ThemeProvider } from "next-themes";
 import { Nav } from "@/components/nav";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
+import { AppProviders } from "@/components/providers";
 
 import "./globals.css";
 
@@ -30,12 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={geistSans.className} suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background font-sans antialiased")}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <AppProviders>
           <main className="min-h-screen">
             <Nav />
             <div className="max-w-5xl p-4 mx-auto">{children}</div>
@@ -44,7 +39,7 @@ export default function RootLayout({
             </div>
           </main>
           <Toaster />
-        </ThemeProvider>
+        </AppProviders>
       </body>
     </html>
   );
