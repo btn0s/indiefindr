@@ -160,8 +160,8 @@ export function SubmitGameDialog() {
   return (
     <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="Submit Game">
-          <Send className="h-4 w-4" />
+        <Button variant="outline" aria-label="Submit Game">
+          Submit Find
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
