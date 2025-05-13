@@ -10,13 +10,18 @@ dotenv.config({ path: ".env.local" });
 
 const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
+// Check if we're in a build environment (Next.js build time)
+const isBuildTime = process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build';
+
+// Only throw an error if we're not in build time
+if (!connectionString && !isBuildTime) {
   throw new Error("DATABASE_URL environment variable is not set.");
 }
 
-// Disable prefetch as it is not supported for "Transaction" pool mode
-// See: https://supabase.com/docs/guides/database/connecting-to-postgres#connecting-with-drizzle
-const client = postgres(connectionString, { prepare: false });
+// Create a dummy client for build time
+const client = connectionString 
+  ? postgres(connectionString, { prepare: false })
+  : {} as ReturnType<typeof postgres>; // Type assertion for build time
 
 export const db = drizzle(client, { schema });
 

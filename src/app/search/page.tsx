@@ -16,7 +16,7 @@ import {
 import { GameCardMini } from "@/components/game-card-mini";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { SteamRawData } from "@/types/steam";
 import { getGameUrl } from "@/utils/game-url";
