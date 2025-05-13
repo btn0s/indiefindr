@@ -91,7 +91,7 @@ export async function generateMetadata({
       description: game.shortDescription || "No description available.",
       images: [
         {
-          url: firstScreenshot || headerImage || "/placeholder-game.jpg",
+          url: headerImage || firstScreenshot || "/placeholder-game.jpg",
           width: 1200,
           height: 630,
           alt: game.title || "Game Screenshot",
