@@ -21,6 +21,16 @@ import { Badge } from "@/components/ui/badge";
 import type { SteamRawData } from "@/types/steam";
 import { getGameUrl } from "@/utils/game-url";
 import type { Metadata } from "next";
+import { createClient } from "@/utils/supabase/server";
+import { ClaimFindButton } from "@/components/claim-find-button";
+
+// Define the structure for Steam search results
+interface SteamSearchResult {
+  appid: number;
+  name: string;
+  icon: string;
+  logo: string;
+}
 
 const Loading = () => {
   return (
@@ -284,6 +294,37 @@ async function getPopularGames(limit: number = 6): Promise<DisplayGame[]> {
   }
 }
 
+async function performSteamSearch(
+  query: string
+): Promise<{
+  results: SteamSearchResult[];
+  error: string | null;
+}> {
+  if (!query.trim()) {
+    return { results: [], error: null };
+  }
+
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/steam-search?q=${encodeURIComponent(query)}`,
+      { cache: "no-store" }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Steam search API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    return { results: data.results || [], error: null };
+  } catch (error: any) {
+    console.error(`[Server Steam Search] Error during search:`, error);
+    return {
+      results: [],
+      error: "Failed to search Steam. Please try again.",
+    };
+  }
+}
+
 export async function generateMetadata({
   searchParams,
 }: SearchPageProps): Promise<Metadata> {
@@ -315,6 +356,11 @@ export async function generateMetadata({
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
+  // Get the current user for attribution
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id || null;
+
   const query = (await searchParams)?.q || "";
   const { results, error } = await performSearch(query);
 
@@ -326,6 +372,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   let popularCategories: string[] = [];
   let recentGames: DisplayGame[] = [];
   let popularGames: DisplayGame[] = [];
+  let steamSearchResults: SteamSearchResult[] = [];
+  let steamSearchError: string | null = null;
 
   const searchQuery = (await searchParams)?.q || "";
   const tagsSearch = (await searchParams)?.tags;
@@ -334,6 +382,13 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     const searchData = await performSearch(searchQuery, tagsSearch);
     searchResults = searchData.results;
     searchError = searchData.error;
+
+    // If no local results found, search Steam
+    if (searchQuery && searchResults.length === 0 && !searchError) {
+      const steamSearchData = await performSteamSearch(searchQuery);
+      steamSearchResults = steamSearchData.results;
+      steamSearchError = steamSearchData.error;
+    }
   } else {
     // Fetch data for the initial page state concurrently
     [popularCategories, recentGames, popularGames] = await Promise.all([
@@ -447,7 +502,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               </div>
             )}
 
-            {searchResults.length === 0 && !searchError && (
+            {searchResults.length === 0 && !searchError && steamSearchResults.length === 0 && !steamSearchError && (
               <div className="text-center py-12">
                 <p className="text-lg text-muted-foreground">
                   No games found matching "{searchQuery}"
@@ -456,21 +511,77 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {searchResults.map((game) => (
-                <GameCardMini
-                  key={game.id}
-                  game={{
-                    id: game.id,
-                    title: game.title,
-                    steamAppid: game.steamAppid,
-                    descriptionShort: game.descriptionShort,
-                    rawData: game.rawData,
-                  }}
-                  detailsLinkHref={getGameUrl(game.id, game.title)}
-                />
-              ))}
-            </div>
+            {/* Display local database results */}
+            {searchResults.length > 0 && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">Results from IndieFindr</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                  {searchResults.map((game) => (
+                    <GameCardMini
+                      key={game.id}
+                      game={{
+                        id: game.id,
+                        title: game.title,
+                        steamAppid: game.steamAppid,
+                        descriptionShort: game.descriptionShort,
+                        rawData: game.rawData,
+                      }}
+                      detailsLinkHref={getGameUrl(game.id, game.title)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Display Steam search results if no local results */}
+            {searchResults.length === 0 && steamSearchResults.length > 0 && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">Results from Steam</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  These games aren't in our database yet. Click "Claim Find" to add one to your finds!
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {steamSearchResults.map((game) => (
+                    <div key={game.appid} className="h-full">
+                      <Card className="overflow-hidden h-full flex flex-col">
+                        <div className="relative h-40 w-full">
+                          {game.icon ? (
+                            <img
+                              src={game.icon}
+                              alt={game.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-muted flex items-center justify-center">
+                              <span className="text-muted-foreground">No image available</span>
+                            </div>
+                          )}
+                        </div>
+                        <CardContent className="flex-1 p-4">
+                          <h3 className="font-semibold text-lg line-clamp-2 mb-2">{game.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            This game is not yet in our database.
+                          </p>
+                        </CardContent>
+                        <CardFooter className="p-4 pt-0">
+                          <ClaimFindButton 
+                            appid={game.appid} 
+                            name={game.name} 
+                            userId={userId} 
+                          />
+                        </CardFooter>
+                      </Card>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {steamSearchError && (
+              <div className="bg-destructive/10 text-destructive rounded-md p-4 mt-6">
+                {steamSearchError}
+              </div>
+            )}
           </>
         ) : (
           <div className="space-y-8">
