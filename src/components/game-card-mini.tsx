@@ -18,7 +18,6 @@ interface GameCardMiniProps {
     steamAppid: string | null;
     descriptionShort?: string | null;
     rawData?: SteamRawData | null; // rawData prop is already here
-    foundByUsername?: string | null; // Add foundByUsername to game type
     // header_image is not directly on game object, but derived or part of rawData in externalSourceTable
   };
   detailsLinkHref: string;
@@ -94,16 +93,6 @@ export function GameCardMini({
             {game.title || "Unknown Game"}
           </h3>
         </Link>
-        {/* Found By Badge - uses game.foundByUsername */}
-        {game.foundByUsername && (
-          <Badge
-            variant="secondary"
-            className="mt-1 text-xs w-fit"
-            title={`Found by: @${game.foundByUsername}`}
-          >
-            Found by: @{game.foundByUsername}
-          </Badge>
-        )}
         {game.descriptionShort && (
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2 flex-grow">
             {game.descriptionShort}

@@ -2,26 +2,26 @@
 
 import React from "react";
 import { GameCardMini } from "./game-card-mini";
-import { getGameUrl } from "@/utils/game-url"; // Assuming you have or will create this utility
+import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
+import { getGameUrl } from "@/lib/utils"; // Import utility for generating game URLs
 
-// Define the shape of game data expected by this grid component
-// Needs fields required by GameCardMini and getGameUrl
-type GameForGrid = {
+// Define a more comprehensive type for the games expected by the grid
+// This should align with the props needed by GameCardMini
+interface GridGame {
   id: number;
   title: string | null;
   steamAppid: string | null;
   descriptionShort?: string | null;
-  rawData?: any | null; // Add rawData, ideally use SteamRawData type
-  // Add any other fields GameCardMini might eventually need (e.g., tags)
-};
+  rawData?: SteamRawData | null; // GameCardMini uses this via GameImage
+  foundByUsername?: string | null; // GameCardMini uses this
+}
 
 interface GameGridProps {
-  games: GameForGrid[];
-  loggedInUserLibraryIds: Set<number>; // IDs of games in the logged-in user's library
-  // Pass server actions as props from the Server Component parent
-  onAddToLibrary: (gameId: number) => Promise<any>;
-  onRemoveFromLibrary: (gameId: number) => Promise<any>;
-  gridClassName?: string; // Optional class for customizing the grid layout
+  games: GridGame[]; // Use the more comprehensive type
+  loggedInUserLibraryIds: Set<number>;
+  onAddToLibrary?: (gameId: number) => Promise<any>;
+  onRemoveFromLibrary?: (gameId: number) => Promise<any>;
+  gridClassName?: string;
 }
 
 export function GameGrid({
@@ -29,7 +29,7 @@ export function GameGrid({
   loggedInUserLibraryIds,
   onAddToLibrary,
   onRemoveFromLibrary,
-  gridClassName = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4",
+  gridClassName = "grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4", // Adjusted grid cols
 }: GameGridProps) {
   if (!games || games.length === 0) {
     return <p className="text-muted-foreground">No games to display.</p>;
@@ -40,13 +40,9 @@ export function GameGrid({
       {games.map((game) => (
         <GameCardMini
           key={game.id}
-          game={{
-            id: game.id,
-            title: game.title,
-            steamAppid: game.steamAppid,
-            descriptionShort: game.descriptionShort,
-            rawData: game.rawData,
-          }}
+          // Pass the entire game object down.
+          // GameCardMini will pick the properties it needs.
+          game={game}
           detailsLinkHref={getGameUrl(game.id, game.title)}
           isInLibrary={loggedInUserLibraryIds.has(game.id)}
           onAddToLibrary={onAddToLibrary}

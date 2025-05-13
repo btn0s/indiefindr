@@ -9,12 +9,14 @@ import Link from "next/link";
 import { GameGrid } from "@/components/game-grid"; // Import GameGrid
 import { profilesTable, libraryTable, externalSourceTable } from "@/db/schema"; // Import schema tables
 import { db } from "@/db"; // Import Drizzle instance
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
+import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
 import {
   addToLibrary,
   removeFromLibrary,
   getLibraryGameIds,
 } from "@/app/actions/library"; // Import library actions for GameCard
+import { getGamesFoundByUser } from "@/app/actions/finds"; // Import the new action
 
 // Helper function for initials remains the same
 const getUserInitials = (name?: string | null) => {
@@ -35,6 +37,8 @@ type GameForGrid = {
   title: string | null;
   steamAppid: string | null;
   descriptionShort: string | null;
+  rawData?: SteamRawData | null; // Added for raw game data
+  foundByUsername?: string | null; // Added for "Finds" section
 };
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
@@ -80,7 +84,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         title: externalSourceTable.title,
         descriptionShort: externalSourceTable.descriptionShort, // Correct field name
         steamAppid: externalSourceTable.steamAppid,
-        // Removed tags: externalSourceTable.tags,
+        rawData: sql<SteamRawData | null>`${externalSourceTable.rawData}`, // Select and cast rawData
       })
       .from(libraryTable)
       .innerJoin(
@@ -106,46 +110,22 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     }
   }
 
-  // 5. Fetch "Recommended For You" games (feed for the logged-in user)
-  let recommendedGames: GameForGrid[] = [];
-  if (loggedInUserId) {
+  // 5. Fetch games found by the profile user
+  let foundGames: GameForGrid[] = [];
+  if (profileData?.id) {
     try {
-      // Determine base URL for API calls
-      // For server components fetching API routes in the same app, relative paths usually work.
-      // If deployed, VERCEL_URL or NEXT_PUBLIC_APP_URL might be more robust.
-      // For simplicity here, using a relative path.
-      const feedUrl = `/api/feed?page=1&limit=12`; // Fetch 12 games for this section
-
-      const feedResponse = await fetch(feedUrl, {
-        headers: {
-          Cookie: cookieStore.toString(), // Pass cookies for authentication
-        },
-        cache: "no-store", // Ensure fresh data for recommendations
-      });
-
-      if (feedResponse.ok) {
-        const feedResult = await feedResponse.json();
-        if (feedResult.success && feedResult.data) {
-          recommendedGames = feedResult.data.map((game: any) => ({
-            // game: any to map from API
-            id: game.id,
-            title: game.title,
-            steamAppid: game.steamAppid,
-            descriptionShort: game.shortDescription, // Map from shortDescription
-          }));
-        } else {
-          console.warn(
-            "Failed to fetch recommended games from API:",
-            feedResult.message
-          );
-        }
+      const foundGamesResult = await getGamesFoundByUser(profileData.id);
+      if (foundGamesResult.success && foundGamesResult.data) {
+        // Explicitly cast to GameForGrid[] if necessary, though action's FoundGame type should align
+        foundGames = foundGamesResult.data as GameForGrid[];
       } else {
         console.warn(
-          `API request to /api/feed failed with status: ${feedResponse.status}`
+          "Failed to fetch games found by user:",
+          foundGamesResult.error
         );
       }
     } catch (error) {
-      console.error("Error fetching recommended games:", error);
+      console.error("Error fetching games found by user:", error);
     }
   }
 
@@ -203,13 +183,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         )}
       </section>
 
-      {loggedInUserId && recommendedGames.length > 0 && (
+      {foundGames.length > 0 && (
         <section className="mt-12">
           <h2 className="text-xl font-semibold mb-4">
-            Recommended For You ({recommendedGames.length})
+            Finds ({foundGames.length})
           </h2>
           <GameGrid
-            games={recommendedGames}
+            games={foundGames}
             loggedInUserLibraryIds={loggedInUserLibraryIds}
             onAddToLibrary={addToLibrary}
             onRemoveFromLibrary={removeFromLibrary}
