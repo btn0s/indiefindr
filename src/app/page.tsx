@@ -12,6 +12,19 @@ export default async function HomePage() {
 
   return (
     <main className="">
+      {!isLoggedIn && (
+        <section className="py-12 text-center md:py-24 lg:py-32">
+          <div className="container px-4 md:px-6">
+            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none">
+              Discover Your Next Favorite Indie Game
+            </h1>
+            <p className="mx-auto mt-4 max-w-[700px] text-lg text-muted-foreground md:text-xl">
+              Personalized recommendations powered by AI. Stop searching, start
+              playing.
+            </p>
+          </div>
+        </section>
+      )}
       {/* Render the FeedDisplay client component, passing login status */}
       <Feed isLoggedIn={isLoggedIn} />
     </main>
