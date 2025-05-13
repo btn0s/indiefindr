@@ -5,6 +5,28 @@ import { SearchIcon, ArrowLeft } from "lucide-react";
 import { db, schema } from "@/db";
 import { ilike, or } from "drizzle-orm";
 import { GameCardMini } from "@/components/game-card-mini";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+
+const Loading = () => {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {Array(6)
+        .fill(0)
+        .map((_, i) => (
+          <Card key={i} className="h-full overflow-hidden">
+            <Skeleton className="h-[215px] w-full" />
+            <CardContent className="p-4">
+              <Skeleton className="h-6 w-4/5 mb-2" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3 mt-1" />
+            </CardContent>
+          </Card>
+        ))}
+    </div>
+  );
+};
 
 // SearchResultGame interface is defined here as the client component was removed
 interface SearchResultGame {
@@ -127,14 +149,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <div className="container max-w-5xl mx-auto py-6">
       <div className="mb-8">
-        <Link
-          href="/"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to Discover
-        </Link>
-
         <h1 className="text-3xl font-bold mb-6">Search Games</h1>
 
         <form method="GET" action="/search" className="flex gap-2">
@@ -145,6 +159,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             placeholder="Search games by title..."
             className="flex-1"
             aria-label="Search games by title"
+            autoFocus
           />
           <Button type="submit">
             <SearchIcon className="mr-2 h-4 w-4" />
@@ -153,35 +168,37 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         </form>
       </div>
 
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-4 mb-6">
-          {error}
-        </div>
-      )}
+      <Suspense fallback={<Loading />}>
+        {error && (
+          <div className="bg-destructive/10 text-destructive rounded-md p-4 mb-6">
+            {error}
+          </div>
+        )}
 
-      {/* Show no results message only if a query was made and there are no errors */}
-      {query && results.length === 0 && !error && (
-        <div className="text-center py-12">
-          <p className="text-lg text-muted-foreground">
-            No games found matching "{query}"
-          </p>
-        </div>
-      )}
+        {/* Show no results message only if a query was made and there are no errors */}
+        {query && results.length === 0 && !error && (
+          <div className="text-center py-12">
+            <p className="text-lg text-muted-foreground">
+              No games found matching "{query}"
+            </p>
+          </div>
+        )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {results.map((game) => (
-          <GameCardMini
-            key={game.id}
-            game={{
-              id: game.id,
-              title: game.title,
-              steamAppid: game.steamAppid,
-              descriptionShort: game.descriptionShort,
-            }}
-            detailsLinkHref={getGameUrl(game.id, game.title)}
-          />
-        ))}
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {results.map((game) => (
+            <GameCardMini
+              key={game.id}
+              game={{
+                id: game.id,
+                title: game.title,
+                steamAppid: game.steamAppid,
+                descriptionShort: game.descriptionShort,
+              }}
+              detailsLinkHref={getGameUrl(game.id, game.title)}
+            />
+          ))}
+        </div>
+      </Suspense>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Geist } from "next/font/google";
-import { Nav } from "@/components/nav";
+import { TopNav } from "@/components/nav/top-nav";
+import { BottomNav } from "@/components/nav/bottom-nav";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { AppProviders } from "@/components/providers";
@@ -32,8 +33,9 @@ export default function RootLayout({
       <body className={cn("min-h-screen bg-background font-sans antialiased")}>
         <AppProviders>
           <main className="min-h-screen">
-            <Nav />
+            <TopNav />
             <div className="max-w-5xl p-4 mx-auto pb-24">{children}</div>
+            <BottomNav />
           </main>
           <Toaster />
         </AppProviders>

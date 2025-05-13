@@ -52,6 +52,9 @@ export const externalSourceTable = pgTable(
     steamAppid: text("steam_appid").unique(),
     lastFetched: timestamp("last_fetched", { withTimezone: true }).defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    foundBy: uuid("found_by").references(() => profilesTable.id, {
+      onDelete: "set null",
+    }), // Added to track who submitted the game
   },
   (table) => {
     return {
