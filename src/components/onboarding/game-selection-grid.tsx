@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { GameImage } from "@/components/game-image";
 import { Bookmark, BookmarkCheck, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { addToLibrary, removeFromLibrary } from "@/app/actions/library";
+import { addToLibrary, removeFromLibrary, getLibraryGameIds } from "@/app/actions/library";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { SteamRawData } from "@/types/steam";
@@ -29,6 +29,25 @@ export function GameSelectionGrid({ games }: GameSelectionGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Game[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch user's library on component mount
+  useEffect(() => {
+    const fetchLibrary = async () => {
+      try {
+        const result = await getLibraryGameIds();
+        if (result.success && result.data) {
+          setSelectedGames(new Set(result.data));
+        }
+      } catch (error) {
+        console.error("Error fetching library:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLibrary();
+  }, []);
 
   // Handle game selection/deselection
   const toggleGameSelection = async (gameId: number) => {
@@ -124,65 +143,73 @@ export function GameSelectionGrid({ games }: GameSelectionGridProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {displayedGames.map((game) => (
-          <Card key={game.id} className="overflow-hidden">
-            <GameImage
-              altText={game.title || "Game image"}
-              gameData={game.rawData}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              variant="plain"
-            />
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start gap-2">
-                <h3 className="font-semibold line-clamp-1" title={game.title || ""}>
-                  {game.title || "Unknown Game"}
-                </h3>
-                <Button
-                  variant={selectedGames.has(game.id) ? "secondary" : "outline"}
-                  size="icon"
-                  className="h-8 w-8 flex-shrink-0"
-                  onClick={() => toggleGameSelection(game.id)}
-                  title={selectedGames.has(game.id) ? "Remove from library" : "Add to library"}
-                >
-                  {selectedGames.has(game.id) ? (
-                    <BookmarkCheck className="h-4 w-4" />
-                  ) : (
-                    <Bookmark className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              {game.descriptionShort && (
-                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                  {game.descriptionShort}
-                </p>
-              )}
-              {game.tags && game.tags.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {game.tags.slice(0, 3).map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-xs bg-secondary px-2 py-0.5 rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {game.tags.length > 3 && (
-                    <span className="text-xs text-muted-foreground">
-                      +{game.tags.length - 3} more
-                    </span>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {displayedGames.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">No games found. Try a different search term.</p>
+      {isLoading ? (
+        <div className="py-8 text-center">
+          <p className="text-muted-foreground">Loading games...</p>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayedGames.map((game) => (
+              <Card key={game.id} className="overflow-hidden">
+                <GameImage
+                  altText={game.title || "Game image"}
+                  gameData={game.rawData}
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  variant="plain"
+                />
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-semibold line-clamp-1" title={game.title || ""}>
+                      {game.title || "Unknown Game"}
+                    </h3>
+                    <Button
+                      variant={selectedGames.has(game.id) ? "secondary" : "outline"}
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0"
+                      onClick={() => toggleGameSelection(game.id)}
+                      title={selectedGames.has(game.id) ? "Remove from library" : "Add to library"}
+                    >
+                      {selectedGames.has(game.id) ? (
+                        <BookmarkCheck className="h-4 w-4" />
+                      ) : (
+                        <Bookmark className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {game.descriptionShort && (
+                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                      {game.descriptionShort}
+                    </p>
+                  )}
+                  {game.tags && game.tags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {game.tags.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-xs bg-secondary px-2 py-0.5 rounded-full"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {game.tags.length > 3 && (
+                        <span className="text-xs text-muted-foreground">
+                          +{game.tags.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {displayedGames.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No games found. Try a different search term.</p>
+            </div>
+          )}
+        </>
       )}
 
       <div className="mt-4 text-center">
@@ -196,4 +223,3 @@ export function GameSelectionGrid({ games }: GameSelectionGridProps) {
     </div>
   );
 }
-

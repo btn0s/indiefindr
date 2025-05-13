@@ -7,6 +7,7 @@ import { desc } from "drizzle-orm";
 import { GameSelectionGrid } from "@/components/onboarding/game-selection-grid";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import type { SteamRawData } from "@/types/steam";
 
 export default async function OnboardingGamesPage() {
   const supabase = await createClient();
@@ -32,6 +33,12 @@ export default async function OnboardingGamesPage() {
     .orderBy(desc(externalSourceTable.createdAt))
     .limit(12);
 
+  // Cast the games to the correct type
+  const typedGames = games.map(game => ({
+    ...game,
+    rawData: game.rawData as SteamRawData | null
+  }));
+
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-lg p-6 shadow-sm">
@@ -40,7 +47,7 @@ export default async function OnboardingGamesPage() {
           Select a few games that interest you. This will help us personalize your feed.
         </p>
 
-        <GameSelectionGrid games={games} />
+        <GameSelectionGrid games={typedGames} />
 
         <div className="mt-8 flex justify-between">
           <Button variant="outline" asChild>
@@ -54,4 +61,3 @@ export default async function OnboardingGamesPage() {
     </div>
   );
 }
-
