@@ -313,8 +313,12 @@ async function performSteamSearch(
   }
 
   try {
+    // Use absolute URL for server-side requests
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                   (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/steam-search?q=${encodeURIComponent(query)}`,
+      `${baseUrl}/api/steam-search?q=${encodeURIComponent(query)}`,
       { cache: "no-store" }
     );
 
