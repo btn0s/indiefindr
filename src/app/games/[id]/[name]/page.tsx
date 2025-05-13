@@ -1,6 +1,6 @@
 import React from "react";
 import { db } from "@/db"; // Assuming db instance is exported from @/db
-import { externalSourceTable } from "@/db/schema"; // Corrected import name
+import { externalSourceTable, profilesTable } from "@/db/schema"; // Corrected import name
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation"; // For handling not found cases
 import Image from "next/image";
@@ -28,9 +28,15 @@ async function getGame(id: string) {
         steamAppid: externalSourceTable.steamAppid,
         tags: externalSourceTable.tags,
         rawData: externalSourceTable.rawData,
+        foundByUsername: profilesTable.username, // Select the username
         // Add other fields as needed from externalSource schema
       })
       .from(externalSourceTable)
+      // Left join in case found_by is null
+      .leftJoin(
+        profilesTable,
+        eq(externalSourceTable.foundBy, profilesTable.id)
+      )
       .where(eq(externalSourceTable.id, gameId))
       .limit(1);
 
@@ -38,7 +44,8 @@ async function getGame(id: string) {
       notFound(); // Trigger 404 if no game found with this ID
     }
 
-    return gameData[0]; // Return the first (and only) result
+    // Return the first (and only) result, potentially containing foundByUsername
+    return gameData[0];
   } catch (error) {
     console.error("Error fetching game data:", error);
     // Consider throwing a specific error or returning a different state
@@ -100,7 +107,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: game.title || "Game Details",
+      title: `${game.title} | IndieFindr` || "Game Details",
       description: game.shortDescription || "No description available.",
       images: [firstScreenshot || headerImage || "/placeholder-game.jpg"],
     },
@@ -110,12 +117,12 @@ export async function generateMetadata({
 // Make the component async to fetch data, destructure params directly
 export default async function GameDetailPage({ params }: GameDetailPageProps) {
   const { id } = await params;
-  const game = await getGame(id); // Fetch game data
 
-  console.log(game);
+  const game = await getGame(id); // Fetch game data, now includes foundByUsername
 
   // Cast rawData to our type and extract data
   const rawData = game.rawData as SteamRawData;
+  const foundBy = game.foundByUsername; // Get foundBy from the game object
 
   // --- Define potential image URLs in order of preference ---
   const potentialImageUrls = [
@@ -167,9 +174,20 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
         {/* Left Column: Title, Description, Tags, Details */}
         <div className="md:w-2/3">
           {/* Game Title */}
-          <h1 className="text-3xl font-bold mb-4">
+          <h1 className="text-3xl font-bold mb-2">
             {game.title || "Untitled Game"}
           </h1>
+
+          {/* Found By Badge */}
+          {foundBy && (
+            <Badge
+              variant="secondary"
+              className="mb-4 text-sm"
+              title={`Found via: @${foundBy}`}
+            >
+              Found via: @{foundBy}
+            </Badge>
+          )}
 
           {/* Game description */}
           <p className="text-lg text-muted-foreground mb-6">
