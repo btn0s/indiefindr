@@ -8,48 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button"; // For potential actions later
 import Link from "next/link";
 import { MediaCarousel } from "@/components/media-carousel";
-
-// Define types for the rawData structure
-interface Screenshot {
-  id: number;
-  path_thumbnail: string;
-  path_full: string;
-}
-
-interface Movie {
-  id: number;
-  name: string;
-  thumbnail: string;
-  webm: {
-    480: string;
-    max: string;
-  };
-  mp4: {
-    480: string;
-    max: string;
-  };
-  highlight: boolean;
-}
-
-interface ReleaseDate {
-  date: string;
-  coming_soon: boolean;
-}
-
-interface SteamRawData {
-  screenshots?: Screenshot[];
-  movies?: Movie[];
-  developers?: string[];
-  publishers?: string[];
-  release_date?: ReleaseDate;
-  [key: string]: any; // Allow other properties
-}
-
-// Define a media item type that can be either screenshot or movie
-export type MediaItem = {
-  type: "image" | "video";
-  data: Screenshot | Movie;
-};
+import type { SteamRawData, MediaItem, Movie, Screenshot } from "@/types/steam"; // Import shared types
 
 // Function to fetch game data server-side
 async function getGame(id: string) {
@@ -132,7 +91,7 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
   ];
 
   return (
-    <div className="container mx-auto">
+    <div className="container mx-auto py-6">
       {/* Media Carousel */}
       {mediaItems.length > 0 && (
         <div className="mb-6">

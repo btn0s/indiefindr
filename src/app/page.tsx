@@ -13,6 +13,7 @@ import {
 import { getPersonalizedFeed } from "@/app/actions/feed"; // Import the feed action
 import { createClient } from "@/utils/supabase/server";
 import { getGameUrl } from "@/utils/game-url"; // Import the utility function
+import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
 
 // Define the expected shape of game data from the feed
 // This should ideally match FeedGame interface in feed.ts
@@ -22,6 +23,7 @@ interface FeedGame {
   shortDescription: string | null;
   steamAppid: string | null; // Add steamAppid
   tags: string[] | null; // Add tags array
+  rawData?: SteamRawData | null; // Add rawData to match GameCard's needs
 }
 
 export default async function HomePage() {
@@ -99,7 +101,7 @@ export default async function HomePage() {
             return (
               <GameCard
                 key={game.id}
-                game={game} // Pass the whole game object
+                game={game} // Pass the whole game object which now includes rawData
                 detailsLinkHref={detailsLinkHref} // Pass the calculated href
                 isInLibrary={libraryGameIds.has(game.id)}
                 onAddToLibrary={addToLibrary}
