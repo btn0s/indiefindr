@@ -5,6 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { SmtpMessage } from "../smtp-message";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default async function Signup(props: {
   searchParams: Promise<Message>;
@@ -19,33 +27,51 @@ export default async function Signup(props: {
   }
 
   return (
-    <>
-      <form className="flex flex-col min-w-64 max-w-64 mx-auto">
-        <h1 className="text-2xl font-medium">Sign up</h1>
-        <p className="text-sm text text-foreground">
+    <div className="flex-1 flex flex-col items-center justify-center w-full gap-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-2xl">Sign Up</CardTitle>
+          <CardDescription>
+            Enter your information to create an account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                name="email"
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                name="password"
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                minLength={6}
+                required
+              />
+            </div>
+            <SubmitButton formAction={signUpAction} pendingText="Signing up...">
+              Sign Up
+            </SubmitButton>
+            <FormMessage message={searchParams} />
+          </form>
+        </CardContent>
+        <CardFooter className="text-sm">
           Already have an account?{" "}
-          <Link className="text-primary font-medium underline" href="/sign-in">
+          <Link href="/sign-in" className="ml-1 underline">
             Sign in
           </Link>
-        </p>
-        <div className="flex flex-col gap-2 [&>input]:mb-3 mt-8">
-          <Label htmlFor="email">Email</Label>
-          <Input name="email" placeholder="you@example.com" required />
-          <Label htmlFor="password">Password</Label>
-          <Input
-            type="password"
-            name="password"
-            placeholder="Your password"
-            minLength={6}
-            required
-          />
-          <SubmitButton formAction={signUpAction} pendingText="Signing up...">
-            Sign up
-          </SubmitButton>
-          <FormMessage message={searchParams} />
-        </div>
-      </form>
-      <SmtpMessage />
-    </>
+        </CardFooter>
+      </Card>
+      {/* <SmtpMessage /> */}
+    </div>
   );
 }

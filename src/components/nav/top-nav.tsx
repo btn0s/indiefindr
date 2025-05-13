@@ -26,7 +26,7 @@ export function TopNav() {
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
       <div className="container max-w-5xl mx-auto flex h-14 items-center justify-between px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center space-x-2 w-1/4">
           <span className="text-xl font-bold">IndieFindr</span>
         </Link>
 
@@ -46,7 +46,7 @@ export function TopNav() {
         </form>
 
         {/* Auth Button and Submit Game Button */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-1/4 justify-end">
           <AuthButton />
           {/* Only show Submit Game button if user is logged in */}
 
