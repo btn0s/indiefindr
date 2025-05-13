@@ -79,6 +79,7 @@ export const profilesTable = pgTable(
     fullName: text("full_name"),
     avatarUrl: text("avatar_url"),
     bio: text("bio"),
+    hasCompletedOnboarding: boolean("has_completed_onboarding").default(false),
     updatedAt: timestamp("updated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },

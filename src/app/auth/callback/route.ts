@@ -32,6 +32,11 @@ export async function GET(request: Request) {
       if (existingProfile.length === 0) {
         return NextResponse.redirect(`${origin}/onboarding`);
       }
+      
+      // If profile exists but onboarding not completed, redirect to onboarding
+      if (existingProfile.length > 0 && !existingProfile[0].hasCompletedOnboarding) {
+        return NextResponse.redirect(`${origin}/onboarding`);
+      }
     }
   }
 

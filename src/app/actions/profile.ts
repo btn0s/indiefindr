@@ -10,6 +10,7 @@ interface ProfileUpdateParams {
   fullName?: string;
   bio?: string;
   avatarUrl?: string;
+  hasCompletedOnboarding?: boolean;
 }
 
 export async function updateProfile(params: ProfileUpdateParams) {
@@ -43,6 +44,9 @@ export async function updateProfile(params: ProfileUpdateParams) {
       bio: params.bio || null,
       avatarUrl: params.avatarUrl || null,
       updatedAt: new Date(),
+      ...(params.hasCompletedOnboarding !== undefined && { 
+        hasCompletedOnboarding: params.hasCompletedOnboarding 
+      }),
     };
 
     // Check if profile exists
@@ -73,4 +77,3 @@ export async function updateProfile(params: ProfileUpdateParams) {
     return { success: false, error: "Failed to update profile" };
   }
 }
-

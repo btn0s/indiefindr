@@ -8,6 +8,7 @@ import { GameSelectionGrid } from "@/components/onboarding/game-selection-grid";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { SteamRawData } from "@/types/steam";
+import { completeOnboardingAndRedirect } from "@/app/actions/onboarding";
 
 export default async function OnboardingGamesPage() {
   const supabase = await createClient();
@@ -53,9 +54,9 @@ export default async function OnboardingGamesPage() {
           <Button variant="outline" asChild>
             <Link href="/onboarding">Back</Link>
           </Button>
-          <Button asChild>
-            <Link href="/">Go to Feed</Link>
-          </Button>
+          <form action={completeOnboardingAndRedirect}>
+            <Button type="submit">Go to Feed</Button>
+          </form>
         </div>
       </div>
     </div>
