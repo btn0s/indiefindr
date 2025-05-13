@@ -86,6 +86,27 @@ export const libraryTable = pgTable(
   }
 );
 
+// Add the new profiles table
+export const profilesTable = pgTable(
+  "profiles",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .references(() => authUsersTable.id, { onDelete: "cascade" }),
+    username: text("username").unique().notNull(),
+    fullName: text("full_name"),
+    avatarUrl: text("avatar_url"),
+    bio: text("bio"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      usernameIdx: index("idx_profiles_username").on(table.username),
+    };
+  }
+);
+
 // Placeholder for Supabase auth.users table if you want to reference it directly
 // This is often managed by Supabase itself, but Drizzle needs a way to know its structure for FKs.
 // You might not need to explicitly define it if Supabase handles FKs without Drizzle's full awareness,
