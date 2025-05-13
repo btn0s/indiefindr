@@ -260,7 +260,7 @@ export function GameCard({
 
       <CardFooter className="p-3 pt-2 flex items-center gap-2">
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={(e) => {
             e.preventDefault();
@@ -272,7 +272,7 @@ export function GameCard({
           Details
         </Button>
         <Button
-          variant={isInLibrary ? "secondary" : "default"}
+          variant={"secondary"}
           size="sm"
           onClick={isInLibrary ? handleRemove : handleAdd}
           className="flex-1"
@@ -285,7 +285,7 @@ export function GameCard({
           {isInLibrary ? "Saved" : "Save"}
         </Button>
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={handleShare}
           className="flex-1"
