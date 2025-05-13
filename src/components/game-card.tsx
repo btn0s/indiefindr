@@ -33,7 +33,7 @@ import {
 
 // Helper function to get user initials for avatar fallback
 const getUserInitials = (name?: string | null) => {
-  if (!name) return "?";
+  if (!name) return "IF"; // Return "IF" for IndieFindr when no name is available
   return name.charAt(0).toUpperCase();
 };
 
@@ -200,179 +200,181 @@ export function GameCard({
   };
 
   return (
-    <Card
-      ref={cardRef}
-      className={cn(
-        "flex flex-col overflow-hidden transition-shadow hover:shadow-lg w-full group/card",
-        "py-0 gap-0",
-        className
-      )}
-      style={style}
-    >
-      <Link href={detailsLinkHref} className="flex-grow">
-        <CardContent className="p-3 flex flex-col gap-4">
-          {/* Media Preview */}
-          <div className="rounded-md overflow-hidden aspect-video relative bg-black flex items-center justify-center border">
-            {mediaError ? (
-              <div className="text-muted-foreground flex flex-col items-center gap-1">
-                <ImageOff className="h-8 w-8" />
-                <span className="text-xs">Preview unavailable</span>
-              </div>
-            ) : firstVideo ? (
-              <video
-                ref={videoRef}
-                key={firstVideo.mp4.max}
-                src={firstVideo.mp4.max}
-                poster={firstVideo.thumbnail}
-                muted
-                playsInline
-                loop
-                className="w-full h-full object-contain"
-                onError={handleMediaError}
-              />
-            ) : firstScreenshot ? (
-              <Image
-                key={firstScreenshot.path_full}
-                src={firstScreenshot.path_full}
-                alt={
-                  game.title ? `${game.title} Screenshot` : "Game Screenshot"
-                }
-                fill
-                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
-                className="object-contain"
-                onError={handleMediaError}
-                unoptimized
-              />
-            ) : imageUrl ? (
-              <Image
-                key={imageUrl}
-                src={imageUrl}
-                alt={game.title ? `${game.title} Header` : "Game Header"}
-                fill
-                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
-                className="object-contain"
-                onError={handleMediaError}
-                unoptimized
-              />
-            ) : (
-              <div className="text-muted-foreground flex flex-col items-center gap-1">
-                <ImageOff className="h-8 w-8" />
-                <span className="text-xs">No preview</span>
-              </div>
-            )}
-          </div>
+    <div className="flex flex-col gap-2">
+      {/* User attribution - moved outside the card */}
+      <div className="flex items-center gap-2 px-1">
+        <Avatar className="h-5 w-5">
+          <AvatarImage
+            src={game.foundByAvatarUrl ?? undefined}
+            alt={`${game.foundByUsername || "IndieFindr"}'s avatar`}
+          />
+          <AvatarFallback className="text-xs">
+            {getUserInitials(game.foundByUsername)}
+          </AvatarFallback>
+        </Avatar>
+        <span className="text-xs text-muted-foreground">
+          Found by <span className="font-medium">{game.foundByUsername || "IndieFindr"}</span>
+        </span>
+      </div>
 
-          {/* Two column layout */}
-          <div className="flex gap-4">
-            <div className="flex flex-col justify-between w-2/3 gap-4">
-              <div>
-                <h3
-                  className="text-base sm:text-lg font-semibold truncate group-hover/card:text-primary transition-colors"
-                  title={game.title || "Untitled Game"}
-                >
-                  {game.title || "Untitled Game"}
-                </h3>
-                <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3">
-                  {game.shortDescription || "No description available."}
-                </p>
-                
-                {/* User who found the game */}
-                {game.foundByUsername && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <Avatar className="h-5 w-5">
-                      <AvatarImage
-                        src={game.foundByAvatarUrl ?? undefined}
-                        alt={`${game.foundByUsername}'s avatar`}
-                      />
-                      <AvatarFallback className="text-xs">
-                        {getUserInitials(game.foundByUsername)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs text-muted-foreground">
-                      Found by <span className="font-medium">{game.foundByUsername}</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {game.tags && game.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-auto">
-                  {game.tags.slice(0, 3).map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                  {game.tags.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{game.tags.length - 3}
-                    </Badge>
-                  )}
+      <Card
+        ref={cardRef}
+        className={cn(
+          "flex flex-col overflow-hidden transition-shadow hover:shadow-lg w-full group/card",
+          "py-0 gap-0",
+          className
+        )}
+        style={style}
+      >
+        <Link href={detailsLinkHref} className="flex-grow">
+          <CardContent className="p-3 flex flex-col gap-4">
+            {/* Media Preview */}
+            <div className="rounded-md overflow-hidden aspect-video relative bg-black flex items-center justify-center border">
+              {mediaError ? (
+                <div className="text-muted-foreground flex flex-col items-center gap-1">
+                  <ImageOff className="h-8 w-8" />
+                  <span className="text-xs">Preview unavailable</span>
+                </div>
+              ) : firstVideo ? (
+                <video
+                  ref={videoRef}
+                  key={firstVideo.mp4.max}
+                  src={firstVideo.mp4.max}
+                  poster={firstVideo.thumbnail}
+                  muted
+                  playsInline
+                  loop
+                  className="w-full h-full object-contain"
+                  onError={handleMediaError}
+                />
+              ) : firstScreenshot ? (
+                <Image
+                  key={firstScreenshot.path_full}
+                  src={firstScreenshot.path_full}
+                  alt={
+                    game.title ? `${game.title} Screenshot` : "Game Screenshot"
+                  }
+                  fill
+                  sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
+                  className="object-contain"
+                  onError={handleMediaError}
+                  unoptimized
+                />
+              ) : imageUrl ? (
+                <Image
+                  key={imageUrl}
+                  src={imageUrl}
+                  alt={game.title ? `${game.title} Header` : "Game Header"}
+                  fill
+                  sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
+                  className="object-contain"
+                  onError={handleMediaError}
+                  unoptimized
+                />
+              ) : (
+                <div className="text-muted-foreground flex flex-col items-center gap-1">
+                  <ImageOff className="h-8 w-8" />
+                  <span className="text-xs">No preview</span>
                 </div>
               )}
             </div>
-            <div className="w-1/3">
-              <GameImage
-                altText={coverAltText}
-                gameData={rawData ?? null}
-                sizes={coverImageSizes}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Link>
 
-      <CardFooter className="p-3 pt-2 flex items-center gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={(e) => {
-            e.preventDefault();
-            window.location.href = detailsLinkHref;
-          }}
-          className="flex-1"
-        >
-          <Eye className="mr-1.5 h-3.5 w-3.5" />
-          Details
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={isInLibrary ? handleRemove : handleAdd}
-          disabled={isLibraryLoading}
-          className="flex-1"
-        >
-          {isInLibrary ? (
-            <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />
-          ) : (
-            <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" />
-          )}
-          {isInLibrary ? "Saved" : "Save"}
-        </Button>
-        {/* Mobile/Touch Share Button */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleNativeShare}
-          className="flex-1 md:hidden"
-        >
-          <Share2 className="mr-1.5 h-3.5 w-3.5" />
-          Share
-        </Button>
-        {/* Desktop Copy Link Button */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleCopyLink}
-          className="flex-1 hidden md:flex"
-        >
-          {hasCopied ? (
-            <Check className="mr-1.5 h-3.5 w-3.5" />
-          ) : (
+            {/* Two column layout */}
+            <div className="flex gap-4">
+              <div className="flex flex-col justify-between w-2/3 gap-4">
+                <div>
+                  <h3
+                    className="text-base sm:text-lg font-semibold truncate group-hover/card:text-primary transition-colors"
+                    title={game.title || "Untitled Game"}
+                  >
+                    {game.title || "Untitled Game"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3">
+                    {game.shortDescription || "No description available."}
+                  </p>
+                  
+                  {/* Removed user attribution from here */}
+                </div>
+
+                {game.tags && game.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-auto">
+                    {game.tags.slice(0, 3).map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                    {game.tags.length > 3 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{game.tags.length - 3}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="w-1/3">
+                <GameImage
+                  altText={coverAltText}
+                  gameData={rawData ?? null}
+                  sizes={coverImageSizes}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Link>
+
+        <CardFooter className="p-3 pt-2 flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = detailsLinkHref;
+            }}
+            className="flex-1"
+          >
+            <Eye className="mr-1.5 h-3.5 w-3.5" />
+            Details
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={isInLibrary ? handleRemove : handleAdd}
+            disabled={isLibraryLoading}
+            className="flex-1"
+          >
+            {isInLibrary ? (
+              <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />
+            ) : (
+              <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {isInLibrary ? "Saved" : "Save"}
+          </Button>
+          {/* Mobile/Touch Share Button */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleNativeShare}
+            className="flex-1 md:hidden"
+          >
             <Share2 className="mr-1.5 h-3.5 w-3.5" />
-          )}
-          {hasCopied ? "Link copied!" : "Share"}
-        </Button>
-      </CardFooter>
-    </Card>
+            Share
+          </Button>
+          {/* Desktop Copy Link Button */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleCopyLink}
+            className="flex-1 hidden md:flex"
+          >
+            {hasCopied ? (
+              <Check className="mr-1.5 h-3.5 w-3.5" />
+            ) : (
+              <Share2 className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {hasCopied ? "Link copied!" : "Share"}
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }

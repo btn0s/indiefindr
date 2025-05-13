@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Helper function to get user initials for avatar fallback
 const getUserInitials = (name?: string | null) => {
-  if (!name) return "?";
+  if (!name) return "IF"; // Return "IF" for IndieFindr when no name is available
   return name.charAt(0).toUpperCase();
 };
 
@@ -84,82 +84,84 @@ export function GameCardMini({
   };
 
   return (
-    <Link href={detailsLinkHref} className="block h-full">
-      <Card
-        className={cn(
-          "h-full flex flex-col overflow-hidden transition-shadow hover:shadow-lg",
-          "py-0 gap-0 cursor-pointer", // Add cursor-pointer to indicate clickability
-          className
-        )}
-      >
-        <GameImage
-          altText={altText}
-          gameData={game.rawData ?? null}
-          sizes={imageSizes}
-          variant="plain"
-        />
-        <CardContent className="p-3 flex-grow flex flex-col">
-          <h3
-            className="text-base font-semibold line-clamp-1 hover:text-primary transition-colors"
-            title={game.title || "Unknown Game"}
-          >
-            {game.title || "Unknown Game"}
-          </h3>
-          {game.descriptionShort && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2 flex-grow">
-              {game.descriptionShort}
-            </p>
+    <div className="flex flex-col gap-2">
+      {/* User attribution - moved outside the card */}
+      <div className="flex items-center gap-2 px-1">
+        <Avatar className="h-4 w-4">
+          <AvatarImage
+            src={game.foundByAvatarUrl ?? undefined}
+            alt={`${game.foundByUsername || "IndieFindr"}'s avatar`}
+          />
+          <AvatarFallback className="text-[10px]">
+            {getUserInitials(game.foundByUsername)}
+          </AvatarFallback>
+        </Avatar>
+        <span className="text-[10px] text-muted-foreground">
+          Found by <span className="font-medium">{game.foundByUsername || "IndieFindr"}</span>
+        </span>
+      </div>
+
+      <Link href={detailsLinkHref} className="block h-full">
+        <Card
+          className={cn(
+            "h-full flex flex-col overflow-hidden transition-shadow hover:shadow-lg",
+            "py-0 gap-0 cursor-pointer", // Add cursor-pointer to indicate clickability
+            className
           )}
-          
-          {/* User who found the game */}
-          {game.foundByUsername && (
-            <div className="flex items-center gap-2 mt-2">
-              <Avatar className="h-4 w-4">
-                <AvatarImage
-                  src={game.foundByAvatarUrl ?? undefined}
-                  alt={`${game.foundByUsername}'s avatar`}
-                />
-                <AvatarFallback className="text-[10px]">
-                  {getUserInitials(game.foundByUsername)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-[10px] text-muted-foreground">
-                Found by <span className="font-medium">{game.foundByUsername}</span>
-              </span>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="p-3 pt-2 flex items-center gap-2">
-          {onAddToLibrary && onRemoveFromLibrary && (
-            <Button
-              variant={
-                isInLibrary
-                  ? isHoveringRemove
-                    ? "destructive"
-                    : "secondary"
-                  : "default"
-              }
-              size="sm"
-              onClick={isInLibrary ? handleRemove : handleAdd}
-              title={isInLibrary ? "Remove from Library" : "Add to Library"}
-              className="flex-1 flex items-center justify-center gap-1"
-              onMouseEnter={() => isInLibrary && setIsHoveringRemove(true)}
-              onMouseLeave={() => setIsHoveringRemove(false)}
+        >
+          <GameImage
+            altText={altText}
+            gameData={game.rawData ?? null}
+            sizes={imageSizes}
+            variant="plain"
+          />
+          <CardContent className="p-3 flex-grow flex flex-col">
+            <h3
+              className="text-base font-semibold line-clamp-1 hover:text-primary transition-colors"
+              title={game.title || "Unknown Game"}
             >
-              {isInLibrary ? (
-                isHoveringRemove ? (
-                  <XCircle className="h-3.5 w-3.5" />
+              {game.title || "Unknown Game"}
+            </h3>
+            {game.descriptionShort && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2 flex-grow">
+                {game.descriptionShort}
+              </p>
+            )}
+            
+            {/* Removed user attribution from here */}
+          </CardContent>
+          <CardFooter className="p-3 pt-2 flex items-center gap-2">
+            {onAddToLibrary && onRemoveFromLibrary && (
+              <Button
+                variant={
+                  isInLibrary
+                    ? isHoveringRemove
+                      ? "destructive"
+                      : "secondary"
+                    : "default"
+                }
+                size="sm"
+                onClick={isInLibrary ? handleRemove : handleAdd}
+                title={isInLibrary ? "Remove from Library" : "Add to Library"}
+                className="flex-1 flex items-center justify-center gap-1"
+                onMouseEnter={() => isInLibrary && setIsHoveringRemove(true)}
+                onMouseLeave={() => setIsHoveringRemove(false)}
+              >
+                {isInLibrary ? (
+                  isHoveringRemove ? (
+                    <XCircle className="h-3.5 w-3.5" />
+                  ) : (
+                    <BookmarkCheck className="h-3.5 w-3.5" />
+                  )
                 ) : (
-                  <BookmarkCheck className="h-3.5 w-3.5" />
-                )
-              ) : (
-                <Bookmark className="h-3.5 w-3.5" />
-              )}
-              {isInLibrary ? (isHoveringRemove ? "Remove" : "Saved") : "Save"}
-            </Button>
-          )}
-        </CardFooter>
-      </Card>
-    </Link>
+                  <Bookmark className="h-3.5 w-3.5" />
+                )}
+                {isInLibrary ? (isHoveringRemove ? "Remove" : "Saved") : "Save"}
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+      </Link>
+    </div>
   );
 }
