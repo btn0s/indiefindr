@@ -14,6 +14,7 @@ interface GridGame {
   descriptionShort?: string | null;
   rawData?: SteamRawData | null; // GameCardMini uses this via GameImage
   foundByUsername?: string | null; // GameCardMini uses this
+  foundByAvatarUrl?: string | null; // Add avatar URL for the user who found the game
 }
 
 interface GameGridProps {

@@ -7,29 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-// Import Card components
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
-  BookmarkPlus,
-  BookmarkCheck,
-  Eye,
-  ImageOff,
-  Share2,
-  Copy,
-  Check,
-} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MediaCarousel } from "@/components/media-carousel"; // Import MediaCarousel
 import type { MediaItem, SteamRawData, Movie, Screenshot } from "@/types/steam"; // Updated import path
 import { toast } from "sonner";
 import { useLibrary } from "@/contexts/LibraryContext"; // Import the hook
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
+
+// Helper function to get user initials for avatar fallback
+const getUserInitials = (name?: string | null) => {
+  if (!name) return "?";
+  return name.charAt(0).toUpperCase();
+};
 
 interface GameCardProps {
   game: {
@@ -40,6 +29,7 @@ interface GameCardProps {
     tags: string[] | null;
     rawData?: SteamRawData | null; // Add rawData prop (optional for now)
     foundByUsername?: string | null; // Add foundByUsername to game type
+    foundByAvatarUrl?: string | null; // Add foundByAvatarUrl to game type
   };
   detailsLinkHref: string; // Add href prop for consistency
   className?: string;
@@ -111,6 +101,34 @@ export function GameCard({
     };
   }, []);
 
+  // Define potential cover art URLs (keep this)
+  const imageUrl = game.steamAppid
+    ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
+    : null;
+  const rawData = game.rawData;
+  const potentialCoverUrls = [
+    imageUrl, // 1. header.jpg
+    rawData?.capsule_image, // 2. capsule_image (medium)
+    rawData?.capsule_imagev5, // 3. capsule_imagev5 (small)
+    rawData?.screenshots?.[0]?.path_full, // 4. First full screenshot
+    rawData?.background_raw, // 5. Raw background
+    rawData?.background, // 6. Processed background
+  ].filter((url): url is string => typeof url === "string" && url.length > 0);
+
+  // Get the first video or screenshot for the main media preview (keep this)
+  const firstVideo = rawData?.movies?.[0];
+  const firstScreenshot = rawData?.screenshots?.[0];
+
+  const handleMediaError = () => {
+    setMediaError(true);
+  };
+
+  // Define props for the GameImage cover art
+  const coverAltText = game.title
+    ? `${game.title} Cover Art`
+    : "Game Cover Art";
+  const coverImageSizes = "150px"; // Specific size for the small cover art
+
   // Update handleAdd and handleRemove to use context functions
   const handleAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -163,34 +181,6 @@ export function GameCard({
       console.error("Error copying to clipboard:", error);
     }
   };
-
-  // Define potential cover art URLs (keep this)
-  const imageUrl = game.steamAppid
-    ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
-    : null;
-  const rawData = game.rawData;
-  const potentialCoverUrls = [
-    imageUrl, // 1. header.jpg
-    rawData?.capsule_image, // 2. capsule_image (medium)
-    rawData?.capsule_imagev5, // 3. capsule_imagev5 (small)
-    rawData?.screenshots?.[0]?.path_full, // 4. First full screenshot
-    rawData?.background_raw, // 5. Raw background
-    rawData?.background, // 6. Processed background
-  ].filter((url): url is string => typeof url === "string" && url.length > 0);
-
-  // Get the first video or screenshot for the main media preview (keep this)
-  const firstVideo = rawData?.movies?.[0];
-  const firstScreenshot = rawData?.screenshots?.[0];
-
-  const handleMediaError = () => {
-    setMediaError(true);
-  };
-
-  // Define props for the GameImage cover art
-  const coverAltText = game.title
-    ? `${game.title} Cover Art`
-    : "Game Cover Art";
-  const coverImageSizes = "150px"; // Specific size for the small cover art
 
   return (
     <Card
@@ -268,6 +258,24 @@ export function GameCard({
                 <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3">
                   {game.shortDescription || "No description available."}
                 </p>
+                
+                {/* User who found the game */}
+                {game.foundByUsername && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage
+                        src={game.foundByAvatarUrl ?? undefined}
+                        alt={`${game.foundByUsername}'s avatar`}
+                      />
+                      <AvatarFallback className="text-xs">
+                        {getUserInitials(game.foundByUsername)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-muted-foreground">
+                      Found by <span className="font-medium">{game.foundByUsername}</span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               {game.tags && game.tags.length > 0 && (

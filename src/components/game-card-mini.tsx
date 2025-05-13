@@ -16,6 +16,13 @@ import {
 import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+// Helper function to get user initials for avatar fallback
+const getUserInitials = (name?: string | null) => {
+  if (!name) return "?";
+  return name.charAt(0).toUpperCase();
+};
 
 interface GameCardMiniProps {
   game: {
@@ -24,6 +31,8 @@ interface GameCardMiniProps {
     steamAppid: string | null;
     descriptionShort?: string | null;
     rawData?: SteamRawData | null; // rawData prop is already here
+    foundByUsername?: string | null; // Add foundByUsername property
+    foundByAvatarUrl?: string | null; // Add foundByAvatarUrl property
     // header_image is not directly on game object, but derived or part of rawData in externalSourceTable
   };
   detailsLinkHref: string;
@@ -100,6 +109,24 @@ export function GameCardMini({
             <p className="text-xs text-muted-foreground mt-1 line-clamp-2 flex-grow">
               {game.descriptionShort}
             </p>
+          )}
+          
+          {/* User who found the game */}
+          {game.foundByUsername && (
+            <div className="flex items-center gap-2 mt-2">
+              <Avatar className="h-4 w-4">
+                <AvatarImage
+                  src={game.foundByAvatarUrl ?? undefined}
+                  alt={`${game.foundByUsername}'s avatar`}
+                />
+                <AvatarFallback className="text-[10px]">
+                  {getUserInitials(game.foundByUsername)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-[10px] text-muted-foreground">
+                Found by <span className="font-medium">{game.foundByUsername}</span>
+              </span>
+            </div>
           )}
         </CardContent>
         <CardFooter className="p-3 pt-2 flex items-center gap-2">
