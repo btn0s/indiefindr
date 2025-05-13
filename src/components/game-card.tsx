@@ -13,6 +13,23 @@ import type { MediaItem, SteamRawData, Movie, Screenshot } from "@/types/steam";
 import { toast } from "sonner";
 import { useLibrary } from "@/contexts/LibraryContext"; // Import the hook
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  BookmarkPlus,
+  BookmarkCheck,
+  Eye,
+  ImageOff,
+  Share2,
+  Copy,
+  Check,
+} from "lucide-react";
 
 // Helper function to get user initials for avatar fallback
 const getUserInitials = (name?: string | null) => {
