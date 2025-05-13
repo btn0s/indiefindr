@@ -12,7 +12,7 @@ const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:3000";
 
-const defaultTitle = "Discover your next favorite indie game.";
+const defaultTitle = "IndieFindr - Discover your next favorite indie game.";
 const defaultDescription =
   "Find and curate hidden gems easily missed on Steam.";
 
