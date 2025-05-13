@@ -12,6 +12,9 @@ interface RecentApiGame {
   steamAppid: string | null;
   tags: string[] | null;
   rawData?: SteamRawData | null;
+  foundByUsername?: string | null;
+  foundByAvatarUrl?: string | null;
+  createdAt?: string | Date | null;
 }
 
 interface RecentGamesResult {
@@ -44,7 +47,9 @@ export async function GET(request: NextRequest) {
         steamAppid: externalSourceTable.steamAppid,
         tags: externalSourceTable.tags,
         rawData: externalSourceTable.rawData,
-        foundByUsername: profilesTable.username, // Add foundByUsername
+        foundByUsername: profilesTable.username,
+        foundByAvatarUrl: profilesTable.avatarUrl,
+        createdAt: externalSourceTable.createdAt,
       })
       .from(externalSourceTable)
       // Add left join

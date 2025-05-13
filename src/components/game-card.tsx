@@ -6,35 +6,40 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MediaCarousel } from "@/components/media-carousel"; // Import MediaCarousel
-import type { MediaItem, SteamRawData, Movie, Screenshot } from "@/types/steam"; // Updated import path
-import { toast } from "sonner";
+import type { SteamRawData } from "@/types/steam"; // Updated import path
 import { useLibrary } from "@/contexts/LibraryContext"; // Import the hook
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
-  BookmarkPlus,
-  BookmarkCheck,
-  Eye,
-  ImageOff,
-  Share2,
-  Copy,
-  Check,
-} from "lucide-react";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Bookmark, BookmarkCheck, ImageOff, Share2, Check } from "lucide-react";
 
 // Helper function to get user initials for avatar fallback
 const getUserInitials = (name?: string | null) => {
   if (!name) return "IF"; // Return "IF" for IndieFindr when no name is available
   return name.charAt(0).toUpperCase();
+};
+
+// Helper function to format time ago
+const formatTimeAgo = (dateInput?: string | Date | null): string => {
+  if (!dateInput) return "Date not available";
+
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  const now = new Date();
+  const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.round(minutes / 60);
+  const days = Math.round(hours / 24);
+  const weeks = Math.round(days / 7);
+  const months = Math.round(days / 30.44); // Average days in month
+  const years = Math.round(days / 365.25); // Account for leap years
+
+  if (seconds < 60) return `${seconds}s ago`;
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  if (weeks < 5) return `${weeks}w ago`; // Up to 4 weeks
+  if (months < 12) return `${months}mo ago`;
+  return `${years}y ago`;
 };
 
 interface GameCardProps {
@@ -47,6 +52,7 @@ interface GameCardProps {
     rawData?: SteamRawData | null; // Add rawData prop (optional for now)
     foundByUsername?: string | null; // Add foundByUsername to game type
     foundByAvatarUrl?: string | null; // Add foundByAvatarUrl to game type
+    createdAt?: string | Date | null; // <--- Add this line
   };
   detailsLinkHref: string; // Add href prop for consistency
   className?: string;
@@ -66,6 +72,16 @@ export function GameCard({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Log the received game prop, especially foundBy fields
+  console.log(
+    "GameCard received game:",
+    game,
+    "FoundByUsername:",
+    game.foundByUsername,
+    "FoundByAvatarUrl:",
+    game.foundByAvatarUrl
+  );
 
   // Use the library context
   const {
@@ -200,27 +216,41 @@ export function GameCard({
     }
   };
 
+  const foundByUsername = game.foundByUsername || "IndieFindr";
+  const foundByAvatarUrl = game.foundByAvatarUrl || "/images/avatar.png";
+
   return (
     <div className="flex flex-col gap-2">
       {/* User attribution - moved outside the card */}
-      {game.foundByUsername && (
-        <div className="flex items-center gap-2 px-1">
-          <Avatar className="h-5 w-5">
+
+      <div className="flex justify-between">
+        <Link
+          href={`/user/${foundByUsername}`}
+          className={cn("flex items-center gap-2 px-1", {
+            "pointer-events-none": !game.foundByUsername,
+          })}
+        >
+          <Avatar className="size-8 shrink-0 ring-1 ring-foreground/20 border border-background/60">
             <AvatarImage
-              src={game.foundByAvatarUrl || undefined}
-              alt={`${game.foundByUsername}'s avatar`}
+              src={foundByAvatarUrl || undefined}
+              alt={`${foundByUsername}'s avatar`}
               onError={() => setAvatarError(true)}
-              style={{ display: avatarError ? 'none' : 'block' }}
+              style={{ display: avatarError ? "none" : "block" }}
             />
             <AvatarFallback className="text-xs">
-              {getUserInitials(game.foundByUsername)}
+              {getUserInitials(foundByUsername)}
             </AvatarFallback>
           </Avatar>
-          <span className="text-xs text-muted-foreground">
-            Found by <span className="font-medium">{game.foundByUsername}</span>
-          </span>
-        </div>
-      )}
+          <div className="flex flex-col">
+            <span className="font-medium text-lg leading-none">
+              {foundByUsername}
+            </span>
+            <span className="text-xs text-muted-foreground leading-none">
+              found this {formatTimeAgo(game.createdAt)}
+            </span>
+          </div>
+        </Link>
+      </div>
 
       <Card
         ref={cardRef}
@@ -249,6 +279,7 @@ export function GameCard({
                   muted
                   playsInline
                   loop
+                  controls={false}
                   className="w-full h-full object-contain"
                   onError={handleMediaError}
                 />
@@ -297,7 +328,7 @@ export function GameCard({
                   <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3">
                     {game.shortDescription || "No description available."}
                   </p>
-                  
+
                   {/* Removed user attribution from here */}
                 </div>
 
@@ -331,18 +362,6 @@ export function GameCard({
           <Button
             variant="secondary"
             size="sm"
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.href = detailsLinkHref;
-            }}
-            className="flex-1"
-          >
-            <Eye className="mr-1.5 h-3.5 w-3.5" />
-            Details
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
             onClick={isInLibrary ? handleRemove : handleAdd}
             disabled={isLibraryLoading}
             className="flex-1"
@@ -350,7 +369,7 @@ export function GameCard({
             {isInLibrary ? (
               <BookmarkCheck className="mr-1.5 h-3.5 w-3.5" />
             ) : (
-              <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" />
+              <Bookmark className="mr-1.5 h-3.5 w-3.5" />
             )}
             {isInLibrary ? "Saved" : "Save"}
           </Button>
