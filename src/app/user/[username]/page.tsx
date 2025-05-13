@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 // import { Database } from "@/lib/database.types"; // Removed - Use Drizzle types implicitly
-import { GameCard } from "@/components/game-card"; // Import the actual GameCard
+import { GameGrid } from "@/components/game-grid"; // Import GameGrid
 import { profilesTable, libraryTable, externalSourceTable } from "@/db/schema"; // Import schema tables
 import { db } from "@/db"; // Import Drizzle instance
 import { eq, and } from "drizzle-orm";
@@ -28,14 +28,13 @@ type ProfilePageProps = {
   params: Promise<{ username: string }>;
 };
 
-// Define the shape of the game data expected by GameCard based on its props
-// This should match the selection in the library query
-type LibraryGameForCard = {
+// Define the type required by GameGrid
+type GameForGridOnProfile = {
   id: number;
   title: string | null;
-  shortDescription: string | null; // Assuming GameCard uses this (or descriptionShort from schema)
   steamAppid: string | null;
-  tags: string[] | null;
+  descriptionShort: string | null; // Match GameGrid expectation
+  // GameGrid doesn't use tags currently, so omit them here unless needed later
 };
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
@@ -72,16 +71,16 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const isOwner = !!profileData && loggedInUserId === profileData.id;
 
   // 3. Fetch the profile user's library game details using Drizzle
-  // Select fields required by GameCard
-  let libraryGames: LibraryGameForCard[] = [];
+  // Adapt the selection to match GameForGridOnProfile
+  let libraryGames: GameForGridOnProfile[] = [];
   try {
     libraryGames = await db
       .select({
         id: externalSourceTable.id,
         title: externalSourceTable.title,
-        shortDescription: externalSourceTable.descriptionShort, // Match GameCard prop if needed
+        descriptionShort: externalSourceTable.descriptionShort, // Correct field name
         steamAppid: externalSourceTable.steamAppid,
-        tags: externalSourceTable.tags,
+        // Removed tags: externalSourceTable.tags,
       })
       .from(libraryTable)
       .innerJoin(
@@ -148,19 +147,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           Library ({libraryGames?.length ?? 0})
         </h2>
         {libraryGames && libraryGames.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {/* Use the actual GameCard component */}
-            {libraryGames.map((game) => (
-              <GameCard
-                key={game.id}
-                game={game}
-                // Determine if the game is in the *logged-in* user's library
-                isInLibrary={loggedInUserLibraryIds.has(game.id)}
-                onAddToLibrary={addToLibrary} // Pass server actions
-                onRemoveFromLibrary={removeFromLibrary}
-              />
-            ))}
-          </div>
+          // Use GameGrid component
+          <GameGrid
+            games={libraryGames} // Pass fetched games
+            loggedInUserLibraryIds={loggedInUserLibraryIds} // Pass the set of logged-in user's library game IDs
+            onAddToLibrary={addToLibrary} // Pass server action
+            onRemoveFromLibrary={removeFromLibrary} // Pass server action
+            // Use default grid class or customize if needed
+          />
         ) : (
           <p className="text-muted-foreground">This library is empty.</p>
         )}

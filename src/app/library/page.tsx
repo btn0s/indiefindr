@@ -5,11 +5,21 @@ import {
   removeFromLibrary,
   addToLibrary,
 } from "@/app/actions/library";
-import { GameCard } from "@/components/game-card";
 import { db, schema } from "@/db";
 import { inArray } from "drizzle-orm";
+import { GameGrid } from "@/components/game-grid";
 
-async function getUserLibraryGames(userId: string) {
+// Define the shape needed by GameGrid
+type LibraryGameForGrid = {
+  id: number;
+  title: string | null;
+  steamAppid: string | null;
+  descriptionShort: string | null;
+};
+
+async function getUserLibraryGames(
+  userId: string
+): Promise<LibraryGameForGrid[]> {
   const libraryResult = await getLibraryGameIds();
 
   if (
@@ -28,6 +38,7 @@ async function getUserLibraryGames(userId: string) {
         id: schema.externalSourceTable.id,
         title: schema.externalSourceTable.title,
         descriptionShort: schema.externalSourceTable.descriptionShort,
+        steamAppid: schema.externalSourceTable.steamAppid,
       })
       .from(schema.externalSourceTable)
       .where(inArray(schema.externalSourceTable.id, gameIds))
@@ -36,7 +47,8 @@ async function getUserLibraryGames(userId: string) {
     return gamesFromDb.map((game) => ({
       id: game.id,
       title: game.title,
-      shortDescription: game.descriptionShort,
+      descriptionShort: game.descriptionShort,
+      steamAppid: game.steamAppid,
     }));
   } catch (error) {
     console.error("Error fetching library game details:", error);
@@ -56,6 +68,9 @@ export default async function ProfilePage() {
 
   const libraryGames = await getUserLibraryGames(user.id);
 
+  // Prepare the set of IDs for GameGrid (all games on this page are in the library)
+  const loggedInUserLibraryIds = new Set<number>(libraryGames.map((g) => g.id));
+
   return (
     <main className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Your Game Library</h1>
@@ -63,17 +78,12 @@ export default async function ProfilePage() {
       {libraryGames.length === 0 ? (
         <p>Your library is empty. Discover games and add them!</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {libraryGames.map((game) => (
-            <GameCard
-              key={game.id}
-              game={game}
-              isInLibrary={true}
-              onAddToLibrary={addToLibrary}
-              onRemoveFromLibrary={removeFromLibrary}
-            />
-          ))}
-        </div>
+        <GameGrid
+          games={libraryGames}
+          loggedInUserLibraryIds={loggedInUserLibraryIds}
+          onAddToLibrary={addToLibrary}
+          onRemoveFromLibrary={removeFromLibrary}
+        />
       )}
     </main>
   );

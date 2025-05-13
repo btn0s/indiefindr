@@ -12,6 +12,7 @@ import {
 } from "@/app/actions/library";
 import { getPersonalizedFeed } from "@/app/actions/feed"; // Import the feed action
 import { createClient } from "@/utils/supabase/server";
+import { getGameUrl } from "@/utils/game-url"; // Import the utility function
 
 // Define the expected shape of game data from the feed
 // This should ideally match FeedGame interface in feed.ts
@@ -92,15 +93,20 @@ export default async function HomePage() {
       ) : !feedError ? (
         <div className="flex flex-col gap-4">
           {/* GameCard now needs to handle linking internally */}
-          {feedGames.map((game) => (
-            <GameCard
-              key={game.id}
-              game={game} // Pass the whole game object
-              isInLibrary={libraryGameIds.has(game.id)}
-              onAddToLibrary={addToLibrary}
-              onRemoveFromLibrary={removeFromLibrary}
-            />
-          ))}
+          {feedGames.map((game) => {
+            // Calculate the detail link URL
+            const detailsLinkHref = getGameUrl(game.id, game.title);
+            return (
+              <GameCard
+                key={game.id}
+                game={game} // Pass the whole game object
+                detailsLinkHref={detailsLinkHref} // Pass the calculated href
+                isInLibrary={libraryGameIds.has(game.id)}
+                onAddToLibrary={addToLibrary}
+                onRemoveFromLibrary={removeFromLibrary}
+              />
+            );
+          })}
         </div>
       ) : // If feedError is present, don't show the empty message or the list
       // The error message above is sufficient.

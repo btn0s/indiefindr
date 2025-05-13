@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, schema } from "@/db";
-import { sql, ilike } from "drizzle-orm";
+import { sql, ilike, or } from "drizzle-orm";
 
 // Define the structure of the game data to return for search results
 interface SearchResultGame {
@@ -26,21 +26,15 @@ export async function GET(request: Request) {
   console.log(`[API /search] Received search query: "${query}"`);
 
   try {
-    // For basic keyword search as per MVP, we can use a simple ILIKE for now.
-    // For more advanced FTS, we would use to_tsvector and plainto_tsquery with a GIN index.
-    // The BACKEND_MVP.md specifies: "Searches external_source.title via PG FTS"
-    // Let's construct a basic FTS query using Drizzle sql.
-    // We will search for terms in the title.
-    // Example: plainto_tsquery('english', query) @@ to_tsvector('english', schema.externalSourceTable.title)
+    // For more effective search, we will:
+    // 1. Use ILIKE on both title and description
+    // 2. If no results, try a more flexible match with individual keywords
+    // 3. Limit results but return a reasonable number for the UI
 
-    // Simplified approach: using ILIKE for broad matching of titles.
-    // For true FTS, you would ideally have a GIN index on `to_tsvector('english', title)`
-    // and use `WHERE to_tsvector('english', title) @@ plainto_tsquery('english', query)`.
-    // Drizzle syntax for FTS can be a bit more involved with custom operators or raw SQL.
+    const queryTerms = query.trim().split(/\s+/).filter(Boolean);
 
-    // Using `ilike` for simplicity as a starting point for "keyword search"
-    // This is not true FTS but will work for basic substring matching on titles.
-    const searchResults = await db
+    // First, try the most specific search (exact phrase in title or description)
+    let searchResults = await db
       .select({
         id: schema.externalSourceTable.id,
         title: schema.externalSourceTable.title,
@@ -49,28 +43,56 @@ export async function GET(request: Request) {
         descriptionShort: schema.externalSourceTable.descriptionShort,
       })
       .from(schema.externalSourceTable)
-      .where(ilike(schema.externalSourceTable.title, `%${query}%`)) // Case-insensitive substring match
-      .limit(20) // Limit results for performance
+      .where(
+        or(
+          ilike(schema.externalSourceTable.title, `%${query}%`),
+          ilike(schema.externalSourceTable.descriptionShort, `%${query}%`)
+        )
+      )
+      .limit(20)
       .execute();
 
-    // If we want to implement true FTS with ranking:
-    // const tsQuery = sql`plainto_tsquery('english', ${query})`;
-    // const tsVector = sql`to_tsvector('english', ${schema.externalSourceTable.title})`;
-    // const rank = sql`ts_rank_cd(${tsVector}, ${tsQuery})`.as('rank');
+    // If no results, try a more flexible match with individual keywords
+    if (searchResults.length === 0 && queryTerms.length > 1) {
+      const conditions = queryTerms.map((term) =>
+        or(
+          ilike(schema.externalSourceTable.title, `%${term}%`),
+          ilike(schema.externalSourceTable.descriptionShort, `%${term}%`)
+        )
+      );
 
+      searchResults = await db
+        .select({
+          id: schema.externalSourceTable.id,
+          title: schema.externalSourceTable.title,
+          externalId: schema.externalSourceTable.externalId,
+          steamAppid: schema.externalSourceTable.steamAppid,
+          descriptionShort: schema.externalSourceTable.descriptionShort,
+        })
+        .from(schema.externalSourceTable)
+        .where(or(...conditions))
+        .limit(20)
+        .execute();
+    }
+
+    // If we have a proper GIN index setup on the database side, we could use FTS:
+    // const tsVector = sql`to_tsvector('english', coalesce(${schema.externalSourceTable.title},'') || ' ' || coalesce(${schema.externalSourceTable.descriptionShort},''))`;
+    // const tsQuery = sql`plainto_tsquery('english', ${query})`;
+    // const rank = sql`ts_rank_cd(${tsVector}, ${tsQuery})`.as('rank');
+    //
     // const searchResults = await db.select({
-    //     id: schema.externalSourceTable.id,
-    //     title: schema.externalSourceTable.title,
-    //     externalId: schema.externalSourceTable.externalId,
-    //     steamAppid: schema.externalSourceTable.steamAppid,
-    //     descriptionShort: schema.externalSourceTable.descriptionShort,
-    //     rank: rank,
-    //   })
-    //   .from(schema.externalSourceTable)
-    //   .where(sql`${tsVector} @@ ${tsQuery}`)
-    //   .orderBy(sql`rank DESC`)
-    //   .limit(20)
-    //   .execute();
+    //   id: schema.externalSourceTable.id,
+    //   title: schema.externalSourceTable.title,
+    //   externalId: schema.externalSourceTable.externalId,
+    //   steamAppid: schema.externalSourceTable.steamAppid,
+    //   descriptionShort: schema.externalSourceTable.descriptionShort,
+    //   rank: rank,
+    // })
+    // .from(schema.externalSourceTable)
+    // .where(sql`${tsVector} @@ ${tsQuery}`)
+    // .orderBy(sql`rank DESC`)
+    // .limit(20)
+    // .execute();
 
     console.log(
       `[API /search] Found ${searchResults.length} results for query "${query}".`
