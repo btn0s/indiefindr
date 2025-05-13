@@ -7,7 +7,7 @@ export async function TopNav() {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
       <div className="container max-w-5xl mx-auto flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-2 w-1/4">
+        <div className="flex items-center gap-2 flex-1 sm:flex-none sm:w-1/4">
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-xl font-bold">IndieFindr</span>
           </Link>
@@ -27,7 +27,7 @@ export async function TopNav() {
           />
         </form>
 
-        <div className="flex items-center gap-2 w-1/4 justify-end">
+        <div className="flex items-center gap-2 flex-1 sm:flex-none sm:w-1/4 justify-end">
           <AuthButton />
           <SubmitGameDialog />
         </div>
