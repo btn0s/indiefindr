@@ -11,6 +11,7 @@ import { MediaCarousel } from "@/components/media-carousel";
 import type { SteamRawData, MediaItem, Movie, Screenshot } from "@/types/steam"; // Import shared types
 import { GameImage } from "@/components/game-image"; // Import the new client component
 import type { Metadata } from "next";
+import { AddToLibraryButton } from "@/components/add-to-library-button"; // Import the new component
 
 // Function to fetch game data server-side
 async function getGame(id: string) {
@@ -248,9 +249,7 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
               </Link>
             </Button>
           )}
-          <Button variant="outline" className="w-full">
-            Add to Library
-          </Button>
+          <AddToLibraryButton gameId={game.id} />
         </div>
       </div>
     </div>
