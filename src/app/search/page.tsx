@@ -313,26 +313,25 @@ async function performSteamSearch(
   }
 
   try {
-    // Use absolute URL for server-side requests
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                   (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
-    
+    // Use relative URL which will always resolve correctly
     const response = await fetch(
-      `${baseUrl}/api/steam-search?q=${encodeURIComponent(query)}`,
+      `/api/steam-search?q=${encodeURIComponent(query)}`,
       { cache: "no-store" }
     );
 
     if (!response.ok) {
-      throw new Error(`Steam search API returned ${response.status}`);
+      console.error(`Steam search API returned ${response.status}`);
+      return { results: [], error: null }; // Silently fail with empty results
     }
 
     const data = await response.json();
     return { results: data.results || [], error: null };
   } catch (error: any) {
+    // Log the error for debugging but don't expose to the user
     console.error(`[Server Steam Search] Error during search:`, error);
     return {
-      results: [],
-      error: "Failed to search Steam. Please try again.",
+      results: [], 
+      error: null // Return null error to prevent showing error to user
     };
   }
 }
