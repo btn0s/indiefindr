@@ -1,12 +1,18 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { BookmarkPlus, BookmarkCheck, Eye, Bookmark } from "lucide-react";
+import {
+  BookmarkPlus,
+  BookmarkCheck,
+  Eye,
+  Bookmark,
+  XCircle,
+} from "lucide-react";
 import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +41,8 @@ export function GameCardMini({
   onRemoveFromLibrary,
   className,
 }: GameCardMiniProps) {
+  const [isHoveringRemove, setIsHoveringRemove] = useState(false);
+
   const altText = game.title
     ? `${game.title} header image`
     : "Game header image";
@@ -97,18 +105,30 @@ export function GameCardMini({
         <CardFooter className="p-3 pt-2 flex items-center gap-2">
           {onAddToLibrary && onRemoveFromLibrary && (
             <Button
-              variant={isInLibrary ? "secondary" : "default"}
+              variant={
+                isInLibrary
+                  ? isHoveringRemove
+                    ? "destructive"
+                    : "secondary"
+                  : "default"
+              }
               size="sm"
               onClick={isInLibrary ? handleRemove : handleAdd}
               title={isInLibrary ? "Remove from Library" : "Add to Library"}
               className="flex-1 flex items-center justify-center gap-1"
+              onMouseEnter={() => isInLibrary && setIsHoveringRemove(true)}
+              onMouseLeave={() => setIsHoveringRemove(false)}
             >
               {isInLibrary ? (
-                <BookmarkCheck className="h-3.5 w-3.5" />
+                isHoveringRemove ? (
+                  <XCircle className="h-3.5 w-3.5" />
+                ) : (
+                  <BookmarkCheck className="h-3.5 w-3.5" />
+                )
               ) : (
                 <Bookmark className="h-3.5 w-3.5" />
               )}
-              {isInLibrary ? "Saved" : "Save"}
+              {isInLibrary ? (isHoveringRemove ? "Remove" : "Saved") : "Save"}
             </Button>
           )}
         </CardFooter>

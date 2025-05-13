@@ -18,6 +18,7 @@ import {
   getLibraryGameIds,
 } from "@/app/actions/library"; // Import library actions for GameCard
 import { getGamesFoundByUser } from "@/app/actions/finds"; // Import the new action
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
 
 // Helper function for initials remains the same
 const getUserInitials = (name?: string | null) => {
@@ -249,37 +250,42 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         </div>
       </div>
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4">
-          Library ({libraryGames?.length ?? 0})
-        </h2>
-        {libraryGames && libraryGames.length > 0 ? (
-          // Use GameGrid component
-          <GameGrid
-            games={libraryGames} // Pass fetched games
-            loggedInUserLibraryIds={loggedInUserLibraryIds} // Pass the set of logged-in user's library game IDs
-            onAddToLibrary={addToLibrary} // Pass server action
-            onRemoveFromLibrary={removeFromLibrary} // Pass server action
-            // Use default grid class or customize if needed
-          />
-        ) : (
-          <p className="text-muted-foreground">This library is empty.</p>
-        )}
-      </section>
-
-      {foundGames.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-xl font-semibold mb-4">
+      <Tabs defaultValue="finds" className="mt-6">
+        <TabsList className="mb-4">
+          <TabsTrigger value="finds" disabled={foundGames.length === 0}>
             Finds ({foundGames.length})
-          </h2>
-          <GameGrid
-            games={foundGames}
-            loggedInUserLibraryIds={loggedInUserLibraryIds}
-            onAddToLibrary={addToLibrary}
-            onRemoveFromLibrary={removeFromLibrary}
-          />
-        </section>
-      )}
+          </TabsTrigger>
+          <TabsTrigger value="library">
+            Library ({libraryGames?.length ?? 0})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="library">
+          {libraryGames && libraryGames.length > 0 ? (
+            <GameGrid
+              games={libraryGames}
+              loggedInUserLibraryIds={loggedInUserLibraryIds}
+              onAddToLibrary={addToLibrary}
+              onRemoveFromLibrary={removeFromLibrary}
+            />
+          ) : (
+            <p className="text-muted-foreground">This library is empty.</p>
+          )}
+        </TabsContent>
+
+        <TabsContent value="finds">
+          {foundGames.length > 0 ? (
+            <GameGrid
+              games={foundGames}
+              loggedInUserLibraryIds={loggedInUserLibraryIds}
+              onAddToLibrary={addToLibrary}
+              onRemoveFromLibrary={removeFromLibrary}
+            />
+          ) : (
+            <p className="text-muted-foreground">No games found yet.</p>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
