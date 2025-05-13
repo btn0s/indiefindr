@@ -2,8 +2,8 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { db } from "@/db";
-import { profilesTable, externalSourceTable } from "@/db/schema";
-import { eq, count } from "drizzle-orm";
+import { profilesTable, externalSourceTable, libraryTable } from "@/db/schema";
+import { eq, count, desc, and, inArray } from "drizzle-orm";
 
 // Config for the image
 // Edge runtime removed to use Node.js runtime
@@ -53,6 +53,7 @@ export default async function Image({
   const decodedUsername = decodeURIComponent(params.username);
   let profile = null;
   let findsCount = 0;
+  let gameImages: string[] = [];
 
   try {
     // Fetch user profile data directly from the database, just like in page.tsx
@@ -81,6 +82,64 @@ export default async function Image({
       if (findsResult.length > 0) {
         findsCount = Number(findsResult[0].count) || 0;
       }
+
+      // Get images from the user's library (up to 3)
+      const userLibrary = await db
+        .select({
+          userId: libraryTable.userId,
+          gameRefId: libraryTable.gameRefId,
+        })
+        .from(libraryTable)
+        .where(eq(libraryTable.userId, profile.id))
+        .limit(3);
+
+      if (userLibrary.length > 0) {
+        // Fetch game details for the library items
+        const gameIds = userLibrary.map((item) => item.gameRefId);
+        const games = await db
+          .select({
+            id: externalSourceTable.id,
+            rawData: externalSourceTable.rawData,
+          })
+          .from(externalSourceTable)
+          .where(
+            and(
+              eq(externalSourceTable.platform, "steam"),
+              inArray(externalSourceTable.id, gameIds)
+            )
+          )
+          .limit(3);
+
+        gameImages = games
+          .filter(
+            (game) =>
+              game.rawData &&
+              typeof game.rawData === "object" &&
+              "header_image" in game.rawData
+          )
+          .map((game) => (game.rawData as any).header_image as string);
+      }
+
+      // If the user has no library items or we couldn't get images, get some random games they found
+      if (gameImages.length === 0) {
+        const discoveredGames = await db
+          .select({
+            rawData: externalSourceTable.rawData,
+          })
+          .from(externalSourceTable)
+          .where(eq(externalSourceTable.foundBy, profile.id))
+          .orderBy(desc(externalSourceTable.lastFetched))
+          .limit(3);
+
+        gameImages = discoveredGames
+          .filter(
+            (game) =>
+              game.rawData &&
+              typeof game.rawData === "object" &&
+              "header_image" in game.rawData
+          )
+          .map((game) => (game.rawData as any).header_image as string);
+      }
     }
   } catch (error) {
     console.error(
@@ -104,179 +163,192 @@ export default async function Image({
           width: "100%",
           display: "flex",
           flexDirection: "column",
-          backgroundColor: "#FFFFFF", // Light background like card
-          color: "#09090B", // Dark text like card
+          backgroundColor: "#FFFFFF",
+          color: "#09090B",
           fontFamily: "Geist, sans-serif",
           padding: "48px",
         }}
       >
-        {/* Header with logo */}
+        {/* Main Content */}
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            width: "100%",
-            marginBottom: "48px",
+            alignItems: "flex-start",
+            gap: "32px",
+            flex: 1,
           }}
         >
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: "700",
-              color: "#000000",
-            }}
-          >
-            IndieFindr
-          </div>
-        </div>
+          {/* Avatar */}
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={`${username}'s avatar`}
+              width={140}
+              height={140}
+              style={{
+                borderRadius: "50%",
+                border: "4px solid #F1F5F9",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 140,
+                height: 140,
+                borderRadius: "50%",
+                backgroundColor: "#F1F5F9",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "56px",
+                fontWeight: "600",
+                color: "#64748B",
+              }}
+            >
+              {initials}
+            </div>
+          )}
 
-        {/* Profile Content */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            flex: "1",
-            gap: "48px",
-          }}
-        >
-          {/* Avatar Column */}
+          {/* User Info */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              marginRight: "24px",
-            }}
-          >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={`${username}'s avatar`}
-                width={180}
-                height={180}
-                style={{
-                  borderRadius: "50%",
-                  border: "4px solid #E2E8F0",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 180,
-                  height: 180,
-                  borderRadius: "50%",
-                  backgroundColor: "#E2E8F0",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "72px",
-                  fontWeight: "bold",
-                  color: "#64748B",
-                }}
-              >
-                {initials}
-              </div>
-            )}
-          </div>
-
-          {/* Info Column */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              flex: "1",
+              gap: "16px",
+              flex: 1,
             }}
           >
             <div
               style={{
-                fontSize: "64px",
-                fontWeight: "600",
-                marginBottom: "16px",
-                color: "#000000",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
               }}
             >
-              {username}
-            </div>
-
-            {fullName && (
               <div
                 style={{
-                  fontSize: "32px",
-                  color: "#64748B", // Muted foreground
-                  marginBottom: "24px",
+                  fontSize: "48px",
+                  fontWeight: "600",
+                  color: "#000000",
                 }}
               >
-                {fullName}
+                {username}
               </div>
-            )}
+              <div
+                style={{
+                  fontSize: "20px",
+                  color: "#64748B",
+                }}
+              >
+                is curating indie games on IndieFindr
+              </div>
+            </div>
 
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                marginTop: "16px",
-                gap: "16px",
+                gap: "8px",
+                fontSize: "16px",
+                color: "#64748B",
               }}
             >
-              {/* Rank Badge */}
-              <div
-                style={{
-                  backgroundColor: rank.color,
-                  paddingLeft: "16px",
-                  paddingRight: "16px",
-                  paddingTop: "8px",
-                  paddingBottom: "8px",
-                  borderRadius: "9999px",
-                  fontSize: "20px",
-                  fontWeight: "500",
-                  color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {rank.title}
-              </div>
+              <strong style={{ color: "#000000" }}>{findsCount}</strong>
+              <span>games discovered and counting</span>
+            </div>
 
-              {/* Discoveries Counter */}
+            {fullName && (
               <div
                 style={{
                   fontSize: "20px",
                   color: "#64748B",
-                  display: "flex",
-                  alignItems: "center",
                 }}
               >
-                <strong style={{ marginRight: "4px", color: "#1E293B" }}>
-                  {findsCount}
-                </strong>
-                &nbsp;Games Discovered
+                {fullName}
               </div>
-            </div>
+            )}
           </div>
         </div>
+
+        {/* Game Showcase */}
+        {gameImages.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              marginTop: "48px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "16px",
+                color: "#64748B",
+                fontWeight: "500",
+              }}
+            >
+              Recent Discoveries
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: "16px",
+              }}
+            >
+              {gameImages.map((imageUrl, index) => (
+                <img
+                  key={index}
+                  src={imageUrl}
+                  alt="Game Cover"
+                  style={{
+                    width: "215px",
+                    height: "100px",
+                    objectFit: "cover",
+                    borderRadius: "8px",
+                    border: "1px solid #E2E8F0",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "flex-end",
-            width: "100%",
-            marginTop: "48px",
+            justifyContent: "space-between",
+            marginTop: "auto",
+            paddingTop: "32px",
           }}
         >
           <div
             style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
               fontSize: "16px",
-              color: "#94A3B8", // Very muted foreground for footer
+              color: "#64748B",
             }}
           >
-            Discover indie games you'll love at indiefindr.com
+            <span>Join others discovering indie games at</span>
+            <span style={{ color: "#000000", fontWeight: "500" }}>
+              indiefindr.com
+            </span>
+          </div>
+
+          <div
+            style={{
+              fontSize: "16px",
+              fontWeight: "600",
+              color: "#FFFFFF",
+              backgroundColor: "#000000",
+              padding: "8px 16px",
+              borderRadius: "8px",
+            }}
+          >
+            IndieFindr
           </div>
         </div>
       </div>
