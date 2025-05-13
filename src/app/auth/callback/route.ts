@@ -1,5 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
+import { db } from "@/db";
+import { profilesTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function GET(request: Request) {
   // The `/auth/callback` route is required for the server-side auth flow implemented
@@ -13,6 +16,23 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     await supabase.auth.exchangeCodeForSession(code);
+    
+    // Check if this is a new user who needs to go through onboarding
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      // Check if user already has a profile
+      const existingProfile = await db
+        .select()
+        .from(profilesTable)
+        .where(eq(profilesTable.id, user.id))
+        .limit(1);
+      
+      // If no profile exists, redirect to onboarding
+      if (existingProfile.length === 0) {
+        return NextResponse.redirect(`${origin}/onboarding`);
+      }
+    }
   }
 
   if (redirectTo) {
@@ -20,5 +40,5 @@ export async function GET(request: Request) {
   }
 
   // URL to redirect to after sign up process completes
-  return NextResponse.redirect(`${origin}/protected`);
+  return NextResponse.redirect(`${origin}/`);
 }
