@@ -10,6 +10,8 @@ interface SearchResultGame {
   steamAppid: string | null;
   descriptionShort: string | null;
   // Add other relevant fields if needed
+  // We need rawData for image fallbacks in search results
+  rawData?: any | null; // Using 'any' for now, or could use SteamRawData if imported
 }
 
 export async function GET(request: Request) {
@@ -41,6 +43,7 @@ export async function GET(request: Request) {
         externalId: schema.externalSourceTable.externalId,
         steamAppid: schema.externalSourceTable.steamAppid,
         descriptionShort: schema.externalSourceTable.descriptionShort,
+        rawData: schema.externalSourceTable.rawData,
       })
       .from(schema.externalSourceTable)
       .where(
@@ -68,6 +71,7 @@ export async function GET(request: Request) {
           externalId: schema.externalSourceTable.externalId,
           steamAppid: schema.externalSourceTable.steamAppid,
           descriptionShort: schema.externalSourceTable.descriptionShort,
+          rawData: schema.externalSourceTable.rawData,
         })
         .from(schema.externalSourceTable)
         .where(or(...conditions))
@@ -104,6 +108,7 @@ export async function GET(request: Request) {
       externalId: game.externalId,
       steamAppid: game.steamAppid,
       descriptionShort: game.descriptionShort,
+      rawData: game.rawData,
     }));
 
     return NextResponse.json(formattedResults);

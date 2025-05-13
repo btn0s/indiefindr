@@ -284,16 +284,13 @@ export function GameCard({
                 </div>
               )}
             </div>
-            {/* Replace cover art div with GameImage */}
-            <GameImage
-              altText={coverAltText}
-              potentialImageUrls={potentialCoverUrls}
-              sizes={coverImageSizes}
-              aspectRatioClassName="aspect-cover-art border-white/20 border rounded"
-              imageClassName="object-cover"
-              unoptimized={true} // Assuming unoptimized is desired here
-              placeholderClassName="border-white/20 border rounded"
-            />
+            <div className="w-1/3">
+              <GameImage
+                altText={coverAltText}
+                potentialImageUrls={potentialCoverUrls}
+                sizes={coverImageSizes}
+              />
+            </div>
           </div>
         </CardContent>
       </Link>

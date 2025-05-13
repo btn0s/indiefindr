@@ -9,22 +9,12 @@ interface GameImageProps {
   altText: string;
   potentialImageUrls: string[];
   sizes: string; // Make sizes required for explicit control
-  aspectRatioClassName?: string; // Optional class for aspect ratio
-  imageClassName?: string; // Optional class for the Image component itself
-  placeholderClassName?: string; // Optional class for the placeholder div
-  priority?: boolean; // Optional priority prop
-  unoptimized?: boolean; // Optional unoptimized prop
 }
 
 export function GameImage({
   altText,
   potentialImageUrls,
   sizes,
-  aspectRatioClassName = "aspect-[16/9]", // Default aspect ratio
-  imageClassName = "object-cover", // Default image class
-  placeholderClassName,
-  priority = false,
-  unoptimized = false,
 }: GameImageProps) {
   const [imageIndex, setImageIndex] = useState(0);
 
@@ -44,8 +34,7 @@ export function GameImage({
       {currentImageUrl ? (
         <div
           className={cn(
-            "relative w-full overflow-hidden rounded-md border", // Base styling
-            aspectRatioClassName // Apply aspect ratio class
+            "relative w-full overflow-hidden rounded-md border aspect-cover-art" // Base styling
           )}
         >
           <Image
@@ -54,19 +43,15 @@ export function GameImage({
             alt={altText}
             fill
             sizes={sizes}
-            className={cn(imageClassName)} // Apply image class
+            className="object-cover" // Apply image class
             onError={handleImageError}
-            priority={priority}
-            unoptimized={unoptimized}
           />
         </div>
       ) : (
         // Placeholder if no image is found or all fallbacks fail
         <div
           className={cn(
-            "flex items-center justify-center rounded-md bg-muted text-muted-foreground shadow-sm",
-            aspectRatioClassName, // Apply aspect ratio to placeholder
-            placeholderClassName // Apply custom placeholder class
+            "flex items-center justify-center rounded-md bg-muted text-muted-foreground shadow-sm aspect-cover-art"
           )}
         >
           <div className="flex flex-col items-center gap-1 text-center p-1">
