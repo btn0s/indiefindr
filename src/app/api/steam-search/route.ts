@@ -13,6 +13,15 @@ interface SteamSearchResponse {
   error?: string;
 }
 
+/**
+ * Steam search API endpoint
+ * 
+ * TODO: Future improvements:
+ * - Add rate limiting to prevent abuse
+ * - Implement caching to reduce API calls to Steam
+ * - Add pagination for large result sets
+ * - Consider using the official Steam Web API with an API key for more reliable access
+ */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q");
@@ -71,4 +80,3 @@ export async function GET(request: Request) {
     );
   }
 }
-

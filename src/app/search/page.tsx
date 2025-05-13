@@ -294,6 +294,14 @@ async function getPopularGames(limit: number = 6): Promise<DisplayGame[]> {
   }
 }
 
+/**
+ * Performs a search against the Steam API
+ * 
+ * TODO: Future improvements:
+ * - Add loading state indicator during Steam search
+ * - Implement pagination for large result sets
+ * - Add error handling with retry logic
+ */
 async function performSteamSearch(
   query: string
 ): Promise<{
