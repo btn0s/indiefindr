@@ -213,9 +213,29 @@ export function GameCard({
           ) : null}
 
           {/* Two column layout */}
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
+            <div className="h-full w-auto flex-1 border-white/20 border rounded overflow-hidden relative bg-muted aspect-cover-art">
+              {imageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt={game.title ? `${game.title} Icon` : "Game Icon"}
+                  fill
+                  sizes="500px"
+                  className="object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      "/placeholder-game.jpg";
+                    (e.target as HTMLImageElement).classList.add("opacity-50");
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <ImageOff className="h-6 w-6 text-muted-foreground" />
+                </div>
+              )}
+            </div>
             {/* Left column: Title and description */}
-            <div className="w-full flex flex-col justify-between flex-1">
+            <div className="flex flex-col justify-between w-2/3 gap-4">
               <div>
                 <h3
                   className="text-base sm:text-lg font-semibold truncate group-hover/card:text-primary transition-colors"
@@ -240,28 +260,6 @@ export function GameCard({
                       +{game.tags.length - 3}
                     </Badge>
                   )}
-                </div>
-              )}
-            </div>
-
-            {/* Right column: Image */}
-            <div className="w-64 border-white/20 border flex-none rounded overflow-hidden relative bg-muted aspect-cover-art">
-              {imageUrl ? (
-                <Image
-                  src={imageUrl}
-                  alt={game.title ? `${game.title} Icon` : "Game Icon"}
-                  fill
-                  sizes="96px"
-                  className="object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      "/placeholder-game.jpg";
-                    (e.target as HTMLImageElement).classList.add("opacity-50");
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-muted">
-                  <ImageOff className="h-6 w-6 text-muted-foreground" />
                 </div>
               )}
             </div>

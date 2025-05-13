@@ -9,7 +9,7 @@ export default defineConfig({
   out: "./src/db/migrations",
   dbCredentials: {
     // Use environment variables for Supabase connection string
-    url: process.env.DATABASE_DIRECT_URL!,
+    url: process.env.DATABASE_URL!,
   },
   verbose: true,
   strict: true,
