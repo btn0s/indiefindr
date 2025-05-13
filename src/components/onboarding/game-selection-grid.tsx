@@ -154,7 +154,7 @@ export function GameSelectionGrid({ games }: GameSelectionGridProps) {
               <Card key={game.id} className="overflow-hidden">
                 <GameImage
                   altText={game.title || "Game image"}
-                  gameData={game.rawData}
+                  gameData={game.rawData || null}
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   variant="plain"
                 />
