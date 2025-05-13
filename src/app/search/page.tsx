@@ -474,54 +474,44 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           </>
         ) : (
           <div className="space-y-8">
-            {/* Recently Added Games */}
             <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recently Added</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {recentGames.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {recentGames.map((game) => (
-                        <GameCardMini
-                          key={game.id}
-                          game={game}
-                          detailsLinkHref={getGameUrl(game.id, game.title)}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      No recently added games found.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
               {/* Popular Games (Most Saved) */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Popular Games</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {popularGames.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {popularGames.map((game) => (
-                        <GameCardMini
-                          key={game.id}
-                          game={game}
-                          detailsLinkHref={getGameUrl(game.id, game.title)}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      No popular games found (based on saves).
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              <h2 className="text-2xl font-semibold">Popular Games</h2>
+              {popularGames.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {popularGames.map((game) => (
+                    <GameCardMini
+                      key={game.id}
+                      game={game}
+                      detailsLinkHref={getGameUrl(game.id, game.title)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  No popular games found (based on saves).
+                </p>
+              )}
+
+              {/* Recently Added Games */}
+              <div className="mt-8">
+                <h2 className="text-2xl font-semibold mb-4">Recently Added</h2>
+                {recentGames.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {recentGames.map((game) => (
+                      <GameCardMini
+                        key={game.id}
+                        game={game}
+                        detailsLinkHref={getGameUrl(game.id, game.title)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">
+                    No recently added games found.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { MediaCarousel } from "@/components/media-carousel";
 import type { SteamRawData, MediaItem, Movie, Screenshot } from "@/types/steam"; // Import shared types
 import { GameImage } from "@/components/game-image"; // Import the new client component
+import type { Metadata } from "next";
 
 // Function to fetch game data server-side
 async function getGame(id: string) {
@@ -51,6 +52,59 @@ interface GameDetailPageProps {
     id: string;
     name: string; // Keep name for potential future use or consistency
   }>;
+}
+
+export async function generateMetadata({
+  params,
+}: GameDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const game = await getGame(id);
+  const rawData = game.rawData as SteamRawData;
+
+  // Get the first screenshot URL if available
+  const firstScreenshot = rawData?.screenshots?.[0]?.path_full;
+
+  // Get the header image URL
+  const headerImage = game.steamAppid
+    ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
+    : null;
+
+  // Get the developer and publisher
+  const developer = rawData?.developers?.[0] || "Unknown Developer";
+  const publisher = rawData?.publishers?.[0] || "Unknown Publisher";
+
+  // Build a rich description combining various data points
+  const description = [
+    game.shortDescription,
+    `Developed by ${developer}.`,
+    `Published by ${publisher}.`,
+    game.tags?.length ? `Tags: ${game.tags.join(", ")}.` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    title: `${game.title} | IndieFindr`,
+    description,
+    openGraph: {
+      title: game.title || "Game Details",
+      description: game.shortDescription || "No description available.",
+      images: [
+        {
+          url: firstScreenshot || headerImage || "/placeholder-game.jpg",
+          width: 1200,
+          height: 630,
+          alt: game.title || "Game Screenshot",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: game.title || "Game Details",
+      description: game.shortDescription || "No description available.",
+      images: [firstScreenshot || headerImage || "/placeholder-game.jpg"],
+    },
+  };
 }
 
 // Make the component async to fetch data, destructure params directly

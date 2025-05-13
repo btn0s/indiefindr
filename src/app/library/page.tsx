@@ -76,7 +76,7 @@ export default async function ProfilePage() {
 
   return (
     <main className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6">My finds</h1>
+      <h1 className="text-3xl font-bold mb-6">My library</h1>
 
       {libraryGames.length === 0 ? (
         <p>Your library is empty. Discover games and add them!</p>
