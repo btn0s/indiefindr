@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import AuthButton from "@/components/header-auth";
 import { SubmitGameDialog } from "@/components/nav/submit-game-dialog";
 
@@ -25,6 +26,9 @@ export async function TopNav() {
             className="flex-grow"
             aria-label="Search games by title"
           />
+          <Button type="submit">
+            Submit Find
+          </Button>
         </form>
 
         <div className="flex items-center gap-2 flex-1 sm:flex-none sm:w-1/4 justify-end">
