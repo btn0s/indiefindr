@@ -8,6 +8,8 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { BookmarkPlus, BookmarkCheck, Eye } from "lucide-react";
+import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
+import { GameImage } from "./game-image"; // Import the reusable GameImage component
 
 interface GameCardMiniProps {
   game: {
@@ -15,6 +17,7 @@ interface GameCardMiniProps {
     title: string | null;
     steamAppid: string | null;
     descriptionShort?: string | null;
+    rawData?: SteamRawData | null; // Add rawData prop
   };
   detailsLinkHref: string;
   isInLibrary?: boolean;
@@ -31,9 +34,24 @@ export function GameCardMini({
   onRemoveFromLibrary,
   className,
 }: GameCardMiniProps) {
-  const imageUrl = game.steamAppid
+  // Define potential cover art URLs
+  const headerImageUrl = game.steamAppid
     ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
-    : "/placeholder-game.jpg"; // Ensure this placeholder exists in /public
+    : null;
+  const rawData = game.rawData;
+  const potentialCoverUrls = [
+    headerImageUrl, // 1. header.jpg (from steamAppid)
+    rawData?.capsule_image, // 2. capsule_image (medium)
+    rawData?.capsule_imagev5, // 3. capsule_imagev5 (small)
+    rawData?.screenshots?.[0]?.path_full, // 4. First full screenshot
+    rawData?.background_raw, // 5. Raw background
+    rawData?.background, // 6. Processed background
+  ].filter((url): url is string => typeof url === "string" && url.length > 0);
+
+  const altText = game.title
+    ? `${game.title} header image`
+    : "Game header image";
+  const imageSizes = "(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw";
 
   const handleAdd = async (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent navigation if card is wrapped in Link
@@ -70,21 +88,14 @@ export function GameCardMini({
       )}
     >
       <Link href={detailsLinkHref} className="block group">
-        <div className="aspect-[460/215] overflow-hidden bg-muted relative">
-          <Image
-            src={imageUrl}
-            alt={
-              game.title ? `${game.title} header image` : "Game header image"
-            }
-            fill
-            className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-            onError={(e) => {
-              // Fallback for Next/Image onError
-              (e.target as HTMLImageElement).src = "/placeholder-game.jpg";
-            }}
-            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
-          />
-        </div>
+        <GameImage
+          altText={altText}
+          potentialImageUrls={potentialCoverUrls}
+          sizes={imageSizes}
+          aspectRatioClassName="aspect-[460/215]" // Specific aspect ratio for mini card
+          imageClassName="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+          unoptimized={true} // Assuming unoptimized is desired here
+        />
       </Link>
       <CardContent className="p-3 flex-grow flex flex-col">
         <Link href={detailsLinkHref} className="block">

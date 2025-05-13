@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"; // For potential actions later
 import Link from "next/link";
 import { MediaCarousel } from "@/components/media-carousel";
 import type { SteamRawData, MediaItem, Movie, Screenshot } from "@/types/steam"; // Import shared types
+import { GameImage } from "@/components/game-image"; // Import the new client component
 
 // Function to fetch game data server-side
 async function getGame(id: string) {
@@ -59,13 +60,22 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
 
   console.log(game);
 
-  // Header image from Steam
-  const headerImageUrl = game.steamAppid
-    ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
-    : null;
-
   // Cast rawData to our type and extract data
   const rawData = game.rawData as SteamRawData;
+
+  // --- Define potential image URLs in order of preference ---
+  const potentialImageUrls = [
+    game.steamAppid
+      ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
+      : null, // 1. header.jpg
+    rawData?.capsule_image, // 2. capsule_image (medium)
+    rawData?.capsule_imagev5, // 3. capsule_imagev5 (small)
+    rawData?.screenshots?.[0]?.path_full, // 4. First full screenshot
+    rawData?.background_raw, // 5. Raw background
+    rawData?.background, // 6. Processed background
+  ].filter((url): url is string => typeof url === "string" && url.length > 0); // Filter out null/undefined/empty strings and type guard
+
+  // Extract other data using rawData
   const screenshots = rawData?.screenshots || [];
   const movies = rawData?.movies || [];
   const developer = rawData?.developers?.[0] || "Unknown Developer";
@@ -145,21 +155,15 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
 
         {/* Right Column: Header Image with Action Buttons */}
         <div className="md:w-1/3 shrink-0 space-y-4">
-          {headerImageUrl && (
-            <div className="rounded-md overflow-hidden shadow-sm aspect-[460/215] relative w-full">
-              <Image
-                src={headerImageUrl}
-                alt={
-                  game.title
-                    ? `${game.title} Header Image`
-                    : "Game Header Image"
-                }
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
-                className="object-cover"
-              />
-            </div>
-          )}
+          {/* Use the new client component for rendering the image with fallback */}
+          <GameImage
+            altText={game.title ? `${game.title} Header` : "Game Header"}
+            potentialImageUrls={potentialImageUrls}
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw" // Sizes for detail page context
+            aspectRatioClassName="aspect-[460/215] shadow-sm" // Specific aspect ratio and style for detail page
+            priority={true} // Prioritize this image on the detail page
+            unoptimized={true} // Assuming unoptimized is needed here
+          />
 
           {/* Action Buttons */}
           {game.steamAppid && (

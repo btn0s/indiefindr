@@ -29,6 +29,7 @@ import { MediaCarousel } from "@/components/media-carousel"; // Import MediaCaro
 import type { MediaItem, SteamRawData, Movie, Screenshot } from "@/types/steam"; // Updated import path
 import { toast } from "sonner";
 import { useLibrary } from "@/contexts/LibraryContext"; // Import the hook
+import { GameImage } from "./game-image"; // Import the reusable GameImage component
 
 interface GameCardProps {
   game: {
@@ -44,11 +45,15 @@ interface GameCardProps {
   style?: React.CSSProperties; // Allow passing style
 }
 
-export function GameCard({ game, detailsLinkHref, className, style }: GameCardProps) {
+export function GameCard({
+  game,
+  detailsLinkHref,
+  className,
+  style,
+}: GameCardProps) {
   const [hasCopied, setHasCopied] = React.useState(false);
   const [canShare, setCanShare] = React.useState(false);
   const [mediaError, setMediaError] = useState(false);
-  const [coverArtError, setCoverArtError] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -63,10 +68,9 @@ export function GameCard({ game, detailsLinkHref, className, style }: GameCardPr
 
   const isInLibrary = isGameInLibrary(game.id);
 
-  // Reset media error state if the game data changes
+  // Reset media error state (only)
   useEffect(() => {
     setMediaError(false);
-    setCoverArtError(false);
   }, [game.id]);
 
   // Check if sharing is available
@@ -159,12 +163,21 @@ export function GameCard({ game, detailsLinkHref, className, style }: GameCardPr
     }
   };
 
+  // Define potential cover art URLs (keep this)
   const imageUrl = game.steamAppid
     ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
-    : null; // Set to null if no steamAppid to handle fallback better
-
-  // Get the first video or screenshot from rawData
+    : null;
   const rawData = game.rawData;
+  const potentialCoverUrls = [
+    imageUrl, // 1. header.jpg
+    rawData?.capsule_image, // 2. capsule_image (medium)
+    rawData?.capsule_imagev5, // 3. capsule_imagev5 (small)
+    rawData?.screenshots?.[0]?.path_full, // 4. First full screenshot
+    rawData?.background_raw, // 5. Raw background
+    rawData?.background, // 6. Processed background
+  ].filter((url): url is string => typeof url === "string" && url.length > 0);
+
+  // Get the first video or screenshot for the main media preview (keep this)
   const firstVideo = rawData?.movies?.[0];
   const firstScreenshot = rawData?.screenshots?.[0];
 
@@ -172,9 +185,11 @@ export function GameCard({ game, detailsLinkHref, className, style }: GameCardPr
     setMediaError(true);
   };
 
-  const handleCoverArtError = () => {
-    setCoverArtError(true);
-  };
+  // Define props for the GameImage cover art
+  const coverAltText = game.title
+    ? `${game.title} Cover Art`
+    : "Game Cover Art";
+  const coverImageSizes = "150px"; // Specific size for the small cover art
 
   return (
     <Card
@@ -269,27 +284,16 @@ export function GameCard({ game, detailsLinkHref, className, style }: GameCardPr
                 </div>
               )}
             </div>
-            <div className="h-full w-auto flex-1 border-white/20 border rounded overflow-hidden relative bg-muted aspect-cover-art flex items-center justify-center">
-              {coverArtError || !imageUrl ? (
-                <div className="text-muted-foreground flex flex-col items-center gap-1">
-                  <ImageOff className="h-6 w-6" />
-                  <span className="text-xs">No cover</span>
-                </div>
-              ) : (
-                <Image
-                  key={`${imageUrl}-cover`}
-                  src={imageUrl}
-                  alt={
-                    game.title ? `${game.title} Cover Art` : "Game Cover Art"
-                  }
-                  fill
-                  sizes="150px"
-                  className="object-cover"
-                  onError={handleCoverArtError}
-                  unoptimized
-                />
-              )}
-            </div>
+            {/* Replace cover art div with GameImage */}
+            <GameImage
+              altText={coverAltText}
+              potentialImageUrls={potentialCoverUrls}
+              sizes={coverImageSizes}
+              aspectRatioClassName="aspect-cover-art border-white/20 border rounded"
+              imageClassName="object-cover"
+              unoptimized={true} // Assuming unoptimized is desired here
+              placeholderClassName="border-white/20 border rounded"
+            />
           </div>
         </CardContent>
       </Link>
