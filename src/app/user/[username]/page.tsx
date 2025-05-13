@@ -62,11 +62,12 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     notFound(); // Or show a specific error page
   }
 
-  // 2. Fetch the logged-in user's session (now works correctly)
+  // 2. Fetch the *authenticated* logged-in user
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const loggedInUserId = session?.user?.id;
+    data: { user: loggedInUser },
+  } = await supabase.auth.getUser();
+  const loggedInUserId = loggedInUser?.id;
+
   // Ensure profileData is defined before accessing its id
   const isOwner = !!profileData && loggedInUserId === profileData.id;
 
@@ -127,7 +128,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             {isOwner && (
               <Button variant="outline" size="sm" asChild>
                 {/* TODO: Link to an actual edit profile page/modal */}
-                <Link href="/profile/edit">Edit Profile</Link>
+                <Link href="/settings/profile">Edit Profile</Link>
               </Button>
             )}
           </div>

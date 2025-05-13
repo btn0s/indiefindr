@@ -67,32 +67,11 @@ export const externalSourceTable = pgTable(
   }
 );
 
-export const libraryTable = pgTable(
-  "library",
-  {
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => authUsersTable.id, { onDelete: "cascade" }), // Assuming auth.users table will be available or referenced differently
-    gameRefId: bigint("game_ref_id", { mode: "number" })
-      .notNull()
-      .references(() => externalSourceTable.id, { onDelete: "cascade" }),
-    addedAt: timestamp("added_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.userId, table.gameRefId] }),
-      userIdIdx: index("idx_library_user_id").on(table.userId),
-    };
-  }
-);
-
-// Add the new profiles table
+// Add the profiles table first so it can be referenced by libraryTable
 export const profilesTable = pgTable(
   "profiles",
   {
-    id: uuid("id")
-      .primaryKey()
-      .references(() => authUsersTable.id, { onDelete: "cascade" }),
+    id: uuid("id").primaryKey(), // No reference to authUsersTable - managed by trigger/FK in database
     username: text("username").unique().notNull(),
     fullName: text("full_name"),
     avatarUrl: text("avatar_url"),
@@ -107,19 +86,35 @@ export const profilesTable = pgTable(
   }
 );
 
-// Placeholder for Supabase auth.users table if you want to reference it directly
-// This is often managed by Supabase itself, but Drizzle needs a way to know its structure for FKs.
-// You might not need to explicitly define it if Supabase handles FKs without Drizzle's full awareness,
-// or if you manage relations differently (e.g., not enforcing FK at Drizzle level but at DB level).
+export const libraryTable = pgTable(
+  "library",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profilesTable.id, { onDelete: "cascade" }), // Now referencing profiles table instead of auth users
+    gameRefId: bigint("game_ref_id", { mode: "number" })
+      .notNull()
+      .references(() => externalSourceTable.id, { onDelete: "cascade" }),
+    addedAt: timestamp("added_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.userId, table.gameRefId] }),
+      userIdIdx: index("idx_library_user_id").on(table.userId),
+    };
+  }
+);
+
+// We still need this for Supabase Auth reference in the database
+// This is kept for documentation purposes but we now avoid direct references to it
 export const authUsersTable = pgTable(
   "users",
   {
     id: uuid("id").primaryKey(),
-    // ... other columns from auth.users you might need to reference
   },
   (table) => {
     return {
       $schema: "auth",
     };
   }
-); // Important: specify the 'auth' schema
+);
