@@ -40,8 +40,8 @@ interface GameCardProps {
   };
   detailsLinkHref: string; // Add href prop for consistency
   isInLibrary: boolean;
-  onAddToLibrary: (gameId: number) => Promise<any>;
-  onRemoveFromLibrary: (gameId: number) => Promise<any>;
+  onAddToLibrary?: (gameId: number) => Promise<any>;
+  onRemoveFromLibrary?: (gameId: number) => Promise<any>;
   className?: string;
   style?: React.CSSProperties; // Allow passing style
 }
@@ -213,7 +213,7 @@ export function GameCard({
           ) : null}
 
           {/* Two column layout */}
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-4">
             <div className="flex flex-col justify-between w-2/3 gap-4">
               <div>
                 <h3

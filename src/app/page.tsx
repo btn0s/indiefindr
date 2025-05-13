@@ -1,29 +1,26 @@
 import React from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { GameCard } from "@/components/game-card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { SearchIcon, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import {
   addToLibrary,
   removeFromLibrary,
   getLibraryGameIds,
 } from "@/app/actions/library";
 import { getPersonalizedFeed } from "@/app/actions/feed"; // Import the feed action
+import { getRecentGames } from "@/app/actions/games"; // Import the recent games action
 import { createClient } from "@/utils/supabase/server";
 import { getGameUrl } from "@/utils/game-url"; // Import the utility function
 import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
 
-// Define the expected shape of game data from the feed
-// This should ideally match FeedGame interface in feed.ts
-interface FeedGame {
+// Define the shared shape of game data for both feed and recent games
+interface DisplayGame {
   id: number;
   title: string | null;
   shortDescription: string | null;
-  steamAppid: string | null; // Add steamAppid
-  tags: string[] | null; // Add tags array
-  rawData?: SteamRawData | null; // Add rawData to match GameCard's needs
+  steamAppid: string | null;
+  tags: string[] | null;
+  rawData?: SteamRawData | null;
 }
 
 export default async function HomePage() {
@@ -32,38 +29,53 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fetch feed and library data concurrently
-  const feedResultPromise = getPersonalizedFeed();
-  const libraryResultPromise = getLibraryGameIds();
-
-  const [feedResult, libraryResult] = await Promise.all([
-    feedResultPromise,
-    libraryResultPromise,
-  ]);
-
-  // Process feed results
-  let feedGames: FeedGame[] = [];
-  let feedError: string | null = null;
-  if (feedResult.success && feedResult.data) {
-    feedGames = feedResult.data;
-  } else if (!feedResult.success) {
-    feedError = feedResult.message || "Failed to load personalized feed.";
-    console.error("Feed Error:", feedError);
-  }
-
-  // Process library results
+  let games: DisplayGame[] = [];
+  let gameError: string | null = null;
   let libraryGameIds = new Set<number>();
   let libraryError: string | null = null;
-  if (libraryResult.success && libraryResult.data) {
-    libraryGameIds = new Set(libraryResult.data);
-  } else if (!libraryResult.success) {
-    libraryError = libraryResult.error || "Failed to load user library.";
-    console.error("Library Error:", libraryError);
-    // If library fails, feed might still work, but isInLibrary will be false.
-    // This is acceptable for v0.
+
+  if (user) {
+    // Logged-in user: Fetch personalized feed and library
+    const feedResultPromise = getPersonalizedFeed();
+    const libraryResultPromise = getLibraryGameIds();
+
+    const [feedResult, libraryResult] = await Promise.all([
+      feedResultPromise,
+      libraryResultPromise,
+    ]);
+
+    // Process feed results
+    if (feedResult.success && feedResult.data) {
+      games = feedResult.data;
+    } else if (!feedResult.success) {
+      gameError = feedResult.message || "Failed to load personalized feed.";
+      console.error("Feed Error:", gameError);
+    }
+
+    // Process library results
+    if (libraryResult.success && libraryResult.data) {
+      libraryGameIds = new Set(libraryResult.data);
+    } else if (!libraryResult.success) {
+      libraryError = libraryResult.error || "Failed to load user library.";
+      console.error("Library Error:", libraryError);
+      // Note: If library fails, feed might still work, but isInLibrary will be false.
+    }
+  } else {
+    // Logged-out user: Fetch recent games
+    const recentGamesResult = await getRecentGames();
+
+    if (recentGamesResult.success && recentGamesResult.data) {
+      games = recentGamesResult.data;
+    } else if (!recentGamesResult.success) {
+      gameError = recentGamesResult.message || "Failed to load recent games.";
+      console.error("Recent Games Error:", gameError);
+    }
+    // No library data for logged-out users
+    libraryGameIds = new Set<number>();
   }
 
-  const hasError = feedError || libraryError;
+  const hasError = gameError || libraryError;
+  const showEmptyMessage = !gameError && games.length === 0;
 
   return (
     <main className="">
@@ -73,41 +85,39 @@ export default async function HomePage() {
           <AlertCircle className="h-5 w-5" />
           <div>
             <p className="font-semibold">Could not load all data:</p>
-            {feedError && <p className="text-sm">- Feed: {feedError}</p>}
+            {gameError && <p className="text-sm">- Games: {gameError}</p>}
             {libraryError && (
               <p className="text-sm">- Library: {libraryError}</p>
             )}
           </div>
         </div>
       )}
-
-      {/* Feed Content */}
-      {!feedError && feedGames.length === 0 ? (
+      {/* Content: Empty Message or Game List */}
+      {showEmptyMessage ? (
         <p className="text-muted-foreground">
-          Your feed is empty. Add some games to your library to get
-          recommendations, or try searching!
+          {user
+            ? "Your feed is empty. Add games to your library for recommendations!"
+            : "No recent games found."}
         </p>
-      ) : !feedError ? (
+      ) : !gameError ? ( // Only show games if there wasn't a game fetch error
         <div className="flex flex-col gap-4">
-          {/* GameCard now needs to handle linking internally */}
-          {feedGames.map((game) => {
-            // Calculate the detail link URL
+          {games.map((game) => {
             const detailsLinkHref = getGameUrl(game.id, game.title);
             return (
               <GameCard
                 key={game.id}
-                game={game} // Pass the whole game object which now includes rawData
-                detailsLinkHref={detailsLinkHref} // Pass the calculated href
+                game={game} // Pass the whole game object
+                detailsLinkHref={detailsLinkHref}
                 isInLibrary={libraryGameIds.has(game.id)}
-                onAddToLibrary={addToLibrary}
-                onRemoveFromLibrary={removeFromLibrary}
+                // Only pass library actions if the user is logged in
+                onAddToLibrary={user ? addToLibrary : undefined}
+                onRemoveFromLibrary={user ? removeFromLibrary : undefined}
               />
             );
           })}
         </div>
-      ) : // If feedError is present, don't show the empty message or the list
-      // The error message above is sufficient.
-      null}
+      ) : null}{" "}
+      {/* Don't show anything if gameError is present */}
     </main>
   );
 }
