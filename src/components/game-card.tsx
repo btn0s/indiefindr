@@ -16,7 +16,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { BookmarkPlus, BookmarkCheck, Eye, ImageOff } from "lucide-react";
+import {
+  BookmarkPlus,
+  BookmarkCheck,
+  Eye,
+  ImageOff,
+  Share2,
+} from "lucide-react";
 import { MediaCarousel } from "@/components/media-carousel"; // Import MediaCarousel
 import type { MediaItem, SteamRawData, Movie, Screenshot } from "@/types/steam"; // Updated import path
 
@@ -102,6 +108,37 @@ export function GameCard({
         await onRemoveFromLibrary(game.id);
       } catch (error) {
         console.error("Error removing from library:", error);
+      }
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: game.title || "Check out this game",
+          text:
+            game.shortDescription ||
+            "Found this interesting game on IndieFindr",
+          url: window.location.origin + detailsLinkHref,
+        });
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Error sharing:", error);
+        }
+      }
+    } else {
+      // Fallback to copying link to clipboard
+      try {
+        await navigator.clipboard.writeText(
+          window.location.origin + detailsLinkHref
+        );
+        // You might want to show a toast notification here
+      } catch (error) {
+        console.error("Error copying to clipboard:", error);
       }
     }
   };
@@ -223,10 +260,21 @@ export function GameCard({
 
       <CardFooter className="p-3 pt-2 flex items-center gap-2">
         <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.href = detailsLinkHref;
+          }}
+          className="flex-1"
+        >
+          <Eye className="mr-1.5 h-3.5 w-3.5" />
+          Details
+        </Button>
+        <Button
           variant={isInLibrary ? "secondary" : "default"}
           size="sm"
           onClick={isInLibrary ? handleRemove : handleAdd}
-          title={isInLibrary ? "Remove from Library" : "Add to Library"}
           className="flex-1"
         >
           {isInLibrary ? (
@@ -235,6 +283,15 @@ export function GameCard({
             <BookmarkPlus className="mr-1.5 h-3.5 w-3.5" />
           )}
           {isInLibrary ? "Saved" : "Save"}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleShare}
+          className="flex-1"
+        >
+          <Share2 className="mr-1.5 h-3.5 w-3.5" />
+          Share
         </Button>
       </CardFooter>
     </Card>
