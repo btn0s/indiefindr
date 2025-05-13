@@ -130,7 +130,7 @@ export function MediaCarousel({ mediaItems, gameTitle }: MediaCarouselProps) {
         <CarouselContent>
           {mediaItems.map((item, index) => (
             <CarouselItem key={index}>
-              <div className="aspect-video relative rounded-lg overflow-hidden bg-black">
+              <div className="aspect-video relative rounded-lg overflow-hidden bg-black border">
                 {item.type === "image" ? (
                   <Image
                     src={(item.data as any).path_full}

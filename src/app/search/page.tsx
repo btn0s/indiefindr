@@ -8,6 +8,7 @@ import { GameCardMini } from "@/components/game-card-mini";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import type { SteamRawData } from "@/types/steam";
 
 const Loading = () => {
   return (
@@ -28,13 +29,13 @@ const Loading = () => {
   );
 };
 
-// SearchResultGame interface is defined here as the client component was removed
 interface SearchResultGame {
   id: number;
   title: string | null;
   externalId: string;
   steamAppid: string | null;
   descriptionShort: string | null;
+  rawData?: SteamRawData | null;
 }
 
 interface SearchPageProps {
@@ -66,6 +67,7 @@ async function performSearch(query: string): Promise<{
         externalId: schema.externalSourceTable.externalId,
         steamAppid: schema.externalSourceTable.steamAppid,
         descriptionShort: schema.externalSourceTable.descriptionShort,
+        rawData: schema.externalSourceTable.rawData,
       })
       .from(schema.externalSourceTable)
       .where(
@@ -76,6 +78,11 @@ async function performSearch(query: string): Promise<{
       )
       .limit(20)
       .execute();
+
+    console.log(
+      "[Server Search] DB results after initial query:",
+      searchResultsDb
+    );
 
     if (searchResultsDb.length === 0 && queryTerms.length > 1) {
       const conditions = queryTerms.map((term) =>
@@ -92,11 +99,17 @@ async function performSearch(query: string): Promise<{
           externalId: schema.externalSourceTable.externalId,
           steamAppid: schema.externalSourceTable.steamAppid,
           descriptionShort: schema.externalSourceTable.descriptionShort,
+          rawData: schema.externalSourceTable.rawData,
         })
         .from(schema.externalSourceTable)
         .where(or(...conditions))
         .limit(20)
         .execute();
+
+      console.log(
+        "[Server Search] DB results after fallback query:",
+        searchResultsDb
+      );
     }
 
     console.log(
@@ -110,6 +123,7 @@ async function performSearch(query: string): Promise<{
         externalId: game.externalId,
         steamAppid: game.steamAppid,
         descriptionShort: game.descriptionShort,
+        rawData: game.rawData as SteamRawData | null,
       })
     );
 
@@ -146,6 +160,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const query = searchParams?.q || "";
   const { results, error } = await performSearch(query);
 
+  console.log("results being passed to page component:", results);
+
   return (
     <div className="container max-w-5xl mx-auto py-6">
       <div className="mb-8">
@@ -155,7 +171,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           <Input
             type="search"
             name="q"
-            defaultValue={query} // Use defaultValue for server-rendered input
+            defaultValue={query}
             placeholder="Search games by title..."
             className="flex-1"
             aria-label="Search games by title"
@@ -175,7 +191,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           </div>
         )}
 
-        {/* Show no results message only if a query was made and there are no errors */}
         {query && results.length === 0 && !error && (
           <div className="text-center py-12">
             <p className="text-lg text-muted-foreground">
@@ -193,6 +208,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 title: game.title,
                 steamAppid: game.steamAppid,
                 descriptionShort: game.descriptionShort,
+                rawData: game.rawData,
               }}
               detailsLinkHref={getGameUrl(game.id, game.title)}
             />

@@ -204,7 +204,7 @@ export function GameCard({
       <Link href={detailsLinkHref} className="flex-grow">
         <CardContent className="p-3 flex flex-col gap-4">
           {/* Media Preview */}
-          <div className="rounded-md overflow-hidden aspect-video relative bg-black flex items-center justify-center">
+          <div className="rounded-md overflow-hidden aspect-video relative bg-black flex items-center justify-center border">
             {mediaError ? (
               <div className="text-muted-foreground flex flex-col items-center gap-1">
                 <ImageOff className="h-8 w-8" />
@@ -287,7 +287,7 @@ export function GameCard({
             <div className="w-1/3">
               <GameImage
                 altText={coverAltText}
-                potentialImageUrls={potentialCoverUrls}
+                gameData={rawData ?? null}
                 sizes={coverImageSizes}
               />
             </div>

@@ -158,11 +158,8 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
           {/* Use the new client component for rendering the image with fallback */}
           <GameImage
             altText={game.title ? `${game.title} Header` : "Game Header"}
-            potentialImageUrls={potentialImageUrls}
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw" // Sizes for detail page context
-            aspectRatioClassName="aspect-[460/215] shadow-sm" // Specific aspect ratio and style for detail page
-            priority={true} // Prioritize this image on the detail page
-            unoptimized={true} // Assuming unoptimized is needed here
+            gameData={rawData}
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
           />
 
           {/* Action Buttons */}

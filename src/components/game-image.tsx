@@ -4,37 +4,60 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { SteamRawData } from "@/types/steam";
 
 interface GameImageProps {
+  gameData: SteamRawData | null; // Use the combined game data type
   altText: string;
-  potentialImageUrls: string[];
-  sizes: string; // Make sizes required for explicit control
+  sizes: string;
+  variant?: "outlined" | "plain";
 }
 
 export function GameImage({
   altText,
-  potentialImageUrls,
+  gameData,
   sizes,
+  variant = "outlined",
 }: GameImageProps) {
   const [imageIndex, setImageIndex] = useState(0);
+  const [urlsToTry, setUrlsToTry] = useState<string[]>([]);
 
-  // Reset index if the potential URLs change
+  console.log("gameData", gameData);
+
+  // Construct the list of URLs to try from gameData
   useEffect(() => {
-    setImageIndex(0);
-  }, [potentialImageUrls]); // Re-run effect when the URL list changes
+    const headerUrl = gameData?.header_image;
+    // Safely access screenshots within the potentially null rawData
+    const screenshotUrls =
+      gameData?.rawData?.screenshots
+        ?.map((s: any) => s?.path_full) // Access path_full safely
+        // Filter out any null, undefined, or empty strings from the map result
+        .filter(
+          (url: any): url is string => typeof url === "string" && url.length > 0
+        ) ?? [];
+
+    const combinedUrls = [headerUrl, ...screenshotUrls].filter(
+      (url): url is string => Boolean(url) && typeof url === "string"
+    );
+
+    setUrlsToTry(combinedUrls);
+    setImageIndex(0); // Reset index when gameData changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameData]); // Re-run effect only when gameData changes
 
   const handleImageError = () => {
     setImageIndex((prevIndex) => prevIndex + 1);
   };
 
-  const currentImageUrl = potentialImageUrls[imageIndex];
+  const currentImageUrl = urlsToTry[imageIndex];
 
   return (
     <>
       {currentImageUrl ? (
         <div
           className={cn(
-            "relative w-full overflow-hidden rounded-md border aspect-cover-art" // Base styling
+            "relative w-full overflow-hidden aspect-cover-art",
+            variant === "outlined" && "border rounded-md"
           )}
         >
           <Image
