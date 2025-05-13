@@ -6,6 +6,8 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { getGameUrl } from "@/utils/game-url";
 import type { SteamRawData } from "@/types/steam";
 
+const API_BATCH_SIZE = 4; // Match the default API batch size
+
 // Consistent type for game data from API responses
 interface ApiGame {
   id: number;
@@ -37,9 +39,17 @@ export function Feed({ isLoggedIn }: FeedDisplayProps) {
       setError(null);
 
       try {
-        // TODO: Add query parameter for pagination (e.g., ?page=${currentPage})
-        // For now, /api/feed and /api/games/recent don't support pagination yet
-        const endpoint = isLoggedIn ? `/api/feed` : `/api/games/recent`;
+        // Construct endpoint with pagination parameters
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: API_BATCH_SIZE.toString(),
+        });
+        const endpoint = isLoggedIn
+          ? `/api/feed?${params.toString()}`
+          : `/api/games/recent?${params.toString()}`; // Assuming /api/games/recent also supports pagination
+
+        console.log(`Fetching feed: ${endpoint}`); // Optional: for debugging
+
         const response = await fetch(endpoint);
 
         if (!response.ok) {
@@ -57,12 +67,11 @@ export function Feed({ isLoggedIn }: FeedDisplayProps) {
           setGames((prevGames) =>
             currentPage === 1 ? result.data : [...prevGames, ...result.data]
           );
-          // TODO: Update hasMore based on API response (e.g., if result.data.length < PAGE_SIZE)
-          // For now, assume one page fetch, so no more after the first successful fetch.
-          setHasMore(false);
+          // Update hasMore based on the number of items returned
+          setHasMore(result.data.length === API_BATCH_SIZE);
         } else {
           setError(result.message || "Could not load games.");
-          setHasMore(false);
+          setHasMore(false); // Stop fetching if API reports error
         }
       } catch (err: any) {
         console.error("Fetch feed error:", err);

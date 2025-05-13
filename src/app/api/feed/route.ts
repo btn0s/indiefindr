@@ -15,7 +15,7 @@ import type { SteamRawData } from "@/types/steam";
 
 const VECTOR_DIMENSIONS = 384; // Assuming this is defined elsewhere, place appropriately
 const MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING = 3; // Example value
-const FEED_SIZE = 20; // Example value
+const DEFAULT_FEED_BATCH_SIZE = 4; // Renamed and updated
 
 interface FeedGame {
   id: number;
@@ -49,7 +49,7 @@ function calculateAverageVector(vectors: number[][]): number[] | null {
   return sum.map((s) => s / vectors.length);
 }
 
-export async function GET(): Promise<NextResponse<FeedResult>> {
+export async function GET(request: Request): Promise<NextResponse<FeedResult>> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -63,6 +63,15 @@ export async function GET(): Promise<NextResponse<FeedResult>> {
       { status: 401 }
     );
   }
+
+  // Get page and limit from query parameters
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(
+    searchParams.get("limit") || DEFAULT_FEED_BATCH_SIZE.toString(),
+    10
+  );
+  const offset = (page - 1) * limit;
 
   // 1. Get user's library
   const libraryResult = await getLibraryGameIds();
@@ -80,10 +89,11 @@ export async function GET(): Promise<NextResponse<FeedResult>> {
   const libraryGameIds = libraryResult.data;
 
   try {
-    let recommendations: FeedGame[] = [];
+    let recommendationIds: number[] = [];
     // Ensure excludedIds always has at least one element for notInArray, or handle empty library differently if DB requires
     const excludedIds = libraryGameIds.length > 0 ? libraryGameIds : [-1];
 
+    // 1. Attempt to get recommendations based on average library embedding
     if (libraryGameIds.length >= MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING) {
       const libraryEmbeddingsResult = await db
         .select({ embedding: schema.externalSourceTable.embedding })
@@ -104,16 +114,9 @@ export async function GET(): Promise<NextResponse<FeedResult>> {
       const averageVector = calculateAverageVector(validEmbeddings);
 
       if (averageVector) {
-        // Explicitly type the expected shape for recommendations
-        const resultsFromDb = await db
-          .select({
-            id: schema.externalSourceTable.id,
-            title: schema.externalSourceTable.title,
-            shortDescription: schema.externalSourceTable.descriptionShort,
-            steamAppid: schema.externalSourceTable.steamAppid,
-            tags: schema.externalSourceTable.tags,
-            rawData: schema.externalSourceTable.rawData,
-          })
+        // Step 1a: Get IDs based on vector similarity
+        const results = await db
+          .select({ id: schema.externalSourceTable.id })
           .from(schema.externalSourceTable)
           .where(
             and(
@@ -124,18 +127,29 @@ export async function GET(): Promise<NextResponse<FeedResult>> {
           .orderBy(
             sql`(${schema.externalSourceTable.embedding}) <=> ${JSON.stringify(averageVector)}`
           )
-          .limit(FEED_SIZE);
-        // Assign the potentially validated/cast results
-        recommendations = resultsFromDb.map((game) => ({
-          ...game,
-          rawData: game.rawData as SteamRawData | null, // Cast rawData
-        }));
+          .limit(limit)
+          .offset(offset);
+        recommendationIds = results.map((r) => r.id);
       }
     }
 
-    if (recommendations.length === 0) {
-      // Explicitly type the expected shape for recommendations
-      const fallbackResultsFromDb = await db
+    // 2. Fallback to newest games if no recommendations found yet
+    if (recommendationIds.length === 0) {
+      // Step 1b: Get IDs based on creation date (fallback)
+      const fallbackResults = await db
+        .select({ id: schema.externalSourceTable.id })
+        .from(schema.externalSourceTable)
+        .where(notInArray(schema.externalSourceTable.id, excludedIds))
+        .orderBy(desc(schema.externalSourceTable.createdAt))
+        .limit(limit)
+        .offset(offset);
+      recommendationIds = fallbackResults.map((r) => r.id);
+    }
+
+    // 3. Fetch full data for the final list of IDs
+    let recommendations: FeedGame[] = [];
+    if (recommendationIds.length > 0) {
+      const finalResults = await db
         .select({
           id: schema.externalSourceTable.id,
           title: schema.externalSourceTable.title,
@@ -145,13 +159,22 @@ export async function GET(): Promise<NextResponse<FeedResult>> {
           rawData: schema.externalSourceTable.rawData,
         })
         .from(schema.externalSourceTable)
-        .where(notInArray(schema.externalSourceTable.id, excludedIds))
-        .orderBy(desc(schema.externalSourceTable.createdAt))
-        .limit(FEED_SIZE);
-      recommendations = fallbackResultsFromDb.map((game) => ({
-        ...game,
-        rawData: game.rawData as SteamRawData | null, // Cast rawData
-      }));
+        .where(inArray(schema.externalSourceTable.id, recommendationIds));
+
+      // Optional: Re-order finalResults based on recommendationIds if needed
+      // (Drizzle/DB doesn't guarantee order preservation with inArray)
+      const orderMap = new Map(
+        recommendationIds.map((id, index) => [id, index])
+      );
+      recommendations = finalResults
+        .map((game) => ({
+          ...game,
+          rawData: game.rawData as SteamRawData | null, // Cast rawData
+        }))
+        .sort(
+          (a, b) =>
+            (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity)
+        );
     }
 
     return NextResponse.json({ success: true, data: recommendations });
@@ -169,3 +192,4 @@ export async function GET(): Promise<NextResponse<FeedResult>> {
     );
   }
 }
+
