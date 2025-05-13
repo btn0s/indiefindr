@@ -1,12 +1,6 @@
-"use client";
-
-import { hasEnvVars } from "@/utils/supabase/check-env-vars";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { createClient } from "@/utils/supabase/client";
-import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import {
@@ -18,41 +12,50 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
+import { createClient as createServerSupabaseClient } from "@/utils/supabase/server"; // Server client
+import { db } from "@/db"; // Server Drizzle client
+import { profilesTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation"; // For server-side redirect
+import { hasEnvVars } from "@/utils/supabase/check-env-vars"; // Keep this utility
 
-export default function AuthButton() {
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+// Define Profile type (can be shared or defined locally)
+type Profile = {
+  id: string;
+  username: string | null;
+  // Add other fields if needed, e.g., email for initials if not on auth.user
+  email?: string | null; // Assuming email might come from profile or auth user
+};
 
-  useEffect(() => {
-    async function getUser() {
-      try {
-        const supabase = createClient();
-        const { data } = await supabase.auth.getUser();
-        setUser(data.user);
-      } catch (error) {
-        console.error("Error getting user:", error);
-      } finally {
-        setLoading(false);
-      }
+export default async function AuthButton() {
+  let authUser: any = null;
+  let userProfile: Profile | null = null;
+
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase.auth.getUser();
+  authUser = data.user;
+
+  if (authUser?.id) {
+    const profileResult = await db
+      .select({
+        id: profilesTable.id,
+        username: profilesTable.username,
+        // email: profilesTable.email, // Assuming you might have email in profiles for consistency
+      })
+      .from(profilesTable)
+      .where(eq(profilesTable.id, authUser.id))
+      .limit(1);
+
+    if (profileResult.length > 0) {
+      userProfile = profileResult[0];
     }
+  }
 
-    getUser();
-  }, []);
-
-  const handleSignOut = async () => {
-    try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      router.push("/sign-in");
-      router.refresh();
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
-  };
-
-  if (loading) {
-    return <div className="h-9 w-9 bg-muted rounded-full animate-pulse" />;
+  async function handleSignOutAction() {
+    "use server"; // This is a Server Action
+    const supabaseSignOut = await createServerSupabaseClient();
+    await supabaseSignOut.auth.signOut();
+    return redirect("/sign-in"); // Use server-side redirect
   }
 
   if (!hasEnvVars) {
@@ -63,13 +66,14 @@ export default function AuthButton() {
     );
   }
 
-  // Get user initials for avatar
   const getUserInitials = () => {
-    if (!user?.email) return "U";
-    return user.email.charAt(0).toUpperCase();
+    // Prefer profile email if available, fallback to authUser email
+    const emailToUse = userProfile?.email || authUser?.email;
+    if (!emailToUse) return "U";
+    return emailToUse.charAt(0).toUpperCase();
   };
 
-  return user ? (
+  return authUser && userProfile ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -87,19 +91,33 @@ export default function AuthButton() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col">
             <span className="text-sm font-medium">Account</span>
-            <span className="text-xs text-muted-foreground">{user.email}</span>
+            {/* Display email from authUser as profile might not have it or it might differ */}
+            <span className="text-xs text-muted-foreground">
+              {authUser.email}
+            </span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/library">Profile</Link>
+            {/* Link to user profile using username from userProfile */}
+            <Link href={`/user/${userProfile.username ?? "unknown"}`}>
+              Profile
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-          <LogOut className="h-4 w-4 mr-2" />
-          <span>Sign out</span>
+        <DropdownMenuItem asChild>
+          <form action={handleSignOutAction} className="w-full">
+            <Button
+              type="submit"
+              variant="ghost"
+              className="w-full justify-start text-destructive hover:text-destructive px-2 py-1.5 text-sm h-auto font-normal"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              <span>Sign out</span>
+            </Button>
+          </form>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
