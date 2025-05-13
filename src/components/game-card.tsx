@@ -62,6 +62,7 @@ export function GameCard({
   const [hasCopied, setHasCopied] = React.useState(false);
   const [canShare, setCanShare] = React.useState(false);
   const [mediaError, setMediaError] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -205,8 +206,10 @@ export function GameCard({
       <div className="flex items-center gap-2 px-1">
         <Avatar className="h-5 w-5">
           <AvatarImage
-            src={game.foundByAvatarUrl ?? undefined}
+            src={game.foundByAvatarUrl || undefined}
             alt={`${game.foundByUsername || "IndieFindr"}'s avatar`}
+            onError={() => setAvatarError(true)}
+            style={{ display: avatarError ? 'none' : 'block' }}
           />
           <AvatarFallback className="text-xs">
             {getUserInitials(game.foundByUsername)}

@@ -51,6 +51,8 @@ export function GameCardMini({
   className,
 }: GameCardMiniProps) {
   const [isHoveringRemove, setIsHoveringRemove] = useState(false);
+  // Add state to track avatar image loading errors
+  const [avatarError, setAvatarError] = useState(false);
 
   const altText = game.title
     ? `${game.title} header image`
@@ -89,8 +91,10 @@ export function GameCardMini({
       <div className="flex items-center gap-2 px-1">
         <Avatar className="h-4 w-4">
           <AvatarImage
-            src={game.foundByAvatarUrl ?? undefined}
+            src={game.foundByAvatarUrl || undefined}
             alt={`${game.foundByUsername || "IndieFindr"}'s avatar`}
+            onError={() => setAvatarError(true)}
+            style={{ display: avatarError ? 'none' : 'block' }}
           />
           <AvatarFallback className="text-[10px]">
             {getUserInitials(game.foundByUsername)}
