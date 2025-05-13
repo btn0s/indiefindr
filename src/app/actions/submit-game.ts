@@ -5,6 +5,7 @@ import { db, schema } from "@/db"; // Import db and schema
 import { eq } from "drizzle-orm"; // Import eq operator
 import { enrichSteamAppId } from "@/lib/workers/steam-enrichment"; // Import enrichment function
 import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
+import { createClient } from "@/utils/supabase/server"; // Import createClient for auth
 
 // Define the structure needed for the GameCard
 interface GameCardGameData {
@@ -38,6 +39,20 @@ export async function submitGameAction(
   prevState: SubmitGameState | null, // Allow null for initial call
   formData: FormData
 ): Promise<SubmitGameState> {
+  // Get the authenticated user
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return {
+      status: "error",
+      message: "You must be logged in to submit games.",
+    };
+  }
+
   const steamUrl = formData.get("steamUrl") as string;
 
   // 1. Validate Input
@@ -83,11 +98,11 @@ export async function submitGameAction(
       };
     }
 
-    // 3. If game doesn't exist, call enrichment worker
+    // 3. If game doesn't exist, call enrichment worker with user ID
     console.log(
       `[Submit Action] Game not found. Triggering enrichment for AppID: ${appIdString}`
     );
-    await enrichSteamAppId(appIdString); // Call the imported function
+    await enrichSteamAppId(appIdString, user.id); // Pass the user's ID
 
     // If enrichSteamAppId completes, fetch the data needed for the card
     console.log(

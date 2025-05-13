@@ -1,5 +1,5 @@
 import { db, schema } from "@/db"; // Assuming '@' alias for src/ in tsconfig
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 // Interface matching the expected structure from Steam's appdetails API
 // Based on common structure, might need adjustments
@@ -61,10 +61,16 @@ type ExternalSourceInsert = typeof schema.externalSourceTable.$inferInsert;
  * inserts or updates the data in the external_source table.
  *
  * @param appId The Steam AppID (string) to enrich.
+ * @param foundBy Optional UUID of the user who found/submitted the game.
  * @returns Promise resolving when the operation is complete or throws on error.
  */
-export async function enrichSteamAppId(appId: string): Promise<void> {
-  console.log(`[Enrichment] Starting enrichment for AppID: ${appId}`);
+export async function enrichSteamAppId(
+  appId: string,
+  foundBy?: string
+): Promise<void> {
+  console.log(
+    `[Enrichment] Starting enrichment for AppID: ${appId}${foundBy ? ` (Found by: ${foundBy})` : ""}`
+  );
   const apiUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
 
   let apiResponse: SteamApiResponse;
@@ -111,6 +117,7 @@ export async function enrichSteamAppId(appId: string): Promise<void> {
       rawData: steamData, // Store the full response for potential future use
       enrichmentStatus: "basic_info_extracted", // Mark as enriched
       isFeatured: false, // Default value
+      foundBy: foundBy || null, // Add foundBy field
     };
 
     console.log(
@@ -127,6 +134,10 @@ export async function enrichSteamAppId(appId: string): Promise<void> {
           ...gameData, // Update all fetched fields
           lastFetched: new Date(), // Update last fetched time
           enrichmentStatus: "basic_info_extracted", // Ensure status is updated even if record exists
+          // Don't update foundBy if it already exists
+          foundBy: foundBy
+            ? sql`COALESCE(${schema.externalSourceTable.foundBy}, ${foundBy})`
+            : undefined,
           // Avoid updating embedding here; that's the next step
         },
       })
