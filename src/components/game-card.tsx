@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -44,8 +44,43 @@ export function GameCard({
   onAddToLibrary,
   onRemoveFromLibrary,
   className,
-  style, // Added style prop
+  style,
 }: GameCardProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Set up intersection observer for video autoplay
+  useEffect(() => {
+    if (!videoRef.current || !cardRef.current) return;
+
+    const video = videoRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            video.play().catch(() => {
+              // Autoplay may be blocked, that's okay
+            });
+          } else {
+            video.pause();
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: "0px",
+        threshold: 0.5, // When 50% of the card is visible
+      }
+    );
+
+    observer.observe(cardRef.current);
+
+    return () => {
+      observer.disconnect();
+      video.pause();
+    };
+  }, []);
+
   // Reuse handleAdd and handleRemove logic from GameCardMini
   const handleAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -75,142 +110,118 @@ export function GameCard({
     ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
     : null; // Set to null if no steamAppid to handle fallback better
 
-  // Process rawData for MediaCarousel
+  // Get the first video or screenshot from rawData
   const rawData = game.rawData;
-  const screenshots = rawData?.screenshots || [];
-  const movies = rawData?.movies || [];
-  const mediaItems: MediaItem[] = [
-    ...movies.map(
-      (movie: Movie): MediaItem => ({
-        // Added explicit type for movie
-        type: "video",
-        data: movie,
-      })
-    ),
-    ...screenshots.map(
-      (screenshot: Screenshot): MediaItem => ({
-        // Added explicit type for screenshot
-        type: "image",
-        data: screenshot,
-      })
-    ),
-  ];
+  const firstVideo = rawData?.movies?.[0];
+  const firstScreenshot = rawData?.screenshots?.[0];
 
   return (
     <Card
+      ref={cardRef}
       className={cn(
-        "flex flex-col overflow-hidden transition-shadow hover:shadow-lg w-full",
-        "py-0 gap-0", // Added overrides similar to GameCardMini
+        "flex flex-col overflow-hidden transition-shadow hover:shadow-lg w-full group/card",
+        "py-0 gap-0",
         className
       )}
-      style={style} // Added style prop
+      style={style}
     >
-      {/* Content: Tighter spacing applied via Card override + p-3 */}
-      <CardContent className="p-3 flex-grow flex flex-col gap-2">
-        <Link
-          href={detailsLinkHref}
-          className="block group shrink-0 rounded overflow-hidden relative bg-muted w-24 aspect-cover-art" // Adjusted size and aspect ratio
-          aria-label={`View details for ${game.title || "Untitled Game"}`}
-        >
-          {imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt={game.title ? `${game.title} Icon` : "Game Icon"}
-              fill
-              sizes="64px" // Size based on width 16 (w-16 = 4rem = 64px)
-              className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/placeholder-game.jpg"; // Fallback to general placeholder
-                (e.target as HTMLImageElement).classList.add("opacity-50"); // Indicate placeholder visually
-              }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-muted">
-              <ImageOff className="h-6 w-6 text-muted-foreground" />
+      <Link href={detailsLinkHref} className="flex-grow">
+        <CardContent className="p-3 flex flex-col gap-2">
+          {/* Two column layout */}
+          <div className="flex gap-4">
+            {/* Left column: Title and description */}
+            <div className="w-full flex flex-col justify-between flex-1">
+              <div>
+                <h3
+                  className="text-base sm:text-lg font-semibold truncate group-hover/card:text-primary transition-colors"
+                  title={game.title || "Untitled Game"}
+                >
+                  {game.title || "Untitled Game"}
+                </h3>
+                <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3">
+                  {game.shortDescription || "No description available."}
+                </p>
+              </div>
+
+              {game.tags && game.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-auto">
+                  {game.tags.slice(0, 3).map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                  {game.tags.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{game.tags.length - 3}
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </Link>
-        <div className="flex-grow min-w-0">
-          <Link href={detailsLinkHref} className="block group">
-            <h3
-              className="text-base sm:text-lg font-semibold truncate group-hover:text-primary transition-colors"
-              title={game.title || "Untitled Game"}
-            >
-              {game.title || "Untitled Game"}
-            </h3>
-          </Link>
-          {/* Could add a subtitle here if needed, e.g., a primary genre or developer */}
-        </div>
-        <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3">
-          {game.shortDescription || "No description available."}
-        </p>
 
-        {game.tags && game.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {game.tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-            {game.tags.length > 3 && (
-              <Badge variant="outline" className="text-xs">
-                +{game.tags.length - 3}
-              </Badge>
-            )}
+            {/* Right column: Image */}
+            <div className="w-64 border-white/20 border flex-none rounded overflow-hidden relative bg-muted aspect-cover-art">
+              {imageUrl ? (
+                <Image
+                  src={imageUrl}
+                  alt={game.title ? `${game.title} Icon` : "Game Icon"}
+                  fill
+                  sizes="96px"
+                  className="object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      "/placeholder-game.jpg";
+                    (e.target as HTMLImageElement).classList.add("opacity-50");
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <ImageOff className="h-6 w-6 text-muted-foreground" />
+                </div>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Media Carousel */}
-        {mediaItems.length > 0 ? (
-          <div className="mt-1 rounded-md overflow-hidden">
-            {" "}
-            {/* Added overflow-hidden */}
-            <MediaCarousel
-              mediaItems={mediaItems}
-              gameTitle={game.title || ""}
-            />
-          </div>
-        ) : (
-          // Optional: Show static header image if no media items and header image exists
-          imageUrl && (
-            <Link
-              href={detailsLinkHref}
-              className="block group aspect-[460/215] rounded-md overflow-hidden relative bg-muted mt-1"
-              aria-label={`View details for ${game.title || "Untitled Game"}`}
-            >
+          {/* Media Preview */}
+          {firstVideo ? (
+            <div className="mt-1 rounded-md overflow-hidden aspect-video relative bg-black">
+              <video
+                ref={videoRef}
+                src={firstVideo.mp4.max}
+                poster={firstVideo.thumbnail}
+                muted
+                playsInline
+                loop
+                className="w-full h-full object-contain"
+              />
+            </div>
+          ) : firstScreenshot ? (
+            <div className="mt-1 rounded-md overflow-hidden aspect-video relative bg-black">
               <Image
-                src={imageUrl}
+                src={firstScreenshot.path_full}
                 alt={
-                  game.title
-                    ? `${game.title} Header Image`
-                    : "Game Header Image"
+                  game.title ? `${game.title} Screenshot` : "Game Screenshot"
                 }
                 fill
                 sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
-                className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-                onError={(e) => {
-                  // Simplified fallback - just hide the image container on error
-                  const parent = (e.target as HTMLImageElement).parentElement;
-                  if (parent) parent.style.display = "none";
-                }}
+                className="object-contain"
               />
-            </Link>
-          )
-        )}
-      </CardContent>
+            </div>
+          ) : imageUrl ? (
+            <div className="mt-1 rounded-md overflow-hidden aspect-video relative bg-black">
+              <Image
+                src={imageUrl}
+                alt={game.title ? `${game.title} Header` : "Game Header"}
+                fill
+                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
+                className="object-contain"
+              />
+            </div>
+          ) : null}
+        </CardContent>
+      </Link>
 
       <CardFooter className="p-3 pt-2 flex items-center gap-2">
-        <Link
-          href={detailsLinkHref}
-          className={cn(
-            buttonVariants({ variant: "outline", size: "sm" }),
-            "flex-1"
-          )}
-          title="View Details"
-        >
-          <Eye className="mr-1.5 h-3.5 w-3.5" />
-          Details
-        </Link>
         <Button
           variant={isInLibrary ? "secondary" : "default"}
           size="sm"
