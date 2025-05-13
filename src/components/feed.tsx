@@ -17,6 +17,8 @@ interface ApiGame {
   tags: string[] | null;
   rawData?: SteamRawData | null;
   foundByUsername?: string | null;
+  foundByAvatarUrl?: string | null;
+  createdAt?: string | Date | null;
 }
 
 interface FeedDisplayProps {
@@ -65,6 +67,9 @@ export function Feed({ isLoggedIn }: FeedDisplayProps) {
         const result = await response.json();
 
         if (result.success && result.data) {
+          // Log the raw data received from the API
+          console.log("API response data:", result.data);
+
           setGames((prevGames) =>
             currentPage === 1 ? result.data : [...prevGames, ...result.data]
           );
@@ -146,7 +151,7 @@ export function Feed({ isLoggedIn }: FeedDisplayProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-8 max-w-lg mx-auto">
       {games.map((game, index) => {
         const detailsLinkHref = getGameUrl(game.id, game.title);
 

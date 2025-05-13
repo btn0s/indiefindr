@@ -13,6 +13,7 @@ type FoundGame = {
   steamAppid: string | null;
   descriptionShort: string | null;
   foundByUsername: string | null;
+  foundByAvatarUrl: string | null; // Add avatar URL
   rawData?: SteamRawData | null;
 };
 
@@ -45,6 +46,7 @@ export async function getGamesFoundByUser(
         descriptionShort: externalSourceTable.descriptionShort,
         steamAppid: externalSourceTable.steamAppid,
         foundByUsername: profilesTable.username,
+        foundByAvatarUrl: profilesTable.avatarUrl, // Add avatar URL
         rawData: sql<SteamRawData | null>`${externalSourceTable.rawData}`,
       })
       .from(externalSourceTable)

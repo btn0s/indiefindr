@@ -24,6 +24,9 @@ interface FeedGame {
   steamAppid: string | null;
   tags: string[] | null;
   rawData?: SteamRawData | null;
+  foundByUsername?: string | null;
+  foundByAvatarUrl?: string | null;
+  createdAt?: string | Date | null;
 }
 
 interface FeedResult {
@@ -157,8 +160,15 @@ export async function GET(request: Request): Promise<NextResponse<FeedResult>> {
           steamAppid: schema.externalSourceTable.steamAppid,
           tags: schema.externalSourceTable.tags,
           rawData: schema.externalSourceTable.rawData,
+          foundByUsername: schema.profilesTable.username,
+          foundByAvatarUrl: schema.profilesTable.avatarUrl,
+          createdAt: schema.externalSourceTable.createdAt,
         })
         .from(schema.externalSourceTable)
+        .leftJoin(
+          schema.profilesTable,
+          eq(schema.externalSourceTable.foundBy, schema.profilesTable.id)
+        )
         .where(inArray(schema.externalSourceTable.id, recommendationIds));
 
       // Optional: Re-order finalResults based on recommendationIds if needed
