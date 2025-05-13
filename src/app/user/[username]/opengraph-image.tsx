@@ -170,58 +170,62 @@ export default async function Image({
             </div>
           )}
 
-          {/* Username */}
-          <div
-            style={{
-              fontSize: "48px",
-              fontWeight: "600",
-              color: "#000000",
-              lineHeight: "1.1",
-            }}
-          >
-            {username}
-          </div>
-        </div>
-
-        {/* Game Grid */}
-        {gameImages.length > 0 && (
+          {/* User Info */}
           <div
             style={{
               display: "flex",
-              flexWrap: "wrap",
-              gap: "16px",
+              flexDirection: "column",
+              gap: "8px",
               flex: 1,
-              overflow: "hidden",
             }}
           >
-            {gameImages.map((imageUrl, index) => (
-              <img
-                key={index}
-                src={imageUrl}
-                alt="Game Cover"
+            <div
+              style={{
+                fontSize: "48px",
+                fontWeight: "600",
+                color: "#000000",
+                lineHeight: "1.1",
+              }}
+            >
+              {username}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <span
                 style={{
-                  flex: 1,
-                  height: "200px",
-                  objectFit: "cover",
-                  borderRadius: "12px",
-                  border: "1px solid #E2E8F0",
-                  minWidth: "300px", // Ensure 3 per row
+                  fontSize: "24px",
+                  color: rank.color,
+                  fontWeight: "500",
                 }}
-              />
-            ))}
+              >
+                {rank.title}
+              </span>
+              <span
+                style={{
+                  fontSize: "24px",
+                  color: "#64748B",
+                }}
+              >
+                •
+              </span>
+              <span
+                style={{
+                  fontSize: "24px",
+                  color: "#64748B",
+                }}
+              >
+                {findsCount} games found
+              </span>
+            </div>
           </div>
-        )}
 
-        {/* Footer */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            marginTop: "32px",
-          }}
-        >
-          <div
+          {/* IndieFindr Logo */}
+          <span
             style={{
               fontSize: "24px",
               fontWeight: "600",
@@ -232,7 +236,34 @@ export default async function Image({
             }}
           >
             IndieFindr
-          </div>
+          </span>
+        </div>
+
+        {/* Game Grid */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "16px",
+            flex: 1,
+            overflow: "hidden",
+          }}
+        >
+          {gameImages.map((imageUrl, index) => (
+            <img
+              key={index}
+              src={imageUrl}
+              alt="Game Cover"
+              style={{
+                flex: 1,
+                height: "200px",
+                objectFit: "cover",
+                borderRadius: "12px",
+                border: "1px solid #E2E8F0",
+                minWidth: "300px",
+              }}
+            />
+          ))}
         </div>
       </div>
     ),
