@@ -16,6 +16,7 @@ interface ApiGame {
   steamAppid: string | null;
   tags: string[] | null;
   rawData?: SteamRawData | null;
+  foundByUsername?: string | null;
 }
 
 interface FeedDisplayProps {

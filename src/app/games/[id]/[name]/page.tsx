@@ -180,13 +180,15 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
 
           {/* Found By Badge */}
           {foundBy && (
-            <Badge
-              variant="secondary"
-              className="mb-4 text-sm"
-              title={`Found via: @${foundBy}`}
-            >
-              Found via: @{foundBy}
-            </Badge>
+            <Link href={`/user/${foundBy}`}>
+              <Badge
+                variant="secondary"
+                className="mb-4 text-xs"
+                title={`Found by @${foundBy}`}
+              >
+                Found by @{foundBy}
+              </Badge>
+            </Link>
           )}
 
           {/* Game description */}

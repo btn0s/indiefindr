@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
-import { db, schema } from "@/db";
-import { desc } from "drizzle-orm";
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db"; // Assuming db instance is exported from @/db
+import { externalSourceTable, profilesTable } from "@/db/schema"; // Ensure profilesTable is imported
+import { desc, eq } from "drizzle-orm"; // Import eq for join condition
 import type { SteamRawData } from "@/types/steam";
 
 // Consistent type from feed-display.tsx ApiGame
@@ -19,38 +20,47 @@ interface RecentGamesResult {
   message?: string;
 }
 
-const RECENT_GAMES_LIMIT = 20; // Consistent with original action
+const DEFAULT_LIMIT = 4; // Default number of games per page
 
-export async function GET(): Promise<NextResponse<RecentGamesResult>> {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(
+    searchParams.get("limit") || String(DEFAULT_LIMIT),
+    10
+  );
+
+  // Validate page and limit
+  const pageNum = Math.max(1, page);
+  const limitNum = Math.max(1, Math.min(50, limit)); // Add a max limit for safety
+  const offset = (pageNum - 1) * limitNum;
+
   try {
-    const recentGamesData = await db
+    const recentGames = await db
       .select({
-        id: schema.externalSourceTable.id,
-        title: schema.externalSourceTable.title,
-        shortDescription: schema.externalSourceTable.descriptionShort,
-        steamAppid: schema.externalSourceTable.steamAppid,
-        tags: schema.externalSourceTable.tags,
-        rawData: schema.externalSourceTable.rawData,
+        id: externalSourceTable.id,
+        title: externalSourceTable.title,
+        shortDescription: externalSourceTable.descriptionShort,
+        steamAppid: externalSourceTable.steamAppid,
+        tags: externalSourceTable.tags,
+        rawData: externalSourceTable.rawData,
+        foundByUsername: profilesTable.username, // Add foundByUsername
       })
-      .from(schema.externalSourceTable)
-      .orderBy(desc(schema.externalSourceTable.createdAt)) // Prefer createdAt for recency
-      .limit(RECENT_GAMES_LIMIT);
+      .from(externalSourceTable)
+      // Add left join
+      .leftJoin(
+        profilesTable,
+        eq(externalSourceTable.foundBy, profilesTable.id)
+      )
+      .orderBy(desc(externalSourceTable.createdAt))
+      .limit(limitNum)
+      .offset(offset);
 
-    return NextResponse.json({
-      success: true,
-      // Cast rawData for each game to satisfy the ApiGame interface if necessary
-      data: recentGamesData.map((game) => ({
-        ...game,
-        rawData: game.rawData as SteamRawData | null,
-      })),
-    });
-  } catch (error: any) {
-    console.error("Error fetching recent games in /api/games/recent:", error);
+    return NextResponse.json({ success: true, data: recentGames });
+  } catch (error) {
+    console.error("Error fetching recent games:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: `Failed to fetch recent games: ${error.message}`,
-      },
+      { success: false, message: "Failed to fetch recent games." },
       { status: 500 }
     );
   }
