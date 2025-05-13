@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Send, SearchIcon } from "lucide-react";
 import {
@@ -57,19 +59,16 @@ export function TopNav() {
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Submit a New Game</DialogTitle>
-                <DialogDescription>
-                  Enter the Steam Store page URL for the game you want to add.
-                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmitGame}>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="steam-url" className="text-right">
-                      Steam URL
-                    </Label>
-                    <Input />
-                  </div>
-                </div>
+                <Label htmlFor="steam-url" className="sr-only">
+                  Steam URL
+                </Label>
+                <Input
+                  id="steam-url"
+                  className="mb-4"
+                  placeholder="https://store.steampowered.com/app/..."
+                />
                 <DialogFooter>
                   <Button type="submit">Submit Game</Button>
                 </DialogFooter>
