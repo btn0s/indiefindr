@@ -29,17 +29,18 @@ type ProfilePageProps = {
 };
 
 // Define the type required by GameGrid
-type GameForGridOnProfile = {
+type GameForGrid = {
+  // Renamed for clarity, as it's used by both grids now
   id: number;
   title: string | null;
   steamAppid: string | null;
-  descriptionShort: string | null; // Match GameGrid expectation
-  // GameGrid doesn't use tags currently, so omit them here unless needed later
+  descriptionShort: string | null;
 };
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   // Correctly instantiate the server client
-  const supabase = await createClient(); // Await the async function, no args needed
+  const supabase = await createClient();
+  const cookieStore = cookies(); // Get cookies instance
   const { username } = await params;
   const decodedUsername = decodeURIComponent(username);
 
@@ -71,8 +72,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const isOwner = !!profileData && loggedInUserId === profileData.id;
 
   // 3. Fetch the profile user's library game details using Drizzle
-  // Adapt the selection to match GameForGridOnProfile
-  let libraryGames: GameForGridOnProfile[] = [];
+  let libraryGames: GameForGrid[] = [];
   try {
     libraryGames = await db
       .select({
@@ -103,6 +103,49 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       }
     } catch (error) {
       console.error("Failed to get logged-in user library IDs:", error);
+    }
+  }
+
+  // 5. Fetch "Recommended For You" games (feed for the logged-in user)
+  let recommendedGames: GameForGrid[] = [];
+  if (loggedInUserId) {
+    try {
+      // Determine base URL for API calls
+      // For server components fetching API routes in the same app, relative paths usually work.
+      // If deployed, VERCEL_URL or NEXT_PUBLIC_APP_URL might be more robust.
+      // For simplicity here, using a relative path.
+      const feedUrl = `/api/feed?page=1&limit=12`; // Fetch 12 games for this section
+
+      const feedResponse = await fetch(feedUrl, {
+        headers: {
+          Cookie: cookieStore.toString(), // Pass cookies for authentication
+        },
+        cache: "no-store", // Ensure fresh data for recommendations
+      });
+
+      if (feedResponse.ok) {
+        const feedResult = await feedResponse.json();
+        if (feedResult.success && feedResult.data) {
+          recommendedGames = feedResult.data.map((game: any) => ({
+            // game: any to map from API
+            id: game.id,
+            title: game.title,
+            steamAppid: game.steamAppid,
+            descriptionShort: game.shortDescription, // Map from shortDescription
+          }));
+        } else {
+          console.warn(
+            "Failed to fetch recommended games from API:",
+            feedResult.message
+          );
+        }
+      } else {
+        console.warn(
+          `API request to /api/feed failed with status: ${feedResponse.status}`
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching recommended games:", error);
     }
   }
 
@@ -159,6 +202,20 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           <p className="text-muted-foreground">This library is empty.</p>
         )}
       </section>
+
+      {loggedInUserId && recommendedGames.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-xl font-semibold mb-4">
+            Recommended For You ({recommendedGames.length})
+          </h2>
+          <GameGrid
+            games={recommendedGames}
+            loggedInUserLibraryIds={loggedInUserLibraryIds}
+            onAddToLibrary={addToLibrary}
+            onRemoveFromLibrary={removeFromLibrary}
+          />
+        </section>
+      )}
     </div>
   );
 }

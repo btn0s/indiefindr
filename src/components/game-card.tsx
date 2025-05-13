@@ -268,16 +268,6 @@ export function GameCard({
                 <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3">
                   {game.shortDescription || "No description available."}
                 </p>
-                {/* Found By Badge - uses game.foundByUsername */}
-                {game.foundByUsername && (
-                  <Badge
-                    variant="secondary"
-                    className="mt-2 text-xs w-fit"
-                    title={`Found by: @${game.foundByUsername}`}
-                  >
-                    Found by: @{game.foundByUsername}
-                  </Badge>
-                )}
               </div>
 
               {game.tags && game.tags.length > 0 && (
