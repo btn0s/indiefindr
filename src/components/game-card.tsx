@@ -175,6 +175,43 @@ export function GameCard({
     >
       <Link href={detailsLinkHref} className="flex-grow">
         <CardContent className="p-3 flex flex-col gap-2">
+          {/* Media Preview */}
+          {firstVideo ? (
+            <div className="rounded-md overflow-hidden aspect-video relative bg-black">
+              <video
+                ref={videoRef}
+                src={firstVideo.mp4.max}
+                poster={firstVideo.thumbnail}
+                muted
+                playsInline
+                loop
+                className="w-full h-full object-contain"
+              />
+            </div>
+          ) : firstScreenshot ? (
+            <div className="rounded-md overflow-hidden aspect-video relative bg-black">
+              <Image
+                src={firstScreenshot.path_full}
+                alt={
+                  game.title ? `${game.title} Screenshot` : "Game Screenshot"
+                }
+                fill
+                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
+                className="object-contain"
+              />
+            </div>
+          ) : imageUrl ? (
+            <div className="rounded-md overflow-hidden aspect-video relative bg-black">
+              <Image
+                src={imageUrl}
+                alt={game.title ? `${game.title} Header` : "Game Header"}
+                fill
+                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
+                className="object-contain"
+              />
+            </div>
+          ) : null}
+
           {/* Two column layout */}
           <div className="flex gap-4">
             {/* Left column: Title and description */}
@@ -229,43 +266,6 @@ export function GameCard({
               )}
             </div>
           </div>
-
-          {/* Media Preview */}
-          {firstVideo ? (
-            <div className="mt-1 rounded-md overflow-hidden aspect-video relative bg-black">
-              <video
-                ref={videoRef}
-                src={firstVideo.mp4.max}
-                poster={firstVideo.thumbnail}
-                muted
-                playsInline
-                loop
-                className="w-full h-full object-contain"
-              />
-            </div>
-          ) : firstScreenshot ? (
-            <div className="mt-1 rounded-md overflow-hidden aspect-video relative bg-black">
-              <Image
-                src={firstScreenshot.path_full}
-                alt={
-                  game.title ? `${game.title} Screenshot` : "Game Screenshot"
-                }
-                fill
-                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
-                className="object-contain"
-              />
-            </div>
-          ) : imageUrl ? (
-            <div className="mt-1 rounded-md overflow-hidden aspect-video relative bg-black">
-              <Image
-                src={imageUrl}
-                alt={game.title ? `${game.title} Header` : "Game Header"}
-                fill
-                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
-                className="object-contain"
-              />
-            </div>
-          ) : null}
         </CardContent>
       </Link>
 
