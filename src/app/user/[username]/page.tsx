@@ -5,11 +5,12 @@ import { notFound } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Metadata, ResolvingMetadata } from "next"; // Import Metadata types
 // import { Database } from "@/lib/database.types"; // Removed - Use Drizzle types implicitly
 import { GameGrid } from "@/components/game-grid"; // Import GameGrid
 import { profilesTable, libraryTable, externalSourceTable } from "@/db/schema"; // Import schema tables
 import { db } from "@/db"; // Import Drizzle instance
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, count } from "drizzle-orm";
 import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
 import {
   addToLibrary,
@@ -41,12 +42,114 @@ type GameForGrid = {
   foundByUsername?: string | null; // Added for "Finds" section
 };
 
+// --- Generate Metadata Function ---
+export async function generateMetadata(
+  { params }: ProfilePageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const p = await params;
+  const decodedUsername = decodeURIComponent(p.username);
+  let profileData = null;
+  let findsCount = 0;
+
+  // Fetch profile data specifically for metadata
+  try {
+    // First, get basic profile data
+    const result = await db
+      .select({
+        id: profilesTable.id,
+        username: profilesTable.username,
+        bio: profilesTable.bio,
+        fullName: profilesTable.fullName,
+        avatarUrl: profilesTable.avatarUrl,
+      })
+      .from(profilesTable)
+      .where(eq(profilesTable.username, decodedUsername))
+      .limit(1);
+
+    if (result && result.length > 0) {
+      profileData = result[0];
+
+      // Next, count the games found by this user
+      const findsResult = await db
+        .select({
+          count: count(),
+        })
+        .from(externalSourceTable)
+        .where(eq(externalSourceTable.foundBy, profileData.id));
+
+      if (findsResult.length > 0) {
+        findsCount = Number(findsResult[0].count) || 0;
+      }
+
+      const previousTitle = (await parent).title?.absolute || "IndieFindr";
+      const title = `${profileData.username}'s Profile | ${previousTitle}`;
+      const description = profileData.bio
+        ? `${profileData.username}'s bio: ${profileData.bio.substring(0, 150)}${profileData.bio.length > 150 ? "..." : ""}`
+        : `${profileData.username}'s profile page on IndieFindr, featuring their game library and finds.`;
+
+      // Build search params for the OG image
+      const ogImageSearchParams = new URLSearchParams({
+        username: profileData.username || "",
+        fullName: profileData.fullName || "",
+        avatarUrl: profileData.avatarUrl || "",
+        findsCount: findsCount.toString(),
+      });
+
+      const ogImageUrl = `/user/${encodeURIComponent(profileData.username)}/opengraph-image?${ogImageSearchParams.toString()}`;
+
+      return {
+        title: title,
+        description: description,
+        openGraph: {
+          title: title,
+          description: description,
+          images: [
+            {
+              url: ogImageUrl,
+              width: 1200,
+              height: 630,
+              alt: `${profileData.username}'s profile on IndieFindr`,
+            },
+          ],
+        },
+        twitter: {
+          title: title,
+          description: description,
+          card: "summary_large_image",
+          images: [ogImageUrl],
+        },
+      };
+    }
+  } catch (error) {
+    console.error("Metadata fetch error:", error);
+    // Fall through to default metadata if fetch fails
+  }
+
+  // Default/fallback metadata if profile not found or error occurs
+  const defaultTitle = `User Profile | IndieFindr`;
+  const defaultDescription = "View user profiles on IndieFindr.";
+  return {
+    title: defaultTitle,
+    description: defaultDescription,
+    openGraph: {
+      title: defaultTitle,
+      description: defaultDescription,
+    },
+    twitter: {
+      title: defaultTitle,
+      description: defaultDescription,
+      card: "summary",
+    },
+  };
+}
+// --- End Generate Metadata Function ---
+
 export default async function ProfilePage({ params }: ProfilePageProps) {
   // Correctly instantiate the server client
   const supabase = await createClient();
-  const cookieStore = cookies(); // Get cookies instance
-  const { username } = await params;
-  const decodedUsername = decodeURIComponent(username);
+  const p = await params;
+  const decodedUsername = decodeURIComponent(p.username);
 
   // 1. Fetch the profile user's data using Drizzle
   let profileData;
