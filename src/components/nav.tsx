@@ -112,7 +112,7 @@ export function Nav() {
     {
       id: 4,
       label: "Profile",
-      href: "/profile",
+      href: user ? `/user/${user.email.split("@")[0]}` : "/sign-in",
       icon: userLoading ? (
         <div className="h-5 w-5 bg-muted rounded-full animate-pulse" />
       ) : user ? (
@@ -137,8 +137,13 @@ export function Nav() {
 
     if (item.href === "/" && pathname === "/") return true;
     if (item.href !== "/" && pathname.startsWith(item.href)) {
-      // Special case for library
-      if (item.href === "/profile" && pathname.includes("/library")) {
+      // Special case for library - ensure /profile itself isn't marked active if we are on /library
+      // This check might need adjustment depending on final profile routing
+      if (item.href.startsWith("/user/") && pathname.includes("/library")) {
+        return false;
+      }
+      // Ensure /library doesn't activate /profile (now /user/[username])
+      if (item.href === "/library" && pathname.startsWith("/user/")) {
         return false;
       }
       return true;
