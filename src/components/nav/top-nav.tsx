@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SearchIcon } from "lucide-react";
 import AuthButton from "@/components/header-auth";
 import { SubmitGameDialog } from "@/components/nav/submit-game-dialog";
 
@@ -28,7 +27,6 @@ export async function TopNav() {
             aria-label="Search games by title"
           />
           <Button type="submit">
-            <SearchIcon className="mr-2 h-4 w-4" />
             Submit Find
           </Button>
         </form>
