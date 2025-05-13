@@ -203,22 +203,24 @@ export function GameCard({
   return (
     <div className="flex flex-col gap-2">
       {/* User attribution - moved outside the card */}
-      <div className="flex items-center gap-2 px-1">
-        <Avatar className="h-5 w-5">
-          <AvatarImage
-            src={game.foundByAvatarUrl || undefined}
-            alt={`${game.foundByUsername || "IndieFindr"}'s avatar`}
-            onError={() => setAvatarError(true)}
-            style={{ display: avatarError ? 'none' : 'block' }}
-          />
-          <AvatarFallback className="text-xs">
-            {getUserInitials(game.foundByUsername)}
-          </AvatarFallback>
-        </Avatar>
-        <span className="text-xs text-muted-foreground">
-          Found by <span className="font-medium">{game.foundByUsername || "IndieFindr"}</span>
-        </span>
-      </div>
+      {game.foundByUsername && (
+        <div className="flex items-center gap-2 px-1">
+          <Avatar className="h-5 w-5">
+            <AvatarImage
+              src={game.foundByAvatarUrl || undefined}
+              alt={`${game.foundByUsername}'s avatar`}
+              onError={() => setAvatarError(true)}
+              style={{ display: avatarError ? 'none' : 'block' }}
+            />
+            <AvatarFallback className="text-xs">
+              {getUserInitials(game.foundByUsername)}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-xs text-muted-foreground">
+            Found by <span className="font-medium">{game.foundByUsername}</span>
+          </span>
+        </div>
+      )}
 
       <Card
         ref={cardRef}

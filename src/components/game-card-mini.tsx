@@ -87,23 +87,7 @@ export function GameCardMini({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* User attribution - moved outside the card */}
-      <div className="flex items-center gap-2 px-1">
-        <Avatar className="h-4 w-4">
-          <AvatarImage
-            src={game.foundByAvatarUrl || undefined}
-            alt={`${game.foundByUsername || "IndieFindr"}'s avatar`}
-            onError={() => setAvatarError(true)}
-            style={{ display: avatarError ? 'none' : 'block' }}
-          />
-          <AvatarFallback className="text-[10px]">
-            {getUserInitials(game.foundByUsername)}
-          </AvatarFallback>
-        </Avatar>
-        <span className="text-[10px] text-muted-foreground">
-          Found by <span className="font-medium">{game.foundByUsername || "IndieFindr"}</span>
-        </span>
-      </div>
+      {/* Removed user attribution section */}
 
       <Link href={detailsLinkHref} className="block h-full">
         <Card
@@ -131,8 +115,6 @@ export function GameCardMini({
                 {game.descriptionShort}
               </p>
             )}
-            
-            {/* Removed user attribution from here */}
           </CardContent>
           <CardFooter className="p-3 pt-2 flex items-center gap-2">
             {onAddToLibrary && onRemoveFromLibrary && (
