@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import type { SteamRawData } from "@/types/steam";
+import { getGameUrl } from "@/utils/game-url";
 
 const Loading = () => {
   return (
@@ -144,16 +145,6 @@ const getSteamImageUrl = (steamAppid: string | null) => {
   return steamAppid
     ? `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppid}/header.jpg`
     : "/placeholder-game.jpg"; // Fallback image
-};
-
-const getGameUrl = (id: number, title: string | null) => {
-  const slug = title
-    ? title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .replace(/\s+/g, "-")
-    : "unknown";
-  return `/games/${id}/${slug}`;
 };
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
