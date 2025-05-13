@@ -1,0 +1,2 @@
+ALTER TABLE "external_source" ADD COLUMN "found_by" uuid;--> statement-breakpoint
+ALTER TABLE "external_source" ADD CONSTRAINT "external_source_found_by_profiles_id_fk" FOREIGN KEY ("found_by") REFERENCES "public"."profiles"("id") ON DELETE set null ON UPDATE no action;

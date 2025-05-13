@@ -184,3 +184,6 @@
     @apply bg-background text-foreground;
   }
 }
+@utility aspect-cover-art {
+  aspect-ratio: 460 / 215;
+}
