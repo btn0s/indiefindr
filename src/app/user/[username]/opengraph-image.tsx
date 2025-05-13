@@ -173,7 +173,7 @@ export default async function Image({
         <div
           style={{
             display: "flex",
-            alignItems: "flex-start",
+            alignItems: "center",
             gap: "40px",
             flex: 1,
           }}
@@ -214,60 +214,33 @@ export default async function Image({
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "20px",
+              gap: "16px",
               flex: 1,
             }}
           >
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
+                fontSize: "64px",
+                fontWeight: "600",
+                color: "#000000",
+                lineHeight: "1.1",
               }}
             >
-              <div
-                style={{
-                  fontSize: "64px",
-                  fontWeight: "600",
-                  color: "#000000",
-                  lineHeight: "1.1",
-                }}
-              >
-                {username}
-              </div>
-              <div
-                style={{
-                  fontSize: "32px",
-                  color: "#64748B",
-                }}
-              >
-                is curating indie games on IndieFindr
-              </div>
+              {username}
             </div>
 
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                fontSize: "28px",
+                gap: "12px",
+                fontSize: "36px",
                 color: "#64748B",
               }}
             >
               <strong style={{ color: "#000000" }}>{findsCount}</strong>
-              <span>games discovered and counting</span>
+              <span>indie games discovered</span>
             </div>
-
-            {fullName && (
-              <div
-                style={{
-                  fontSize: "28px",
-                  color: "#64748B",
-                }}
-              >
-                {fullName}
-              </div>
-            )}
           </div>
         </div>
 
@@ -276,41 +249,24 @@ export default async function Image({
           <div
             style={{
               display: "flex",
-              flexDirection: "column",
-              gap: "16px",
+              gap: "24px",
               marginTop: "48px",
             }}
           >
-            <div
-              style={{
-                fontSize: "20px",
-                color: "#64748B",
-                fontWeight: "500",
-              }}
-            >
-              Recent Discoveries
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: "20px",
-              }}
-            >
-              {gameImages.map((imageUrl, index) => (
-                <img
-                  key={index}
-                  src={imageUrl}
-                  alt="Game Cover"
-                  style={{
-                    width: "250px",
-                    height: "116px", // Maintaining aspect ratio
-                    objectFit: "cover",
-                    borderRadius: "10px",
-                    border: "1px solid #E2E8F0",
-                  }}
-                />
-              ))}
-            </div>
+            {gameImages.map((imageUrl, index) => (
+              <img
+                key={index}
+                src={imageUrl}
+                alt="Game Cover"
+                style={{
+                  width: "320px",
+                  height: "149px", // Maintaining aspect ratio
+                  objectFit: "cover",
+                  borderRadius: "12px",
+                  border: "1px solid #E2E8F0",
+                }}
+              />
+            ))}
           </div>
         )}
 
@@ -319,34 +275,19 @@ export default async function Image({
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
             marginTop: "auto",
-            paddingTop: "36px",
+            paddingTop: "40px",
           }}
         >
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: "18px",
-              color: "#64748B",
-            }}
-          >
-            <span>Join others discovering indie games at</span>
-            <span style={{ color: "#000000", fontWeight: "500" }}>
-              indiefindr.com
-            </span>
-          </div>
-
-          <div
-            style={{
-              fontSize: "18px",
+              fontSize: "24px",
               fontWeight: "600",
               color: "#FFFFFF",
               backgroundColor: "#000000",
-              padding: "10px 20px",
-              borderRadius: "10px",
+              padding: "12px 24px",
+              borderRadius: "12px",
             }}
           >
             IndieFindr
@@ -385,3 +326,4 @@ export default async function Image({
     }
   );
 }
+
