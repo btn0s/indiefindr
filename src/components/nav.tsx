@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { Home, Search, Library, Send, User } from "lucide-react";
+import { Home, Search, Library, Send, User, SearchIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useClickOutside from "@/hooks/useClickOutside";
 import { usePathname, useRouter } from "next/navigation";
@@ -106,7 +106,7 @@ export function Nav() {
     {
       id: 3,
       label: "Library",
-      href: "/profile/library",
+      href: "/library",
       icon: <Library className="h-5 w-5" />,
     },
     {
@@ -163,7 +163,7 @@ export function Nav() {
     <>
       {/* Top Navigation */}
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-14 items-center justify-between">
+        <div className="container max-w-5xl mx-auto flex h-14 items-center justify-between px-4">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <span className="text-xl font-bold">IndieFindr</span>
@@ -171,7 +171,27 @@ export function Nav() {
 
           {/* Auth Button */}
           <div className="flex">
-            <AuthButton />
+            <form
+              action="/search"
+              method="GET"
+              className="flex w-full sm:w-auto gap-2"
+            >
+              <Input
+                type="search"
+                name="q" // Query parameter name
+                placeholder="Search games by title..."
+                className="flex-grow sm:w-64" // Adjust width as needed
+                aria-label="Search games by title"
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                size="icon"
+                aria-label="Search"
+              >
+                <SearchIcon className="h-4 w-4" />
+              </Button>
+            </form>
           </div>
         </div>
       </header>
@@ -223,6 +243,15 @@ export function Nav() {
                 const isSearchItem = item.id === 2;
                 const isSelected = isSearchItem && searchOpen;
                 const isDimmed = searchOpen && !isSearchItem;
+
+                let isActive =
+                  item.href === "/"
+                    ? pathname === item.href
+                    : pathname.startsWith(item.href);
+                // Special case for library link highlighting
+                if (item.href === "/library" && pathname.includes("/library")) {
+                  isActive = true;
+                }
 
                 return (
                   <motion.button

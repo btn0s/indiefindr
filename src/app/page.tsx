@@ -69,32 +69,6 @@ export default async function HomePage() {
 
   return (
     <main className="">
-      <div className="flex flex-col items-start mb-6 gap-4">
-        <h1 className="text-3xl font-bold">IndieFindr Feed</h1>
-        {/* Search Form - Submits to /search page */}
-        <form
-          action="/search"
-          method="GET"
-          className="flex w-full sm:w-auto gap-2"
-        >
-          <Input
-            type="search"
-            name="q" // Query parameter name
-            placeholder="Search games by title..."
-            className="flex-grow sm:w-64" // Adjust width as needed
-            aria-label="Search games by title"
-          />
-          <Button
-            type="submit"
-            variant="outline"
-            size="icon"
-            aria-label="Search"
-          >
-            <SearchIcon className="h-4 w-4" />
-          </Button>
-        </form>
-      </div>
-
       {/* Error Display */}
       {hasError && (
         <div className="mb-4 p-4 border border-destructive/50 rounded-lg bg-destructive/10 text-destructive flex items-center gap-2">

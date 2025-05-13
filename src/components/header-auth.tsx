@@ -16,6 +16,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 
 export default function AuthButton() {
@@ -90,12 +91,11 @@ export default function AuthButton() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/profile">Profile</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/profile/library">Library</Link>
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href="/library">Profile</Link>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
           <LogOut className="h-4 w-4 mr-2" />
