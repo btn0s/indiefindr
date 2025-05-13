@@ -166,7 +166,7 @@ export default async function Image({
           backgroundColor: "#FFFFFF",
           color: "#09090B",
           fontFamily: "Geist, sans-serif",
-          padding: "48px",
+          padding: "56px",
         }}
       >
         {/* Main Content */}
@@ -174,7 +174,7 @@ export default async function Image({
           style={{
             display: "flex",
             alignItems: "flex-start",
-            gap: "32px",
+            gap: "40px",
             flex: 1,
           }}
         >
@@ -183,24 +183,24 @@ export default async function Image({
             <img
               src={avatarUrl}
               alt={`${username}'s avatar`}
-              width={140}
-              height={140}
+              width={180}
+              height={180}
               style={{
                 borderRadius: "50%",
-                border: "4px solid #F1F5F9",
+                border: "6px solid #F1F5F9",
               }}
             />
           ) : (
             <div
               style={{
-                width: 140,
-                height: 140,
+                width: 180,
+                height: 180,
                 borderRadius: "50%",
                 backgroundColor: "#F1F5F9",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "56px",
+                fontSize: "72px",
                 fontWeight: "600",
                 color: "#64748B",
               }}
@@ -214,7 +214,7 @@ export default async function Image({
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: "16px",
+              gap: "20px",
               flex: 1,
             }}
           >
@@ -222,21 +222,22 @@ export default async function Image({
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "4px",
+                gap: "8px",
               }}
             >
               <div
                 style={{
-                  fontSize: "48px",
+                  fontSize: "64px",
                   fontWeight: "600",
                   color: "#000000",
+                  lineHeight: "1.1",
                 }}
               >
                 {username}
               </div>
               <div
                 style={{
-                  fontSize: "20px",
+                  fontSize: "32px",
                   color: "#64748B",
                 }}
               >
@@ -249,7 +250,7 @@ export default async function Image({
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                fontSize: "16px",
+                fontSize: "28px",
                 color: "#64748B",
               }}
             >
@@ -260,7 +261,7 @@ export default async function Image({
             {fullName && (
               <div
                 style={{
-                  fontSize: "20px",
+                  fontSize: "28px",
                   color: "#64748B",
                 }}
               >
@@ -282,7 +283,7 @@ export default async function Image({
           >
             <div
               style={{
-                fontSize: "16px",
+                fontSize: "20px",
                 color: "#64748B",
                 fontWeight: "500",
               }}
@@ -292,7 +293,7 @@ export default async function Image({
             <div
               style={{
                 display: "flex",
-                gap: "16px",
+                gap: "20px",
               }}
             >
               {gameImages.map((imageUrl, index) => (
@@ -301,10 +302,10 @@ export default async function Image({
                   src={imageUrl}
                   alt="Game Cover"
                   style={{
-                    width: "215px",
-                    height: "100px",
+                    width: "250px",
+                    height: "116px", // Maintaining aspect ratio
                     objectFit: "cover",
-                    borderRadius: "8px",
+                    borderRadius: "10px",
                     border: "1px solid #E2E8F0",
                   }}
                 />
@@ -320,15 +321,15 @@ export default async function Image({
             alignItems: "center",
             justifyContent: "space-between",
             marginTop: "auto",
-            paddingTop: "32px",
+            paddingTop: "36px",
           }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "4px",
-              fontSize: "16px",
+              gap: "6px",
+              fontSize: "18px",
               color: "#64748B",
             }}
           >
@@ -340,12 +341,12 @@ export default async function Image({
 
           <div
             style={{
-              fontSize: "16px",
+              fontSize: "18px",
               fontWeight: "600",
               color: "#FFFFFF",
               backgroundColor: "#000000",
-              padding: "8px 16px",
-              borderRadius: "8px",
+              padding: "10px 20px",
+              borderRadius: "10px",
             }}
           >
             IndieFindr
