@@ -25,10 +25,11 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
       <div className="container max-w-5xl mx-auto flex h-14 items-center justify-between px-4">
-        {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2 w-1/4">
-          <span className="text-xl font-bold">IndieFindr</span>
-        </Link>
+        <div className="flex items-center gap-2 w-1/4">
+          <Link href="/" className="flex items-center space-x-2">
+            <span className="text-xl font-bold">IndieFindr</span>
+          </Link>
+        </div>
 
         {/* Search Form */}
         <form
