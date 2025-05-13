@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { updateProfile } from "@/app/actions/profile";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface ProfileSetupFormProps {
   userId: string;
@@ -16,6 +17,17 @@ interface ProfileSetupFormProps {
 export function ProfileSetupForm({ userId }: ProfileSetupFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Simulate loading state for initial data fetch
+  useEffect(() => {
+    // In a real app, you might fetch existing profile data here
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -31,6 +43,8 @@ export function ProfileSetupForm({ userId }: ProfileSetupFormProps) {
         username,
         fullName,
         bio,
+        // Set partial onboarding completion flag
+        hasCompletedOnboarding: false,
       });
       
       if (result.success) {
@@ -48,8 +62,19 @@ export function ProfileSetupForm({ userId }: ProfileSetupFormProps) {
   };
   
   const handleSkip = () => {
+    // Note: When skipping, we don't set hasCompletedOnboarding
+    // This will be handled in the final step when the user completes the game selection
     router.push("/onboarding/games");
   };
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Loading profile data...</span>
+      </div>
+    );
+  }
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -60,6 +85,7 @@ export function ProfileSetupForm({ userId }: ProfileSetupFormProps) {
           name="username"
           placeholder="Choose a unique username"
           required
+          disabled={isSubmitting}
         />
         <p className="text-xs text-muted-foreground">
           This will be your public username visible to other users
@@ -72,6 +98,7 @@ export function ProfileSetupForm({ userId }: ProfileSetupFormProps) {
           id="fullName"
           name="fullName"
           placeholder="Your full name (optional)"
+          disabled={isSubmitting}
         />
       </div>
       
@@ -82,6 +109,7 @@ export function ProfileSetupForm({ userId }: ProfileSetupFormProps) {
           name="bio"
           placeholder="Tell us a bit about yourself and the games you enjoy"
           rows={3}
+          disabled={isSubmitting}
         />
       </div>
       
@@ -95,10 +123,16 @@ export function ProfileSetupForm({ userId }: ProfileSetupFormProps) {
           Skip for now
         </Button>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save and Continue"}
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save and Continue"
+          )}
         </Button>
       </div>
     </form>
   );
 }
-
