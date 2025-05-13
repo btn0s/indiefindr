@@ -83,63 +83,24 @@ export default async function Image({
         findsCount = Number(findsResult[0].count) || 0;
       }
 
-      // Get images from the user's library (up to 3)
-      const userLibrary = await db
+      // Get images from games found by the user (up to 6 for 2 rows)
+      const discoveredGames = await db
         .select({
-          userId: libraryTable.userId,
-          gameRefId: libraryTable.gameRefId,
+          rawData: externalSourceTable.rawData,
         })
-        .from(libraryTable)
-        .where(eq(libraryTable.userId, profile.id))
-        .limit(3);
+        .from(externalSourceTable)
+        .where(eq(externalSourceTable.foundBy, profile.id))
+        .orderBy(desc(externalSourceTable.lastFetched))
+        .limit(6);
 
-      if (userLibrary.length > 0) {
-        // Fetch game details for the library items
-        const gameIds = userLibrary.map((item) => item.gameRefId);
-        const games = await db
-          .select({
-            id: externalSourceTable.id,
-            rawData: externalSourceTable.rawData,
-          })
-          .from(externalSourceTable)
-          .where(
-            and(
-              eq(externalSourceTable.platform, "steam"),
-              inArray(externalSourceTable.id, gameIds)
-            )
-          )
-          .limit(3);
-
-        gameImages = games
-          .filter(
-            (game) =>
-              game.rawData &&
-              typeof game.rawData === "object" &&
-              "header_image" in game.rawData
-          )
-          .map((game) => (game.rawData as any).header_image as string);
-      }
-
-      // If the user has no library items or we couldn't get images, get some random games they found
-      if (gameImages.length === 0) {
-        const discoveredGames = await db
-          .select({
-            rawData: externalSourceTable.rawData,
-          })
-          .from(externalSourceTable)
-          .where(eq(externalSourceTable.foundBy, profile.id))
-          .orderBy(desc(externalSourceTable.lastFetched))
-          .limit(3);
-
-        gameImages = discoveredGames
-          .filter(
-            (game) =>
-              game.rawData &&
-              typeof game.rawData === "object" &&
-              "header_image" in game.rawData
-          )
-          .map((game) => (game.rawData as any).header_image as string);
-      }
+      gameImages = discoveredGames
+        .filter(
+          (game) =>
+            game.rawData &&
+            typeof game.rawData === "object" &&
+            "header_image" in game.rawData
+        )
+        .map((game) => (game.rawData as any).header_image as string);
     }
   } catch (error) {
     console.error(
@@ -166,16 +127,16 @@ export default async function Image({
           backgroundColor: "#FFFFFF",
           color: "#09090B",
           fontFamily: "Geist, sans-serif",
-          padding: "56px",
+          padding: "40px",
         }}
       >
-        {/* Main Content */}
+        {/* Header */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "40px",
-            flex: 1,
+            gap: "24px",
+            marginBottom: "32px",
           }}
         >
           {/* Avatar */}
@@ -183,24 +144,24 @@ export default async function Image({
             <img
               src={avatarUrl}
               alt={`${username}'s avatar`}
-              width={180}
-              height={180}
+              width={120}
+              height={120}
               style={{
                 borderRadius: "50%",
-                border: "6px solid #F1F5F9",
+                border: "4px solid #F1F5F9",
               }}
             />
           ) : (
             <div
               style={{
-                width: 180,
-                height: 180,
+                width: 120,
+                height: 120,
                 borderRadius: "50%",
                 backgroundColor: "#F1F5F9",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "72px",
+                fontSize: "48px",
                 fontWeight: "600",
                 color: "#64748B",
               }}
@@ -209,48 +170,28 @@ export default async function Image({
             </div>
           )}
 
-          {/* User Info */}
+          {/* Username */}
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "16px",
-              flex: 1,
+              fontSize: "48px",
+              fontWeight: "600",
+              color: "#000000",
+              lineHeight: "1.1",
             }}
           >
-            <div
-              style={{
-                fontSize: "64px",
-                fontWeight: "600",
-                color: "#000000",
-                lineHeight: "1.1",
-              }}
-            >
-              {username}
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                fontSize: "36px",
-                color: "#64748B",
-              }}
-            >
-              <strong style={{ color: "#000000" }}>{findsCount}</strong>
-              <span>indie games discovered</span>
-            </div>
+            {username}
           </div>
         </div>
 
-        {/* Game Showcase */}
+        {/* Game Grid */}
         {gameImages.length > 0 && (
           <div
             style={{
               display: "flex",
-              gap: "24px",
-              marginTop: "48px",
+              flexWrap: "wrap",
+              gap: "16px",
+              flex: 1,
+              overflow: "hidden",
             }}
           >
             {gameImages.map((imageUrl, index) => (
@@ -259,11 +200,12 @@ export default async function Image({
                 src={imageUrl}
                 alt="Game Cover"
                 style={{
-                  width: "320px",
-                  height: "149px", // Maintaining aspect ratio
+                  flex: 1,
+                  height: "200px",
                   objectFit: "cover",
                   borderRadius: "12px",
                   border: "1px solid #E2E8F0",
+                  minWidth: "300px", // Ensure 3 per row
                 }}
               />
             ))}
@@ -276,8 +218,7 @@ export default async function Image({
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
-            marginTop: "auto",
-            paddingTop: "40px",
+            marginTop: "32px",
           }}
         >
           <div
