@@ -51,10 +51,10 @@ interface SearchResultGame {
 }
 
 interface SearchPageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     q?: string;
     tags?: string;
-  };
+  }>;
 }
 
 async function performSearch(
@@ -321,7 +321,7 @@ export async function generateMetadata({
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const query = searchParams?.q || "";
+  const query = (await searchParams)?.q || "";
   const { results, error } = await performSearch(query);
 
   console.log("results being passed to page component:", results);
@@ -333,8 +333,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   let recentGames: DisplayGame[] = [];
   let popularGames: DisplayGame[] = [];
 
-  const searchQuery = searchParams?.q || "";
-  const tagsSearch = searchParams?.tags;
+  const searchQuery = (await searchParams)?.q || "";
+  const tagsSearch = (await searchParams)?.tags;
 
   if (searchQuery || tagsSearch) {
     const searchData = await performSearch(searchQuery, tagsSearch);
@@ -354,7 +354,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   console.log("recent games being passed:", recentGames);
   console.log("popular games being passed:", popularGames);
 
-  const currentSearchTags = searchParams?.tags || "";
+  const currentSearchTags = (await searchParams)?.tags || "";
 
   // Determine dynamic H1 title
   let pageTitle = "Search Games";
