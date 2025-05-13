@@ -33,10 +33,7 @@ export default function RootLayout({
         <AppProviders>
           <main className="min-h-screen">
             <Nav />
-            <div className="max-w-5xl p-4 mx-auto">{children}</div>
-            <div className="flex items-center justify-center border-t mx-auto text-center text-xs py-8">
-              <ThemeSwitcher />
-            </div>
+            <div className="max-w-5xl p-4 mx-auto pb-24">{children}</div>
           </main>
           <Toaster />
         </AppProviders>
