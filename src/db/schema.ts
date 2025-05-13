@@ -104,17 +104,3 @@ export const libraryTable = pgTable(
     };
   }
 );
-
-// We still need this for Supabase Auth reference in the database
-// This is kept for documentation purposes but we now avoid direct references to it
-export const authUsersTable = pgTable(
-  "users",
-  {
-    id: uuid("id").primaryKey(),
-  },
-  (table) => {
-    return {
-      $schema: "auth",
-    };
-  }
-);

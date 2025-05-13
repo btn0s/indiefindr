@@ -8,6 +8,20 @@
       "when": 1747095080476,
       "tag": "0000_special_payback",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1747096369985,
+      "tag": "0001_mean_hitman",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1747096417038,
+      "tag": "0002_tiresome_medusa",
+      "breakpoints": true
     }
   ]
 }
