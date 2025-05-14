@@ -72,7 +72,7 @@ export default async function HomePage() {
       {/* Layout for Profile Card and Feed */}
       <div className="flex flex-col items-start md:flex-row">
         {/* Profile Card Section (Left Side) - Using the new component */}
-        <aside className="w-1/4">
+        {/* <aside className="w-1/4 relative">
           {isLoggedIn && (
             <ProfileMiniCard
               isLoggedIn={isLoggedIn}
@@ -81,14 +81,14 @@ export default async function HomePage() {
               findsCount={findsCount}
             />
           )}
-        </aside>
+        </aside> */}
 
         {/* Feed Section (Right Side or Main Area on Mobile) */}
         <section className="w-full">
           <Feed isLoggedIn={isLoggedIn} />
         </section>
 
-        <aside className="w-1/4"></aside>
+        {/* <aside className="w-1/4"></aside> */}
       </div>
     </main>
   );
