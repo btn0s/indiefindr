@@ -18,10 +18,15 @@ if (!connectionString && !isBuildTime) {
   throw new Error("DATABASE_URL environment variable is not set.");
 }
 
-// Create a dummy client for build time
-const client = connectionString 
-  ? postgres(connectionString, { prepare: false })
-  : {} as ReturnType<typeof postgres>; // Type assertion for build time
+// Configure connection pooling 
+const client = connectionString
+  ? postgres(connectionString, {
+      prepare: false,
+      max: 10, // Set maximum number of connections in the pool
+      idle_timeout: 20, // Close idle connections after 20 seconds
+      connect_timeout: 10, // Connection timeout after 10 seconds
+    })
+  : ({} as ReturnType<typeof postgres>); // Type assertion for build time
 
 export const db = drizzle(client, { schema });
 
