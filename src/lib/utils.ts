@@ -17,3 +17,12 @@ export const getGameUrl = (id: number, title: string | null): string => {
     : "unknown";
   return `/games/${id}/${slug}`;
 };
+
+// Helper function to ensure a URL uses HTTPS
+export const ensureHttps = (url: string | undefined | null): string | undefined => {
+  if (!url) return undefined;
+  if (url.startsWith("http://")) {
+    return url.replace("http://", "https://");
+  }
+  return url;
+};

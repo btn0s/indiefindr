@@ -12,6 +12,7 @@ import { useLibrary } from "@/contexts/LibraryContext"; // Import the hook
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Bookmark, BookmarkCheck, ImageOff, Share2, Check } from "lucide-react";
+import { ensureHttps } from "@/lib/utils"; // Import the ensureHttps helper
 
 // Helper function to get user initials for avatar fallback
 const getUserInitials = (name?: string | null) => {
@@ -136,17 +137,28 @@ export function GameCard({
   }, []);
 
   // Define potential cover art URLs (keep this)
-  const imageUrl = game.steamAppid
+  const imageUrlFromSteam = game.steamAppid
     ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
     : null;
   const rawData = game.rawData;
+
+  // Ensure all potential URLs are HTTPS
+  const secureImageUrl = ensureHttps(imageUrlFromSteam);
+  const secureCapsuleImage = ensureHttps(rawData?.capsule_image);
+  const secureCapsuleImageV5 = ensureHttps(rawData?.capsule_imagev5);
+  const secureScreenshotPathFull = ensureHttps(
+    rawData?.screenshots?.[0]?.path_full
+  );
+  const secureBackgroundRaw = ensureHttps(rawData?.background_raw);
+  const secureBackground = ensureHttps(rawData?.background);
+
   const potentialCoverUrls = [
-    imageUrl, // 1. header.jpg
-    rawData?.capsule_image, // 2. capsule_image (medium)
-    rawData?.capsule_imagev5, // 3. capsule_imagev5 (small)
-    rawData?.screenshots?.[0]?.path_full, // 4. First full screenshot
-    rawData?.background_raw, // 5. Raw background
-    rawData?.background, // 6. Processed background
+    secureImageUrl,
+    secureCapsuleImage,
+    secureCapsuleImageV5,
+    secureScreenshotPathFull,
+    secureBackgroundRaw,
+    secureBackground,
   ].filter((url): url is string => typeof url === "string" && url.length > 0);
 
   // Get the first video or screenshot for the main media preview (keep this)
@@ -232,7 +244,7 @@ export function GameCard({
         >
           <Avatar className="size-8 shrink-0 ring-1 ring-foreground/20 border border-background/60">
             <AvatarImage
-              src={foundByAvatarUrl || undefined}
+              src={ensureHttps(foundByAvatarUrl) || undefined}
               alt={`${foundByUsername}'s avatar`}
               onError={() => setAvatarError(true)}
               style={{ display: avatarError ? "none" : "block" }}
@@ -274,8 +286,8 @@ export function GameCard({
                 <video
                   ref={videoRef}
                   key={firstVideo.mp4.max}
-                  src={firstVideo.mp4.max}
-                  poster={firstVideo.thumbnail}
+                  src={ensureHttps(firstVideo.mp4.max) || ""}
+                  poster={ensureHttps(firstVideo.thumbnail) || ""}
                   muted
                   playsInline
                   loop
@@ -286,7 +298,7 @@ export function GameCard({
               ) : firstScreenshot ? (
                 <Image
                   key={firstScreenshot.path_full}
-                  src={firstScreenshot.path_full}
+                  src={ensureHttps(firstScreenshot.path_full) || ""}
                   alt={
                     game.title ? `${game.title} Screenshot` : "Game Screenshot"
                   }
@@ -296,10 +308,10 @@ export function GameCard({
                   onError={handleMediaError}
                   unoptimized
                 />
-              ) : imageUrl ? (
+              ) : secureImageUrl ? (
                 <Image
-                  key={imageUrl}
-                  src={imageUrl}
+                  key={secureImageUrl}
+                  src={secureImageUrl || ""}
                   alt={game.title ? `${game.title} Header` : "Game Header"}
                   fill
                   sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
