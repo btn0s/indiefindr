@@ -6,5 +6,5 @@ export const getGameUrl = (id: number, title: string | null): string => {
         .trim() // Trim leading/trailing spaces that might result from replacements
         .replace(/\s+/g, "-") // Replace spaces with hyphens
     : "unknown";
-  return `/games/${id}/${slug}`;
+  return `/${id}/${slug}`;
 };
