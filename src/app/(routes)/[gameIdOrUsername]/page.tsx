@@ -272,15 +272,15 @@ async function GameDetailPage({ gameId }: { gameId: string }) {
   const releaseDate = rawData?.release_date?.date || "TBA";
 
   // Combine screenshots and movies into a single media array with videos first
-  const mediaItems = [
+  const mediaItems: MediaItem[] = [
     // Videos first
     ...movies.map((movie) => ({
-      type: "video",
+      type: "video" as const,
       data: movie,
     })),
     // Then images
     ...screenshots.map((screenshot) => ({
-      type: "image",
+      type: "image" as const,
       data: screenshot,
     })),
   ];
@@ -538,4 +538,3 @@ async function ProfilePage({ username }: { username: string }) {
     </div>
   );
 }
-
