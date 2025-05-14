@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { GameImage } from "@/components/game-image";
 import { Bookmark, BookmarkCheck, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { addToLibrary, removeFromLibrary, getLibraryGameIds } from "@/app/actions/library";
+import {
+  addToLibrary,
+  removeFromLibrary,
+  getLibraryGameIds,
+} from "@/app/(api)/actions/library";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { SteamRawData } from "@/types/steam";

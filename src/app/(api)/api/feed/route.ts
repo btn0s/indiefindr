@@ -10,7 +10,7 @@ import {
   notInArray,
   desc,
 } from "drizzle-orm";
-import { getLibraryGameIds } from "@/app/actions/library";
+import { getLibraryGameIds } from "@/app/(api)/actions/library";
 import type { SteamRawData } from "@/types/steam";
 
 const VECTOR_DIMENSIONS = 384; // Assuming this is defined elsewhere, place appropriately

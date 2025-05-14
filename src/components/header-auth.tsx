@@ -16,9 +16,9 @@ import { createClient as createServerSupabaseClient } from "@/utils/supabase/ser
 import { db } from "@/db"; // Server Drizzle client
 import { profilesTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { redirect } from "next/navigation"; // For server-side redirect
 import { hasEnvVars } from "@/utils/supabase/check-env-vars"; // Keep this utility
 import { SubmitGameDialog } from "./nav/submit-game-dialog";
+import { signOutAction } from "@/app/(api)/actions/auth";
 
 // Define Profile type (can be shared or defined locally)
 type Profile = {
@@ -50,13 +50,6 @@ export default async function AuthButton() {
     if (profileResult.length > 0) {
       userProfile = profileResult[0];
     }
-  }
-
-  async function handleSignOutAction() {
-    "use server"; // This is a Server Action
-    const supabaseSignOut = await createServerSupabaseClient();
-    await supabaseSignOut.auth.signOut();
-    return redirect("/sign-in"); // Use server-side redirect
   }
 
   if (!hasEnvVars) {
@@ -111,7 +104,7 @@ export default async function AuthButton() {
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <form action={handleSignOutAction} className="w-full">
+            <form action={signOutAction} className="w-full">
               <Button
                 type="submit"
                 variant="ghost"

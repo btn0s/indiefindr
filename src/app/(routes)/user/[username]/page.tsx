@@ -16,8 +16,8 @@ import {
   addToLibrary,
   removeFromLibrary,
   getLibraryGameIds,
-} from "@/app/actions/library"; // Import library actions for GameCard
-import { getGamesFoundByUser } from "@/app/actions/finds"; // Import the new action
+} from "@/app/(api)/actions/library"; // Import library actions for GameCard
+import { getGamesFoundByUser } from "@/app/(api)/actions/finds"; // Import the new action
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
 
 // Helper function for initials remains the same

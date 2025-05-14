@@ -4,12 +4,12 @@ import {
   getLibraryGameIds,
   removeFromLibrary,
   addToLibrary,
-} from "@/app/actions/library";
+} from "@/app/(api)/actions/library";
 import { db, schema } from "@/db";
 import { inArray, eq } from "drizzle-orm";
 import { GameGrid } from "@/components/game-grid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getGamesFoundByUser } from "@/app/actions/finds";
+import { getGamesFoundByUser } from "@/app/(api)/actions/finds";
 
 // Define the shape needed by GameGrid and GameCardMini (including rawData)
 type LibraryGameForGrid = {

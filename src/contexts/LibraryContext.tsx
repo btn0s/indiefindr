@@ -11,7 +11,7 @@ import {
   getLibraryGameIds as getLibraryGameIdsAction,
   addToLibrary as addToLibraryAction,
   removeFromLibrary as removeFromLibraryAction,
-} from "@/app/actions/library"; // Adjust path as necessary
+} from "@/app/(api)/actions/library"; // Adjust path as necessary
 import { createClient } from "@/utils/supabase/client"; // For client-side Supabase
 
 interface LibraryContextValue {

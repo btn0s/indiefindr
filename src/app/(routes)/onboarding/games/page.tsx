@@ -8,7 +8,7 @@ import { GameSelectionGrid } from "@/components/onboarding/game-selection-grid";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { SteamRawData } from "@/types/steam";
-import { completeOnboardingAndRedirect } from "@/app/actions/onboarding";
+import { completeOnboardingAndRedirect } from "@/app/(api)/actions/onboarding";
 
 export default async function OnboardingGamesPage() {
   const supabase = await createClient();
@@ -35,9 +35,9 @@ export default async function OnboardingGamesPage() {
     .limit(12);
 
   // Cast the games to the correct type
-  const typedGames = games.map(game => ({
+  const typedGames = games.map((game) => ({
     ...game,
-    rawData: game.rawData as SteamRawData | null
+    rawData: game.rawData as SteamRawData | null,
   }));
 
   return (
@@ -45,7 +45,8 @@ export default async function OnboardingGamesPage() {
       <div className="bg-card rounded-lg p-6 shadow-sm">
         <h2 className="text-xl font-semibold mb-4">Pick Some Games</h2>
         <p className="text-muted-foreground mb-6">
-          Select a few games that interest you. This will help us personalize your feed.
+          Select a few games that interest you. This will help us personalize
+          your feed.
         </p>
 
         <GameSelectionGrid games={typedGames} />

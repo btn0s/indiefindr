@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import {
   submitGameAction,
   type SubmitGameState,
-} from "@/app/actions/submit-game";
+} from "@/app/(api)/actions/submit-game";
 import { SubmitButton } from "@/components/submit-button";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
