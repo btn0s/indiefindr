@@ -1,7 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+// Check if we're in a build environment (Next.js build time)
+const isBuildTime = process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build';
+
 export const createClient = async () => {
+  // During build time, return a mock client to avoid errors
+  if (isBuildTime) {
+    return {
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        signOut: () => Promise.resolve({ error: null }),
+      },
+      // Add other mock methods as needed
+    } as any;
+  }
+
   const cookieStore = await cookies();
 
   return createServerClient(

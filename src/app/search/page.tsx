@@ -16,11 +16,22 @@ import {
 import { GameCardMini } from "@/components/game-card-mini";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { SteamRawData } from "@/types/steam";
 import { getGameUrl } from "@/utils/game-url";
 import type { Metadata } from "next";
+import { createClient } from "@/utils/supabase/server";
+import { ClaimFindButton } from "@/components/claim-find-button";
+import { searchSteam, type SteamSearchResult } from "@/lib/steam-search";
+
+// Define the structure for Steam search results
+// interface SteamSearchResult { // This can be removed as it's imported now
+//   appid: number;
+//   name: string;
+//   icon: string;
+//   logo: string;
+// }
 
 const Loading = () => {
   return (
@@ -284,6 +295,38 @@ async function getPopularGames(limit: number = 6): Promise<DisplayGame[]> {
   }
 }
 
+/**
+ * Performs a search against the Steam API
+ *
+ * TODO: Future improvements:
+ * - Add loading state indicator during Steam search
+ * - Implement pagination for large result sets
+ * - Add error handling with retry logic
+ */
+async function performSteamSearch(query: string): Promise<{
+  results: SteamSearchResult[];
+  error: string | null;
+}> {
+  if (!query.trim()) {
+    return { results: [], error: null };
+  }
+
+  // Call the library function directly
+  const steamSearchResult = await searchSteam(query);
+
+  if (steamSearchResult.error) {
+    console.error(
+      `[SearchPage] Error from searchSteam for query "${query}": ${steamSearchResult.error}`,
+      steamSearchResult.details || ""
+    );
+    // Decide how to handle errors for the UI.
+    // For now, returning a generic error or null to keep previous behavior.
+    return { results: [], error: "Failed to fetch results from Steam." };
+  }
+
+  return { results: steamSearchResult.results, error: null };
+}
+
 export async function generateMetadata({
   searchParams,
 }: SearchPageProps): Promise<Metadata> {
@@ -315,25 +358,59 @@ export async function generateMetadata({
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const query = (await searchParams)?.q || "";
-  const { results, error } = await performSearch(query);
-
-  console.log("results being passed to page component:", results);
-  console.log("error being passed to page component:", error);
+  // Get the current user for attribution
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id || null;
 
   let searchResults: SearchResultGame[] = [];
   let searchError: string | null = null;
   let popularCategories: string[] = [];
   let recentGames: DisplayGame[] = [];
   let popularGames: DisplayGame[] = [];
+  let steamSearchResults: SteamSearchResult[] = [];
+  let steamSearchError: string | null = null;
 
-  const searchQuery = (await searchParams)?.q || "";
-  const tagsSearch = (await searchParams)?.tags;
+  const currentSearchParams = await searchParams;
+  const searchQuery = currentSearchParams?.q || "";
+  const tagsSearch = currentSearchParams?.tags;
 
   if (searchQuery || tagsSearch) {
-    const searchData = await performSearch(searchQuery, tagsSearch);
-    searchResults = searchData.results;
-    searchError = searchData.error;
+    const localSearchPromise = performSearch(searchQuery, tagsSearch);
+    let steamSearchPromise: Promise<{
+      results: SteamSearchResult[];
+      error: string | null;
+    } | null> = Promise.resolve(null);
+
+    if (searchQuery) {
+      steamSearchPromise = performSteamSearch(searchQuery);
+    }
+
+    const [localData, steamData] = await Promise.all([
+      localSearchPromise,
+      steamSearchPromise,
+    ]);
+
+    if (localData) {
+      searchResults = localData.results;
+      searchError = localData.error;
+    }
+
+    // steamData can be null if searchQuery was empty, or the result of performSteamSearch
+    if (steamData && steamData.results) {
+      steamSearchResults = steamData.results;
+      steamSearchError = steamData.error;
+    }
+
+    // Filter Steam results to exclude any games already present in local results
+    if (searchResults.length > 0 && steamSearchResults.length > 0) {
+      const localSteamAppids = new Set(
+        searchResults.map((game) => game.steamAppid).filter(Boolean)
+      ); // Filter out null/undefined appids
+      steamSearchResults = steamSearchResults.filter(
+        (steamGame) => !localSteamAppids.has(steamGame.appid.toString())
+      );
+    }
   } else {
     // Fetch data for the initial page state concurrently
     [popularCategories, recentGames, popularGames] = await Promise.all([
@@ -373,7 +450,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           <Input
             type="search"
             name="q"
-            defaultValue={query}
+            defaultValue={searchQuery}
             placeholder="Search games by title..."
             className="flex-1"
             aria-label="Search games by title"
@@ -416,7 +493,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         )}
 
         {/* Popular Categories - Show only when no query */}
-        {!query && popularCategories.length > 0 && (
+        {!searchQuery && popularCategories.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="text-sm font-medium mr-2 self-center">
               Popular Categories:
@@ -447,30 +524,105 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               </div>
             )}
 
-            {searchResults.length === 0 && !searchError && (
-              <div className="text-center py-12">
-                <p className="text-lg text-muted-foreground">
-                  No games found matching "{searchQuery}"
-                  {tagsSearch && ` with tags "${tagsSearch}"`}
-                </p>
-              </div>
+            {searchResults.length === 0 &&
+              !searchError &&
+              steamSearchResults.length === 0 &&
+              !steamSearchError && (
+                <div className="text-center py-12">
+                  <p className="text-lg text-muted-foreground">
+                    No games found matching "{searchQuery}"
+                    {tagsSearch && ` with tags "${tagsSearch}"`}
+                  </p>
+                </div>
+              )}
+
+            {/* Display local database results */}
+            {searchResults.length > 0 && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">
+                  Results from IndieFindr
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                  {searchResults.map((game) => (
+                    <GameCardMini
+                      key={`local-${game.id}`}
+                      game={{
+                        id: game.id,
+                        title: game.title,
+                        steamAppid: game.steamAppid,
+                        descriptionShort: game.descriptionShort,
+                        rawData: game.rawData,
+                      }}
+                      detailsLinkHref={getGameUrl(game.id, game.title)}
+                    />
+                  ))}
+                </div>
+              </>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {searchResults.map((game) => (
-                <GameCardMini
-                  key={game.id}
-                  game={{
-                    id: game.id,
-                    title: game.title,
-                    steamAppid: game.steamAppid,
-                    descriptionShort: game.descriptionShort,
-                    rawData: game.rawData,
-                  }}
-                  detailsLinkHref={getGameUrl(game.id, game.title)}
-                />
-              ))}
-            </div>
+            {/* Display Steam search results using GameCardMini */}
+            {steamSearchResults.length > 0 && (
+              <>
+                <h2 className="text-xl font-semibold mt-8">
+                  More to Explore on Steam
+                </h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Be the first to add these to IndieFindr!
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {steamSearchResults.map((steamGame) => (
+                    <GameCardMini
+                      key={`steam-${steamGame.appid}`}
+                      game={{
+                        id: steamGame.appid, // Use appid as id for GameCardMini
+                        title: steamGame.name,
+                        steamAppid: steamGame.appid.toString(),
+                        descriptionShort:
+                          "Results from Steam. Not yet in IndieFindr.", // Placeholder description
+                        rawData: {
+                          // Construct minimal rawData
+                          // Attempt to use the standard header image URL structure
+                          header_image: `https://cdn.akamai.steamstatic.com/steam/apps/${steamGame.appid}/header.jpg`,
+                          // Use steamGame.icon (which is tiny_image from API) as a fallback screenshot
+                          screenshots: steamGame.icon
+                            ? [
+                                {
+                                  id: 0,
+                                  path_thumbnail: steamGame.icon,
+                                  path_full: steamGame.icon,
+                                },
+                              ]
+                            : [],
+                        },
+                      }}
+                      detailsLinkHref={`https://store.steampowered.com/app/${steamGame.appid}`}
+                      isSteamOnlyResult={true}
+                      currentUserId={userId}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Fallback for no results at all */}
+            {searchResults.length === 0 &&
+              steamSearchResults.length === 0 &&
+              !searchError &&
+              !steamSearchError &&
+              (searchQuery || tagsSearch) && (
+                <div className="text-center py-12">
+                  <p className="text-lg text-muted-foreground">
+                    No games found matching "{searchQuery}"
+                    {tagsSearch && ` with tags "${tagsSearch}"`}
+                  </p>
+                </div>
+              )}
+
+            {steamSearchError && (
+              <div className="bg-destructive/10 text-destructive rounded-md p-4 mt-6">
+                {steamSearchError}
+              </div>
+            )}
           </>
         ) : (
           <div className="space-y-8">

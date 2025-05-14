@@ -27,9 +27,9 @@ export function GameImage({
   // Construct the list of URLs to try from gameData
   useEffect(() => {
     const headerUrl = gameData?.header_image;
-    // Safely access screenshots within the potentially null rawData
+    // Safely access screenshots within the gameData object itself
     const screenshotUrls =
-      gameData?.rawData?.screenshots
+      gameData?.screenshots // Changed from gameData?.rawData?.screenshots
         ?.map((s: any) => s?.path_full) // Access path_full safely
         // Filter out any null, undefined, or empty strings from the map result
         .filter(
@@ -68,6 +68,7 @@ export function GameImage({
             sizes={sizes}
             className="object-cover" // Apply image class
             onError={handleImageError}
+            quality={100}
           />
         </div>
       ) : (

@@ -17,6 +17,7 @@ import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ClaimFindButton } from "@/components/claim-find-button"; // Import ClaimFindButton
 
 // Helper function to get user initials for avatar fallback
 const getUserInitials = (name?: string | null) => {
@@ -30,16 +31,17 @@ interface GameCardMiniProps {
     title: string | null;
     steamAppid: string | null;
     descriptionShort?: string | null;
-    rawData?: SteamRawData | null; // rawData prop is already here
-    foundByUsername?: string | null; // Add foundByUsername property
-    foundByAvatarUrl?: string | null; // Add foundByAvatarUrl property
-    // header_image is not directly on game object, but derived or part of rawData in externalSourceTable
+    rawData?: SteamRawData | null;
+    foundByUsername?: string | null;
+    foundByAvatarUrl?: string | null;
   };
   detailsLinkHref: string;
   isInLibrary?: boolean;
   onAddToLibrary?: (gameId: number) => Promise<any>;
   onRemoveFromLibrary?: (gameId: number) => Promise<any>;
   className?: string;
+  isSteamOnlyResult?: boolean; // New prop for Steam-only items
+  currentUserId?: string | null; // New prop for user ID
 }
 
 export function GameCardMini({
@@ -49,6 +51,8 @@ export function GameCardMini({
   onAddToLibrary,
   onRemoveFromLibrary,
   className,
+  isSteamOnlyResult,
+  currentUserId,
 }: GameCardMiniProps) {
   const [isHoveringRemove, setIsHoveringRemove] = useState(false);
   // Add state to track avatar image loading errors
@@ -117,7 +121,19 @@ export function GameCardMini({
             )}
           </CardContent>
           <CardFooter className="p-3 pt-2 flex items-center gap-2">
-            {onAddToLibrary && onRemoveFromLibrary && (
+            {isSteamOnlyResult ? (
+              currentUserId && game.steamAppid && game.title ? (
+                <ClaimFindButton
+                  appid={parseInt(game.steamAppid, 10)} // Ensure appid is a number
+                  name={game.title}
+                  userId={currentUserId}
+                />
+              ) : (
+                <Button variant="outline" size="sm" className="flex-1" disabled>
+                  View on Steam
+                </Button>
+              )
+            ) : onAddToLibrary && onRemoveFromLibrary ? (
               <Button
                 variant={
                   isInLibrary
@@ -144,7 +160,7 @@ export function GameCardMini({
                 )}
                 {isInLibrary ? (isHoveringRemove ? "Remove" : "Saved") : "Save"}
               </Button>
-            )}
+            ) : null}
           </CardFooter>
         </Card>
       </Link>
