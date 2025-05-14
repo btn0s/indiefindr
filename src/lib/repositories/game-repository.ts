@@ -1,4 +1,4 @@
-import { externalSourceTable } from "@/db/schema";
+import { externalSourceTable, profilesTable } from "@/db/schema";
 import { db } from "@/db";
 import {
   eq,
@@ -19,6 +19,13 @@ export type Game = typeof externalSourceTable.$inferSelect;
 export type GameInsert = typeof externalSourceTable.$inferInsert;
 export type GameUpdate = Partial<GameInsert>;
 
+// Ensure GameWithSubmitter is defined (it should be from previous edits)
+// If not, it would be:
+export type GameWithSubmitter = Game & {
+  foundByUsername?: string | null;
+  foundByAvatarUrl?: string | null;
+};
+
 // Define search parameters interface
 export interface GameSearchParams {
   query?: string;
@@ -32,6 +39,7 @@ export interface GameSearchParams {
   steamAppid?: string; // Added for specific lookup
   externalId?: string; // Added for specific lookup
   userId?: string; // For getByUser logic if integrated into search
+  includeSubmitter?: boolean; // New flag
 }
 
 // Define the repository interface
@@ -55,29 +63,29 @@ export interface GameRepository {
    * @param params Search parameters
    * @returns Array of games matching the criteria
    */
-  search(params: GameSearchParams): Promise<Game[]>;
+  search(params: GameSearchParams): Promise<GameWithSubmitter[]>;
 
   /**
    * Get featured games
    * @param limit Maximum number of games to return
-   * @returns Array of featured games
+   * @returns Array of featured games (potentially with submitter info if underlying search provides it)
    */
-  getFeatured(limit?: number): Promise<Game[]>;
+  getFeatured(limit?: number): Promise<GameWithSubmitter[]>;
 
   /**
-   * Get recently added games
+   * Get recently added games, including submitter info if available.
    * @param limit Maximum number of games to return
-   * @returns Array of recently added games
+   * @returns Array of recently added games with submitter details
    */
-  getRecent(limit?: number): Promise<Game[]>;
+  getRecent(limit?: number): Promise<GameWithSubmitter[]>;
 
   /**
    * Get games by user (games found by a specific user)
    * @param userId The user ID
    * @param limit Maximum number of games to return
-   * @returns Array of games found by the user
+   * @returns Array of games found by the user (potentially with submitter info)
    */
-  getByUser(userId: string, limit?: number): Promise<Game[]>;
+  getByUser(userId: string, limit?: number): Promise<GameWithSubmitter[]>;
 
   /**
    * Get similar games based on vector embedding similarity
@@ -145,34 +153,78 @@ export class DrizzleGameRepository implements GameRepository {
     return result[0] || null;
   }
 
-  async search(params: GameSearchParams): Promise<Game[]> {
-    const { limit = 20, offset = 0, orderBy = "newest" } = params;
+  async search(params: GameSearchParams): Promise<GameWithSubmitter[]> {
+    const {
+      limit = 20,
+      offset = 0,
+      orderBy = "newest",
+      includeSubmitter = false, // Default to false
+    } = params;
     const whereClause = this.buildWhereClause(params);
 
-    let queryBuilder = db.select().from(externalSourceTable).$dynamic();
+    // Base query, always select fields for GameWithSubmitter structure
+    // If includeSubmitter is false, foundByUsername/AvatarUrl will be null if not joined,
+    // or if the left join doesn't find a match.
+    let queryCore = db
+      .select({
+        // Fields from externalSourceTable (Game part)
+        id: externalSourceTable.id,
+        platform: externalSourceTable.platform,
+        externalId: externalSourceTable.externalId,
+        title: externalSourceTable.title,
+        developer: externalSourceTable.developer,
+        descriptionShort: externalSourceTable.descriptionShort,
+        descriptionDetailed: externalSourceTable.descriptionDetailed,
+        genres: externalSourceTable.genres,
+        tags: externalSourceTable.tags,
+        embedding: externalSourceTable.embedding,
+        rawData: externalSourceTable.rawData,
+        enrichmentStatus: externalSourceTable.enrichmentStatus,
+        isFeatured: externalSourceTable.isFeatured,
+        steamAppid: externalSourceTable.steamAppid,
+        lastFetched: externalSourceTable.lastFetched,
+        createdAt: externalSourceTable.createdAt,
+        foundBy: externalSourceTable.foundBy,
+        // Fields from profilesTable (Submitter part) - conditionally populated by JOIN
+        foundByUsername: includeSubmitter
+          ? profilesTable.username
+          : drizzleSql`null`.as<string | null>("foundByUsername"),
+        foundByAvatarUrl: includeSubmitter
+          ? profilesTable.avatarUrl
+          : drizzleSql`null`.as<string | null>("foundByAvatarUrl"),
+      })
+      .from(externalSourceTable)
+      .$dynamic(); // For conditional parts
 
-    if (whereClause) {
-      queryBuilder = queryBuilder.where(whereClause);
+    if (includeSubmitter) {
+      queryCore = queryCore.leftJoin(
+        profilesTable,
+        eq(externalSourceTable.foundBy, profilesTable.id)
+      );
     }
 
-    // Apply ordering
+    let queryWithConditions = queryCore;
+    if (whereClause) {
+      queryWithConditions = queryCore.where(whereClause);
+    }
+
     let orderedQuery;
     switch (orderBy) {
       case "popular":
-        orderedQuery = queryBuilder.orderBy(
+        orderedQuery = queryWithConditions.orderBy(
           desc(externalSourceTable.createdAt),
           desc(externalSourceTable.id)
         );
         break;
       case "relevance":
-        orderedQuery = queryBuilder.orderBy(
+        orderedQuery = queryWithConditions.orderBy(
           desc(externalSourceTable.createdAt),
           desc(externalSourceTable.id)
         );
         break;
       case "newest":
       default:
-        orderedQuery = queryBuilder.orderBy(
+        orderedQuery = queryWithConditions.orderBy(
           desc(externalSourceTable.createdAt),
           desc(externalSourceTable.id)
         );
@@ -180,24 +232,48 @@ export class DrizzleGameRepository implements GameRepository {
     }
 
     const paginatedQuery = orderedQuery.limit(limit).offset(offset);
+    const results = await paginatedQuery.execute();
 
-    return paginatedQuery.execute();
+    // Ensure the shape matches GameWithSubmitter. Explicit nulls are fine.
+    return results.map((r) => ({
+      ...r,
+      // If not includeSubmitter, foundByUsername/AvatarUrl were selected as sql`null`
+      // so they should exist on `r` but be null.
+      // If includeSubmitter was true but no join match, they'd also be null.
+    })) as GameWithSubmitter[];
   }
 
-  async getFeatured(limit: number = 10): Promise<Game[]> {
-    return this.search({
+  async getFeatured(limit: number = 10): Promise<GameWithSubmitter[]> {
+    // For now, let's make it call search and the API consuming it will pick fields.
+    // includeSubmitter: false means foundByUsername/Url will be null from search method.
+    const results = await this.search({
       isFeatured: true,
       limit,
-      orderBy: "newest", // Or perhaps a specific "featured_order" if that exists
+      orderBy: "newest",
+      includeSubmitter: false,
     });
+    return results;
   }
 
-  async getRecent(limit: number = 10): Promise<Game[]> {
-    return this.search({ limit, orderBy: "newest" });
+  async getRecent(limit: number = 10): Promise<GameWithSubmitter[]> {
+    // Now calls search and explicitly includes submitter info.
+    return this.search({ limit, orderBy: "newest", includeSubmitter: true });
   }
 
-  async getByUser(userId: string, limit: number = 10): Promise<Game[]> {
-    return this.search({ userId, limit, orderBy: "newest" });
+  async getByUser(
+    userId: string,
+    limit: number = 10
+  ): Promise<GameWithSubmitter[]> {
+    // By default, we might not need submitter info here since we ARE searching by a user.
+    // However, search returns GameWithSubmitter[], so we align.
+    // If submitter info is truly redundant, the caller can just ignore those fields.
+    // Setting includeSubmitter: false as it might be redundant if we already know the user.
+    return this.search({
+      userId,
+      limit,
+      orderBy: "newest",
+      includeSubmitter: false,
+    });
   }
 
   async getSimilar(

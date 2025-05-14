@@ -1,67 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db"; // Assuming db instance is exported from @/db
-import { externalSourceTable, profilesTable } from "@/db/schema"; // Ensure profilesTable is imported
-import { desc, eq } from "drizzle-orm"; // Import eq for join condition
-import type { SteamRawData } from "@/types/steam";
-
-// Consistent type from feed-display.tsx ApiGame
-interface RecentApiGame {
-  id: number;
-  title: string | null;
-  shortDescription: string | null;
-  steamAppid: string | null;
-  tags: string[] | null;
-  rawData?: SteamRawData | null;
-  foundByUsername?: string | null;
-  foundByAvatarUrl?: string | null;
-  createdAt?: string | Date | null;
-}
+import {
+  DrizzleGameRepository,
+  GameWithSubmitter,
+  GameSearchParams,
+} from "@/lib/repositories/game-repository";
 
 interface RecentGamesResult {
   success: boolean;
-  data?: RecentApiGame[];
+  data?: GameWithSubmitter[]; // Directly use GameWithSubmitter
   message?: string;
 }
 
-const DEFAULT_LIMIT = 4; // Default number of games per page
+const DEFAULT_LIMIT = 10; // Default number of games for this route
+const gameRepository = new DrizzleGameRepository();
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get("page") || "1", 10);
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<RecentGamesResult>> {
+  const urlSearchParams = new URL(request.url).searchParams;
+  const page = parseInt(urlSearchParams.get("page") || "1", 10);
   const limit = parseInt(
-    searchParams.get("limit") || String(DEFAULT_LIMIT),
+    urlSearchParams.get("limit") || String(DEFAULT_LIMIT),
     10
   );
 
-  // Validate page and limit
   const pageNum = Math.max(1, page);
-  const limitNum = Math.max(1, Math.min(50, limit)); // Add a max limit for safety
+  const limitNum = Math.max(1, Math.min(50, limit)); // Max limit for safety
   const offset = (pageNum - 1) * limitNum;
 
-  try {
-    const recentGames = await db
-      .select({
-        id: externalSourceTable.id,
-        title: externalSourceTable.title,
-        shortDescription: externalSourceTable.descriptionShort,
-        steamAppid: externalSourceTable.steamAppid,
-        tags: externalSourceTable.tags,
-        rawData: externalSourceTable.rawData,
-        foundByUsername: profilesTable.username,
-        foundByAvatarUrl: profilesTable.avatarUrl,
-        createdAt: externalSourceTable.createdAt,
-      })
-      .from(externalSourceTable)
-      // Add left join
-      .leftJoin(
-        profilesTable,
-        eq(externalSourceTable.foundBy, profilesTable.id)
-      )
-      .orderBy(desc(externalSourceTable.createdAt))
-      .limit(limitNum)
-      .offset(offset);
+  const searchParams: GameSearchParams = {
+    orderBy: "newest",
+    limit: limitNum,
+    offset: offset,
+    includeSubmitter: true, // This route specifically needs submitter info
+  };
 
-    return NextResponse.json({ success: true, data: recentGames });
+  try {
+    const recentGames: GameWithSubmitter[] =
+      await gameRepository.search(searchParams);
+
+    // The old RecentApiGame had a shortDescription field. GameWithSubmitter has descriptionShort.
+    // Let's ensure the API response is consistent or update frontend if it now expects descriptionShort.
+    // For now, I'll map to ensure shortDescription exists if the frontend still relies on it.
+    const apiResponseData = recentGames.map((game) => ({
+      ...game,
+      shortDescription: game.descriptionShort, // Explicitly map for compatibility
+    }));
+
+    return NextResponse.json({ success: true, data: apiResponseData });
   } catch (error) {
     console.error("Error fetching recent games:", error);
     return NextResponse.json(
