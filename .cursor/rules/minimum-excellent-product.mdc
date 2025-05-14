@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Minimum Excellent Product (MEP)
+
+## Beyond "Viable": Striving for Excellence from the Start
+
+At IndieFindr, we prefer the concept of a **Minimum Excellent Product (MEP)** over a traditional Minimum Viable Product (MVP). While an MVP focuses on delivering the bare minimum functionality to be "viable," an MEP emphasizes launching with a core set of features that are not just functional but also **excellently executed and polished**.
+
+**Why MEP over MVP?**
+*   **First Impressions Matter:** An MEP aims to deliver a high-quality initial experience, fostering positive user perception from day one.
+*   **Focus on Craft:** It emphasizes ensuring that the core user experience and value proposition are built to a high standard of quality and [Craft](mdc:.cursor/rules/craft.mdc).
+*   **Stronger Foundation:** Building excellence into the core from the outset creates a more robust foundation for future development and iteration. Instead of launching something merely functional and then trying to "add quality later," we build quality into the essential features.
+
+**Connection to Our Philosophy:**
+The MEP is a practical application of our product philosophy at the product launch stage. Guided by the [Pareto Principle (80/20 Rule)](mdc:.cursor/rules/pareto-principle.mdc), we identify the most critical aspects of the user experience and core functionality that will deliver significant value, and we invest the necessary effort and [Craft](mdc:.cursor/rules/craft.mdc) to make these aspects *excellent*. This means focusing on quality, usability, and a degree of polish in the areas that matter most, rather than spreading efforts thinly across a wider range of less refined features.

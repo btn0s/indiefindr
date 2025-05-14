@@ -1,0 +1,33 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Pareto Principle (80/20 Rule)
+
+## Overview
+
+The Pareto Principle, also known as the 80/20 rule, is an aphorism which asserts that for many outcomes, roughly 80% of consequences come from 20% of causes (the "vital few"). It was originally observed by Italian economist Vilfredo Pareto, who noticed that 80% of the land in Italy was owned by 20% of the population.
+
+## Application in Product & Software Development
+
+In the context of product development, project management, and software engineering, the Pareto Principle suggests that:
+
+*   **80% of the value** (to users or the business) often comes from **20% of the features** or effort.
+*   **80% of bugs** or problems might originate from **20% of the code modules**.
+*   **80% of user engagement** could be driven by **20% of the content or functionality**.
+*   **80% of the effort** in a project might be consumed by **20% of the tasks** (often the most complex or problematic ones).
+
+## Why It Matters to Us
+
+Understanding and applying the Pareto Principle helps us:
+
+*   **Prioritize Effectively:** By identifying the "vital few" inputs (features, tasks, code areas) that produce the majority of the desired outputs (value, quality, engagement), we can focus our limited resources where they will have the most impact.
+*   **Maximize Efficiency:** It encourages us to avoid over-investing in areas that yield diminishing returns.
+*   **Make Strategic Decisions:** It provides a framework for making informed choices about where to apply our highest level of [Craft](mdc:.cursor/rules/craft.mdc) and attention.
+
+## Connection to Our Philosophy
+
+The Pareto Principle is a foundational concept for our approach to building products. By understanding this principle, we commit to identifying and focusing on the work that delivers the most value, ensuring we build with intention and impact.
+
+It also informs our preference for concepts like the [Minimum Excellent Product (MEP)](mdc:.cursor/rules/minimum-excellent-product.mdc) and [Minimum Lovable Product (MLP)](mdc:.cursor/rules/minimum-lovable-product.mdc), where the "minimum" is defined by the critical features that must be excellent and lovable to achieve the desired impact.
