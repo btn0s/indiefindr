@@ -1,37 +1,21 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SearchIcon, ArrowLeft, X } from "lucide-react";
+import { SearchIcon, X } from "lucide-react";
 import { db, schema } from "@/db";
-import {
-  ilike,
-  or,
-  desc,
-  count,
-  sql,
-  inArray,
-  and,
-  arrayOverlaps,
-} from "drizzle-orm";
+import { desc, count, sql, inArray } from "drizzle-orm";
 import { GameCardMini } from "@/components/game-card-mini";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { SteamRawData } from "@/types/steam";
 import { getGameUrl } from "@/utils/game-url";
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
-import { ClaimFindButton } from "@/components/claim-find-button";
 import { searchSteam, type SteamSearchResult } from "@/lib/steam-search";
-
-// Define the structure for Steam search results
-// interface SteamSearchResult { // This can be removed as it's imported now
-//   appid: number;
-//   name: string;
-//   icon: string;
-//   logo: string;
-// }
+import { DrizzleGameRepository } from "@/lib/repositories/game-repository";
+import type { GameWithSubmitter } from "@/lib/repositories/game-repository";
 
 const Loading = () => {
   return (
@@ -54,11 +38,11 @@ const Loading = () => {
 
 interface SearchResultGame {
   id: number;
-  title: string | null;
-  externalId: string;
+  title: string;
+  externalId: string | null;
   steamAppid: string | null;
   descriptionShort: string | null;
-  rawData?: SteamRawData | null;
+  rawData: SteamRawData | null;
 }
 
 interface SearchPageProps {
@@ -67,6 +51,9 @@ interface SearchPageProps {
     tags?: string;
   }>;
 }
+
+// Instantiate the repository
+const gameRepository = new DrizzleGameRepository();
 
 async function performSearch(
   query?: string,
@@ -90,59 +77,18 @@ async function performSearch(
   );
 
   try {
-    const conditions = [];
+    // Use the repository's search method
+    const searchParams = {
+      query: queryTrimmed,
+      tags: tagsArray,
+      limit: 20, // Default limit, adjust as needed
+      includeSubmitter: false, // Not needed for search results page
+    };
 
-    if (queryTrimmed) {
-      const queryTerms = queryTrimmed.split(/\s+/).filter(Boolean);
-      if (queryTerms.length === 1) {
-        conditions.push(
-          or(
-            ilike(schema.externalSourceTable.title, `%${queryTrimmed}%`),
-            ilike(
-              schema.externalSourceTable.descriptionShort,
-              `%${queryTrimmed}%`
-            )
-          )
-        );
-      } else if (queryTerms.length > 1) {
-        const termConditions = queryTerms.map((term) =>
-          or(
-            ilike(schema.externalSourceTable.title, `%${term}%`),
-            ilike(schema.externalSourceTable.descriptionShort, `%${term}%`)
-          )
-        );
-        conditions.push(or(...termConditions));
-      }
-    }
+    const searchResultsDb: GameWithSubmitter[] =
+      await gameRepository.search(searchParams);
 
-    if (tagsArray && tagsArray.length > 0) {
-      conditions.push(
-        arrayOverlaps(schema.externalSourceTable.tags, tagsArray)
-      );
-    }
-
-    if (conditions.length === 0) {
-      return { results: [], error: "No search criteria provided." };
-    }
-
-    let searchResultsDb = await db
-      .select({
-        id: schema.externalSourceTable.id,
-        title: schema.externalSourceTable.title,
-        externalId: schema.externalSourceTable.externalId,
-        steamAppid: schema.externalSourceTable.steamAppid,
-        descriptionShort: schema.externalSourceTable.descriptionShort,
-        rawData: schema.externalSourceTable.rawData,
-      })
-      .from(schema.externalSourceTable)
-      .where(and(...conditions))
-      .limit(20)
-      .execute();
-
-    console.log(
-      "[Server Search] DB results after initial query:",
-      searchResultsDb
-    );
+    console.log("[Server Search] DB results from repository:", searchResultsDb);
 
     console.log(
       `[Server Search] Found ${searchResultsDb.length} results for query: "${queryTrimmed}", tags: "${tagsQuery}".`
@@ -151,10 +97,11 @@ async function performSearch(
     const formattedResults: SearchResultGame[] = searchResultsDb.map(
       (game) => ({
         id: game.id,
-        title: game.title,
+        title: game.title ?? "",
         externalId: game.externalId,
         steamAppid: game.steamAppid,
         descriptionShort: game.descriptionShort,
+        // Ensure rawData is cast correctly; GameWithSubmitter includes the full Game type
         rawData: game.rawData as SteamRawData | null,
       })
     );
