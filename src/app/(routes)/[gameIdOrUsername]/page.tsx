@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { externalSourceTable, profilesTable, libraryTable } from "@/db/schema";
 import { eq, and, sql, count } from "drizzle-orm";
 import { Metadata, ResolvingMetadata } from "next";
-import type { SteamRawData } from "@/types/steam";
+import type { SteamRawData, MediaItem, Screenshot, Movie } from "@/types/steam";
 import { isNumeric } from "@/utils/string-utils";
 
 // Import components for user profile
@@ -272,7 +272,7 @@ async function GameDetailPage({ gameId }: { gameId: string }) {
   const releaseDate = rawData?.release_date?.date || "TBA";
 
   // Combine screenshots and movies into a single media array with videos first
-  const mediaItems: MediaItem[] = [
+  const mediaItems: { type: "image" | "video"; data: Screenshot | Movie }[] = [
     // Videos first
     ...movies.map((movie) => ({
       type: "video" as const,
