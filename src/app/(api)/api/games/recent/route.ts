@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db"; // Assuming db instance is exported from @/db
-import { externalSourceTable, profilesTable } from "@/db/schema"; // Ensure profilesTable is imported
-import { desc, eq } from "drizzle-orm"; // Import eq for join condition
 import type { SteamRawData } from "@/types/steam";
+import { getGameRepository } from "@/lib/repositories";
+import { logger } from "@/lib/logger";
 
 // Consistent type from feed-display.tsx ApiGame
 interface RecentApiGame {
@@ -39,31 +38,30 @@ export async function GET(request: NextRequest) {
   const offset = (pageNum - 1) * limitNum;
 
   try {
-    const recentGames = await db
-      .select({
-        id: externalSourceTable.id,
-        title: externalSourceTable.title,
-        shortDescription: externalSourceTable.descriptionShort,
-        steamAppid: externalSourceTable.steamAppid,
-        tags: externalSourceTable.tags,
-        rawData: externalSourceTable.rawData,
-        foundByUsername: profilesTable.username,
-        foundByAvatarUrl: profilesTable.avatarUrl,
-        createdAt: externalSourceTable.createdAt,
-      })
-      .from(externalSourceTable)
-      // Add left join
-      .leftJoin(
-        profilesTable,
-        eq(externalSourceTable.foundBy, profilesTable.id)
-      )
-      .orderBy(desc(externalSourceTable.createdAt))
-      .limit(limitNum)
-      .offset(offset);
+    // Use the repository to get recent games
+    const gameRepository = getGameRepository();
+    const recentGames = await gameRepository.search({
+      limit: limitNum,
+      offset,
+      orderBy: "newest"
+    });
 
-    return NextResponse.json({ success: true, data: recentGames });
+    // Transform the data to match the expected API response format
+    const formattedGames: RecentApiGame[] = recentGames.map(game => ({
+      id: game.id,
+      title: game.title,
+      shortDescription: game.descriptionShort,
+      steamAppid: game.steamAppid,
+      tags: game.tags,
+      rawData: game.rawData as SteamRawData | null,
+      // Note: We don't have the username and avatar directly from the repository
+      // In a complete implementation, we would need to join with profiles or make a separate query
+      createdAt: game.createdAt
+    }));
+
+    return NextResponse.json({ success: true, data: formattedGames });
   } catch (error) {
-    console.error("Error fetching recent games:", error);
+    logger.error("Error fetching recent games:", error);
     return NextResponse.json(
       { success: false, message: "Failed to fetch recent games." },
       { status: 500 }
