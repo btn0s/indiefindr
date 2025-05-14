@@ -237,7 +237,7 @@ export function GameCard({
 
       <div className="flex justify-between">
         <Link
-          href={`/user/${foundByUsername}`}
+          href={`/${foundByUsername}`}
           className={cn("flex items-center gap-2 px-1", {
             "pointer-events-none": !game.foundByUsername,
           })}

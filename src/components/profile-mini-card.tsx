@@ -57,7 +57,7 @@ export function ProfileMiniCard({
         >
           <div className="space-y-3">
             <Link
-              href={`/user/${userProfile.username}`}
+              href={`/${userProfile.username}`}
               className="group flex items-center gap-3"
             >
               <Avatar className="size-8 border ring-1 ring-primary/10">
@@ -100,14 +100,14 @@ export function ProfileMiniCard({
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             <Link
-              href={`/user/${userProfile.username}?tab=library`}
+              href={`/${userProfile.username}?tab=library`}
               className="flex flex-col items-center p-2 rounded-md bg-primary/5 hover:bg-primary/10 transition-colors"
             >
               <span className="text-xs text-muted-foreground">Library</span>
               <span className="text-lg font-semibold">{libraryCount}</span>
             </Link>
             <Link
-              href={`/user/${userProfile.username}?tab=finds`}
+              href={`/${userProfile.username}?tab=finds`}
               className="flex flex-col items-center p-2 rounded-md bg-primary/5 hover:bg-primary/10 transition-colors"
             >
               <span className="text-xs text-muted-foreground">Finds</span>
@@ -117,7 +117,7 @@ export function ProfileMiniCard({
 
           <Button variant="secondary" className="w-full" asChild>
             <Link
-              href={`/user/${userProfile.username}`}
+              href={`/${userProfile.username}`}
               className="flex items-center justify-center w-full gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
             >
               <span>View Full Profile</span>

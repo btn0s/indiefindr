@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { LogOut } from "lucide-react";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,8 @@ type Profile = {
   username: string | null;
   // Add other fields if needed, e.g., email for initials if not on auth.user
   email?: string | null; // Assuming email might come from profile or auth user
+  avatarUrl?: string | null;
+  fullName?: string | null;
 };
 
 export default async function AuthButton() {
@@ -67,8 +69,15 @@ export default async function AuthButton() {
     );
   }
 
-  const getUserInitials = () => {
-    // Prefer profile email if available, fallback to authUser email
+  const getUserInitials = (name?: string | null) => {
+    // If name is provided, use it to generate initials
+    if (name) {
+      const names = name.split(" ");
+      if (names.length === 1) return names[0].charAt(0).toUpperCase();
+      return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+    }
+    
+    // Fallback to email if no name is provided
     const emailToUse = userProfile?.email || authUser?.email;
     if (!emailToUse) return "U";
     return emailToUse.charAt(0).toUpperCase();
@@ -102,12 +111,24 @@ export default async function AuthButton() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem asChild>
-              {/* Link to user profile using username from userProfile */}
-              <Link href={`/user/${userProfile.username ?? "unknown"}`}>
-                Profile
+            {userProfile && (
+              <Link href={`/${userProfile.username ?? "unknown"}`}>
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={userProfile.avatarUrl ?? undefined}
+                      alt={userProfile.username ?? "User avatar"}
+                    />
+                    <AvatarFallback>
+                      {getUserInitials(userProfile.fullName ?? userProfile.username)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden md:inline-block">
+                    {userProfile.username}
+                  </span>
+                </div>
               </Link>
-            </DropdownMenuItem>
+            )}
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
