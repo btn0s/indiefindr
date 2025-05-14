@@ -15,7 +15,7 @@ export const getGameUrl = (id: number, title: string | null): string => {
         .replace(/-+/g, "-")        // Replace multiple hyphens with single
         .substring(0, 75)        // Limit slug length
     : "unknown";
-  return `/${id}/${slug}`;
+  return `/games/${id}/${slug}`;
 };
 
 // Helper function to ensure a URL uses HTTPS
