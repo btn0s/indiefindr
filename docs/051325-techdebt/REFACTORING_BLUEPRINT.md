@@ -341,163 +341,303 @@ export function usePersonalization() {
 ```javascript
 // next.config.ts
 const nextConfig = {
-  experimental: {
-    ppr: true,              // Partial Prerendering for game profiles
-    inlineCss: true,        // Reduce render-blocking CSS
-    reactCompiler: true,    // Optimize React code compilation
-  },
+  // Optimize for image-heavy game discovery platform
   images: {
     minimumCacheTTL: 31536000, // 1 year cache for game images
+    domains: ['steamcdn-a.akamaihd.net', 'cdn.cloudflare.steamstatic.com'], // Allow Steam CDN images
+  },
+  // Selective experimental features that make sense for our use case
+  experimental: {
+    optimizeCss: true,      // Optimize CSS for faster page loads
+    scrollRestoration: true, // Important for feed navigation
   }
 }
 ```
 
-### 8.2 Server Components Architecture
+### 8.2 Optimized Client Component Architecture
 
-Convert current client components to server components where possible:
+Design components with a clear separation of concerns for optimal performance:
 
 ```typescript
 // src/components/game/organisms/GameCard.tsx
-// Before: "use client"
-// After: Server Component by default
-export async function GameCard({ gameId }: { gameId: string }) {
-  const game = await GameRepository.getById(gameId);
+"use client"
+export function GameCard({ game, onAction, imageIndex = 0 }: GameCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Track interactions for personalization
+  const { trackInteraction } = usePersonalization();
+  
+  // Handle user interactions
+  const handleAction = (action: GameAction) => {
+    trackInteraction({ gameId: game.id, action });
+    onAction?.(action, game.id);
+  };
   
   return (
-    <Card>
-      <Suspense fallback={<GameCardSkeleton />}>
-        <GameCardMedia media={game.media} />
-      </Suspense>
+    <Card 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <GameCardMedia 
+        media={game.media} 
+        isHovered={isHovered}
+        imageIndex={imageIndex} 
+      />
       <GameCardContent game={game} />
-      <ClientSideActions gameId={gameId} /> {/* Keep interactive parts client-side */}
+      <GameCardActions game={game} onAction={handleAction} />
     </Card>
   );
 }
 ```
 
-### 8.3 Data Fetching and Caching Strategy
+### 8.3 Efficient Data Fetching Strategy
 
-Implement sophisticated caching for game data:
+Implement optimized data fetching with SWR for responsive feeds and infinite scrolling:
 
 ```typescript
-// src/lib/cache.ts
-export const unstable_cache = <Inputs extends unknown[], Output>(
-  callback: (...args: Inputs) => Promise<Output>,
-  key: string[],
-  options: { revalidate: number },
-) => cache(next_unstable_cache(callback, key, options));
-
-// src/repositories/game-repository.ts
-export const getGameWithEnrichment = unstable_cache(
-  async (gameId: string) => {
-    const [baseData, enrichedData] = await Promise.all([
-      db.query.games.findById(gameId),
-      db.query.gameEnrichment.findByGameId(gameId)
-    ]);
-    return transformGameData(baseData, enrichedData);
-  },
-  ["game-enriched"],
-  { revalidate: 3600 } // 1 hour
-);
+// src/hooks/useFeed.ts
+export function useFeed(
+  feedType: FeedType, 
+  options: FeedOptions = {}
+) {
+  const { data, error, size, setSize, isValidating } = useSWR(
+    () => feedKeys.getKey(feedType, options),
+    (key) => getFeedPage(key, size),
+    {
+      revalidateIfStale: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 60000, // 1 minute
+    }
+  );
+  
+  const items = useMemo(() => data ? data.flatMap(page => page.items) : [], [data]);
+  const isLoadingInitialData = !data && !error;
+  const isLoadingMore = isLoadingInitialData || (size > 0 && data && typeof data[size - 1] === "undefined");
+  const isEmpty = data?.[0]?.items.length === 0;
+  const isReachingEnd = isEmpty || (data && data[data.length - 1]?.hasMore === false);
+  
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && !isReachingEnd) {
+      setSize(size + 1);
+    }
+  }, [isLoadingMore, isReachingEnd, setSize, size]);
+  
+  return {
+    items,
+    error,
+    isLoadingInitialData,
+    isLoadingMore,
+    isEmpty,
+    isReachingEnd,
+    loadMore,
+    isRefreshing: isValidating && data && data.length === size,
+  };
+}
 ```
 
-### 8.4 Image Optimization Pipeline
+### 8.4 API Route Optimization
 
-Enhance image loading strategy:
+Create efficient API endpoints for feed and game data:
+
+```typescript
+// src/app/api/feed/route.ts
+export const dynamic = "force-dynamic"; // Feed is inherently dynamic for personalization
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const feedType = searchParams.get("type") || "trending";
+  const page = parseInt(searchParams.get("page") || "1");
+  const pageSize = parseInt(searchParams.get("pageSize") || "20");
+  
+  const userId = await getCurrentUserId();
+  
+  // For non-personalized feeds, we can cache based on common params
+  const cacheKey = !userId && feedType !== "personalized" 
+    ? `feed:${feedType}:${page}:${pageSize}`
+    : null;
+    
+  const feedData = cacheKey
+    ? await redis.get(cacheKey).then(data => data ? JSON.parse(data) : null)
+    : null;
+    
+  if (feedData) {
+    return Response.json(feedData);
+  }
+  
+  // Fetch feed data based on type and user
+  const data = await getFeedData(feedType, page, pageSize, userId);
+  
+  // Cache non-personalized feeds
+  if (cacheKey) {
+    await redis.set(cacheKey, JSON.stringify(data), "EX", 300); // 5 min cache
+  }
+  
+  return Response.json(data);
+}
+```
+
+### 8.5 Image Optimization Strategy
+
+Implement advanced image loading for game cards:
 
 ```typescript
 // src/components/game/atoms/GameImage.tsx
 export function GameImage({ 
   game, 
   priority = false,
-  imageCount = 0 
+  imageIndex = 0, 
+  variant = "card"
 }: GameImageProps) {
+  // Determine appropriate sizes based on variant
+  const sizes = {
+    card: { width: 300, height: 169, quality: 75 },
+    thumbnail: { width: 80, height: 45, quality: 65 },
+    detail: { width: 600, height: 338, quality: 85 },
+  }[variant];
+  
   return (
     <Image
       src={game.imageUrl}
-      alt={`${game.title} cover art`}
-      loading={imageCount < 15 ? "eager" : "lazy"}
+      alt={`${game.title} cover image`}
+      loading={imageIndex < 12 ? "eager" : "lazy"} // Eagerly load first screen of images
       decoding={priority ? "sync" : "async"}
+      placeholder={game.blurDataUrl ? "blur" : undefined}
+      blurDataURL={game.blurDataUrl}
       className="game-image"
-      width={300}
-      height={400}
-      quality={75}
+      width={sizes.width}
+      height={sizes.height}
+      quality={sizes.quality}
     />
   );
 }
 ```
 
-### 8.5 Feed Performance Optimization
+### 8.6 Virtualization for Feed Performance
 
-Implement efficient feed loading:
+Implement windowing for long feeds with react-window or react-virtualized:
 
 ```typescript
-// src/app/feed/page.tsx
-export default async function FeedPage() {
+// src/components/feed/VirtualizedFeed.tsx
+"use client"
+export function VirtualizedFeed({ 
+  initialItems, 
+  fetchMoreItems, 
+  hasMore 
+}: VirtualizedFeedProps) {
+  // Only render visible items for better performance
   return (
-    <div>
-      <Suspense fallback={<FeedSkeleton />}>
-        {/* Static part loads instantly */}
-        <FeedHeader />
-        
-        {/* Dynamic feed content streams in */}
-        <Suspense fallback={<GameCardSkeleton count={4} />}>
-          <FeedContent />
-        </Suspense>
-        
-        {/* Delayed loading of less critical content */}
-        <Suspense>
-          <RecommendationsSidebar />
-        </Suspense>
-      </Suspense>
-    </div>
+    <InfiniteLoader
+      isItemLoaded={index => index < initialItems.length}
+      itemCount={hasMore ? initialItems.length + 1 : initialItems.length}
+      loadMoreItems={fetchMoreItems}
+    >
+      {({ onItemsRendered, ref }) => (
+        <WindowScroller>
+          {({ height, scrollTop }) => (
+            <VariableSizeList
+              ref={ref}
+              onItemsRendered={onItemsRendered}
+              height={height || 800}
+              width="100%"
+              itemCount={initialItems.length}
+              itemSize={index => {
+                // Dynamic sizing based on content type
+                const item = initialItems[index];
+                return item.type === 'game' ? 350 : 200;
+              }}
+              itemData={initialItems}
+              overscanCount={3}
+              scrollTop={scrollTop}
+            >
+              {({ index, style, data }) => (
+                <div style={style}>
+                  <FeedItem item={data[index]} />
+                </div>
+              )}
+            </VariableSizeList>
+          )}
+        </WindowScroller>
+      )}
+    </InfiniteLoader>
   );
 }
 ```
 
-### 8.6 API Route Optimization
+### 8.7 Selective Hydration Strategy
 
-Optimize API endpoints for performance:
-
-```typescript
-// src/app/api/games/[id]/route.ts
-export const dynamic = "force-dynamic"; // For real-time game data
-export const revalidate = 3600; // 1 hour for static game data
-
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const gameData = await getGameWithEnrichment(params.id);
-  
-  return Response.json(gameData, {
-    headers: {
-      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400"
-    }
-  });
-}
-```
-
-### 8.7 Analytics and Monitoring
-
-Implement performance monitoring:
+Implement selective hydration to prioritize interactive elements:
 
 ```typescript
 // src/app/layout.tsx
 export default function RootLayout({ children }) {
   return (
-    <html>
-      <head>
-        <SpeedInsights />
-      </head>
+    <html lang="en">
       <body>
-        {children}
-        <Analytics 
-          endpoint="/api/analytics"
-          sampleRate={0.1} // 10% of traffic
-        />
+        <Suspense fallback={<AppShell />}>
+          {/* Core app UI loads first */}
+          <AppHeader />
+          
+          {/* Main content area with selective hydration priority */}
+          <main>
+            {children}
+          </main>
+          
+          {/* Lower priority UI elements */}
+          <Suspense fallback={<FooterSkeleton />}>
+            <AppFooter />
+          </Suspense>
+        </Suspense>
+        
+        {/* Analytics loads last */}
+        <Analytics />
       </body>
     </html>
+  );
+}
+```
+
+### 8.8 Progressive Enhancement
+
+Implement progressive enhancement for critical user actions:
+
+```typescript
+// src/components/game/molecules/GameActionBar.tsx
+"use client"
+export function GameActionBar({ game, onAction }: GameActionBarProps) {
+  // Track which features are supported
+  const supportsShareApi = typeof navigator !== 'undefined' && !!navigator.share;
+  
+  const handleShare = async () => {
+    if (supportsShareApi) {
+      try {
+        await navigator.share({
+          title: game.title,
+          text: `Check out ${game.title} on IndieFindr`,
+          url: `https://indiefindr.com/games/${game.slug}`
+        });
+        onAction('share_success', game.id);
+      } catch (error) {
+        // Fall back to copy link
+        copyGameLink(game);
+        onAction('share_fallback', game.id);
+      }
+    } else {
+      // No share API support
+      copyGameLink(game);
+      onAction('share_copy', game.id);
+    }
+  };
+  
+  return (
+    <div className="game-action-bar">
+      <Button onClick={() => onAction('bookmark', game.id)}>
+        <BookmarkIcon /> Save
+      </Button>
+      <Button onClick={handleShare}>
+        <ShareIcon /> Share
+      </Button>
+    </div>
   );
 }
 ```
