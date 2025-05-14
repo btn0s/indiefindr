@@ -30,7 +30,6 @@ export async function TopNav() {
 
         <div className="flex items-center gap-2 flex-1 sm:flex-none sm:w-1/4 justify-end">
           <AuthButton />
-          <SubmitGameDialog />
         </div>
       </div>
     </header>
