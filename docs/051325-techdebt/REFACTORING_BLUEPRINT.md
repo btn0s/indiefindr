@@ -241,6 +241,27 @@ export function usePersonalization() {
 
 ## 5. Implementation Plan
 
+### 5.0 Core User Journeys Prioritization
+
+The refactoring work is prioritized to improve the following core user journeys first, ensuring technical improvements directly enhance user experience:
+
+1. **Game Discovery Flow**
+   - Feed browsing and filtering experience
+   - Search functionality and results presentation
+   - Game card interactions and information density
+
+2. **Game Profile Exploration**
+   - Rich media viewing and interaction
+   - Related content discovery
+   - Social sharing and bookmarking
+
+3. **Personalization Experience**
+   - Initial preference setup
+   - Feed adaptation based on interactions
+   - Explicit preference management
+
+These journeys represent the fundamental value proposition of IndieFindr and will benefit most from the architectural improvements. Each technical task should be connected to enhancing at least one of these flows.
+
 ### 5.1 Phase 1: Foundation (Weeks 1-3)
 
 1. **Data Architecture**
@@ -642,7 +663,171 @@ export function GameActionBar({ game, onAction }: GameActionBarProps) {
 }
 ```
 
-## 9. Conclusion
+## 9. Technical Debt Monitoring
+
+To prevent new technical debt while addressing existing issues, we will implement:
+
+### 9.1 Automated Monitoring
+
+1. **Complexity Analysis**
+   - Configure SonarQube with thresholds for cyclomatic complexity
+   - Run complexity reports as part of the CI pipeline
+   - Block PRs that introduce methods/components above complexity thresholds
+
+2. **Bundle Size Tracking**
+   - Implement bundle analysis in the build process
+   - Set alerts for significant increases in bundle size
+   - Track component-level bundle impact
+
+3. **Test Coverage Requirements**
+   - Enforce minimum test coverage for core repositories and services
+   - Gradually increase coverage requirements as codebase stabilizes
+   - Prioritize coverage for data transformation and business logic
+
+### 9.2 Code Review Guidelines
+
+1. **Architecture Compliance Checklist**
+   - Repository pattern usage
+   - Component composition principles
+   - State management approach
+   - API client utilization
+
+2. **Regular Architecture Reviews**
+   - Monthly architecture overview sessions
+   - Component library review and refinement
+   - Identification of emerging patterns and anti-patterns
+
+### 9.3 Technical Debt Backlog Management
+
+1. **Debt Classification System**
+   - Severity: Critical/High/Medium/Low
+   - Origin: Legacy/Expedient/External/Architectural
+   - Impact: Performance/Maintainability/Extensibility/Security
+
+2. **Debt Retirement Schedule**
+   - Allocate 20% of each sprint to addressing technical debt
+   - Prioritize items that block future features or affect core user journeys
+   - Track and celebrate debt reduction metrics
+
+## 10. 80/20 Principle: High-Impact Focus Areas
+
+Each refactoring area has been analyzed to identify the highest-leverage work—the vital 20% of changes that will yield 80% of the benefits:
+
+### 10.1 Data Layer Architecture
+
+**Highest Impact (20%):**
+- Repository abstraction for game data access
+- Flexible schema design for enrichment data
+- Service layer for domain-specific transformations
+
+**Expected Benefits (80%):**
+- Enables multi-source data integration
+- Simplifies future AI feature implementation
+- Creates foundation for sophisticated personalization
+
+### 10.2 UI Architecture
+
+**Highest Impact (20%):**
+- Breaking down GameCard into composable components
+- Dynamic content type handling in feeds
+- Consistent prop patterns across component levels
+
+**Expected Benefits (80%):**
+- Drastically improves component reusability
+- Enables diverse content types in feeds
+- Reduces duplication and improves maintainability
+
+### 10.3 API & Integration Layer
+
+**Highest Impact (20%):**
+- Unified API client abstraction
+- Basic enrichment pipeline structure
+- Standard error handling and retry logic
+
+**Expected Benefits (80%):**
+- Simplifies integration of new data sources
+- Creates extensible pattern for content enrichment
+- Improves resilience across external dependencies
+
+### 10.4 State Management
+
+**Highest Impact (20%):**
+- Core personalization context
+- Preference tracking hooks
+- Local storage persistence strategy
+
+**Expected Benefits (80%):**
+- Enables sophisticated personalization features
+- Improves user experience continuity
+- Creates foundation for AI-based recommendations
+
+## 11. Decision-Making Framework
+
+This framework provides guidelines for making tradeoff decisions during implementation, ensuring alignment with our principles:
+
+### 11.1 Quality vs. Speed Decisions
+
+Apply the following rubric when deciding between quality and speed:
+
+| Prioritize Quality When | Prioritize Speed When |
+|-------------------------|------------------------|
+| In core user interaction components | In admin or internal tooling |
+| Establishing patterns that will be reused | Creating one-off components |
+| Building data access foundations | Implementing temporary data solutions |
+| Creating public-facing experiences | Developing MVP features for testing |
+| Working in performance-critical paths | Working on non-critical path features |
+
+### 11.2 Technical Approach Selection
+
+When selecting between multiple technical approaches, evaluate options against these criteria:
+
+1. **Developer Experience Impact:** How will this affect development velocity and onboarding?
+2. **Future Flexibility:** How well does this accommodate expected future requirements?
+3. **Performance Implications:** What are the runtime performance tradeoffs?
+4. **Implementation Complexity:** How difficult is the initial implementation?
+5. **Maintenance Burden:** How much ongoing maintenance will this require?
+
+Score each option from 1-5 on these dimensions, weighted by the specific context, to guide decision-making.
+
+### 11.3 Refactoring Boundary Decisions
+
+Use these principles to determine boundaries for refactoring:
+
+1. **Complete Components:** Refactor entire logical components rather than partial implementations
+2. **Repository Completeness:** Implement full repository pattern for a domain area or not at all
+3. **Migration Thresholds:** Only start schema migrations when at least 80% of affected code can be updated
+4. **Interface Stability:** Establish stable interfaces before implementing underlying functionality
+5. **Test Coverage Requirements:** Critical paths require 80%+ test coverage; supporting functionality 50%+
+
+## 12. Risk Assessment and Mitigation
+
+### 12.1 Technical Risks
+
+| Risk | Impact | Likelihood | Mitigation Strategy |
+|------|--------|------------|---------------------|
+| Data migration disrupts service | High | Medium | 1. Create shadow write system before cutover<br>2. Implement rollback capability<br>3. Migration during low-traffic periods |
+| Component refactoring breaks existing functionality | High | High | 1. Comprehensive test suite before refactoring<br>2. Parallel implementation with feature flags<br>3. Gradual rollout by user segment |
+| Performance regression from abstraction layers | Medium | Medium | 1. Establish performance baseline before changes<br>2. Performance testing in CI pipeline<br>3. Optimization budget for critical paths |
+| External API dependencies change during refactoring | Medium | Low | 1. Build adapter layer to isolate external APIs<br>2. Version external integrations<br>3. Comprehensive error handling |
+| Team knowledge gaps in new patterns | Medium | Medium | 1. Documentation as part of implementation<br>2. Pairing during critical implementations<br>3. Regular architecture review sessions |
+
+### 12.2 Timeline and Scope Risks
+
+| Risk | Impact | Likelihood | Mitigation Strategy |
+|------|--------|------------|---------------------|
+| Refactoring scope expands during implementation | High | High | 1. Clearly defined boundaries for each phase<br>2. Regular scope review meetings<br>3. Parking lot for future improvements |
+| Critical business needs interrupt refactoring | High | Medium | 1. Dedicated refactoring capacity protected from interruption<br>2. Modular approach allowing partial completion<br>3. Business value tied to each refactoring phase |
+| Performance issues require unplanned optimization | Medium | Medium | 1. Performance testing throughout refactoring<br>2. Early user testing of critical paths<br>3. Performance optimization buffer in timeline |
+| External dependencies delay integration work | Medium | Medium | 1. Mock integration layers for development<br>2. Parallel workstreams where possible<br>3. Regular dependency status updates |
+
+### 12.3 Risk Monitoring and Response
+
+1. **Weekly Risk Review:** Assess active risks and identify new risks in weekly technical meetings
+2. **Risk Owner Assignment:** Each identified risk has a designated owner responsible for monitoring and mitigation
+3. **Contingency Planning:** Develop specific contingency plans for high-impact, high-likelihood risks
+4. **Stakeholder Communication:** Regular updates to stakeholders about risk status and mitigation activities
+
+## 13. Conclusion
 
 This refactoring blueprint provides a comprehensive approach to transforming the IndieFindr codebase into a solid foundation for the ambitious platform vision. By focusing on modularity, flexibility, and rich data structures, we lay the groundwork for a sophisticated discovery platform that can evolve with user needs and the indie game ecosystem.
 
