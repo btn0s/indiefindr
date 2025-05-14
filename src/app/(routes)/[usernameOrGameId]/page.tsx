@@ -44,83 +44,66 @@ type GameForGrid = {
 };
 
 // --- Generate Metadata Function ---
-export async function generateMetadata(
-  { params }: ProfilePageProps,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
-  const p = await params;
-  const decodedUsernameOrGameId = decodeURIComponent(p.usernameOrGameId);
-  let profileData = null;
-  let findsCount = 0;
+export async function generateMetadata({
+  params,
+}: ProfilePageProps): Promise<Metadata> {
+  const username = decodeURIComponent((await params).usernameOrGameId);
 
-  // Fetch profile data specifically for metadata
   try {
-    // First, get basic profile data
-    const result = await db
+    const profile = await db
       .select({
         id: profilesTable.id,
         username: profilesTable.username,
         bio: profilesTable.bio,
-        fullName: profilesTable.fullName,
         avatarUrl: profilesTable.avatarUrl,
       })
       .from(profilesTable)
-      .where(eq(profilesTable.username, decodedUsernameOrGameId))
-      .limit(1);
+      .where(eq(profilesTable.username, username))
+      .limit(1)
+      .then((rows) => rows[0]);
 
-    if (result && result.length > 0) {
-      profileData = result[0];
-
-      // Next, count the games found by this user
-      const findsResult = await db
-        .select({
-          count: count(),
-        })
-        .from(externalSourceTable)
-        .where(eq(externalSourceTable.foundBy, profileData.id));
-
-      if (findsResult.length > 0) {
-        findsCount = Number(findsResult[0].count) || 0;
-      }
-
-      const previousTitle = (await parent).title?.absolute || "IndieFindr";
-      const title = `${profileData.username}'s Profile | ${previousTitle}`;
-      const description = profileData.bio
-        ? `${profileData.username}'s bio: ${profileData.bio.substring(0, 150)}${profileData.bio.length > 150 ? "..." : ""}`
-        : `${profileData.username}'s profile page on IndieFindr, featuring their game library and finds.`;
-
-      return {
-        title: title,
-        description: description,
-        openGraph: {
-          title: title,
-          description: description,
-        },
-        twitter: {
-          title: title,
-          description: description,
-          card: "summary_large_image",
-        },
-      };
+    if (!profile) {
+      return getDefaultMetadata();
     }
+
+    const findsCount = await db
+      .select({ count: count() })
+      .from(externalSourceTable)
+      .where(eq(externalSourceTable.foundBy, profile.id))
+      .then((rows) => Number(rows[0]?.count) || 0);
+
+    const title = `${profile.username} on IndieFindr`;
+    const description = `${findsCount} games found so far! Join the community to find your next favorite indie game.`;
+    const imageUrl = profile.avatarUrl ?? "/og.png";
+
+    return {
+      title,
+      description,
+      openGraph: { title, description, images: [{ url: imageUrl }] },
+      twitter: {
+        title,
+        description,
+        card: "summary_large_image",
+        images: [{ url: imageUrl }],
+      },
+    };
   } catch (error) {
     console.error("Metadata fetch error:", error);
-    // Fall through to default metadata if fetch fails
+    return getDefaultMetadata();
   }
+}
 
-  // Default/fallback metadata if profile not found or error occurs
-  const defaultTitle = `User Profile | IndieFindr`;
-  const defaultDescription = "View user profiles on IndieFindr.";
+function getDefaultMetadata(): Metadata {
+  const title = "User Profile | IndieFindr";
+  const description = "View user profiles on IndieFindr.";
+
   return {
-    title: defaultTitle,
-    description: defaultDescription,
-    openGraph: {
-      title: defaultTitle,
-      description: defaultDescription,
-    },
+    title,
+    description,
+    openGraph: { title, description },
     twitter: {
-      title: defaultTitle,
-      description: defaultDescription,
+      title,
+      description,
       card: "summary",
     },
   };
