@@ -81,17 +81,23 @@ export const GameService = {
 
 ### 2.1 Atomic Component Design
 
-Break down monolithic components like `game-card.tsx` into smaller, reusable components that follow atomic design principles:
+Break down complex components like `game-card.tsx` into more manageable pieces, but only when there's a clear benefit from:
+
+1. **Complexity reduction**: Components exceeding ~200 lines or managing multiple concerns
+2. **Logic reuse**: Functionality needed across multiple parent components
+3. **Clear separation of concerns**: UI, state management, and business logic
 
 ```typescript
-// src/components/game/atoms/GameBadge.tsx
-// src/components/game/atoms/GameCoverImage.tsx
-// src/components/game/molecules/GameMetaInfo.tsx
-// src/components/game/molecules/GameActionBar.tsx
-// src/components/game/organisms/GameCard.tsx
-// src/components/game/organisms/GameDetailPanel.tsx
-// src/components/game/templates/GameProfile.tsx
+// AVOID unnecessary decomposition:
+// Don't create tiny components just for the sake of atomicity
+
+// DO decompose when there's clear benefit:
+// src/components/game/GameCard.tsx (primary component)
+// src/components/game/GameCardMedia.tsx (complex media handling logic)
+// src/components/game/GameCardActions.tsx (interaction logic that may be reused)
 ```
+
+Focus on practical organization rather than strict atomic design hierarchy. A component should only be extracted when it reduces complexity or enables reuse.
 
 ### 2.2 Content Renderer System
 
@@ -728,14 +734,14 @@ Each refactoring area has been analyzed to identify the highest-leverage work—
 ### 10.2 UI Architecture
 
 **Highest Impact (20%):**
-- Breaking down GameCard into composable components
-- Dynamic content type handling in feeds
-- Consistent prop patterns across component levels
+- Breaking down overly complex components with clear separation of concerns
+- Implementing consistent component interfaces and prop patterns
+- Creating reusable interaction patterns for common user actions
 
 **Expected Benefits (80%):**
-- Drastically improves component reusability
-- Enables diverse content types in feeds
-- Reduces duplication and improves maintainability
+- Improves maintainability of complex UI elements
+- Enables consistent user experience across the platform
+- Reduces duplication while avoiding unnecessary fragmentation
 
 ### 10.3 API & Integration Layer
 
