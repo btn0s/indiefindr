@@ -27,7 +27,7 @@ export const metadata = {
     siteName: "IndieFindr",
     images: [
       {
-        url: `${defaultUrl}/og-image.png`,
+        url: "/og.png",
         width: 1200,
         height: 630,
       },
