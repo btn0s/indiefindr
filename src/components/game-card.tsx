@@ -7,57 +7,31 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { SteamRawData } from "@/types/steam"; // Updated import path
+import type { SteamRawData } from "@/types/steam"; // Keep for backward compatibility
+import type { GameCardViewModel } from "@/types/game-models"; // Import the new view model type
 import { useLibrary } from "@/contexts/LibraryContext"; // Import the hook
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Bookmark, BookmarkCheck, ImageOff, Share2, Check } from "lucide-react";
 import { ensureHttps } from "@/lib/utils"; // Import the ensureHttps helper
+import { formatTimeAgo, getUserInitials } from "@/utils/date-utils"; // Import from utils
 
-// Helper function to get user initials for avatar fallback
-const getUserInitials = (name?: string | null) => {
-  if (!name) return "IF"; // Return "IF" for IndieFindr when no name is available
-  return name.charAt(0).toUpperCase();
-};
-
-// Helper function to format time ago
-const formatTimeAgo = (dateInput?: string | Date | null): string => {
-  if (!dateInput) return "Date not available";
-
-  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-  const now = new Date();
-  const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
-  const minutes = Math.round(seconds / 60);
-  const hours = Math.round(minutes / 60);
-  const days = Math.round(hours / 24);
-  const weeks = Math.round(days / 7);
-  const months = Math.round(days / 30.44); // Average days in month
-  const years = Math.round(days / 365.25); // Account for leap years
-
-  if (seconds < 60) return `${seconds}s ago`;
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-  if (weeks < 5) return `${weeks}w ago`; // Up to 4 weeks
-  if (months < 12) return `${months}mo ago`;
-  return `${years}y ago`;
-};
-
+// For backward compatibility with existing code
 interface GameCardProps {
-  game: {
+  game: GameCardViewModel | {
     id: number;
     title: string | null;
-    shortDescription: string | null; // Renamed to match schema/other uses
+    shortDescription: string | null; 
     steamAppid: string | null;
     tags: string[] | null;
-    rawData?: SteamRawData | null; // Add rawData prop (optional for now)
-    foundByUsername?: string | null; // Add foundByUsername to game type
-    foundByAvatarUrl?: string | null; // Add foundByAvatarUrl to game type
-    createdAt?: string | Date | null; // <--- Add this line
+    rawData?: SteamRawData | null;
+    foundByUsername?: string | null;
+    foundByAvatarUrl?: string | null;
+    createdAt?: string | Date | null;
   };
-  detailsLinkHref: string; // Add href prop for consistency
+  detailsLinkHref: string;
   className?: string;
-  style?: React.CSSProperties; // Allow passing style
+  style?: React.CSSProperties;
 }
 
 export function GameCard({
@@ -73,16 +47,6 @@ export function GameCard({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-
-  // Log the received game prop, especially foundBy fields
-  console.log(
-    "GameCard received game:",
-    game,
-    "FoundByUsername:",
-    game.foundByUsername,
-    "FoundByAvatarUrl:",
-    game.foundByAvatarUrl
-  );
 
   // Use the library context
   const {
@@ -136,44 +100,43 @@ export function GameCard({
     };
   }, []);
 
-  // Define potential cover art URLs (keep this)
-  const imageUrlFromSteam = game.steamAppid
+  // Handle legacy game object format
+  const isLegacyFormat = 'shortDescription' in game;
+  
+  // Extract data based on format
+  const title = isLegacyFormat ? game.title : game.title;
+  const description = isLegacyFormat ? game.shortDescription : game.description;
+  const tags = isLegacyFormat ? game.tags : game.tags;
+  const rawData = isLegacyFormat ? game.rawData : null;
+  
+  // Extract foundBy information
+  const foundByUsername = isLegacyFormat 
+    ? game.foundByUsername || "IndieFindr"
+    : game.foundBy.username || "IndieFindr";
+    
+  const foundByAvatarUrl = isLegacyFormat
+    ? game.foundByAvatarUrl || "/images/avatar.png"
+    : game.foundBy.avatarUrl || "/images/avatar.png";
+    
+  const createdAt = isLegacyFormat
+    ? game.createdAt
+    : game.foundBy.timestamp;
+
+  // Extract media preview
+  const mediaPreview = isLegacyFormat
+    ? null // Legacy format doesn't have mediaPreview
+    : game.mediaPreview;
+
+  // For legacy format, use the old way of determining media
+  const firstVideo = isLegacyFormat ? rawData?.movies?.[0] : null;
+  const firstScreenshot = isLegacyFormat ? rawData?.screenshots?.[0] : null;
+  const imageUrlFromSteam = isLegacyFormat && game.steamAppid
     ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
     : null;
-  const rawData = game.rawData;
-
-  // Ensure all potential URLs are HTTPS
-  const secureImageUrl = ensureHttps(imageUrlFromSteam);
-  const secureCapsuleImage = ensureHttps(rawData?.capsule_image);
-  const secureCapsuleImageV5 = ensureHttps(rawData?.capsule_imagev5);
-  const secureScreenshotPathFull = ensureHttps(
-    rawData?.screenshots?.[0]?.path_full
-  );
-  const secureBackgroundRaw = ensureHttps(rawData?.background_raw);
-  const secureBackground = ensureHttps(rawData?.background);
-
-  const potentialCoverUrls = [
-    secureImageUrl,
-    secureCapsuleImage,
-    secureCapsuleImageV5,
-    secureScreenshotPathFull,
-    secureBackgroundRaw,
-    secureBackground,
-  ].filter((url): url is string => typeof url === "string" && url.length > 0);
-
-  // Get the first video or screenshot for the main media preview (keep this)
-  const firstVideo = rawData?.movies?.[0];
-  const firstScreenshot = rawData?.screenshots?.[0];
 
   const handleMediaError = () => {
     setMediaError(true);
   };
-
-  // Define props for the GameImage cover art
-  const coverAltText = game.title
-    ? `${game.title} Cover Art`
-    : "Game Cover Art";
-  const coverImageSizes = "150px"; // Specific size for the small cover art
 
   // Update handleAdd and handleRemove to use context functions
   const handleAdd = async (e: React.MouseEvent) => {
@@ -203,8 +166,8 @@ export function GameCard({
 
     try {
       await navigator.share({
-        title: game.title || "Check out this game",
-        text: `Check out ${game.title || "this game"} on IndieFindr!`,
+        title: title || "Check out this game",
+        text: `Check out ${title || "this game"} on IndieFindr!`,
         url: shareUrl,
       });
     } catch (error) {
@@ -228,9 +191,6 @@ export function GameCard({
     }
   };
 
-  const foundByUsername = game.foundByUsername || "IndieFindr";
-  const foundByAvatarUrl = game.foundByAvatarUrl || "/images/avatar.png";
-
   return (
     <div className="flex flex-col gap-2">
       {/* User attribution - moved outside the card */}
@@ -239,7 +199,7 @@ export function GameCard({
         <Link
           href={`/user/${foundByUsername}`}
           className={cn("flex items-center gap-2 px-1", {
-            "pointer-events-none": !game.foundByUsername,
+            "pointer-events-none": foundByUsername === "IndieFindr",
           })}
         >
           <Avatar className="size-8 shrink-0 ring-1 ring-foreground/20 border border-background/60">
@@ -258,7 +218,7 @@ export function GameCard({
               {foundByUsername}
             </span>
             <span className="text-xs text-muted-foreground leading-none">
-              found this {formatTimeAgo(game.createdAt)}
+              found this {formatTimeAgo(createdAt)}
             </span>
           </div>
         </Link>
@@ -282,7 +242,40 @@ export function GameCard({
                   <ImageOff className="h-8 w-8" />
                   <span className="text-xs">Preview unavailable</span>
                 </div>
+              ) : !isLegacyFormat && mediaPreview ? (
+                // New format with mediaPreview
+                mediaPreview.type === "video" ? (
+                  <video
+                    ref={videoRef}
+                    key={mediaPreview.url || ""}
+                    src={mediaPreview.url || ""}
+                    poster={mediaPreview.thumbnailUrl || ""}
+                    muted
+                    playsInline
+                    loop
+                    controls={false}
+                    className="w-full h-full object-contain"
+                    onError={handleMediaError}
+                  />
+                ) : mediaPreview.type === "image" ? (
+                  <Image
+                    key={mediaPreview.url || ""}
+                    src={mediaPreview.url || ""}
+                    alt={title ? `${title} Screenshot` : "Game Screenshot"}
+                    fill
+                    sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
+                    className="object-contain"
+                    onError={handleMediaError}
+                    unoptimized
+                  />
+                ) : (
+                  <div className="text-muted-foreground flex flex-col items-center gap-1">
+                    <ImageOff className="h-8 w-8" />
+                    <span className="text-xs">No preview</span>
+                  </div>
+                )
               ) : firstVideo ? (
+                // Legacy format with video
                 <video
                   ref={videoRef}
                   key={firstVideo.mp4.max}
@@ -296,11 +289,12 @@ export function GameCard({
                   onError={handleMediaError}
                 />
               ) : firstScreenshot ? (
+                // Legacy format with screenshot
                 <Image
                   key={firstScreenshot.path_full}
                   src={ensureHttps(firstScreenshot.path_full) || ""}
                   alt={
-                    game.title ? `${game.title} Screenshot` : "Game Screenshot"
+                    title ? `${title} Screenshot` : "Game Screenshot"
                   }
                   fill
                   sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
@@ -308,11 +302,12 @@ export function GameCard({
                   onError={handleMediaError}
                   unoptimized
                 />
-              ) : secureImageUrl ? (
+              ) : imageUrlFromSteam ? (
+                // Legacy format with Steam header
                 <Image
-                  key={secureImageUrl}
-                  src={secureImageUrl || ""}
-                  alt={game.title ? `${game.title} Header` : "Game Header"}
+                  key={imageUrlFromSteam}
+                  src={imageUrlFromSteam || ""}
+                  alt={title ? `${title} Header` : "Game Header"}
                   fill
                   sizes="(max-width: 640px) 90vw, (max-width: 1024px) 40vw, 30vw"
                   className="object-contain"
@@ -333,27 +328,27 @@ export function GameCard({
                 <div>
                   <h3
                     className="text-base sm:text-lg font-semibold truncate group-hover/card:text-primary transition-colors"
-                    title={game.title || "Untitled Game"}
+                    title={title || "Untitled Game"}
                   >
-                    {game.title || "Untitled Game"}
+                    {title || "Untitled Game"}
                   </h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 sm:line-clamp-3">
-                    {game.shortDescription || "No description available."}
+                    {description || "No description available."}
                   </p>
 
                   {/* Removed user attribution from here */}
                 </div>
 
-                {game.tags && game.tags.length > 0 && (
+                {tags && tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-auto">
-                    {game.tags.slice(0, 3).map((tag) => (
+                    {tags.slice(0, 3).map((tag) => (
                       <Badge key={tag} variant="secondary" className="text-xs">
                         {tag}
                       </Badge>
                     ))}
-                    {game.tags.length > 3 && (
+                    {tags.length > 3 && (
                       <Badge variant="outline" className="text-xs">
-                        +{game.tags.length - 3}
+                        +{tags.length - 3}
                       </Badge>
                     )}
                   </div>
@@ -361,9 +356,9 @@ export function GameCard({
               </div>
               <div className="w-1/3">
                 <GameImage
-                  altText={coverAltText}
+                  altText={title ? `${title} Header` : "Game Header"}
                   gameData={rawData ?? null}
-                  sizes={coverImageSizes}
+                  sizes="150px"
                 />
               </div>
             </div>

@@ -2,23 +2,25 @@
 
 import React from "react";
 import { GameCardMini } from "./game-card-mini";
-import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
+import type { SteamRawData } from "@/types/steam"; // Keep for backward compatibility
+import type { GameListItemViewModel } from "@/types/game-models"; // Import the new view model type
 import { getGameUrl } from "@/lib/utils"; // Import utility for generating game URLs
 
-// Define a more comprehensive type for the games expected by the grid
-// This should align with the props needed by GameCardMini
+// For backward compatibility with existing code
 interface GridGame {
   id: number;
   title: string | null;
-  steamAppid: string | null;
+  steamAppid?: string | null;
+  steamAppId?: string | null; // New format uses steamAppId
   descriptionShort?: string | null;
-  rawData?: SteamRawData | null; // GameCardMini uses this via GameImage
-  foundByUsername?: string | null; // GameCardMini uses this
-  foundByAvatarUrl?: string | null; // Add avatar URL for the user who found the game
+  description?: string | null; // New format uses description
+  rawData?: SteamRawData | null;
+  foundByUsername?: string | null;
+  foundByAvatarUrl?: string | null;
 }
 
 interface GameGridProps {
-  games: GridGame[]; // Use the more comprehensive type
+  games: Array<GridGame | GameListItemViewModel>;
   loggedInUserLibraryIds: Set<number>;
   onAddToLibrary?: (gameId: number) => Promise<any>;
   onRemoveFromLibrary?: (gameId: number) => Promise<any>;
@@ -42,7 +44,7 @@ export function GameGrid({
         <GameCardMini
           key={game.id}
           // Pass the entire game object down.
-          // GameCardMini will pick the properties it needs.
+          // GameCardMini will handle both old and new formats
           game={game}
           detailsLinkHref={getGameUrl(game.id, game.title)}
           isInLibrary={loggedInUserLibraryIds.has(game.id)}
@@ -53,15 +55,3 @@ export function GameGrid({
     </div>
   );
 }
-
-// Potential utility function (move to src/utils/game-url.ts or similar)
-// Make sure this matches the logic used in search/page.tsx if needed elsewhere
-// export const getGameUrl = (id: number, title: string | null): string => {
-//   const slug = title
-//     ? title
-//         .toLowerCase()
-//         .replace(/[^a-z0-9\s-]/g, "") // Escaped regex character
-//         .replace(/\s+/g, "-")       // Escaped regex character
-//     : "unknown";
-//   return `/games/${id}/${slug}`;
-// };

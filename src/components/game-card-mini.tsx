@@ -13,20 +13,16 @@ import {
   Bookmark,
   XCircle,
 } from "lucide-react";
-import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
+import type { SteamRawData } from "@/types/steam"; // Keep for backward compatibility
+import type { GameListItemViewModel } from "@/types/game-models"; // Import the new view model type
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ClaimFindButton } from "@/components/claim-find-button"; // Import ClaimFindButton
-
-// Helper function to get user initials for avatar fallback
-const getUserInitials = (name?: string | null) => {
-  if (!name) return "IF"; // Return "IF" for IndieFindr when no name is available
-  return name.charAt(0).toUpperCase();
-};
+import { getUserInitials } from "@/utils/date-utils"; // Import from utils
 
 interface GameCardMiniProps {
-  game: {
+  game: GameListItemViewModel | {
     id: number;
     title: string | null;
     steamAppid: string | null;
@@ -58,8 +54,24 @@ export function GameCardMini({
   // Add state to track avatar image loading errors
   const [avatarError, setAvatarError] = useState(false);
 
-  const altText = game.title
-    ? `${game.title} header image`
+  // Handle legacy game object format
+  const isLegacyFormat = 'descriptionShort' in game || 'steamAppid' in game;
+  
+  // Extract data based on format
+  const id = game.id;
+  const title = game.title;
+  const description = isLegacyFormat 
+    ? (game as any).descriptionShort 
+    : game.description;
+  const steamAppId = isLegacyFormat 
+    ? (game as any).steamAppid 
+    : game.steamAppId;
+  const rawData = isLegacyFormat 
+    ? (game as any).rawData 
+    : null;
+
+  const altText = title
+    ? `${title} header image`
     : "Game header image";
   const imageSizes = "(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw";
 
@@ -68,7 +80,7 @@ export function GameCardMini({
     e.stopPropagation();
     if (onAddToLibrary) {
       try {
-        await onAddToLibrary(game.id);
+        await onAddToLibrary(id);
       } catch (error) {
         console.error("Error adding to library:", error);
         // Potentially show a toast notification
@@ -81,7 +93,7 @@ export function GameCardMini({
     e.stopPropagation();
     if (onRemoveFromLibrary) {
       try {
-        await onRemoveFromLibrary(game.id);
+        await onRemoveFromLibrary(id);
       } catch (error) {
         console.error("Error removing from library:", error);
         // Potentially show a toast notification
@@ -103,29 +115,29 @@ export function GameCardMini({
         >
           <GameImage
             altText={altText}
-            gameData={game.rawData ?? null}
+            gameData={rawData ?? null}
             sizes={imageSizes}
             variant="plain"
           />
           <CardContent className="p-3 flex-grow flex flex-col">
             <h3
               className="text-base font-semibold line-clamp-1 hover:text-primary transition-colors"
-              title={game.title || "Unknown Game"}
+              title={title || "Unknown Game"}
             >
-              {game.title || "Unknown Game"}
+              {title || "Unknown Game"}
             </h3>
-            {game.descriptionShort && (
+            {description && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2 flex-grow">
-                {game.descriptionShort}
+                {description}
               </p>
             )}
           </CardContent>
           <CardFooter className="p-3 pt-2 flex items-center gap-2">
             {isSteamOnlyResult ? (
-              currentUserId && game.steamAppid && game.title ? (
+              currentUserId && steamAppId && title ? (
                 <ClaimFindButton
-                  appid={parseInt(game.steamAppid, 10)} // Ensure appid is a number
-                  name={game.title}
+                  appid={parseInt(steamAppId, 10)} // Ensure appid is a number
+                  name={title}
                   userId={currentUserId}
                 />
               ) : (
