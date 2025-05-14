@@ -10,6 +10,7 @@ import {
   bigint,
   customType,
   pgTable,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 
 // Define custom type for vector
@@ -33,8 +34,36 @@ const vector = (name: string, dimensions: number) =>
     },
   })(name, { dimensions });
 
-export const externalSourceTable = pgTable(
-  "external_source",
+export const gameEnrichmentContentTypeEnum = pgEnum(
+  "game_enrichment_content_type",
+  [
+    "description",
+    "review_snippet",
+    "video_url",
+    "image_url",
+    "article_url",
+    "social_post_url",
+    "game_feature",
+    "system_requirements",
+    "tag",
+    "genre",
+  ]
+);
+
+export const gameEnrichmentStatusEnum = pgEnum("game_enrichment_status", [
+  "active",
+  "inactive",
+  "pending_review",
+  "rejected",
+]);
+
+export const gameOverallEnrichmentStatusEnum = pgEnum(
+  "game_overall_enrichment_status",
+  ["pending", "in_progress", "partial", "enriched", "failed"]
+);
+
+export const gamesTable = pgTable(
+  "games",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     platform: text("platform").default("steam").notNull(),
@@ -47,25 +76,23 @@ export const externalSourceTable = pgTable(
     tags: text("tags").array(),
     embedding: vector("embedding", 1536), // For text-embedding-3-small
     rawData: jsonb("raw_data"),
-    enrichmentStatus: text("enrichment_status").default("pending").notNull(),
+    enrichmentStatus: gameOverallEnrichmentStatusEnum("enrichment_status")
+      .default("pending")
+      .notNull(),
     isFeatured: boolean("is_featured").default(false),
     steamAppid: text("steam_appid").unique(),
     lastFetched: timestamp("last_fetched", { withTimezone: true }).defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     foundBy: uuid("found_by").references(() => profilesTable.id, {
       onDelete: "set null",
-    }), // Added to track who submitted the game
+    }),
   },
   (table) => {
     return {
-      externalIdIdx: index("idx_external_source_external_id").on(
-        table.externalId
-      ),
-      // titleIdx: index('idx_external_source_title').on(table.title).using('gin'), // Requires custom GIN index setup or use a different approach for FTS with Drizzle
-      enrichmentStatusIdx: index("idx_external_source_enrichment_status").on(
+      externalIdIdx: index("idx_games_external_id").on(table.externalId),
+      enrichmentStatusIdx: index("idx_games_enrichment_status").on(
         table.enrichmentStatus
       ),
-      // embeddingIdx: index('idx_external_source_embedding').on(table.embedding).using('ivfflat', { ops: 'vector_cosine_ops', lists: 100 }), // Requires extension and specific index type
     };
   }
 );
@@ -81,7 +108,9 @@ export const profilesTable = pgTable(
     bio: text("bio"),
     hasCompletedOnboarding: boolean("has_completed_onboarding").default(false),
     updatedAt: timestamp("updated_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => {
     return {
@@ -95,16 +124,56 @@ export const libraryTable = pgTable(
   {
     userId: uuid("user_id")
       .notNull()
-      .references(() => profilesTable.id, { onDelete: "cascade" }), // Now referencing profiles table instead of auth users
+      .references(() => profilesTable.id, { onDelete: "cascade" }),
     gameRefId: bigint("game_ref_id", { mode: "number" })
       .notNull()
-      .references(() => externalSourceTable.id, { onDelete: "cascade" }),
+      .references(() => gamesTable.id, { onDelete: "cascade" }),
     addedAt: timestamp("added_at", { withTimezone: true }).defaultNow(),
   },
   (table) => {
     return {
       pk: primaryKey({ columns: [table.userId, table.gameRefId] }),
       userIdIdx: index("idx_library_user_id").on(table.userId),
+    };
+  }
+);
+
+export const gameEnrichmentTable = pgTable(
+  "game_enrichment",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    gameId: bigint("game_id", { mode: "number" })
+      .notNull()
+      .references(() => gamesTable.id, { onDelete: "cascade" }),
+    sourceName: text("source_name").notNull(),
+    sourceSpecificId: text("source_specific_id"),
+    contentType: gameEnrichmentContentTypeEnum("content_type").notNull(),
+    contentValue: text("content_value"),
+    contentJson: jsonb("content_json"),
+    language: text("language").default("en"),
+    region: text("region"),
+    priority: bigint("priority", { mode: "number" }),
+    status: gameEnrichmentStatusEnum("status").default("active").notNull(),
+    sourceUrl: text("source_url"),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }).defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }),
+    submittedBy: uuid("submitted_by").references(() => profilesTable.id, {
+      onDelete: "set null",
+    }),
+  },
+  (table) => {
+    return {
+      gameIdContentTypeSourceIdx: index(
+        "idx_game_enrichment_game_id_content_type_source_name"
+      ).on(table.gameId, table.contentType, table.sourceName),
+      gameIdIdx: index("idx_game_enrichment_game_id").on(table.gameId),
+      contentTypeIdx: index("idx_game_enrichment_content_type").on(
+        table.contentType
+      ),
+      contentTypeLangRegionIdx: index(
+        "idx_game_enrichment_content_type_lang_region"
+      ).on(table.contentType, table.language, table.region),
     };
   }
 );

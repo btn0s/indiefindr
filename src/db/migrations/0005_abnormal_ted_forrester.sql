@@ -1,0 +1,2 @@
+ALTER TABLE "games" ALTER COLUMN "enrichment_status" SET DEFAULT 'pending'::"public"."game_overall_enrichment_status";--> statement-breakpoint
+ALTER TABLE "games" ALTER COLUMN "enrichment_status" SET DATA TYPE "public"."game_overall_enrichment_status" USING "enrichment_status"::"public"."game_overall_enrichment_status";
