@@ -29,7 +29,7 @@ const getUserInitials = (name?: string | null) => {
 };
 
 type ProfilePageProps = {
-  params: Promise<{ username: string }>;
+  params: Promise<{ usernameOrGameId: string }>;
 };
 
 // Define the type required by GameGrid
@@ -49,7 +49,7 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const p = await params;
-  const decodedUsername = decodeURIComponent(p.username);
+  const decodedUsernameOrGameId = decodeURIComponent(p.usernameOrGameId);
   let profileData = null;
   let findsCount = 0;
 
@@ -65,7 +65,7 @@ export async function generateMetadata(
         avatarUrl: profilesTable.avatarUrl,
       })
       .from(profilesTable)
-      .where(eq(profilesTable.username, decodedUsername))
+      .where(eq(profilesTable.username, decodedUsernameOrGameId))
       .limit(1);
 
     if (result && result.length > 0) {
@@ -131,7 +131,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   // Correctly instantiate the server client
   const supabase = await createClient();
   const p = await params;
-  const decodedUsername = decodeURIComponent(p.username);
+  const decodedUsernameOrGameId = decodeURIComponent(p.usernameOrGameId);
 
   // 1. Fetch the profile user's data using Drizzle
   let profileData;
@@ -139,7 +139,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     const result = await db
       .select()
       .from(profilesTable)
-      .where(eq(profilesTable.username, decodedUsername))
+      .where(eq(profilesTable.username, decodedUsernameOrGameId))
       .limit(1);
 
     if (!result || result.length === 0) {
@@ -289,6 +289,3 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     </div>
   );
 }
-
-// Consider adding Revalidation if needed
-// export const revalidate = 60; // Revalidate every 60 seconds

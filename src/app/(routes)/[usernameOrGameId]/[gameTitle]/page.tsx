@@ -57,16 +57,16 @@ async function getGame(id: string) {
 
 interface GameDetailPageProps {
   params: Promise<{
-    id: string;
-    name: string; // Keep name for potential future use or consistency
+    usernameOrGameId: string;
+    gameTitle: string; // Keep name for potential future use or consistency
   }>;
 }
 
 export async function generateMetadata({
   params,
 }: GameDetailPageProps): Promise<Metadata> {
-  const { id } = await params;
-  const game = await getGame(id);
+  const { usernameOrGameId, gameTitle } = await params;
+  const game = await getGame(usernameOrGameId);
   const rawData = game.rawData as SteamRawData;
 
   // Get the first screenshot URL if available
@@ -117,9 +117,9 @@ export async function generateMetadata({
 
 // Make the component async to fetch data, destructure params directly
 export default async function GameDetailPage({ params }: GameDetailPageProps) {
-  const { id } = await params;
+  const { usernameOrGameId } = await params;
 
-  const game = await getGame(id); // Fetch game data, now includes foundByUsername
+  const game = await getGame(usernameOrGameId); // Fetch game data, now includes foundByUsername
 
   // Cast rawData to our type and extract data
   const rawData = game.rawData as SteamRawData;
@@ -255,10 +255,3 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
     </div>
   );
 }
-
-// Add aspect ratio utility class if not already present in globals.css or similar
-// @layer utilities {
-//   .aspect-header-image {
-//     aspect-ratio: 460 / 215; /* Steam header image aspect ratio */
-//   }
-// }
