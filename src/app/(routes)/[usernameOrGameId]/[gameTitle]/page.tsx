@@ -1,7 +1,8 @@
 import React from "react";
-import { db } from "@/db"; // Assuming db instance is exported from @/db
-import { externalSourceTable, profilesTable } from "@/db/schema"; // Corrected import name
-import { eq } from "drizzle-orm";
+import {
+  DrizzleGameRepository,
+  GameWithSubmitter,
+} from "@/lib/repositories/game-repository"; // Import repository
 import { notFound } from "next/navigation"; // For handling not found cases
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
@@ -13,44 +14,33 @@ import { GameImage } from "@/components/game-image"; // Import the new client co
 import type { Metadata } from "next";
 import { AddToLibraryButton } from "@/components/add-to-library-button"; // Import the new component
 
-// Function to fetch game data server-side
-async function getGame(id: string) {
+const gameRepository = new DrizzleGameRepository(); // Instantiate repository
+
+// Function to fetch game data server-side using the repository
+async function getGame(id: string): Promise<GameWithSubmitter> {
+  // Return type is now GameWithSubmitter
   const gameId = parseInt(id, 10);
   if (isNaN(gameId)) {
-    notFound(); // Trigger 404 if ID is not a valid number
+    notFound();
   }
 
   try {
-    const gameData = await db
-      .select({
-        id: externalSourceTable.id,
-        title: externalSourceTable.title,
-        shortDescription: externalSourceTable.descriptionShort, // Corrected field name
-        steamAppid: externalSourceTable.steamAppid,
-        tags: externalSourceTable.tags,
-        rawData: externalSourceTable.rawData,
-        foundByUsername: profilesTable.username, // Select the username
-        // Add other fields as needed from externalSource schema
-      })
-      .from(externalSourceTable)
-      // Left join in case found_by is null
-      .leftJoin(
-        profilesTable,
-        eq(externalSourceTable.foundBy, profilesTable.id)
-      )
-      .where(eq(externalSourceTable.id, gameId))
-      .limit(1);
+    const gameData = await gameRepository.getById(gameId); // Use repository method
 
-    if (!gameData || gameData.length === 0) {
-      notFound(); // Trigger 404 if no game found with this ID
+    if (!gameData) {
+      notFound();
     }
-
-    // Return the first (and only) result, potentially containing foundByUsername
-    return gameData[0];
+    // The repository method already returns GameWithSubmitter | null
+    // The check above ensures it's not null here.
+    return gameData;
   } catch (error) {
-    console.error("Error fetching game data:", error);
-    // Consider throwing a specific error or returning a different state
-    // For now, we'll let it bubble up or potentially trigger a 500 error page
+    console.error("Error fetching game data via repository:", error);
+    // Consider specific error handling or re-throwing
+    // For now, mimic original behavior of throwing a generic error or letting Next.js handle
+    if (error instanceof Error && error.message.includes("not found")) {
+      // Or a custom NotFoundError from repo
+      notFound();
+    }
     throw new Error("Failed to fetch game data.");
   }
 }
@@ -83,7 +73,7 @@ export async function generateMetadata({
 
   // Build a rich description combining various data points
   const description = [
-    game.shortDescription,
+    game.descriptionShort,
     `Developed by ${developer}.`,
     `Published by ${publisher}.`,
     game.tags?.length ? `Tags: ${game.tags.join(", ")}.` : null,
@@ -96,7 +86,7 @@ export async function generateMetadata({
     description,
     openGraph: {
       title: `${game.title} | IndieFindr` || "Game Details",
-      description: game.shortDescription || "No description available.",
+      description: game.descriptionShort || "No description available.",
       images: [
         {
           url: headerImage || firstScreenshot || "/placeholder-game.jpg",
@@ -109,7 +99,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: `${game.title} | IndieFindr` || "Game Details",
-      description: game.shortDescription || "No description available.",
+      description: game.descriptionShort || "No description available.",
       images: [firstScreenshot || headerImage || "/placeholder-game.jpg"],
     },
   };
@@ -194,7 +184,7 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
 
           {/* Game description */}
           <p className="text-lg text-muted-foreground mb-6">
-            {game.shortDescription || "No description available."}
+            {game.descriptionShort || "No description available."}
           </p>
 
           {/* Game Details */}

@@ -45,16 +45,16 @@ export interface GameSearchParams {
 // Define the repository interface
 export interface GameRepository {
   /**
-   * Get a game by its ID
+   * Get a game by its ID, including submitter information if available.
    * @param id The game ID
-   * @returns The game or null if not found
+   * @returns The game with submitter details or null if not found
    */
-  getById(id: number): Promise<Game | null>;
+  getById(id: number): Promise<GameWithSubmitter | null>;
 
   /**
    * Get a game by its Steam App ID
    * @param steamAppid The Steam App ID
-   * @returns The game or null if not found
+   * @returns The game or null if not found (consider if this should also be GameWithSubmitter)
    */
   getBySteamAppId(steamAppid: string): Promise<Game | null>;
 
@@ -133,12 +133,39 @@ export interface GameRepository {
 // Placeholder for the DrizzleGameRepository implementation
 // The actual implementation will be refactored in subsequent steps.
 export class DrizzleGameRepository implements GameRepository {
-  async getById(id: number): Promise<Game | null> {
+  async getById(id: number): Promise<GameWithSubmitter | null> {
     const result = await db
-      .select()
+      .select({
+        // Select all fields from externalSourceTable
+        id: externalSourceTable.id,
+        platform: externalSourceTable.platform,
+        externalId: externalSourceTable.externalId,
+        title: externalSourceTable.title,
+        developer: externalSourceTable.developer,
+        descriptionShort: externalSourceTable.descriptionShort,
+        descriptionDetailed: externalSourceTable.descriptionDetailed,
+        genres: externalSourceTable.genres,
+        tags: externalSourceTable.tags,
+        embedding: externalSourceTable.embedding,
+        rawData: externalSourceTable.rawData,
+        enrichmentStatus: externalSourceTable.enrichmentStatus,
+        isFeatured: externalSourceTable.isFeatured,
+        steamAppid: externalSourceTable.steamAppid,
+        lastFetched: externalSourceTable.lastFetched,
+        createdAt: externalSourceTable.createdAt,
+        foundBy: externalSourceTable.foundBy,
+        // Select specific fields from profilesTable for submitter info
+        foundByUsername: profilesTable.username,
+        foundByAvatarUrl: profilesTable.avatarUrl,
+      })
       .from(externalSourceTable)
+      .leftJoin(
+        profilesTable,
+        eq(externalSourceTable.foundBy, profilesTable.id)
+      )
       .where(eq(externalSourceTable.id, id))
       .limit(1);
+
     return result[0] || null;
   }
 
