@@ -122,73 +122,99 @@ export interface GameService {
  * into structured view models suitable for UI components.
  */
 export class DefaultGameService implements GameService {
+  private _ensureHttps(url: string | null | undefined): string | null {
+    if (!url) return null;
+    if (url.startsWith("http://")) {
+      return url.replace("http://", "https://");
+    }
+    return url;
+  }
+
+  private _formatTimeAgo(
+    dateInput: string | Date | null | undefined
+  ): string | null {
+    if (!dateInput) return null;
+    // Basic placeholder - a real implementation would use a library like date-fns
+    try {
+      const date = new Date(dateInput);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+      if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+      const diffInMinutes = Math.floor(diffInSeconds / 60);
+      if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      if (diffInHours < 24) return `${diffInHours}h ago`;
+      const diffInDays = Math.floor(diffInHours / 24);
+      if (diffInDays < 7) return `${diffInDays}d ago`;
+      // For simplicity, older than a week just show date
+      return date.toLocaleDateString();
+    } catch {
+      return "Recently"; // Fallback for invalid date strings
+    }
+  }
+
   public toGameCardViewModel(
     game: Game | GameWithSubmitter
   ): GameCardViewModel {
-    // TODO: Implement transformation logic
-    // For now, return a placeholder or throw an error
-    const rawData = game.rawData as SteamRawData | null; // Type assertion for easier access
+    const rawData = game.rawData as SteamRawData | null;
 
-    // Helper to safely access properties from rawData, particularly from Steam
-    const getSteamRawDataProperty = <T extends keyof SteamRawData>(
-      property: T
-    ): SteamRawData[T] | undefined => {
-      if (rawData && typeof rawData === "object" && property in rawData) {
-        return rawData[property];
-      }
-      return undefined;
-    };
-
-    // Fallback values
     const title = game.title ?? "Untitled Game";
     const shortDescription =
-      game.descriptionShort ?? "No description available.";
+      game.descriptionShort ??
+      game.descriptionDetailed ??
+      "No description available.";
     const genres = game.genres ?? [];
     const tags = game.tags ?? [];
 
-    // Submitter info (handle if 'game' is GameWithSubmitter)
     const foundByUsername =
-      "foundByUsername" in game ? game.foundByUsername : null;
+      "foundByUsername" in game ? (game.foundByUsername ?? null) : null;
     const foundByAvatarUrl =
-      "foundByAvatarUrl" in game ? game.foundByAvatarUrl : null;
+      "foundByAvatarUrl" in game
+        ? this._ensureHttps(game.foundByAvatarUrl)
+        : null;
+    const foundAt = this._formatTimeAgo(game.createdAt);
 
-    // TODO: Implement actual image URL extraction logic
-    const getCoverImageUrl = (): string | null => {
-      if (rawData?.capsule_image) return rawData.capsule_image;
-      if (game.steamAppid)
-        return `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`;
-      return null;
-    };
-    const coverImageUrl = getCoverImageUrl();
+    let headerImageUrl: string | null = null;
+    if (rawData?.header_image) {
+      headerImageUrl = this._ensureHttps(rawData.header_image);
+    } else if (game.steamAppid) {
+      headerImageUrl = this._ensureHttps(
+        `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
+      );
+    }
 
-    const getHeaderImageUrl = (): string | null => {
-      if (rawData?.header_image) return rawData.header_image;
-      if (game.steamAppid)
-        return `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`;
-      return null;
-    };
-    const headerImageUrl = getHeaderImageUrl();
+    let coverImageUrl: string | null = null;
+    if (rawData?.capsule_image) {
+      coverImageUrl = this._ensureHttps(rawData.capsule_image);
+    } else if (rawData?.capsule_imagev5) {
+      coverImageUrl = this._ensureHttps(rawData.capsule_imagev5);
+    } else {
+      coverImageUrl = headerImageUrl; // Fallback to header image if no capsule
+    }
 
-    // TODO: Implement preview video URL extraction
-    const previewVideoUrl = rawData?.movies?.[0]?.mp4?.["480"] || null;
-
-    // TODO: Implement date formatting for foundAt
-    const foundAt = game.createdAt
-      ? new Date(game.createdAt).toLocaleDateString()
-      : null; // Placeholder
+    let previewVideoUrl: string | null = null;
+    if (rawData?.movies && rawData.movies.length > 0) {
+      const firstMovie = rawData.movies[0];
+      if (firstMovie.mp4?.max) {
+        previewVideoUrl = this._ensureHttps(firstMovie.mp4.max);
+      } else if (firstMovie.mp4?.["480"]) {
+        previewVideoUrl = this._ensureHttps(firstMovie.mp4["480"]);
+      }
+    }
 
     return {
       id: game.id,
       title,
-      steamAppid: game.steamAppid,
+      steamAppid: game.steamAppid ?? null,
       shortDescription,
       coverImageUrl,
       headerImageUrl,
       previewVideoUrl,
       tags,
       genres,
-      foundByUsername: foundByUsername ?? null,
-      foundByAvatarUrl: foundByAvatarUrl ?? null,
+      foundByUsername,
+      foundByAvatarUrl,
       foundAt,
     };
   }
@@ -202,34 +228,69 @@ export class DefaultGameService implements GameService {
   public toGameProfileViewModel(
     game: Game | GameWithSubmitter
   ): GameProfileViewModel {
-    // TODO: Implement transformation logic for the detailed profile view
-    // This will be more comprehensive than GameCardViewModel
-    // For now, extend from a basic card view and add placeholders
-
     const cardViewModel = this.toGameCardViewModel(game);
     const rawData = game.rawData as SteamRawData | null;
 
+    // Developer and Publisher
+    const developer =
+      game.developer ??
+      (rawData?.developers && rawData.developers.length > 0
+        ? rawData.developers.join(", ")
+        : null);
+    const publisher =
+      rawData?.publishers && rawData.publishers.length > 0
+        ? rawData.publishers.join(", ")
+        : null;
+
+    // Video URLs
+    const videoUrls: GameProfileViewModel["videoUrls"] =
+      rawData?.movies
+        ?.map((movie) => ({
+          type: "steam" as const, // Explicitly type as "steam"
+          url:
+            this._ensureHttps(
+              movie.mp4?.max ||
+                movie.mp4?.["480"] ||
+                movie.webm?.max ||
+                movie.webm?.["480"] ||
+                ""
+            ) || "", // Ensure URL is not null
+          title: movie.name,
+          thumbnail: this._ensureHttps(movie.thumbnail) ?? undefined, // Ensure undefined if null
+        }))
+        .filter((v) => v.url) ?? []; // Filter out any videos that ended up with no URL
+
+    // Screenshot URLs
+    const screenshotUrls: string[] =
+      (rawData?.screenshots
+        ?.map((s) => this._ensureHttps(s.path_full))
+        .filter(Boolean) as string[]) ?? [];
+
+    // Release Date
+    let releaseDate: GameProfileViewModel["releaseDate"] = null;
+    if (rawData?.release_date) {
+      releaseDate = {
+        comingSoon: rawData.release_date.coming_soon,
+        // Basic date formatting, a library would be better for robust parsing/formatting
+        date: rawData.release_date.date
+          ? new Date(rawData.release_date.date).toLocaleDateString(undefined, {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })
+          : "TBA",
+      };
+    }
+
     return {
-      ...cardViewModel,
+      ...cardViewModel, // Spread the already transformed card view model
       detailedDescription:
-        game.descriptionDetailed ?? cardViewModel.shortDescription,
-      developer: game.developer ?? null,
-      publisher: rawData?.publishers?.[0] ?? null, // Example: extract publisher
-      videoUrls:
-        rawData?.movies?.map((m) => ({
-          type: "steam",
-          url: m.mp4.max,
-          title: m.name,
-          thumbnail: m.thumbnail,
-        })) ?? [],
-      screenshotUrls: rawData?.screenshots?.map((s) => s.path_full) ?? [],
-      releaseDate: rawData?.release_date
-        ? {
-            comingSoon: rawData.release_date.coming_soon,
-            date: rawData.release_date.date,
-          }
-        : null,
-      // ... other GameProfileViewModel specific fields
+        game.descriptionDetailed ?? cardViewModel.shortDescription, // Fallback to short if detailed is null
+      developer,
+      publisher,
+      videoUrls,
+      screenshotUrls,
+      releaseDate,
     };
   }
 
