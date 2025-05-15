@@ -4,7 +4,6 @@ import {
   GameWithSubmitter,
 } from "@/lib/repositories/game-repository"; // Import repository
 import { notFound } from "next/navigation"; // For handling not found cases
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button"; // For potential actions later
 import Link from "next/link";
