@@ -3,14 +3,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GameImage } from "@/components/game-image";
+import { GameImage } from "@/components/game/game-image";
 import { Bookmark, BookmarkCheck, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import {
-  addToLibrary,
-  removeFromLibrary,
-  getLibraryGameIds,
-} from "@/app/(api)/actions/library";
+import { addToLibrary, removeFromLibrary } from "@/app/(api)/actions/library";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { SteamRawData } from "@/types/steam";
@@ -35,32 +31,14 @@ export function GameSelectionGrid({ games }: GameSelectionGridProps) {
   const [searchResults, setSearchResults] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch user's library on component mount
-  useEffect(() => {
-    const fetchLibrary = async () => {
-      try {
-        const result = await getLibraryGameIds();
-        if (result.success && result.data) {
-          setSelectedGames(new Set(result.data));
-        }
-      } catch (error) {
-        console.error("Error fetching library:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchLibrary();
-  }, []);
-
   // Handle game selection/deselection
   const toggleGameSelection = async (gameId: number) => {
     const newSelectedGames = new Set(selectedGames);
-    
+
     if (selectedGames.has(gameId)) {
       newSelectedGames.delete(gameId);
       setSelectedGames(newSelectedGames);
-      
+
       try {
         await removeFromLibrary(gameId);
       } catch (error) {
@@ -73,7 +51,7 @@ export function GameSelectionGrid({ games }: GameSelectionGridProps) {
     } else {
       newSelectedGames.add(gameId);
       setSelectedGames(newSelectedGames);
-      
+
       try {
         await addToLibrary(gameId);
         toast.success("Game added to your library!");
@@ -91,13 +69,15 @@ export function GameSelectionGrid({ games }: GameSelectionGridProps) {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    
+
     setIsSearching(true);
-    
+
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(
+        `/api/search?q=${encodeURIComponent(searchQuery)}`
+      );
       const data = await response.json();
-      
+
       if (data.success && data.results) {
         setSearchResults(data.results);
       } else {
@@ -164,15 +144,24 @@ export function GameSelectionGrid({ games }: GameSelectionGridProps) {
                 />
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start gap-2">
-                    <h3 className="font-semibold line-clamp-1" title={game.title || ""}>
+                    <h3
+                      className="font-semibold line-clamp-1"
+                      title={game.title || ""}
+                    >
                       {game.title || "Unknown Game"}
                     </h3>
                     <Button
-                      variant={selectedGames.has(game.id) ? "secondary" : "outline"}
+                      variant={
+                        selectedGames.has(game.id) ? "secondary" : "outline"
+                      }
                       size="icon"
                       className="h-8 w-8 flex-shrink-0"
                       onClick={() => toggleGameSelection(game.id)}
-                      title={selectedGames.has(game.id) ? "Remove from library" : "Add to library"}
+                      title={
+                        selectedGames.has(game.id)
+                          ? "Remove from library"
+                          : "Add to library"
+                      }
                     >
                       {selectedGames.has(game.id) ? (
                         <BookmarkCheck className="h-4 w-4" />
@@ -210,7 +199,9 @@ export function GameSelectionGrid({ games }: GameSelectionGridProps) {
 
           {displayedGames.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No games found. Try a different search term.</p>
+              <p className="text-muted-foreground">
+                No games found. Try a different search term.
+              </p>
             </div>
           )}
         </>
