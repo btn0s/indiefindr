@@ -5,16 +5,16 @@ import {
   removeFromLibrary,
   addToLibrary,
 } from "@/app/(api)/actions/library";
-import { db, schema } from "@/db";
-import { inArray, eq } from "drizzle-orm";
 import { GameGrid } from "@/components/game-grid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getGamesFoundByUser } from "@/app/(api)/actions/finds";
 import { DefaultGameService } from "@/services/game-service";
 import type { GameCardViewModel } from "@/services/game-service";
 import type { Game } from "@/lib/repositories/game-repository";
+import { DrizzleGameRepository } from "@/lib/repositories/game-repository";
 
 const gameService = new DefaultGameService();
+const gameRepository = new DrizzleGameRepository();
 
 async function getUserLibraryGames(
   userId: string
@@ -32,13 +32,9 @@ async function getUserLibraryGames(
   const gameIds = libraryResult.data;
 
   try {
-    const gamesFromDb = await db
-      .select()
-      .from(schema.gamesTable)
-      .where(inArray(schema.gamesTable.id, gameIds))
-      .execute();
+    const gamesFromDb: Game[] = await gameRepository.getGamesByIds(gameIds);
 
-    return gameService.toGameCardViewModels(gamesFromDb as Game[]);
+    return gameService.toGameCardViewModels(gamesFromDb);
   } catch (error) {
     console.error("Error fetching library game details:", error);
     return [];

@@ -101,6 +101,13 @@ export interface GameRepository {
   ): Promise<Game[]>;
 
   /**
+   * Get multiple games by their IDs.
+   * @param ids Array of game IDs
+   * @returns Array of games (Game type, not GameWithSubmitter)
+   */
+  getGamesByIds(ids: number[]): Promise<Game[]>;
+
+  /**
    * Create a new game
    * @param game The game data to insert
    * @returns The created game
@@ -345,6 +352,18 @@ export class DrizzleGameRepository implements GameRepository {
       .limit(limit);
 
     return similarGames;
+  }
+
+  async getGamesByIds(ids: number[]): Promise<Game[]> {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+    // Fetches full Game objects, does not include submitter details by default
+    const games = await db
+      .select() // Select all columns for the Game type
+      .from(gamesTable)
+      .where(inArray(gamesTable.id, ids));
+    return games;
   }
 
   async create(game: GameInsert): Promise<Game> {
