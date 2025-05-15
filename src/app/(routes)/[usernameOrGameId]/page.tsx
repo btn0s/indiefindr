@@ -12,13 +12,16 @@ import { profilesTable, libraryTable, gamesTable } from "@/db/schema"; // Import
 import { db } from "@/db"; // Import Drizzle instance
 import { eq, and, sql, count } from "drizzle-orm";
 import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
-import {
-  addToLibrary,
-  removeFromLibrary,
-  getLibraryGameIds,
-} from "@/app/(api)/actions/library"; // Import library actions for GameCard
-import { getGamesFoundByUser } from "@/app/(api)/actions/finds"; // Import the new action
+import { addToLibrary, removeFromLibrary } from "@/app/(api)/actions/library"; // Import library actions for GameCard
+// import { getGamesFoundByUser } from "@/app/(api)/actions/finds"; // Import the new action <-- REMOVE THIS
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
+import { DrizzleUserRepository } from "@/lib/repositories/user-repository"; // <-- Import UserRepository
+import type { GameCardViewModel } from "@/services/game-service"; // <-- GameCardViewModel from game-service
+import type { Profile } from "@/lib/repositories/user-repository"; // <-- Profile from user-repository
+import { DrizzleGameRepository } from "@/lib/repositories/game-repository"; // <-- ADD THIS
+import { DefaultGameService } from "@/services/game-service"; // <-- ADD THIS
+// Note: Profile type might come from user-repository.ts itself after this change.
+// For now, assuming GameService might expose a general Profile type or we use the one from user-repository.
 
 // Helper function for initials remains the same
 const getUserInitials = (name?: string | null) => {
@@ -33,15 +36,15 @@ type ProfilePageProps = {
 };
 
 // Define the type required by GameGrid
-type GameForGrid = {
-  // Renamed for clarity, as it's used by both grids now
-  id: number;
-  title: string | null;
-  steamAppid: string | null;
-  descriptionShort: string | null;
-  rawData?: SteamRawData | null; // Added for raw game data
-  foundByUsername?: string | null; // Added for "Finds" section
-};
+// type GameForGrid = {
+//   // Renamed for clarity, as it's used by both grids now
+//   id: number;
+//   title: string | null;
+//   steamAppid: string | null;
+//   descriptionShort: string | null;
+//   rawData?: SteamRawData | null; // Added for raw game data
+//   foundByUsername?: string | null; // Added for "Finds" section
+// }; // <-- REMOVE THIS TYPE
 
 // --- Generate Metadata Function ---
 export async function generateMetadata({
@@ -110,25 +113,31 @@ function getDefaultMetadata(): Metadata {
 }
 // --- End Generate Metadata Function ---
 
+// Instantiate repositories
+const userRepository = new DrizzleUserRepository();
+const gameRepository = new DrizzleGameRepository(); // <-- ADD THIS
+const gameService = new DefaultGameService(); // <-- ADD THIS
+
 export default async function ProfilePage({ params }: ProfilePageProps) {
   // Correctly instantiate the server client
   const supabase = await createClient();
   const p = await params;
   const decodedUsernameOrGameId = decodeURIComponent(p.usernameOrGameId);
 
-  // 1. Fetch the profile user's data using Drizzle
-  let profileData;
+  // 1. Fetch the profile user's data using UserRepository
+  let profileData: Profile | null = null; // <-- Use Profile type from user-repository
   try {
-    const result = await db
-      .select()
-      .from(profilesTable)
-      .where(eq(profilesTable.username, decodedUsernameOrGameId))
-      .limit(1);
+    // const result = await db
+    //   .select()
+    //   .from(profilesTable)
+    //   .where(eq(profilesTable.username, decodedUsernameOrGameId))
+    //   .limit(1);
+    profileData = await userRepository.getByUsername(decodedUsernameOrGameId);
 
-    if (!result || result.length === 0) {
+    if (!profileData) {
       notFound();
     }
-    profileData = result[0];
+    // profileData = result[0]; // No longer needed
   } catch (error) {
     console.error("Profile fetch error:", error);
     notFound(); // Or show a specific error page
@@ -144,51 +153,79 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const isOwner = !!profileData && loggedInUserId === profileData.id;
 
   // 3. Fetch the profile user's library game details using Drizzle
-  let libraryGames: GameForGrid[] = [];
-  try {
-    libraryGames = await db
-      .select({
-        id: gamesTable.id,
-        title: gamesTable.title,
-        descriptionShort: gamesTable.descriptionShort, // Correct field name
-        steamAppid: gamesTable.steamAppid,
-        rawData: sql<SteamRawData | null>`${gamesTable.rawData}`, // Select and cast rawData
-      })
-      .from(libraryTable)
-      .innerJoin(gamesTable, eq(libraryTable.gameRefId, gamesTable.id))
-      .where(eq(libraryTable.userId, profileData.id));
-  } catch (error) {
-    console.error("Library fetch error:", error);
-    // Handle error appropriately, maybe show an empty library section or log
+  let libraryGames: GameCardViewModel[] = []; // <-- Use GameCardViewModel
+  if (profileData?.id) {
+    // Ensure profileData and its id are available
+    try {
+      // This part still fetches raw game data for library, then transforms.
+      // It could potentially also use a method in GameRepository if we move the raw fetch there.
+      // For now, keeping the direct DB query for library game details as it involves a join.
+      const libraryGameDetails = await db
+        .select({
+          id: gamesTable.id,
+          title: gamesTable.title,
+          descriptionShort: gamesTable.descriptionShort, // Correct field name
+          steamAppid: gamesTable.steamAppid,
+          rawData: sql<SteamRawData | null>`${gamesTable.rawData}`,
+          // Add all fields required by Game type for GameService transformation
+          platform: gamesTable.platform,
+          externalId: gamesTable.externalId,
+          developer: gamesTable.developer,
+          descriptionDetailed: gamesTable.descriptionDetailed,
+          genres: gamesTable.genres,
+          tags: gamesTable.tags,
+          embedding: gamesTable.embedding,
+          enrichmentStatus: gamesTable.enrichmentStatus,
+          isFeatured: gamesTable.isFeatured,
+          lastFetched: gamesTable.lastFetched,
+          createdAt: gamesTable.createdAt,
+          foundBy: gamesTable.foundBy, // This is game.foundBy, not profile user
+        })
+        .from(libraryTable)
+        .innerJoin(gamesTable, eq(libraryTable.gameRefId, gamesTable.id))
+        .where(eq(libraryTable.userId, profileData.id));
+
+      // Instantiate GameService here to transform libraryGameDetails
+      libraryGames = gameService.toGameCardViewModels(
+        libraryGameDetails as any[]
+      ); // Cast as any[] for now
+    } catch (error) {
+      console.error("Library fetch error:", error);
+      // Handle error appropriately, maybe show an empty library section or log
+    }
   }
 
   // 4. Get the IDs of games in the *logged-in* user's library for the GameCard buttons
   let loggedInUserLibraryIds = new Set<number>();
   if (loggedInUserId) {
     try {
-      const libraryResult = await getLibraryGameIds(); // Uses server action for the logged-in user
-      if (libraryResult.success && libraryResult.data) {
-        loggedInUserLibraryIds = new Set(libraryResult.data);
-      }
+      // const libraryResult = await getLibraryGameIds(); // Uses server action for the logged-in user
+      // if (libraryResult.success && libraryResult.data) {
+      //   loggedInUserLibraryIds = new Set(libraryResult.data);
+      // }
+      const ids = await userRepository.getLibraryGameIds(loggedInUserId);
+      loggedInUserLibraryIds = new Set(ids);
     } catch (error) {
       console.error("Failed to get logged-in user library IDs:", error);
     }
   }
 
   // 5. Fetch games found by the profile user
-  let foundGames: GameForGrid[] = [];
+  let foundGames: GameCardViewModel[] = []; // <-- Use GameCardViewModel
   if (profileData?.id) {
     try {
-      const foundGamesResult = await getGamesFoundByUser(profileData.id);
-      if (foundGamesResult.success && foundGamesResult.data) {
-        // Explicitly cast to GameForGrid[] if necessary, though action's FoundGame type should align
-        foundGames = foundGamesResult.data as GameForGrid[];
-      } else {
-        console.warn(
-          "Failed to fetch games found by user:",
-          foundGamesResult.error
-        );
-      }
+      // const foundGamesResult = await getGamesFoundByUser(profileData.id);
+      // if (foundGamesResult.success && foundGamesResult.data) {
+      //   // Explicitly cast to GameForGrid[] if necessary, though action's FoundGame type should align
+      //   foundGames = foundGamesResult.data as GameForGrid[];
+      // } else {
+      //   console.warn(
+      //     "Failed to fetch games found by user:",
+      //     foundGamesResult.error
+      //   );
+      // }
+      const rawFoundGames = await gameRepository.getByUser(profileData.id);
+      foundGames = gameService.toGameCardViewModels(rawFoundGames);
     } catch (error) {
       console.error("Error fetching games found by user:", error);
     }

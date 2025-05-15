@@ -53,15 +53,17 @@ export function Feed({ isLoggedIn }: FeedDisplayProps) {
 
         const result = await response.json();
 
-        if (result.success && result.data) {
+        console.log("result", result);
+
+        if (result.games) {
           // Log the raw data received from the API
-          console.log("API response data:", result.data);
+          console.log("API response data:", result.games);
 
           setGames((prevGames) =>
-            currentPage === 1 ? result.data : [...prevGames, ...result.data]
+            currentPage === 1 ? result.games : [...prevGames, ...result.games]
           );
           // Update hasMore based on the number of items returned
-          setHasMore(result.data.length === API_BATCH_SIZE);
+          setHasMore(result.games.length === API_BATCH_SIZE);
         } else {
           setError(result.message || "Could not load games.");
           setHasMore(false); // Stop fetching if API reports error

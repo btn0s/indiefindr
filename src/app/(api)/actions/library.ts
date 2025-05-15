@@ -4,6 +4,11 @@ import { createClient } from "@/utils/supabase/server";
 import { db } from "@/db";
 import { libraryTable } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { DrizzleUserRepository } from "@/lib/repositories/user-repository";
+
+// Instantiate repository (module scope is fine if stateless)
+const userRepository = new DrizzleUserRepository();
 
 export async function addToLibrary(gameId: number) {
   try {
@@ -69,32 +74,6 @@ export async function removeFromLibrary(gameId: number) {
   } catch (error) {
     console.error("Error removing game from library:", error);
     return { success: false, error: "Failed to remove game from library" };
-  }
-}
-
-export async function getLibraryGameIds() {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { success: false, error: "Not authenticated", data: [] };
-    }
-
-    // Get all game IDs in the user's library
-    const libraryEntries = await db
-      .select({ gameId: libraryTable.gameRefId })
-      .from(libraryTable)
-      .where(eq(libraryTable.userId, user.id));
-
-    const gameIds = libraryEntries.map((entry) => entry.gameId);
-
-    return { success: true, data: gameIds };
-  } catch (error) {
-    console.error("Error getting library game IDs:", error);
-    return { success: false, error: "Failed to get library game IDs", data: [] };
   }
 }
 

@@ -56,7 +56,7 @@ export interface GameRepository {
    * @param steamAppid The Steam App ID
    * @returns The game or null if not found (consider if this should also be GameWithSubmitter)
    */
-  getBySteamAppId(steamAppid: string): Promise<Game | null>;
+  getBySteamAppId(steamAppid: string): Promise<GameWithSubmitter | null>;
 
   /**
    * Search for games based on various criteria
@@ -98,21 +98,21 @@ export interface GameRepository {
     gameId: number,
     limit?: number,
     excludeIds?: number[]
-  ): Promise<Game[]>;
+  ): Promise<GameWithSubmitter[]>;
 
   /**
    * Get multiple games by their IDs.
    * @param ids Array of game IDs
    * @returns Array of games (Game type, not GameWithSubmitter)
    */
-  getGamesByIds(ids: number[]): Promise<Game[]>;
+  getGamesByIds(ids: number[]): Promise<GameWithSubmitter[]>;
 
   /**
    * Create a new game
    * @param game The game data to insert
    * @returns The created game
    */
-  create(game: GameInsert): Promise<Game>;
+  create(game: GameInsert): Promise<GameWithSubmitter>;
 
   /**
    * Update an existing game
@@ -120,7 +120,7 @@ export interface GameRepository {
    * @param data The data to update
    * @returns The updated game
    */
-  update(id: number, data: GameUpdate): Promise<Game | null>;
+  update(id: number, data: GameUpdate): Promise<GameWithSubmitter | null>;
 
   /**
    * Delete a game
@@ -173,7 +173,7 @@ export class DrizzleGameRepository implements GameRepository {
     return result[0] || null;
   }
 
-  async getBySteamAppId(steamAppid: string): Promise<Game | null> {
+  async getBySteamAppId(steamAppid: string): Promise<GameWithSubmitter | null> {
     // The schema has a unique `steam_appid` column and also `external_id`.
     // This method specifically targets `steam_appid`.
     const result = await db
@@ -311,7 +311,7 @@ export class DrizzleGameRepository implements GameRepository {
     gameId: number,
     limit: number = 10,
     excludeIds?: number[]
-  ): Promise<Game[]> {
+  ): Promise<GameWithSubmitter[]> {
     // Step 1: Get the embedding of the reference game
     const referenceGame = await db
       .select({ embedding: gamesTable.embedding })
@@ -354,19 +354,53 @@ export class DrizzleGameRepository implements GameRepository {
     return similarGames;
   }
 
-  async getGamesByIds(ids: number[]): Promise<Game[]> {
+  async getGamesByIds(ids: number[]): Promise<GameWithSubmitter[]> {
     if (!ids || ids.length === 0) {
       return [];
     }
-    // Fetches full Game objects, does not include submitter details by default
-    const games = await db
-      .select() // Select all columns for the Game type
+    const gamesData = await db
+      .select({
+        // Explicitly select all needed fields from gamesTable for GameWithSubmitter
+        id: gamesTable.id,
+        title: gamesTable.title,
+        platform: gamesTable.platform,
+        externalId: gamesTable.externalId,
+        steamAppid: gamesTable.steamAppid,
+        developer: gamesTable.developer,
+        descriptionShort: gamesTable.descriptionShort,
+        descriptionDetailed: gamesTable.descriptionDetailed,
+        genres: gamesTable.genres,
+        tags: gamesTable.tags,
+        rawData: gamesTable.rawData,
+        embedding: gamesTable.embedding,
+        enrichmentStatus: gamesTable.enrichmentStatus,
+        isFeatured: gamesTable.isFeatured,
+        lastFetched: gamesTable.lastFetched,
+        createdAt: gamesTable.createdAt,
+        foundBy: gamesTable.foundBy,
+        // And explicitly select submitter details
+        foundByUsername: profilesTable.username,
+        foundByAvatarUrl: profilesTable.avatarUrl,
+      })
       .from(gamesTable)
+      .leftJoin(profilesTable, eq(gamesTable.foundBy, profilesTable.id))
       .where(inArray(gamesTable.id, ids));
-    return games;
+
+    // Drizzle returns results, but order based on `inArray` is not guaranteed.
+    // Re-order based on the original `ids` array.
+    const orderMap = new Map(ids.map((id, index) => [id, index]));
+    const orderedGamesData = [...gamesData].sort(
+      (a, b) =>
+        (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity)
+    );
+
+    return orderedGamesData.map((game) => ({
+      ...game,
+      rawData: game.rawData as any, // GameService will parse this
+    })) as GameWithSubmitter[];
   }
 
-  async create(game: GameInsert): Promise<Game> {
+  async create(game: GameInsert): Promise<GameWithSubmitter> {
     const result = await db.insert(gamesTable).values(game).returning();
     if (result.length === 0) {
       // This case should ideally not happen if the insert is successful without errors
