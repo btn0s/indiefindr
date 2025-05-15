@@ -95,7 +95,15 @@ export function GameCardMini({
                       path_thumbnail: game.headerImageUrl,
                     },
                   ]
-                : [],
+                : game.coverImageUrl // <-- If no header, try cover for screenshot
+                  ? [
+                      {
+                        id: 0,
+                        path_full: game.coverImageUrl,
+                        path_thumbnail: game.coverImageUrl,
+                      },
+                    ]
+                  : [],
               // Add any other fields from SteamRawData that GameImage might try to access, as undefined or null.
               movies: [], // Example if GameImage ever looks at movies
             }}

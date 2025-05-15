@@ -15,7 +15,6 @@ import type { Metadata } from "next";
 import { AddToLibraryButton } from "@/components/add-to-library-button"; // Import the new component
 
 import { DefaultGameService } from "@/services/game-service"; // <-- Import GameService
-import { Separator } from "@/components/ui/separator";
 
 const gameRepository = new DrizzleGameRepository(); // Instantiate repository
 const gameService = new DefaultGameService(); // <-- Instantiate GameService
