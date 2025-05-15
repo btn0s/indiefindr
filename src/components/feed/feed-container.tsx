@@ -6,7 +6,7 @@ import { FeedItem } from "@/components/feed/FeedItem";
 import { GameCardViewModel } from "@/services/game-service";
 import { GameContentItem } from "@/components/content/ContentRenderer";
 import { Button } from "../ui/button";
-
+import { Loader, Loader2 } from "lucide-react";
 interface FeedContainerProps {
   feedType: FeedType;
   feedOptions?: FeedOptions;
@@ -30,7 +30,14 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
   } = useFeed(feedType, feedOptions);
 
   if (isLoadingInitialData) {
-    return <div>Loading {title || feedType} feed...</div>;
+    return (
+      <div className="feed-container max-w-lg mx-auto">
+        {title && <h2 className="text-2xl font-bold mb-4">{title}</h2>}
+        <div className="flex justify-center items-center h-full pt-16">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
   }
 
   if (error) {

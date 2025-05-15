@@ -37,7 +37,7 @@ export interface FeedState {
 export function useFeed(feedType: FeedType, options: FeedOptions = {}) {
   const [feedState, setFeedState] = useState<FeedState>({
     items: [],
-    isLoading: false,
+    isLoading: true,
     error: null,
     hasMore: true,
     currentPage: 0, // Start at 0, page 1 will be fetched initially

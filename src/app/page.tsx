@@ -86,7 +86,7 @@ export default async function HomePage() {
         <section className="w-full">
           <FeedContainer
             feedType={isLoggedIn ? "personalized" : "all"}
-            title={isLoggedIn ? "Your Personalized Feed" : undefined}
+
           />
         </section>
 
