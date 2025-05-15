@@ -5,36 +5,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-import {
-  BookmarkPlus,
-  BookmarkCheck,
-  Eye,
-  Bookmark,
-  XCircle,
-} from "lucide-react";
-import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
-import { GameImage } from "./game-image"; // Import the reusable GameImage component
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BookmarkCheck, Bookmark, XCircle } from "lucide-react";
+import { GameImage } from "./game-image"; // Import the reusable GameImage componen
 import { ClaimFindButton } from "@/components/claim-find-button"; // Import ClaimFindButton
-
-// Helper function to get user initials for avatar fallback
-const getUserInitials = (name?: string | null) => {
-  if (!name) return "IF"; // Return "IF" for IndieFindr when no name is available
-  return name.charAt(0).toUpperCase();
-};
+import { GameCardViewModel } from "@/services/game-service";
 
 interface GameCardMiniProps {
-  game: {
-    id: number;
-    title: string | null;
-    steamAppid: string | null;
-    descriptionShort?: string | null;
-    rawData?: SteamRawData | null;
-    foundByUsername?: string | null;
-    foundByAvatarUrl?: string | null;
-  };
+  game: GameCardViewModel;
   detailsLinkHref: string;
   isInLibrary?: boolean;
   onAddToLibrary?: (gameId: number) => Promise<any>;
@@ -103,7 +80,25 @@ export function GameCardMini({
         >
           <GameImage
             altText={altText}
-            gameData={game.rawData ?? null}
+            gameData={{
+              // Construct the expected SteamRawData shape for GameImage
+              // using available URLs from GameCardViewModel
+              header_image: game.headerImageUrl,
+              capsule_image: game.coverImageUrl, // GameImage might use this or header_image
+              // GameImage primarily uses header_image and screenshots array.
+              // Provide a mock screenshots array if GameImage depends on it.
+              screenshots: game.headerImageUrl
+                ? [
+                    {
+                      id: 0,
+                      path_full: game.headerImageUrl,
+                      path_thumbnail: game.headerImageUrl,
+                    },
+                  ]
+                : [],
+              // Add any other fields from SteamRawData that GameImage might try to access, as undefined or null.
+              movies: [], // Example if GameImage ever looks at movies
+            }}
             sizes={imageSizes}
             variant="plain"
           />
@@ -114,9 +109,9 @@ export function GameCardMini({
             >
               {game.title || "Unknown Game"}
             </h3>
-            {game.descriptionShort && (
+            {game.shortDescription && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2 flex-grow">
-                {game.descriptionShort}
+                {game.shortDescription}
               </p>
             )}
           </CardContent>
