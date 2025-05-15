@@ -81,7 +81,14 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
     return () => {
       observer.unobserve(currentTarget);
     };
-  }, [loadMore, hasMore, isLoading, isLoadingInitialData, isLoadingMore]);
+  }, [
+    loadMore,
+    hasMore,
+    isLoading,
+    isLoadingInitialData,
+    isLoadingMore,
+    items.length,
+  ]);
 
   if (isLoadingInitialData) {
     return (
@@ -135,29 +142,21 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
 
       {!isEmpty && (
         <div className="feed-items-list flex flex-col">
-          {items.map((item: FeedItemType, index: number) => {
-            const isSentinelTarget = index === items.length / 2;
-            return (
-              <React.Fragment key={item.feedItemKey}>
-                <div>
-                  {/* Apply itemClassName here if provided */}
-                  <FeedItemComponent item={item} />
-                </div>
-                {isSentinelTarget &&
-                  hasMore &&
-                  !isLoading &&
-                  !isLoadingInitialData &&
-                  !isLoadingMore && (
-                    <div
-                      ref={observerRef}
-                      style={{ height: "1px", width: "1px" }}
-                      aria-hidden="true"
-                    />
-                  )}
-              </React.Fragment>
-            );
-          })}
+          {items.map((item: FeedItemType) => (
+            <div key={item.feedItemKey}>
+              {/* Apply itemClassName here if provided */}
+              <FeedItemComponent item={item} />
+            </div>
+          ))}
         </div>
+      )}
+
+      {hasMore && !isLoading && !isLoadingInitialData && !isLoadingMore && (
+        <div
+          ref={observerRef}
+          style={{ height: "1px", width: "1px" }}
+          aria-hidden="true"
+        />
       )}
 
       {isLoadingMore && (
