@@ -21,7 +21,7 @@ const embeddingModel = openai.embedding("text-embedding-3-small");
  * Generates a semantic vector embedding for a game based on its text data
  * and updates the database record.
  *
- * @param gameId The internal ID (external_source.id) of the game.
+ * @param gameId The internal ID (games.id) of the game.
  * @returns Promise resolving when the operation is complete or throws on error.
  */
 export async function generateEmbeddingForGame(gameId: number): Promise<void> {
@@ -29,8 +29,9 @@ export async function generateEmbeddingForGame(gameId: number): Promise<void> {
 
   try {
     // 1. Fetch game data
-    const game = await db.query.externalSourceTable.findFirst({
-      where: eq(schema.externalSourceTable.id, gameId),
+    const game = await db.query.gamesTable.findFirst({
+      // Changed to gamesTable
+      where: eq(schema.gamesTable.id, gameId), // Changed to gamesTable
       columns: {
         title: true,
         descriptionShort: true,
@@ -45,34 +46,45 @@ export async function generateEmbeddingForGame(gameId: number): Promise<void> {
       throw new Error(`Game with ID ${gameId} not found.`);
     }
 
-    // 2. Check status
-    if (game.enrichmentStatus !== "basic_info_extracted") {
+    // 2. Check status - use appropriate statuses from gameOverallEnrichmentStatusEnum
+    // Example: Allow if 'pending', 'partial', or 'failed' (if failed means retryable for embedding)
+    if (
+      game.enrichmentStatus !== "pending" &&
+      game.enrichmentStatus !== "partial" &&
+      game.enrichmentStatus !== "failed" // Or specific pre-embedding status
+    ) {
       console.warn(
-        `[Embedding] Skipping game ID ${gameId}: Status is '${game.enrichmentStatus}', not 'basic_info_extracted'.`
+        `[Embedding] Skipping game ID ${gameId}: Status is '${game.enrichmentStatus}', not a processable state for embedding.`
       );
-      return; // Or throw, depending on desired behavior
+      return;
     }
 
+    // Update status to processing
+    await db
+      .update(schema.gamesTable) // Changed to gamesTable
+      .set({ enrichmentStatus: "in_progress" }) // Use valid enum value
+      .where(eq(schema.gamesTable.id, gameId)) // Changed to gamesTable
+      .execute();
+
     // 3. Concatenate text fields
-    // Simple concatenation strategy. Could be refined (e.g., adding labels like "Genres: ...")
     const inputText = [
       game.title,
       game.descriptionShort,
       game.descriptionDetailed,
-      game.genres?.join(", "), // Join arrays into strings
+      game.genres?.join(", "),
       game.tags?.join(", "),
     ]
       .filter(Boolean)
-      .join("\n\n"); // Join non-empty fields with double newline
+      .join("\n\n");
 
     if (!inputText.trim()) {
       console.warn(
         `[Embedding] Skipping game ID ${gameId}: No text content found to generate embedding.`
       );
       await db
-        .update(schema.externalSourceTable)
-        .set({ enrichmentStatus: "embedding_failed", embedding: null })
-        .where(eq(schema.externalSourceTable.id, gameId))
+        .update(schema.gamesTable) // Changed to gamesTable
+        .set({ enrichmentStatus: "failed", embedding: null }) // Use valid enum value
+        .where(eq(schema.gamesTable.id, gameId)) // Changed to gamesTable
         .execute();
       return;
     }
@@ -89,12 +101,12 @@ export async function generateEmbeddingForGame(gameId: number): Promise<void> {
 
     // 5. Update database
     await db
-      .update(schema.externalSourceTable)
+      .update(schema.gamesTable) // Changed to gamesTable
       .set({
-        embedding: embedding, // Drizzle custom vector type handles the array
-        enrichmentStatus: "embedding_generated",
+        embedding: embedding,
+        enrichmentStatus: "enriched", // Use valid enum value
       })
-      .where(eq(schema.externalSourceTable.id, gameId))
+      .where(eq(schema.gamesTable.id, gameId)) // Changed to gamesTable
       .execute();
 
     console.log(
@@ -105,9 +117,9 @@ export async function generateEmbeddingForGame(gameId: number): Promise<void> {
     // Optionally update DB status to 'embedding_failed'
     try {
       await db
-        .update(schema.externalSourceTable)
-        .set({ enrichmentStatus: "embedding_failed", embedding: null })
-        .where(eq(schema.externalSourceTable.id, gameId))
+        .update(schema.gamesTable) // Changed to gamesTable
+        .set({ enrichmentStatus: "failed", embedding: null }) // Use valid enum value
+        .where(eq(schema.gamesTable.id, gameId)) // Changed to gamesTable
         .execute();
     } catch (dbError) {
       console.error(
@@ -118,6 +130,17 @@ export async function generateEmbeddingForGame(gameId: number): Promise<void> {
     // Re-throw the original error
     throw error;
   }
+}
+
+// This function might be called by a scheduled job or a message queue worker
+// For direct testing or a simple worker setup:
+export async function generateEmbeddingForGameId(
+  gameId: number
+): Promise<void> {
+  // This function is now a simple wrapper if generateEmbeddingForGame handles retries.
+  // If generateEmbeddingForGame did not handle retries, this would be the place.
+  // For now, just call the main function.
+  await generateEmbeddingForGame(gameId);
 }
 
 // Example usage placeholder

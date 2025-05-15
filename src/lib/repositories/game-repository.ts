@@ -1,4 +1,4 @@
-import { externalSourceTable, profilesTable } from "@/db/schema";
+import { gamesTable, profilesTable } from "@/db/schema";
 import { db } from "@/db";
 import {
   eq,
@@ -15,8 +15,8 @@ import {
 } from "drizzle-orm";
 
 // Define the types for game data
-export type Game = typeof externalSourceTable.$inferSelect;
-export type GameInsert = typeof externalSourceTable.$inferInsert;
+export type Game = typeof gamesTable.$inferSelect;
+export type GameInsert = typeof gamesTable.$inferInsert;
 export type GameUpdate = Partial<GameInsert>;
 
 // Ensure GameWithSubmitter is defined (it should be from previous edits)
@@ -136,34 +136,31 @@ export class DrizzleGameRepository implements GameRepository {
   async getById(id: number): Promise<GameWithSubmitter | null> {
     const result = await db
       .select({
-        // Select all fields from externalSourceTable
-        id: externalSourceTable.id,
-        platform: externalSourceTable.platform,
-        externalId: externalSourceTable.externalId,
-        title: externalSourceTable.title,
-        developer: externalSourceTable.developer,
-        descriptionShort: externalSourceTable.descriptionShort,
-        descriptionDetailed: externalSourceTable.descriptionDetailed,
-        genres: externalSourceTable.genres,
-        tags: externalSourceTable.tags,
-        embedding: externalSourceTable.embedding,
-        rawData: externalSourceTable.rawData,
-        enrichmentStatus: externalSourceTable.enrichmentStatus,
-        isFeatured: externalSourceTable.isFeatured,
-        steamAppid: externalSourceTable.steamAppid,
-        lastFetched: externalSourceTable.lastFetched,
-        createdAt: externalSourceTable.createdAt,
-        foundBy: externalSourceTable.foundBy,
+        // Select all fields from gamesTable
+        id: gamesTable.id,
+        platform: gamesTable.platform,
+        externalId: gamesTable.externalId,
+        title: gamesTable.title,
+        developer: gamesTable.developer,
+        descriptionShort: gamesTable.descriptionShort,
+        descriptionDetailed: gamesTable.descriptionDetailed,
+        genres: gamesTable.genres,
+        tags: gamesTable.tags,
+        embedding: gamesTable.embedding,
+        rawData: gamesTable.rawData,
+        enrichmentStatus: gamesTable.enrichmentStatus,
+        isFeatured: gamesTable.isFeatured,
+        steamAppid: gamesTable.steamAppid,
+        lastFetched: gamesTable.lastFetched,
+        createdAt: gamesTable.createdAt,
+        foundBy: gamesTable.foundBy,
         // Select specific fields from profilesTable for submitter info
         foundByUsername: profilesTable.username,
         foundByAvatarUrl: profilesTable.avatarUrl,
       })
-      .from(externalSourceTable)
-      .leftJoin(
-        profilesTable,
-        eq(externalSourceTable.foundBy, profilesTable.id)
-      )
-      .where(eq(externalSourceTable.id, id))
+      .from(gamesTable)
+      .leftJoin(profilesTable, eq(gamesTable.foundBy, profilesTable.id))
+      .where(eq(gamesTable.id, id))
       .limit(1);
 
     return result[0] || null;
@@ -174,8 +171,8 @@ export class DrizzleGameRepository implements GameRepository {
     // This method specifically targets `steam_appid`.
     const result = await db
       .select()
-      .from(externalSourceTable)
-      .where(eq(externalSourceTable.steamAppid, steamAppid))
+      .from(gamesTable)
+      .where(eq(gamesTable.steamAppid, steamAppid))
       .limit(1);
     return result[0] || null;
   }
@@ -194,24 +191,24 @@ export class DrizzleGameRepository implements GameRepository {
     // or if the left join doesn't find a match.
     let queryCore = db
       .select({
-        // Fields from externalSourceTable (Game part)
-        id: externalSourceTable.id,
-        platform: externalSourceTable.platform,
-        externalId: externalSourceTable.externalId,
-        title: externalSourceTable.title,
-        developer: externalSourceTable.developer,
-        descriptionShort: externalSourceTable.descriptionShort,
-        descriptionDetailed: externalSourceTable.descriptionDetailed,
-        genres: externalSourceTable.genres,
-        tags: externalSourceTable.tags,
-        embedding: externalSourceTable.embedding,
-        rawData: externalSourceTable.rawData,
-        enrichmentStatus: externalSourceTable.enrichmentStatus,
-        isFeatured: externalSourceTable.isFeatured,
-        steamAppid: externalSourceTable.steamAppid,
-        lastFetched: externalSourceTable.lastFetched,
-        createdAt: externalSourceTable.createdAt,
-        foundBy: externalSourceTable.foundBy,
+        // Fields from gamesTable (Game part)
+        id: gamesTable.id,
+        platform: gamesTable.platform,
+        externalId: gamesTable.externalId,
+        title: gamesTable.title,
+        developer: gamesTable.developer,
+        descriptionShort: gamesTable.descriptionShort,
+        descriptionDetailed: gamesTable.descriptionDetailed,
+        genres: gamesTable.genres,
+        tags: gamesTable.tags,
+        embedding: gamesTable.embedding,
+        rawData: gamesTable.rawData,
+        enrichmentStatus: gamesTable.enrichmentStatus,
+        isFeatured: gamesTable.isFeatured,
+        steamAppid: gamesTable.steamAppid,
+        lastFetched: gamesTable.lastFetched,
+        createdAt: gamesTable.createdAt,
+        foundBy: gamesTable.foundBy,
         // Fields from profilesTable (Submitter part) - conditionally populated by JOIN
         foundByUsername: includeSubmitter
           ? profilesTable.username
@@ -220,13 +217,13 @@ export class DrizzleGameRepository implements GameRepository {
           ? profilesTable.avatarUrl
           : drizzleSql`null`.as<string | null>("foundByAvatarUrl"),
       })
-      .from(externalSourceTable)
+      .from(gamesTable)
       .$dynamic(); // For conditional parts
 
     if (includeSubmitter) {
       queryCore = queryCore.leftJoin(
         profilesTable,
-        eq(externalSourceTable.foundBy, profilesTable.id)
+        eq(gamesTable.foundBy, profilesTable.id)
       );
     }
 
@@ -239,21 +236,21 @@ export class DrizzleGameRepository implements GameRepository {
     switch (orderBy) {
       case "popular":
         orderedQuery = queryWithConditions.orderBy(
-          desc(externalSourceTable.createdAt),
-          desc(externalSourceTable.id)
+          desc(gamesTable.createdAt),
+          desc(gamesTable.id)
         );
         break;
       case "relevance":
         orderedQuery = queryWithConditions.orderBy(
-          desc(externalSourceTable.createdAt),
-          desc(externalSourceTable.id)
+          desc(gamesTable.createdAt),
+          desc(gamesTable.id)
         );
         break;
       case "newest":
       default:
         orderedQuery = queryWithConditions.orderBy(
-          desc(externalSourceTable.createdAt),
-          desc(externalSourceTable.id)
+          desc(gamesTable.createdAt),
+          desc(gamesTable.id)
         );
         break;
     }
@@ -310,9 +307,9 @@ export class DrizzleGameRepository implements GameRepository {
   ): Promise<Game[]> {
     // Step 1: Get the embedding of the reference game
     const referenceGame = await db
-      .select({ embedding: externalSourceTable.embedding })
-      .from(externalSourceTable)
-      .where(eq(externalSourceTable.id, gameId))
+      .select({ embedding: gamesTable.embedding })
+      .from(gamesTable)
+      .where(eq(gamesTable.id, gameId))
       .limit(1);
 
     if (!referenceGame[0]?.embedding) {
@@ -326,14 +323,14 @@ export class DrizzleGameRepository implements GameRepository {
     // Step 2: Find games with similar embeddings
     // The operator `<=>` is for cosine distance (lower is better) from pgvector
     // Ensure the `embedding` column has an appropriate index (e.g., HNSW or IVFFlat) for performance.
-    const distance = drizzleSql<number>`${externalSourceTable.embedding} <=> ${referenceEmbedding}`;
+    const distance = drizzleSql<number>`${gamesTable.embedding} <=> ${referenceEmbedding}`;
 
     const conditions: SQL[] = [];
     // Exclude the reference game itself
-    conditions.push(not(eq(externalSourceTable.id, gameId)));
+    conditions.push(not(eq(gamesTable.id, gameId)));
 
     if (excludeIds && excludeIds.length > 0) {
-      conditions.push(not(inArray(externalSourceTable.id, excludeIds)));
+      conditions.push(not(inArray(gamesTable.id, excludeIds)));
     }
 
     // Add a threshold for distance if needed, e.g., distance < 0.5
@@ -342,7 +339,7 @@ export class DrizzleGameRepository implements GameRepository {
 
     const similarGames = await db
       .select()
-      .from(externalSourceTable)
+      .from(gamesTable)
       .where(and(...conditions))
       .orderBy(distance) // Order by distance (ascending, as lower is more similar for cosine distance)
       .limit(limit);
@@ -351,10 +348,7 @@ export class DrizzleGameRepository implements GameRepository {
   }
 
   async create(game: GameInsert): Promise<Game> {
-    const result = await db
-      .insert(externalSourceTable)
-      .values(game)
-      .returning();
+    const result = await db.insert(gamesTable).values(game).returning();
     if (result.length === 0) {
       // This case should ideally not happen if the insert is successful without errors
       // and the database is configured to return the inserted row.
@@ -367,18 +361,18 @@ export class DrizzleGameRepository implements GameRepository {
     // Consider adding a lastUpdatedAt timestamp update here if not handled by DB trigger
     // e.g. { ...data, lastUpdatedAt: new Date() }
     const result = await db
-      .update(externalSourceTable)
+      .update(gamesTable)
       .set(data)
-      .where(eq(externalSourceTable.id, id))
+      .where(eq(gamesTable.id, id))
       .returning();
     return result[0] || null;
   }
 
   async delete(id: number): Promise<boolean> {
     const result = await db
-      .delete(externalSourceTable)
-      .where(eq(externalSourceTable.id, id))
-      .returning({ id: externalSourceTable.id }); // Check if a row was actually deleted
+      .delete(gamesTable)
+      .where(eq(gamesTable.id, id))
+      .returning({ id: gamesTable.id }); // Check if a row was actually deleted
     return result.length > 0;
   }
 
@@ -391,9 +385,9 @@ export class DrizzleGameRepository implements GameRepository {
       if (queryLower) {
         conditions.push(
           or(
-            ilike(externalSourceTable.title, `%${queryLower}%`),
-            ilike(externalSourceTable.descriptionShort, `%${queryLower}%`),
-            ilike(externalSourceTable.developer, `%${queryLower}%`)
+            ilike(gamesTable.title, `%${queryLower}%`),
+            ilike(gamesTable.descriptionShort, `%${queryLower}%`),
+            ilike(gamesTable.developer, `%${queryLower}%`)
           )
         );
       }
@@ -404,13 +398,10 @@ export class DrizzleGameRepository implements GameRepository {
       // Using a workaround: array_to_string and LIKE. This is not SARGable and can be slow.
       // For better performance, a FTS setup on tags or a different schema might be needed.
       // Or use raw SQL with array operators like && (overlap) or @> (contains).
-      // Example with @> (Postgres specific): sql`${externalSourceTable.tags} @> ARRAY[${params.tags.join(',')}]::text[]`
+      // Example with @> (Postgres specific): sql`${gamesTable.tags} @> ARRAY[${params.tags.join(',')}]::text[]`
       // For now, sticking to a portable-ish (but less efficient) string conversion for each tag.
       const tagConditions = params.tags.map((tag) =>
-        ilike(
-          drizzleSql`array_to_string(${externalSourceTable.tags}, ' ')`,
-          `%${tag}%`
-        )
+        ilike(drizzleSql`array_to_string(${gamesTable.tags}, ' ')`, `%${tag}%`)
       );
       if (tagConditions.length > 0) conditions.push(or(...tagConditions));
     }
@@ -418,7 +409,7 @@ export class DrizzleGameRepository implements GameRepository {
     if (params.genres && params.genres.length > 0) {
       const genreConditions = params.genres.map((genre) =>
         ilike(
-          drizzleSql`array_to_string(${externalSourceTable.genres}, ' ')`,
+          drizzleSql`array_to_string(${gamesTable.genres}, ' ')`,
           `%${genre}%`
         )
       );
@@ -426,23 +417,23 @@ export class DrizzleGameRepository implements GameRepository {
     }
 
     if (params.excludeIds && params.excludeIds.length > 0) {
-      conditions.push(not(inArray(externalSourceTable.id, params.excludeIds)));
+      conditions.push(not(inArray(gamesTable.id, params.excludeIds)));
     }
 
     if (typeof params.isFeatured === "boolean") {
-      conditions.push(eq(externalSourceTable.isFeatured, params.isFeatured));
+      conditions.push(eq(gamesTable.isFeatured, params.isFeatured));
     }
 
     if (params.steamAppid) {
-      conditions.push(eq(externalSourceTable.steamAppid, params.steamAppid));
+      conditions.push(eq(gamesTable.steamAppid, params.steamAppid));
     }
 
     if (params.externalId) {
-      conditions.push(eq(externalSourceTable.externalId, params.externalId));
+      conditions.push(eq(gamesTable.externalId, params.externalId));
     }
 
     if (params.userId) {
-      conditions.push(eq(externalSourceTable.foundBy, params.userId));
+      conditions.push(eq(gamesTable.foundBy, params.userId));
     }
 
     return conditions.length > 0 ? and(...conditions) : undefined;
@@ -452,8 +443,8 @@ export class DrizzleGameRepository implements GameRepository {
     const whereClause = this.buildWhereClause(params);
 
     const queryInitial = db
-      .select({ value: drizzleCount(externalSourceTable.id) })
-      .from(externalSourceTable);
+      .select({ value: drizzleCount(gamesTable.id) })
+      .from(gamesTable);
 
     // Conditionally apply the .where() method only if whereClause is defined.
     // The type of queryInitial changes if .where() is applied.

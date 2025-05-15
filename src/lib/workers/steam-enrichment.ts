@@ -54,11 +54,12 @@ interface SteamApiResponse {
 }
 
 // Type for the data we want to insert/update in our DB
-type ExternalSourceInsert = typeof schema.externalSourceTable.$inferInsert;
+type GameInsert = typeof schema.gamesTable.$inferInsert;
 
 /**
  * Fetches game details from the Steam API for a given AppID and
- * inserts or updates the data in the external_source table.
+ * inserts or updates the data in the gamesTable, then populates
+ * gameEnrichmentTable with specific details from Steam.
  *
  * @param appId The Steam AppID (string) to enrich.
  * @param foundBy Optional UUID of the user who found/submitted the game.
@@ -69,7 +70,7 @@ export async function enrichSteamAppId(
   foundBy?: string
 ): Promise<void> {
   console.log(
-    `[Enrichment] Starting enrichment for AppID: ${appId}${foundBy ? ` (Found by: ${foundBy})` : ""}`
+    `[Enrichment] Starting Steam processing for AppID: ${appId}${foundBy ? ` (Found by: ${foundBy})` : ""}`
   );
   const apiUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
 
@@ -77,7 +78,6 @@ export async function enrichSteamAppId(
   try {
     const response = await fetch(apiUrl);
     if (!response.ok) {
-      // Handle non-2xx responses (e.g., 404, 500)
       throw new Error(
         `Steam API request failed with status ${response.status}`
       );
@@ -97,70 +97,225 @@ export async function enrichSteamAppId(
       );
     }
 
-    // --- Data Extraction ---
-    // Extract needed fields according to our schema
-    const gameData: Omit<
-      ExternalSourceInsert,
-      "id" | "embedding" | "createdAt" | "lastFetched"
+    // --- Data Extraction for gamesTable ---
+    const gameDataForTable: Omit<
+      GameInsert, // Updated type
+      "id" | "embedding" | "createdAt" | "lastFetched" // id is serial, others have defaults or set later
     > = {
       platform: "steam",
       externalId: appId,
       steamAppid: appId,
-      title: steamData.name || null,
-      developer: steamData.developers?.[0] || null, // Take the first developer for simplicity
-      descriptionShort: steamData.short_description || null,
+      title: steamData.name || undefined, // Use undefined for optional fields if null/empty
+      developer: steamData.developers?.[0] || undefined,
+      descriptionShort: steamData.short_description || undefined,
       descriptionDetailed:
-        steamData.detailed_description || steamData.about_the_game || null,
+        steamData.detailed_description || steamData.about_the_game || undefined,
       genres: steamData.genres?.map((g) => g.description) || [],
-      // Using categories as a proxy for tags, filter as needed
-      tags: steamData.categories?.map((c) => c.description) || [],
-      rawData: steamData, // Store the full response for potential future use
-      enrichmentStatus: "basic_info_extracted", // Mark as enriched
-      isFeatured: false, // Default value
-      foundBy: foundBy || null, // Add foundBy field
+      tags: steamData.categories?.map((c) => c.description) || [], // Using categories as proxy for tags
+      rawData: steamData,
+      enrichmentStatus: "pending", // Default, will be updated below
+      isFeatured: false,
+      foundBy: foundBy || undefined,
     };
 
     console.log(
-      `[Enrichment] Fetched data for ${gameData.title} (AppID: ${appId})`
+      `[Enrichment] Fetched core data for ${gameDataForTable.title} (AppID: ${appId})`
     );
 
-    // --- Database Operation (Upsert) ---
-    await db
-      .insert(schema.externalSourceTable)
-      .values(gameData)
+    // --- Database Operation (Upsert into gamesTable) ---
+    const upsertResult = await db
+      .insert(schema.gamesTable) // Updated to gamesTable
+      .values({
+        ...gameDataForTable,
+        enrichmentStatus: "partial", // Example status from gameOverallEnrichmentStatusEnum
+      })
       .onConflictDoUpdate({
-        target: schema.externalSourceTable.externalId, // Conflict on unique externalId
+        target: schema.gamesTable.externalId, // Updated target
         set: {
-          ...gameData, // Update all fetched fields
-          lastFetched: new Date(), // Update last fetched time
-          enrichmentStatus: "basic_info_extracted", // Ensure status is updated even if record exists
-          // Don't update foundBy if it already exists
+          ...gameDataForTable,
+          lastFetched: new Date(),
+          enrichmentStatus: "partial", // Ensure status is updated
           foundBy: foundBy
-            ? sql`COALESCE(${schema.externalSourceTable.foundBy}, ${foundBy})`
+            ? sql`COALESCE(${schema.gamesTable.foundBy}, ${foundBy})` // Updated table ref
             : undefined,
-          // Avoid updating embedding here; that's the next step
         },
       })
-      .execute(); // Drizzle requires execute() for the final command
+      .returning({ insertedId: schema.gamesTable.id }) // Get the ID
+      .execute();
 
-    console.log(`[Enrichment] Successfully upserted data for AppID: ${appId}`);
+    const gameIdFromDb = upsertResult[0]?.insertedId;
+
+    if (!gameIdFromDb) {
+      throw new Error(
+        `Failed to get ID from gamesTable upsert for AppID: ${appId}`
+      );
+    }
+
+    console.log(
+      `[Enrichment] Successfully upserted data to gamesTable for AppID: ${appId}, Game ID: ${gameIdFromDb}`
+    );
+
+    // --- Populate gameEnrichmentTable ---
+    const enrichmentEntries: (typeof schema.gameEnrichmentTable.$inferInsert)[] =
+      [];
+
+    // Detailed Description
+    if (steamData.detailed_description || steamData.about_the_game) {
+      enrichmentEntries.push({
+        gameId: gameIdFromDb,
+        sourceName: "steam",
+        contentType: "description",
+        contentValue:
+          steamData.detailed_description || steamData.about_the_game,
+        status: "active",
+      });
+    }
+
+    // Website
+    if (steamData.website) {
+      enrichmentEntries.push({
+        gameId: gameIdFromDb,
+        sourceName: "steam",
+        contentType: "article_url", // Consider a "official_website" type
+        contentValue: steamData.website,
+        status: "active",
+      });
+    }
+
+    // Metacritic
+    if (steamData.metacritic) {
+      enrichmentEntries.push({
+        gameId: gameIdFromDb,
+        sourceName: "steam", // Data is from Steam API, even if source is Metacritic
+        contentType: "review_snippet", // Consider "metacritic_score"
+        contentJson: {
+          score: steamData.metacritic.score,
+          url: steamData.metacritic.url,
+        },
+        status: "active",
+      });
+    }
+
+    // Header Image
+    if (steamData.header_image) {
+      enrichmentEntries.push({
+        gameId: gameIdFromDb,
+        sourceName: "steam",
+        contentType: "image_url",
+        contentValue: steamData.header_image,
+        contentJson: { type: "header" },
+        status: "active",
+      });
+    }
+
+    // Screenshots
+    steamData.screenshots?.forEach((ss) => {
+      enrichmentEntries.push({
+        gameId: gameIdFromDb,
+        sourceName: "steam",
+        contentType: "image_url",
+        contentValue: ss.path_full, // Or path_thumbnail
+        contentJson: { id: ss.id, type: "screenshot" },
+        status: "active",
+      });
+    });
+
+    // Movies/Trailers
+    steamData.movies?.forEach((movie) => {
+      enrichmentEntries.push({
+        gameId: gameIdFromDb,
+        sourceName: "steam",
+        contentType: "video_url",
+        contentValue:
+          movie.mp4?.max ||
+          movie.mp4?.["480"] ||
+          movie.webm?.max ||
+          movie.webm?.["480"],
+        contentJson: {
+          id: movie.id,
+          name: movie.name,
+          thumbnail: movie.thumbnail,
+          type: movie.highlight ? "highlight_trailer" : "trailer",
+        },
+        status: "active",
+      });
+    });
+
+    // PC Requirements
+    if (
+      steamData.pc_requirements &&
+      (steamData.pc_requirements.minimum ||
+        steamData.pc_requirements.recommended)
+    ) {
+      enrichmentEntries.push({
+        gameId: gameIdFromDb,
+        sourceName: "steam",
+        contentType: "system_requirements",
+        contentJson: { platform: "pc", ...steamData.pc_requirements },
+        status: "active",
+      });
+    }
+    // (Could add Mac/Linux requirements similarly)
+
+    if (enrichmentEntries.length > 0) {
+      try {
+        await db
+          .insert(schema.gameEnrichmentTable)
+          .values(enrichmentEntries)
+          .execute();
+        console.log(
+          `[Enrichment] Successfully inserted ${enrichmentEntries.length} enrichment entries for Game ID: ${gameIdFromDb}`
+        );
+        // Update gamesTable status to 'enriched' or similar if all went well
+        await db
+          .update(schema.gamesTable)
+          .set({ enrichmentStatus: "enriched" }) // Example final status
+          .where(eq(schema.gamesTable.id, gameIdFromDb))
+          .execute();
+      } catch (enrichError) {
+        console.error(
+          `[Enrichment] Failed to insert enrichment entries for Game ID: ${gameIdFromDb}:`,
+          enrichError
+        );
+        // Optionally set gamesTable status to something like 'enrichment_partial_failure'
+        await db
+          .update(schema.gamesTable)
+          .set({ enrichmentStatus: "failed" }) // Example status
+          .where(eq(schema.gamesTable.id, gameIdFromDb))
+          .execute();
+      }
+    } else {
+      // If no specific enrichment entries were generated, but core data was saved.
+      await db
+        .update(schema.gamesTable)
+        .set({ enrichmentStatus: "partial" }) // Or 'steam_core_only' etc.
+        .where(eq(schema.gamesTable.id, gameIdFromDb))
+        .execute();
+      console.log(
+        `[Enrichment] No specific enrichment entries to add for Game ID: ${gameIdFromDb}. Core data saved.`
+      );
+    }
+
+    console.log(`[Enrichment] Steam processing completed for AppID: ${appId}`);
   } catch (error: any) {
-    console.error(`[Enrichment] Failed for AppID ${appId}:`, error);
-    // Optionally update DB status to 'enrichment_failed' or similar
+    console.error(
+      `[Enrichment] Steam processing failed for AppID ${appId}:`,
+      error
+    );
+    // Update gamesTable status to 'failed'
     try {
       await db
-        .update(schema.externalSourceTable)
-        .set({ enrichmentStatus: "enrichment_failed", lastFetched: new Date() })
-        .where(eq(schema.externalSourceTable.externalId, appId))
+        .update(schema.gamesTable) // Updated to gamesTable
+        .set({ enrichmentStatus: "failed", lastFetched: new Date() }) // Example status
+        .where(eq(schema.gamesTable.externalId, appId)) // Updated table ref
         .execute();
     } catch (dbError) {
       console.error(
-        `[Enrichment] Failed to update status to failed for AppID ${appId}:`,
+        `[Enrichment] Failed to update gamesTable status to failed for AppID ${appId}:`,
         dbError
       );
     }
-    // Re-throw the original error to signal failure to the caller
-    throw error;
+    throw error; // Re-throw the original error
   }
 }
 

@@ -2,7 +2,7 @@ import React from "react";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { externalSourceTable } from "@/db/schema";
+import { gamesTable } from "@/db/schema";
 import { desc } from "drizzle-orm";
 import { GameSelectionGrid } from "@/components/onboarding/game-selection-grid";
 import { Button } from "@/components/ui/button";
@@ -23,15 +23,15 @@ export default async function OnboardingGamesPage() {
   // Fetch a selection of popular and recent games for the user to choose from
   const games = await db
     .select({
-      id: externalSourceTable.id,
-      title: externalSourceTable.title,
-      steamAppid: externalSourceTable.steamAppid,
-      descriptionShort: externalSourceTable.descriptionShort,
-      rawData: externalSourceTable.rawData,
-      tags: externalSourceTable.tags,
+      id: gamesTable.id,
+      title: gamesTable.title,
+      steamAppid: gamesTable.steamAppid,
+      descriptionShort: gamesTable.descriptionShort,
+      rawData: gamesTable.rawData,
+      tags: gamesTable.tags,
     })
-    .from(externalSourceTable)
-    .orderBy(desc(externalSourceTable.createdAt))
+    .from(gamesTable)
+    .orderBy(desc(gamesTable.createdAt))
     .limit(12);
 
   // Cast the games to the correct type

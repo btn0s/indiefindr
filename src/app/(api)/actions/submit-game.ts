@@ -76,14 +76,23 @@ export async function submitGameAction(
 
   console.log(`[Submit Action] Validated AppID: ${appIdString}`);
 
+  const profile = await db.query.profilesTable.findFirst({
+    where: eq(schema.profilesTable.id, user.id),
+  });
+
+  if (!profile) {
+    return { status: "error", message: "User profile not found" };
+  }
+
+  // Validate Steam AppID format (simple numeric check)
+  if (!/^[0-9]+$/.test(appIdString)) {
+    return { status: "error", message: "Invalid Steam AppID format." };
+  }
+
   try {
-    // 2. Check if game exists in DB
-    const existingGame = await db.query.externalSourceTable.findFirst({
-      where: eq(schema.externalSourceTable.steamAppid, appIdString),
-      columns: {
-        id: true, // Select only the ID we need for the link/reference
-        title: true, // Maybe show the title too
-      },
+    // Check if the game already exists (by steam_appid, which is unique in gamesTable)
+    const existingGame = await db.query.gamesTable.findFirst({
+      where: eq(schema.gamesTable.steamAppid, appIdString),
     });
 
     if (existingGame) {
@@ -102,14 +111,14 @@ export async function submitGameAction(
     console.log(
       `[Submit Action] Game not found. Triggering enrichment for AppID: ${appIdString}`
     );
-    await enrichSteamAppId(appIdString, user.id); // Pass the user's ID
+    await enrichSteamAppId(appIdString, user.id);
 
     // If enrichSteamAppId completes, fetch the data needed for the card
     console.log(
       `[Submit Action] Enrichment successful for AppID: ${appIdString}. Fetching data for card.`
     );
-    const newlySubmittedGame = await db.query.externalSourceTable.findFirst({
-      where: eq(schema.externalSourceTable.steamAppid, appIdString),
+    const newlySubmittedGame = await db.query.gamesTable.findFirst({
+      where: eq(schema.gamesTable.steamAppid, appIdString),
       columns: {
         id: true,
         title: true,

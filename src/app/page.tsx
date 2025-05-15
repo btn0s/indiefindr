@@ -2,9 +2,8 @@ import React from "react";
 import { createClient } from "@/utils/supabase/server";
 import { Feed } from "@/components/feed";
 import { db } from "@/db";
-import { profilesTable, libraryTable, externalSourceTable } from "@/db/schema";
+import { profilesTable, libraryTable, gamesTable } from "@/db/schema";
 import { eq, count } from "drizzle-orm";
-import { ProfileMiniCard } from "@/components/profile-mini-card";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -46,8 +45,8 @@ export default async function HomePage() {
     // Fetch finds count
     const findsCountResult = await db
       .select({ value: count() })
-      .from(externalSourceTable)
-      .where(eq(externalSourceTable.foundBy, user.id)); // Ensure foundBy stores the user ID
+      .from(gamesTable)
+      .where(eq(gamesTable.foundBy, user.id));
     if (findsCountResult.length > 0) {
       findsCount = findsCountResult[0].value;
     }
