@@ -16,6 +16,8 @@ import { createClient } from "@/utils/supabase/server";
 import { searchSteam, type SteamSearchResult } from "@/lib/steam-search";
 import { DrizzleGameRepository } from "@/lib/repositories/game-repository";
 import type { GameWithSubmitter } from "@/lib/repositories/game-repository";
+import { DefaultGameService } from "@/services/game-service";
+import type { GameCardViewModel } from "@/services/game-service";
 
 const Loading = () => {
   return (
@@ -36,15 +38,6 @@ const Loading = () => {
   );
 };
 
-interface SearchResultGame {
-  id: number;
-  title: string;
-  externalId: string | null;
-  steamAppid: string | null;
-  descriptionShort: string | null;
-  rawData: SteamRawData | null;
-}
-
 interface SearchPageProps {
   searchParams?: Promise<{
     q?: string;
@@ -52,14 +45,15 @@ interface SearchPageProps {
   }>;
 }
 
-// Instantiate the repository
+// Instantiate the repository and service
 const gameRepository = new DrizzleGameRepository();
+const gameService = new DefaultGameService();
 
 async function performSearch(
   query?: string,
   tagsQuery?: string
 ): Promise<{
-  results: SearchResultGame[];
+  results: GameCardViewModel[];
   error: string | null;
 }> {
   const queryTrimmed = query?.trim();
@@ -82,7 +76,7 @@ async function performSearch(
       query: queryTrimmed,
       tags: tagsArray,
       limit: 20, // Default limit, adjust as needed
-      includeSubmitter: false, // Not needed for search results page
+      includeSubmitter: true,
     };
 
     const searchResultsDb: GameWithSubmitter[] =
@@ -94,19 +88,10 @@ async function performSearch(
       `[Server Search] Found ${searchResultsDb.length} results for query: "${queryTrimmed}", tags: "${tagsQuery}".`
     );
 
-    const formattedResults: SearchResultGame[] = searchResultsDb.map(
-      (game) => ({
-        id: game.id,
-        title: game.title ?? "",
-        externalId: game.externalId,
-        steamAppid: game.steamAppid,
-        descriptionShort: game.descriptionShort,
-        // Ensure rawData is cast correctly; GameWithSubmitter includes the full Game type
-        rawData: game.rawData as SteamRawData | null,
-      })
-    );
+    const transformedResults: GameCardViewModel[] =
+      gameService.toGameCardViewModels(searchResultsDb);
 
-    return { results: formattedResults, error: null };
+    return { results: transformedResults, error: null };
   } catch (error: any) {
     console.error(
       `[Server Search] Error during search for query "${query}":`,
@@ -161,6 +146,8 @@ const getSteamImageUrl = (steamAppid: string | null) => {
 };
 
 // Define a consistent type for games displayed in sections
+// This DisplayGame interface will likely be replaced by GameCardViewModel
+/*
 interface DisplayGame {
   id: number;
   title: string | null;
@@ -168,33 +155,47 @@ interface DisplayGame {
   descriptionShort: string | null;
   rawData?: SteamRawData | null;
 }
+*/
 
 async function getRecentlyAddedGames(
   limit: number = 6
-): Promise<DisplayGame[]> {
+): Promise<GameCardViewModel[]> {
   try {
-    const recentGames = await db
+    // Fetch all necessary fields for the Game type, or at least those needed by GameService
+    const recentGamesFromDb = await db
       .select({
         id: schema.gamesTable.id,
         title: schema.gamesTable.title,
-        steamAppid: schema.gamesTable.steamAppid,
         descriptionShort: schema.gamesTable.descriptionShort,
+        descriptionDetailed: schema.gamesTable.descriptionDetailed,
+        steamAppid: schema.gamesTable.steamAppid,
+        tags: schema.gamesTable.tags,
+        genres: schema.gamesTable.genres,
         rawData: schema.gamesTable.rawData,
+        createdAt: schema.gamesTable.createdAt,
+        developer: schema.gamesTable.developer,
+        platform: schema.gamesTable.platform,
+        externalId: schema.gamesTable.externalId,
+        embedding: schema.gamesTable.embedding,
+        enrichmentStatus: schema.gamesTable.enrichmentStatus,
+        isFeatured: schema.gamesTable.isFeatured,
+        lastFetched: schema.gamesTable.lastFetched,
+        foundBy: schema.gamesTable.foundBy,
       })
       .from(schema.gamesTable)
       .orderBy(desc(schema.gamesTable.createdAt))
       .limit(limit);
-    return recentGames.map((game) => ({
-      ...game,
-      rawData: game.rawData as SteamRawData | null,
-    }));
+    // Transform using GameService - assuming recentGamesFromDb items are compatible with `Game` type
+    return gameService.toGameCardViewModels(recentGamesFromDb as any[]);
   } catch (error) {
     console.error("[Server Search] Error fetching recent games:", error);
     return [];
   }
 }
 
-async function getPopularGames(limit: number = 6): Promise<DisplayGame[]> {
+async function getPopularGames(
+  limit: number = 6
+): Promise<GameCardViewModel[]> {
   try {
     // Step 1: Find the most frequent gameRefId in the library table
     const popularGameIdsResult = await db
@@ -213,29 +214,40 @@ async function getPopularGames(limit: number = 6): Promise<DisplayGame[]> {
       return [];
     }
 
-    // Step 2: Fetch details for these popular games
-    const popularGamesDetails = await db
+    // Step 2: Fetch details for these popular games, ensuring all fields for Game type are present
+    const popularGamesDetailsFromDb = await db
       .select({
         id: schema.gamesTable.id,
         title: schema.gamesTable.title,
-        steamAppid: schema.gamesTable.steamAppid,
         descriptionShort: schema.gamesTable.descriptionShort,
+        descriptionDetailed: schema.gamesTable.descriptionDetailed,
+        steamAppid: schema.gamesTable.steamAppid,
+        tags: schema.gamesTable.tags,
+        genres: schema.gamesTable.genres,
         rawData: schema.gamesTable.rawData,
+        createdAt: schema.gamesTable.createdAt,
+        developer: schema.gamesTable.developer,
+        platform: schema.gamesTable.platform,
+        externalId: schema.gamesTable.externalId,
+        embedding: schema.gamesTable.embedding,
+        enrichmentStatus: schema.gamesTable.enrichmentStatus,
+        isFeatured: schema.gamesTable.isFeatured,
+        lastFetched: schema.gamesTable.lastFetched,
+        foundBy: schema.gamesTable.foundBy,
       })
       .from(schema.gamesTable)
       .where(inArray(schema.gamesTable.id, popularGameIds));
 
-    // Step 3: Map to DisplayGame and preserve order (optional but good practice)
-    const gamesMap = new Map<number, DisplayGame>(
-      popularGamesDetails.map((game) => [
-        game.id,
-        { ...game, rawData: game.rawData as SteamRawData | null },
-      ])
+    // Order them according to popularity (optional but good for consistency)
+    const gamesMap = new Map(
+      popularGamesDetailsFromDb.map((game) => [game.id, game])
     );
-
-    return popularGameIds
+    const orderedPopularGames = popularGameIds
       .map((id) => gamesMap.get(id))
-      .filter((game): game is DisplayGame => game !== undefined);
+      .filter(Boolean) as any[]; // Use any[] for GameService, assuming compatibility
+
+    // Transform using GameService
+    return gameService.toGameCardViewModels(orderedPopularGames);
   } catch (error) {
     console.error("[Server Search] Error fetching popular games:", error);
     return [];
@@ -307,14 +319,16 @@ export async function generateMetadata({
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   // Get the current user for attribution
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const userId = user?.id || null;
 
-  let searchResults: SearchResultGame[] = [];
+  let searchResults: GameCardViewModel[] = [];
   let searchError: string | null = null;
   let popularCategories: string[] = [];
-  let recentGames: DisplayGame[] = [];
-  let popularGames: DisplayGame[] = [];
+  let recentGames: GameCardViewModel[] = [];
+  let popularGames: GameCardViewModel[] = [];
   let steamSearchResults: SteamSearchResult[] = [];
   let steamSearchError: string | null = null;
 
@@ -353,7 +367,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     if (searchResults.length > 0 && steamSearchResults.length > 0) {
       const localSteamAppids = new Set(
         searchResults.map((game) => game.steamAppid).filter(Boolean)
-      ); // Filter out null/undefined appids
+      );
       steamSearchResults = steamSearchResults.filter(
         (steamGame) => !localSteamAppids.has(steamGame.appid.toString())
       );
@@ -490,17 +504,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                   Results from IndieFindr
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                  {searchResults.map((game) => (
+                  {searchResults.map((gameVM) => (
                     <GameCardMini
-                      key={`local-${game.id}`}
-                      game={{
-                        id: game.id,
-                        title: game.title,
-                        steamAppid: game.steamAppid,
-                        descriptionShort: game.descriptionShort,
-                        rawData: game.rawData,
-                      }}
-                      detailsLinkHref={getGameUrl(game.id, game.title)}
+                      key={`local-${gameVM.id}`}
+                      game={gameVM}
+                      detailsLinkHref={getGameUrl(gameVM.id, gameVM.title)}
                     />
                   ))}
                 </div>
@@ -521,26 +529,21 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                     <GameCardMini
                       key={`steam-${steamGame.appid}`}
                       game={{
-                        id: steamGame.appid, // Use appid as id for GameCardMini
+                        id: steamGame.appid,
                         title: steamGame.name,
                         steamAppid: steamGame.appid.toString(),
-                        descriptionShort:
-                          "Results from Steam. Not yet in IndieFindr.", // Placeholder description
-                        rawData: {
-                          // Construct minimal rawData
-                          // Attempt to use the standard header image URL structure
-                          header_image: `https://cdn.akamai.steamstatic.com/steam/apps/${steamGame.appid}/header.jpg`,
-                          // Use steamGame.icon (which is tiny_image from API) as a fallback screenshot
-                          screenshots: steamGame.icon
-                            ? [
-                                {
-                                  id: 0,
-                                  path_thumbnail: steamGame.icon,
-                                  path_full: steamGame.icon,
-                                },
-                              ]
-                            : [],
-                        },
+                        shortDescription:
+                          "Results from Steam. Not yet in IndieFindr.", // Correct field name
+                        // Provide other GameCardViewModel fields to match the type
+                        coverImageUrl: `https://cdn.akamai.steamstatic.com/steam/apps/${steamGame.appid}/header.jpg`,
+                        headerImageUrl: `https://cdn.akamai.steamstatic.com/steam/apps/${steamGame.appid}/header.jpg`,
+                        previewVideoUrl: null,
+                        tags: [],
+                        genres: [],
+                        foundByUsername: null,
+                        foundByAvatarUrl: null,
+                        foundAt: null,
+                        // rawData part is handled inside GameCardMini's adaptation now
                       }}
                       detailsLinkHref={`https://store.steampowered.com/app/${steamGame.appid}`}
                       isSteamOnlyResult={true}
@@ -578,11 +581,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               <h2 className="text-2xl font-semibold">Popular Games</h2>
               {popularGames.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {popularGames.map((game) => (
+                  {popularGames.map((gameVM) => (
                     <GameCardMini
-                      key={game.id}
-                      game={game}
-                      detailsLinkHref={getGameUrl(game.id, game.title)}
+                      key={gameVM.id}
+                      game={gameVM}
+                      detailsLinkHref={getGameUrl(gameVM.id, gameVM.title)}
                     />
                   ))}
                 </div>
@@ -597,11 +600,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 <h2 className="text-2xl font-semibold mb-4">Recently Added</h2>
                 {recentGames.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {recentGames.map((game) => (
+                    {recentGames.map((gameVM) => (
                       <GameCardMini
-                        key={game.id}
-                        game={game}
-                        detailsLinkHref={getGameUrl(game.id, game.title)}
+                        key={gameVM.id}
+                        game={gameVM}
+                        detailsLinkHref={getGameUrl(gameVM.id, gameVM.title)}
                       />
                     ))}
                   </div>

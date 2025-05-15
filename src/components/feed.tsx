@@ -4,29 +4,16 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { GameCard } from "@/components/game-card";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { getGameUrl } from "@/utils/game-url";
-import type { SteamRawData } from "@/types/steam";
+import type { GameCardViewModel } from "@/services/game-service";
 
 const API_BATCH_SIZE = 4; // Match the default API batch size
-
-// Consistent type for game data from API responses
-interface ApiGame {
-  id: number;
-  title: string | null;
-  shortDescription: string | null;
-  steamAppid: string | null;
-  tags: string[] | null;
-  rawData?: SteamRawData | null;
-  foundByUsername?: string | null;
-  foundByAvatarUrl?: string | null;
-  createdAt?: string | Date | null;
-}
 
 interface FeedDisplayProps {
   isLoggedIn: boolean;
 }
 
 export function Feed({ isLoggedIn }: FeedDisplayProps) {
-  const [games, setGames] = useState<ApiGame[]>([]);
+  const [games, setGames] = useState<GameCardViewModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);

@@ -4,7 +4,6 @@ import {
   GameWithSubmitter,
 } from "@/lib/repositories/game-repository"; // Import repository
 import { notFound } from "next/navigation"; // For handling not found cases
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button"; // For potential actions later
 import Link from "next/link";
@@ -14,11 +13,14 @@ import { GameImage } from "@/components/game-image"; // Import the new client co
 import type { Metadata } from "next";
 import { AddToLibraryButton } from "@/components/add-to-library-button"; // Import the new component
 
+import { DefaultGameService } from "@/services/game-service"; // <-- Import GameService
+
 const gameRepository = new DrizzleGameRepository(); // Instantiate repository
+const gameService = new DefaultGameService(); // <-- Instantiate GameService
 
 // Function to fetch game data server-side using the repository
-async function getGame(id: string): Promise<GameWithSubmitter> {
-  // Return type is now GameWithSubmitter
+async function getRawGameData(id: string): Promise<GameWithSubmitter> {
+  // Renamed for clarity
   const gameId = parseInt(id, 10);
   if (isNaN(gameId)) {
     notFound();
@@ -56,51 +58,45 @@ export async function generateMetadata({
   params,
 }: GameDetailPageProps): Promise<Metadata> {
   const { usernameOrGameId, gameTitle } = await params;
-  const game = await getGame(usernameOrGameId);
-  const rawData = game.rawData as SteamRawData;
+  const rawGame = await getRawGameData(usernameOrGameId); // Use new function name
+  const gameVM = gameService.toGameProfileViewModel(rawGame); // Transform for metadata
 
-  // Get the first screenshot URL if available
-  const firstScreenshot = rawData?.screenshots?.[0]?.path_full;
+  // Use gameVM fields for metadata
+  const ogImage =
+    gameVM.headerImageUrl ??
+    (gameVM.screenshotUrls.length > 0
+      ? gameVM.screenshotUrls[0]
+      : "/placeholder-game.jpg");
 
-  // Get the header image URL
-  const headerImage = game.steamAppid
-    ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
-    : null;
-
-  // Get the developer and publisher
-  const developer = rawData?.developers?.[0] || "Unknown Developer";
-  const publisher = rawData?.publishers?.[0] || "Unknown Publisher";
-
-  // Build a rich description combining various data points
   const description = [
-    game.descriptionShort,
-    `Developed by ${developer}.`,
-    `Published by ${publisher}.`,
-    game.tags?.length ? `Tags: ${game.tags.join(", ")}.` : null,
+    gameVM.shortDescription,
+    gameVM.developer ? `Developed by ${gameVM.developer}.` : null,
+    gameVM.publisher ? `Published by ${gameVM.publisher}.` : null,
+    gameVM.tags?.length ? `Tags: ${gameVM.tags.join(", ")}.` : null,
   ]
     .filter(Boolean)
     .join(" ");
 
   return {
-    title: `${game.title} | IndieFindr`,
+    title: `${gameVM.title} | IndieFindr`,
     description,
     openGraph: {
-      title: `${game.title} | IndieFindr` || "Game Details",
-      description: game.descriptionShort || "No description available.",
+      title: `${gameVM.title} | IndieFindr`,
+      description: gameVM.shortDescription,
       images: [
         {
-          url: headerImage || firstScreenshot || "/placeholder-game.jpg",
+          url: ogImage,
           width: 1200,
           height: 630,
-          alt: game.title || "Game Screenshot",
+          alt: gameVM.title || "Game Screenshot",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${game.title} | IndieFindr` || "Game Details",
-      description: game.descriptionShort || "No description available.",
-      images: [firstScreenshot || headerImage || "/placeholder-game.jpg"],
+      title: `${gameVM.title} | IndieFindr`,
+      description: gameVM.shortDescription,
+      images: [ogImage],
     },
   };
 }
@@ -109,45 +105,69 @@ export async function generateMetadata({
 export default async function GameDetailPage({ params }: GameDetailPageProps) {
   const { usernameOrGameId } = await params;
 
-  const game = await getGame(usernameOrGameId); // Fetch game data, now includes foundByUsername
+  const rawGame = await getRawGameData(usernameOrGameId); // Fetch raw game data
+  const game = gameService.toGameProfileViewModel(rawGame); // Transform using GameService
 
-  // Cast rawData to our type and extract data
-  const rawData = game.rawData as SteamRawData;
-  const foundBy = game.foundByUsername; // Get foundBy from the game object
+  // Most of the data extraction logic below can now be removed or simplified
+  // as it's provided by the game (GameProfileViewModel) object.
 
-  // --- Define potential image URLs in order of preference ---
+  // Cast rawData to our type and extract data - NO LONGER NEEDED directly for most things
+  // const rawData = rawGame.rawData as SteamRawData;
+  const foundBy = game.foundByUsername; // Get foundBy from the game (GameProfileViewModel)
+
+  // --- Define potential image URLs in order of preference --- NO LONGER NEEDED
+  /*
   const potentialImageUrls = [
-    game.steamAppid
-      ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.steamAppid}/header.jpg`
-      : null, // 1. header.jpg
-    rawData?.capsule_image, // 2. capsule_image (medium)
-    rawData?.capsule_imagev5, // 3. capsule_imagev5 (small)
-    rawData?.screenshots?.[0]?.path_full, // 4. First full screenshot
-    rawData?.background_raw, // 5. Raw background
-    rawData?.background, // 6. Processed background
-  ].filter((url): url is string => typeof url === "string" && url.length > 0); // Filter out null/undefined/empty strings and type guard
+    rawGame.steamAppid
+      ? `https://cdn.akamai.steamstatic.com/steam/apps/${rawGame.steamAppid}/header.jpg`
+      : null, 
+    (rawGame.rawData as SteamRawData)?.capsule_image, 
+    (rawGame.rawData as SteamRawData)?.capsule_imagev5, 
+    (rawGame.rawData as SteamRawData)?.screenshots?.[0]?.path_full, 
+    (rawGame.rawData as SteamRawData)?.background_raw, 
+    (rawGame.rawData as SteamRawData)?.background, 
+  ].filter((url): url is string => typeof url === "string" && url.length > 0);
+  */
 
-  // Extract other data using rawData
-  const screenshots = rawData?.screenshots || [];
-  const movies = rawData?.movies || [];
-  const developer = rawData?.developers?.[0] || "Unknown Developer";
-  const publisher = rawData?.publishers?.[0] || "Unknown Publisher";
-  const releaseDate = rawData?.release_date?.date || "TBA";
+  // Extract other data using rawData - NO LONGER NEEDED
+  // const screenshots = (rawGame.rawData as SteamRawData)?.screenshots || [];
+  // const movies = (rawGame.rawData as SteamRawData)?.movies || [];
+  // const developer = (rawGame.rawData as SteamRawData)?.developers?.[0] || "Unknown Developer";
+  // const publisher = (rawGame.rawData as SteamRawData)?.publishers?.[0] || "Unknown Publisher";
+  // const releaseDate = (rawGame.rawData as SteamRawData)?.release_date?.date || "TBA";
 
   // Combine screenshots and movies into a single media array with videos first
   const mediaItems: MediaItem[] = [
-    // Videos first
-    ...movies.map(
-      (movie): MediaItem => ({
+    // Videos first, using game.videoUrls from GameProfileViewModel
+    ...game.videoUrls.map(
+      (video): MediaItem => ({
         type: "video",
-        data: movie,
+        // The `data` for MediaItem of type video expects a `Movie` object from SteamRawData.
+        // We need to adapt game.videoUrls (which is {type, url, title, thumbnail}) to this.
+        // This might require a small adjustment in MediaItem type or how MediaCarousel consumes it,
+        // or we construct a mock Movie object here.
+        // For now, constructing a mock Movie structure.
+        data: {
+          id: 0, // Placeholder
+          name: video.title || "Video",
+          thumbnail: video.thumbnail || "",
+          highlight: false, // Placeholder
+          mp4: { "480": video.url, max: video.url }, // Assuming url is mp4
+          webm: { "480": "", max: "" }, // Placeholder
+        } as Movie,
       })
     ),
-    // Then images
-    ...screenshots.map(
-      (screenshot): MediaItem => ({
+    // Then images, using game.screenshotUrls from GameProfileViewModel
+    ...game.screenshotUrls.map(
+      (screenshotUrl, index): MediaItem => ({
         type: "image",
-        data: screenshot,
+        // The `data` for MediaItem of type image expects a `Screenshot` object.
+        // Constructing a mock Screenshot structure.
+        data: {
+          id: index, // Placeholder
+          path_thumbnail: screenshotUrl,
+          path_full: screenshotUrl,
+        } as Screenshot,
       })
     ),
   ];
@@ -164,56 +184,63 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
       <div className="flex flex-col md:flex-row gap-6 mb-6">
         {/* Left Column: Title, Description, Tags, Details */}
         <div className="md:w-2/3">
-          {/* Game Title */}
-          <h1 className="text-3xl font-bold mb-2">
-            {game.title || "Untitled Game"}
-          </h1>
+          <div className="flex gap-4 items-center">
+            {/* Game Title */}
+            <h1 className="text-3xl font-bold">
+              {game.title || "Untitled Game"}{" "}
+              {/* Use game.title from ViewModel */}
+            </h1>
+            {/* Found By Badge */}
+            {foundBy && ( // foundBy is already game.foundByUsername
+              <Link href={`/user/${foundBy}`}>
+                <Badge
+                  variant="secondary"
+                  className="text-xs"
+                  title={`Found by @${foundBy}`}
+                >
+                  Found by @{foundBy}
+                </Badge>
+              </Link>
+            )}
+          </div>
 
-          {/* Found By Badge */}
-          {foundBy && (
-            <Link href={`/user/${foundBy}`}>
-              <Badge
-                variant="secondary"
-                className="mb-4 text-xs"
-                title={`Found by @${foundBy}`}
-              >
-                Found by @{foundBy}
-              </Badge>
-            </Link>
-          )}
-
-          {/* Game description */}
           <p className="text-lg text-muted-foreground mb-6">
-            {game.descriptionShort || "No description available."}
+            {game.shortDescription || "No description available."}
           </p>
 
-          {/* Game Details */}
+          {/* Game Details - MOVED UP */}
           <div className="mb-6 grid grid-cols-3 gap-4 text-sm">
             <div className="flex flex-col gap-1">
               <p className="text-muted-foreground">Developer</p>
-              <p className="font-medium">{developer}</p>
+              <p className="font-medium">
+                {game.developer || "Unknown Developer"}
+              </p>{" "}
+              {/* Use game.developer */}
             </div>
             <div className="flex flex-col gap-1">
               <p className="text-muted-foreground">Publisher</p>
-              <p className="font-medium">{publisher}</p>
+              <p className="font-medium">
+                {game.publisher || "Unknown Publisher"}
+              </p>{" "}
+              {/* Use game.publisher */}
             </div>
             <div className="flex flex-col gap-1">
               <p className="text-muted-foreground">Release Date</p>
-              <p className="font-medium">{releaseDate}</p>
+              <p className="font-medium">
+                {game.releaseDate?.date || "TBA"}
+              </p>{" "}
+              {/* Use game.releaseDate.date */}
             </div>
           </div>
 
-          {/* Tags Display */}
+          {/* Tags Display - MOVED UP */}
           {game.tags && game.tags.length > 0 && (
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold mb-2">Tags</h2>
-              <div className="flex flex-wrap gap-2">
-                {game.tags.map((tag: string) => (
-                  <Badge key={tag} variant="secondary" className="text-sm">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {game.tags.map((tag: string) => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
             </div>
           )}
         </div>
@@ -223,7 +250,24 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
           {/* Use the new client component for rendering the image with fallback */}
           <GameImage
             altText={game.title ? `${game.title} Header` : "Game Header"}
-            gameData={rawData}
+            // GameImage expects SteamRawData. We pass a minimal version based on ViewModel.
+            gameData={{
+              header_image: game.headerImageUrl,
+              capsule_image: game.coverImageUrl,
+              screenshots: game.screenshotUrls.map((url, idx) => ({
+                id: idx,
+                path_full: url,
+                path_thumbnail: url,
+              })),
+              movies: game.videoUrls.map((v) => ({
+                id: 0,
+                name: v.title || "",
+                thumbnail: v.thumbnail || "",
+                highlight: false,
+                mp4: { "480": v.url, max: v.url },
+                webm: { "480": "", max: "" },
+              })),
+            }}
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 33vw, 25vw"
           />
 
@@ -242,6 +286,14 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
           <AddToLibraryButton gameId={game.id} />
         </div>
       </div>
+      {/* <Separator /> */}
+      {/* Game description - MOVED DOWN */}
+      {/* {game.detailedDescription && game.detailedDescription.includes("<img") ? (
+        <div
+          className="prose dark:prose-invert text-muted-foreground [&_img]:mx-auto max-w-prose mx-auto"
+          dangerouslySetInnerHTML={{ __html: game.detailedDescription }}
+        />
+      ) : null} */}
     </div>
   );
 }

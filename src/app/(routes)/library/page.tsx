@@ -10,20 +10,15 @@ import { inArray, eq } from "drizzle-orm";
 import { GameGrid } from "@/components/game-grid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getGamesFoundByUser } from "@/app/(api)/actions/finds";
+import { DefaultGameService } from "@/services/game-service";
+import type { GameCardViewModel } from "@/services/game-service";
+import type { Game } from "@/lib/repositories/game-repository";
 
-// Define the shape needed by GameGrid and GameCardMini (including rawData)
-type LibraryGameForGrid = {
-  id: number;
-  title: string | null;
-  steamAppid: string | null;
-  descriptionShort: string | null;
-  rawData: any | null; // Using any for now, ideally import SteamRawData
-  foundByUsername?: string | null;
-};
+const gameService = new DefaultGameService();
 
 async function getUserLibraryGames(
   userId: string
-): Promise<LibraryGameForGrid[]> {
+): Promise<GameCardViewModel[]> {
   const libraryResult = await getLibraryGameIds();
 
   if (
@@ -38,24 +33,12 @@ async function getUserLibraryGames(
 
   try {
     const gamesFromDb = await db
-      .select({
-        id: schema.gamesTable.id,
-        title: schema.gamesTable.title,
-        descriptionShort: schema.gamesTable.descriptionShort,
-        steamAppid: schema.gamesTable.steamAppid,
-        rawData: schema.gamesTable.rawData, // Select the rawData field
-      })
+      .select()
       .from(schema.gamesTable)
       .where(inArray(schema.gamesTable.id, gameIds))
       .execute();
 
-    return gamesFromDb.map((game) => ({
-      id: game.id,
-      title: game.title,
-      descriptionShort: game.descriptionShort,
-      steamAppid: game.steamAppid,
-      rawData: game.rawData, // Map rawData to the returned object
-    }));
+    return gameService.toGameCardViewModels(gamesFromDb as Game[]);
   } catch (error) {
     console.error("Error fetching library game details:", error);
     return [];
@@ -72,14 +55,14 @@ export default async function LibraryPage() {
     return <p>Please sign in to view your profile and library.</p>;
   }
 
-  const libraryGames = await getUserLibraryGames(user.id);
+  const libraryGames: GameCardViewModel[] = await getUserLibraryGames(user.id);
 
   // Get the games found by the current user
-  let foundGames: LibraryGameForGrid[] = [];
+  let foundGames: GameCardViewModel[] = [];
   try {
     const foundGamesResult = await getGamesFoundByUser(user.id);
     if (foundGamesResult.success && foundGamesResult.data) {
-      foundGames = foundGamesResult.data as LibraryGameForGrid[];
+      foundGames = foundGamesResult.data;
     }
   } catch (error) {
     console.error("Error fetching user's found games:", error);

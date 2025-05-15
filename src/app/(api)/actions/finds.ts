@@ -1,12 +1,13 @@
 "use server";
 
-import { db } from "@/db";
-import { gamesTable, profilesTable } from "@/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
-import type { SteamRawData } from "@/types/steam";
-// import { createClient } from "@/utils/supabase/server"; // Needed for auth check? Maybe not directly, but good practice if needed
+import { DrizzleGameRepository } from "@/lib/repositories/game-repository"; // <-- Import Repository
+import type { GameWithSubmitter } from "@/lib/repositories/game-repository"; // <-- Import GameWithSubmitter
+import { DefaultGameService } from "@/services/game-service"; // <-- Import GameService
+import type { GameCardViewModel } from "@/services/game-service"; // <-- Import GameCardViewModel
 
 // Define the return type structure, matching GameForGrid from the profile page
+// This type can be removed as we will use GameCardViewModel[] in GetGamesFoundByUserResult
+/*
 type FoundGame = {
   id: number;
   title: string | null;
@@ -16,12 +17,18 @@ type FoundGame = {
   foundByAvatarUrl: string | null; // Add avatar URL
   rawData?: SteamRawData | null;
 };
+*/
 
-type GetGamesFoundByUserResult = {
+interface GetGamesFoundByUserResult {
   success: boolean;
-  data?: FoundGame[];
+  data?: GameCardViewModel[]; // <-- Use GameCardViewModel[]
   error?: string;
-};
+}
+
+// Instantiate repository and service outside the function if they don't depend on request-specific data
+// or inside if they do (though these current ones don't seem to)
+const gameRepository = new DrizzleGameRepository();
+const gameService = new DefaultGameService();
 
 export async function getGamesFoundByUser(
   userId: string
@@ -39,25 +46,16 @@ export async function getGamesFoundByUser(
   // }
 
   try {
-    const foundGamesData = await db
-      .select({
-        id: gamesTable.id,
-        title: gamesTable.title,
-        descriptionShort: gamesTable.descriptionShort,
-        steamAppid: gamesTable.steamAppid,
-        foundByUsername: profilesTable.username,
-        foundByAvatarUrl: profilesTable.avatarUrl, // Add avatar URL
-        rawData: sql<SteamRawData | null>`${gamesTable.rawData}`,
-      })
-      .from(gamesTable)
-      .leftJoin(profilesTable, eq(gamesTable.foundBy, profilesTable.id))
-      .where(eq(gamesTable.foundBy, userId))
-      .orderBy(desc(gamesTable.createdAt)); // Order by creation date, newest first
+    // Use the repository to get games by user, expecting GameWithSubmitter[]
+    // The repository's getByUser method should be designed to fetch all necessary fields for GameWithSubmitter
+    const foundGamesFromRepo: GameWithSubmitter[] =
+      await gameRepository.getByUser(userId);
 
-    // Ensure the result matches the FoundGame type (it should automatically)
-    const foundGames: FoundGame[] = foundGamesData;
+    // Transform using GameService
+    const transformedGames: GameCardViewModel[] =
+      gameService.toGameCardViewModels(foundGamesFromRepo);
 
-    return { success: true, data: foundGames };
+    return { success: true, data: transformedGames };
   } catch (error: any) {
     console.error(`Error fetching games found by user ${userId}:`, error);
     return {

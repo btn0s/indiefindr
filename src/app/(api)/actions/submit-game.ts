@@ -4,10 +4,14 @@ import { z } from "zod";
 import { db, schema } from "@/db"; // Import db and schema
 import { eq } from "drizzle-orm"; // Import eq operator
 import { enrichSteamAppId } from "@/lib/workers/steam-enrichment"; // Import enrichment function
-import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
 import { createClient } from "@/utils/supabase/server"; // Import createClient for auth
+import { DrizzleGameRepository } from "@/lib/repositories/game-repository"; // <-- Import Repository
+import { DefaultGameService } from "@/services/game-service"; // <-- Import GameService
+import type { GameCardViewModel } from "@/services/game-service"; // <-- Import GameCardViewModel
 
 // Define the structure needed for the GameCard
+// This interface can be removed as we will use GameCardViewModel
+/*
 interface GameCardGameData {
   id: number;
   title: string | null;
@@ -16,14 +20,15 @@ interface GameCardGameData {
   tags: string[] | null;
   rawData?: SteamRawData | null;
 }
+*/
 
 // Define the shape of the state returned by the action
-export interface SubmitGameState {
-  status: "success" | "exists" | "error" | "idle";
+interface SubmitGameState {
+  status: "idle" | "loading" | "success" | "error" | "exists";
   message: string;
-  gameId?: string; // Keep for the 'exists' case link
-  submittedGameData?: GameCardGameData | null; // Add field for success case
-  existingGameTitle?: string | null; // Add field for existing game title
+  gameId?: string; // For "exists" status
+  existingGameTitle?: string | null; // For "exists" status
+  submittedGameData?: GameCardViewModel; // <-- Use GameCardViewModel
 }
 
 const SteamUrlSchema = z
@@ -90,15 +95,18 @@ export async function submitGameAction(
   }
 
   try {
+    // Instantiate repository and service
+    const gameRepository = new DrizzleGameRepository();
+    const gameService = new DefaultGameService();
+
     // Check if the game already exists (by steam_appid, which is unique in gamesTable)
-    const existingGame = await db.query.gamesTable.findFirst({
-      where: eq(schema.gamesTable.steamAppid, appIdString),
-    });
+    const existingGame = await gameRepository.getBySteamAppId(appIdString);
 
     if (existingGame) {
       console.log(
         `[Submit Action] Game found in DB: ID ${existingGame.id}, Title: ${existingGame.title}`
       );
+      // Transform existing game to ViewModel for consistency if needed, though only title/id used here
       return {
         status: "exists",
         message: `"${existingGame.title || "This game"}" is already in IndieFindr!`,
@@ -117,19 +125,11 @@ export async function submitGameAction(
     console.log(
       `[Submit Action] Enrichment successful for AppID: ${appIdString}. Fetching data for card.`
     );
-    const newlySubmittedGame = await db.query.gamesTable.findFirst({
-      where: eq(schema.gamesTable.steamAppid, appIdString),
-      columns: {
-        id: true,
-        title: true,
-        descriptionShort: true, // Use descriptionShort for shortDescription
-        steamAppid: true,
-        tags: true,
-        rawData: true,
-      },
-    });
+    // Fetch the newly submitted game - repository method should return Game or GameWithSubmitter
+    const newlySubmittedGameFromRepo =
+      await gameRepository.getBySteamAppId(appIdString);
 
-    if (!newlySubmittedGame) {
+    if (!newlySubmittedGameFromRepo) {
       // Should not happen if enrichment just succeeded, but handle defensively
       console.error(
         `[Submit Action] CRITICAL: Could not find game ${appIdString} immediately after enrichment.`
@@ -142,15 +142,10 @@ export async function submitGameAction(
     }
 
     // Map DB data to GameCardGameData structure
-    const gameCardData: GameCardGameData = {
-      id: newlySubmittedGame.id,
-      title: newlySubmittedGame.title,
-      shortDescription: newlySubmittedGame.descriptionShort,
-      steamAppid: newlySubmittedGame.steamAppid,
-      tags: newlySubmittedGame.tags,
-      // Ensure rawData is handled correctly (it might be null/undefined)
-      rawData: newlySubmittedGame.rawData as SteamRawData | null | undefined,
-    };
+    // Transform using GameService
+    const gameCardData = gameService.toGameCardViewModel(
+      newlySubmittedGameFromRepo
+    );
 
     return {
       status: "success",
