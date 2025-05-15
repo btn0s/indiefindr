@@ -14,30 +14,37 @@ import {
   and,
 } from "drizzle-orm";
 import { getLibraryGameIds } from "./library"; // Import action from the same directory
+import { DefaultGameService } from "@/services/game-service"; // <-- Import GameService
+import type { GameCardViewModel } from "@/services/game-service"; // <-- Import GameCardViewModel
 
 // Define the structure of the game data returned by the feed
-// Match this with what GameCard expects, adding/removing fields as needed
+// This FeedGame interface can be removed if all transformations go through GameService
+// and FeedResult directly uses GameCardViewModel[].
+/*
 export interface FeedGame {
   id: number;
   title: string | null;
   shortDescription: string | null;
-  steamAppid: string | null; // Add steamAppid
-  tags: string[] | null; // Add tags array
-  rawData?: any | null; // Add rawData (can refine type later if needed)
-  // Add other necessary fields like imageUrl, genres, etc.
+  steamAppid: string | null; 
+  tags: string[] | null; 
+  rawData?: any | null; 
+  createdAt?: Date | string | null; // <-- Added for initial step if not using service
 }
+*/
 
 // Define a structure for the action's return value
 interface FeedResult {
   success: boolean;
-  data?: FeedGame[];
+  data?: GameCardViewModel[]; // <-- Use GameCardViewModel
   message?: string;
   error?: string; // Keep error for library fetch compatibility
 }
 
-const MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING = 1; // Use average even for 1 game
-const FEED_SIZE = 12; // Number of recommendations to return
-const VECTOR_DIMENSIONS = 1536; // Match schema
+const MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING = 1;
+const FEED_SIZE = 12;
+const VECTOR_DIMENSIONS = 1536;
+
+const gameService = new DefaultGameService(); // <-- Instantiate GameService
 
 /**
  * Calculates the average of multiple vectors.
@@ -96,8 +103,8 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
   const libraryGameIds = libraryResult.data;
 
   try {
-    let recommendations: FeedGame[] = [];
-    const excludedIds = libraryGameIds.length > 0 ? libraryGameIds : [-1]; // Handle empty library for notInArray
+    let rawRecommendations: any[] = []; // Keep type flexible before transformation
+    const excludedIds = libraryGameIds.length > 0 ? libraryGameIds : [-1];
 
     // --- Strategy 1: Average Embedding Similarity Search ---
     if (libraryGameIds.length >= MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING) {
@@ -128,14 +135,28 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
       if (averageVector) {
         console.log(`Calculated average vector for user ${user.id}.`);
         // 3. Perform similarity search
-        recommendations = await db
+        rawRecommendations = await db
           .select({
+            // Select all fields required by Game type (which GameService expects)
+            // or at least all fields that GameCardViewModel needs directly or indirectly from rawData
             id: schema.gamesTable.id,
             title: schema.gamesTable.title,
-            shortDescription: schema.gamesTable.descriptionShort,
+            descriptionShort: schema.gamesTable.descriptionShort,
+            descriptionDetailed: schema.gamesTable.descriptionDetailed, // GameService might use this as fallback
             steamAppid: schema.gamesTable.steamAppid,
-            tags: schema.gamesTable.tags, // Select tags
-            rawData: schema.gamesTable.rawData, // Select rawData
+            tags: schema.gamesTable.tags,
+            genres: schema.gamesTable.genres, // GameService uses this
+            rawData: schema.gamesTable.rawData,
+            createdAt: schema.gamesTable.createdAt, // <-- SELECT createdAt
+            developer: schema.gamesTable.developer, // For GameProfileViewModel, but good to have
+            platform: schema.gamesTable.platform, // Base Game fields
+            externalId: schema.gamesTable.externalId,
+            embedding: schema.gamesTable.embedding, // Base Game fields
+            enrichmentStatus: schema.gamesTable.enrichmentStatus, // Base Game fields
+            isFeatured: schema.gamesTable.isFeatured, // Base Game fields
+            lastFetched: schema.gamesTable.lastFetched, // Base Game fields
+            foundBy: schema.gamesTable.foundBy, // For GameWithSubmitter, GameService handles it
+            // Ensure all fields from schema.gamesTable.$inferSelect are here if GameService needs full Game type
           })
           .from(schema.gamesTable)
           .where(
@@ -150,7 +171,7 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
           .limit(FEED_SIZE);
 
         console.log(
-          `Found ${recommendations.length} recommendations via average embedding for user ${user.id}.`
+          `Found ${rawRecommendations.length} recommendations via average embedding for user ${user.id}.`
         );
       } else {
         console.log(
@@ -160,7 +181,7 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
     }
 
     // --- Strategy 2: Fallback to Recently Added Games ---
-    if (recommendations.length === 0) {
+    if (rawRecommendations.length === 0) {
       if (libraryGameIds.length > 0) {
         console.log(
           `User ${user.id} - No recommendations found via similarity, falling back to recent games.`
@@ -171,14 +192,26 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
         );
       }
 
-      recommendations = await db
+      rawRecommendations = await db
         .select({
+          // Select all fields required by Game type (as above)
           id: schema.gamesTable.id,
           title: schema.gamesTable.title,
-          shortDescription: schema.gamesTable.descriptionShort,
+          descriptionShort: schema.gamesTable.descriptionShort,
+          descriptionDetailed: schema.gamesTable.descriptionDetailed,
           steamAppid: schema.gamesTable.steamAppid,
-          tags: schema.gamesTable.tags, // Select tags
-          rawData: schema.gamesTable.rawData, // Select rawData
+          tags: schema.gamesTable.tags,
+          genres: schema.gamesTable.genres,
+          rawData: schema.gamesTable.rawData,
+          createdAt: schema.gamesTable.createdAt, // <-- SELECT createdAt
+          developer: schema.gamesTable.developer,
+          platform: schema.gamesTable.platform,
+          externalId: schema.gamesTable.externalId,
+          embedding: schema.gamesTable.embedding,
+          enrichmentStatus: schema.gamesTable.enrichmentStatus,
+          isFeatured: schema.gamesTable.isFeatured,
+          lastFetched: schema.gamesTable.lastFetched,
+          foundBy: schema.gamesTable.foundBy,
         })
         .from(schema.gamesTable)
         .where(notInArray(schema.gamesTable.id, excludedIds))
@@ -186,14 +219,27 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
         .limit(FEED_SIZE);
 
       console.log(
-        `Found ${recommendations.length} recent games as fallback for user ${user.id}.`
+        `Found ${rawRecommendations.length} recent games as fallback for user ${user.id}.`
       );
     }
 
+    // Transform data using GameService
+    // Note: The input to toGameCardViewModels expects (Game | GameWithSubmitter)[]
+    // Our db.select returns an array of objects matching the selection.
+    // We need to ensure these objects are compatible with the `Game` type or cast them.
+    // For simplicity, if we selected all fields of gamesTable, it matches `Game`.
+    // If `foundBy` is used by GameService to fetch submitter details, that's internal to it or GameRepository.
+    // Here, we provide data that includes `foundBy` if available, for GameService to potentially use.
+    const transformedRecommendations: GameCardViewModel[] =
+      gameService.toGameCardViewModels(rawRecommendations as any[]);
+    // Using as any[] temporarily, ideally ensure rawRecommendations matches (Game | GameWithSubmitter)[]
+    // If GameRepository is used within GameService to get GameWithSubmitter, then this cast might be fine
+    // if rawRecommendations just contains Game objects.
+
     console.log(
-      `Returning ${recommendations.length} total recommendations for user ${user.id}`
+      `Returning ${transformedRecommendations.length} total recommendations for user ${user.id}`
     );
-    return { success: true, data: recommendations };
+    return { success: true, data: transformedRecommendations };
   } catch (error: any) {
     console.error(
       `Error fetching personalized feed for user ${user.id}:`,
