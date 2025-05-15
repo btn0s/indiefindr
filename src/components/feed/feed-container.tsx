@@ -142,21 +142,30 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
 
       {!isEmpty && (
         <div className="feed-items-list flex flex-col">
-          {items.map((item: FeedItemType) => (
-            <div key={item.feedItemKey}>
-              {/* Apply itemClassName here if provided */}
-              <FeedItemComponent item={item} />
-            </div>
-          ))}
+          {items.map((item: FeedItemType, index: number) => {
+            const isSentinelTarget =
+              index === Math.floor((items.length * 2) / 3); // Adjusted to 2/3
+            return (
+              <React.Fragment key={item.feedItemKey}>
+                <div>
+                  {/* Apply itemClassName here if provided */}
+                  <FeedItemComponent item={item} />
+                </div>
+                {isSentinelTarget &&
+                  hasMore &&
+                  !isLoading &&
+                  !isLoadingInitialData &&
+                  !isLoadingMore && (
+                    <div
+                      ref={observerRef}
+                      style={{ height: "1px", width: "1px" }}
+                      aria-hidden="true"
+                    />
+                  )}
+              </React.Fragment>
+            );
+          })}
         </div>
-      )}
-
-      {hasMore && !isLoading && !isLoadingInitialData && !isLoadingMore && (
-        <div
-          ref={observerRef}
-          style={{ height: "1px", width: "1px" }}
-          aria-hidden="true"
-        />
       )}
 
       {isLoadingMore && (
