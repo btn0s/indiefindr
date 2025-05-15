@@ -9,11 +9,21 @@ import { z } from "zod";
 
 // Define a schema for input validation using Zod
 const profileUpdateSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters long").max(50, "Username cannot exceed 50 characters"),
-  fullName: z.string().max(100, "Full name cannot exceed 100 characters").optional().nullable(),
-  bio: z.string().max(500, "Bio cannot exceed 500 characters").optional().nullable(),
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters long")
+    .max(50, "Username cannot exceed 50 characters"),
+  fullName: z
+    .string()
+    .max(100, "Full name cannot exceed 100 characters")
+    .optional()
+    .nullable(),
+  bio: z
+    .string()
+    .max(500, "Bio cannot exceed 500 characters")
+    .optional()
+    .nullable(),
   avatarUrl: z.string().url("Invalid URL for avatar").optional().nullable(),
-  // hasCompletedOnboarding is not part of this action, handled by OnboardingService/Action
 });
 
 // Type for the validated parameters, derived from the Zod schema

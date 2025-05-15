@@ -43,8 +43,6 @@ export function ProfileSetupForm({ userId }: ProfileSetupFormProps) {
         username,
         fullName,
         bio,
-        // Set partial onboarding completion flag
-        hasCompletedOnboarding: false,
       });
       
       if (result.success) {
