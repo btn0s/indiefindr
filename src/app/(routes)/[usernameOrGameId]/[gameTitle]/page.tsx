@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import { AddToLibraryButton } from "@/components/add-to-library-button"; // Import the new component
 
 import { DefaultGameService } from "@/services/game-service"; // <-- Import GameService
+import { Separator } from "@/components/ui/separator";
 
 const gameRepository = new DrizzleGameRepository(); // Instantiate repository
 const gameService = new DefaultGameService(); // <-- Instantiate GameService
@@ -185,34 +186,31 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
       <div className="flex flex-col md:flex-row gap-6 mb-6">
         {/* Left Column: Title, Description, Tags, Details */}
         <div className="md:w-2/3">
-          {/* Game Title */}
-          <h1 className="text-3xl font-bold mb-2">
-            {game.title || "Untitled Game"}{" "}
-            {/* Use game.title from ViewModel */}
-          </h1>
+          <div className="flex gap-4 items-center">
+            {/* Game Title */}
+            <h1 className="text-3xl font-bold">
+              {game.title || "Untitled Game"}{" "}
+              {/* Use game.title from ViewModel */}
+            </h1>
+            {/* Found By Badge */}
+            {foundBy && ( // foundBy is already game.foundByUsername
+              <Link href={`/user/${foundBy}`}>
+                <Badge
+                  variant="secondary"
+                  className="text-xs"
+                  title={`Found by @${foundBy}`}
+                >
+                  Found by @{foundBy}
+                </Badge>
+              </Link>
+            )}
+          </div>
 
-          {/* Found By Badge */}
-          {foundBy && ( // foundBy is already game.foundByUsername
-            <Link href={`/user/${foundBy}`}>
-              <Badge
-                variant="secondary"
-                className="mb-4 text-xs"
-                title={`Found by @${foundBy}`}
-              >
-                Found by @{foundBy}
-              </Badge>
-            </Link>
-          )}
-
-          {/* Game description */}
           <p className="text-lg text-muted-foreground mb-6">
-            {game.detailedDescription ||
-              game.shortDescription ||
-              "No description available."}{" "}
-            {/* Use game from ViewModel */}
+            {game.shortDescription || "No description available."}
           </p>
 
-          {/* Game Details */}
+          {/* Game Details - MOVED UP */}
           <div className="mb-6 grid grid-cols-3 gap-4 text-sm">
             <div className="flex flex-col gap-1">
               <p className="text-muted-foreground">Developer</p>
@@ -237,17 +235,14 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
             </div>
           </div>
 
-          {/* Tags Display */}
+          {/* Tags Display - MOVED UP */}
           {game.tags && game.tags.length > 0 && (
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold mb-2">Tags</h2>
-              <div className="flex flex-wrap gap-2">
-                {game.tags.map((tag: string) => (
-                  <Badge key={tag} variant="secondary" className="text-sm">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {game.tags.map((tag: string) => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
             </div>
           )}
         </div>
@@ -293,6 +288,14 @@ export default async function GameDetailPage({ params }: GameDetailPageProps) {
           <AddToLibraryButton gameId={game.id} />
         </div>
       </div>
+      {/* <Separator /> */}
+      {/* Game description - MOVED DOWN */}
+      {/* {game.detailedDescription && game.detailedDescription.includes("<img") ? (
+        <div
+          className="prose dark:prose-invert text-muted-foreground [&_img]:mx-auto max-w-prose mx-auto"
+          dangerouslySetInnerHTML={{ __html: game.detailedDescription }}
+        />
+      ) : null} */}
     </div>
   );
 }
