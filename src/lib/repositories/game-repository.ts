@@ -1,5 +1,5 @@
-import { gamesTable, profilesTable } from "@/db/schema";
-import { db } from "@/db";
+import { gamesTable, profilesTable } from "@/lib/db/schema";
+import { db } from "@/lib/db";
 import {
   eq,
   desc,
@@ -614,7 +614,6 @@ export class DrizzleGameRepository implements GameRepository {
         .orderBy(drizzleSql`embedding <=> '${drizzleSql.raw(vectorString)}'`)
         .limit(limit)
         .offset(offset);
-        
 
       return results as GameWithSubmitter[];
     } catch (error) {

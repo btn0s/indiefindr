@@ -10,7 +10,7 @@ import type { SteamRawData } from "@/types/steam"; // For rawData type if needed
 import { enrichSteamAppId } from "@/lib/workers/steam-enrichment"; // Import the worker
 // TODO: Adjust path if gameEnrichmentTable is located elsewhere
 // Assuming gameEnrichmentTable is exported from a schema definition file
-import { gameEnrichmentTable } from "@/db/schema"; // User updated path
+import { gameEnrichmentTable } from "@/lib/db/schema"; // User updated path
 import type { InferSelectModel } from "drizzle-orm"; // Re-adding for GameEnrichment type
 
 // --- Constants for Personalized Feed Logic ---

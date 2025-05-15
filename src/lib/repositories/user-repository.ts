@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { profilesTable, libraryTable } from "@/db/schema"; // Assuming libraryTable is needed for getLibraryGameIds
+import { db } from "@/lib/db";
+import { profilesTable, libraryTable } from "@/lib/db/schema"; // Assuming libraryTable is needed for getLibraryGameIds
 import { eq } from "drizzle-orm";
 
 // --- Types ---

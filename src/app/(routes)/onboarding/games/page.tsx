@@ -1,8 +1,8 @@
 import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { db } from "@/db";
-import { gamesTable } from "@/db/schema";
+import { db } from "@/lib/db";
+import { gamesTable } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { GameSelectionGrid } from "@/components/onboarding/game-selection-grid";
 import { Button } from "@/components/ui/button";

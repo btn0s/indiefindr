@@ -1,5 +1,5 @@
 import type { InferSelectModel } from "drizzle-orm";
-import { gameEnrichmentTable } from "@/db/schema"; // Assuming this is the correct path
+import { gameEnrichmentTable } from "@/lib/db/schema"; // Assuming this is the correct path
 import type {
   GameCardViewModel,
   GameWithSubmitter,

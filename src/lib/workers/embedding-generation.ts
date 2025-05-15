@@ -1,4 +1,4 @@
-import { db, schema } from "@/db";
+import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { createOpenAI } from "@ai-sdk/openai";
 import { embed } from "ai";

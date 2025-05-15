@@ -1,8 +1,8 @@
 import React from "react";
 import { createClient } from "@/lib/supabase/server";
 import { FeedContainer } from "@/components/feed/feed-container";
-import { db } from "@/db";
-import { profilesTable, libraryTable, gamesTable } from "@/db/schema";
+import { db } from "@/lib/db";
+import { profilesTable, libraryTable, gamesTable } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 
 export default async function HomePage() {

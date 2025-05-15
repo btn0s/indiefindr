@@ -1,4 +1,4 @@
-import { db, schema } from "@/db"; // Assuming '@' alias for src/ in tsconfig
+import { db, schema } from "@/lib/db"; // Assuming '@' alias for src/ in tsconfig
 import { eq, sql } from "drizzle-orm";
 
 // Interface matching the expected structure from Steam's appdetails API

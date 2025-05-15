@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { libraryTable } from "@/db/schema";
+import { db } from "@/lib/db";
+import { libraryTable } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 // --- Types ---

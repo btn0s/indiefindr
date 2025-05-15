@@ -1,5 +1,5 @@
 import path from "node:path";
-import { db, schema } from "@/db";
+import { db, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { readSteamAppIdsFromCsv } from "@/lib/workers/csv-ingestion";
 import { enrichSteamAppId } from "@/lib/workers/steam-enrichment";

@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileSetupForm } from "@/components/onboarding/profile-setup-form";
-import { db } from "@/db";
-import { profilesTable } from "@/db/schema";
+import { db } from "@/lib/db";
+import { profilesTable } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function OnboardingPage() {

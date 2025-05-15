@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SearchIcon, X } from "lucide-react";
-import { db, schema } from "@/db";
+import { db, schema } from "@/lib/db";
 import { desc, count, sql, inArray } from "drizzle-orm";
 import { GameCardMini } from "@/components/game/game-card-mini";
 import { Suspense } from "react";

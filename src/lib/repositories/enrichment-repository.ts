@@ -1,6 +1,6 @@
 import { InferSelectModel, inArray, desc } from "drizzle-orm";
-import { db } from "@/db"; // Assuming db instance is exported from @/db
-import { gameEnrichmentTable } from "@/db/schema";
+import { db } from "@/lib/db"; // Assuming db instance is exported from @/db
+import { gameEnrichmentTable } from "@/lib/db/schema";
 
 // This is the Drizzle schema type for a row in gameEnrichmentTable
 export type GameEnrichment = InferSelectModel<typeof gameEnrichmentTable>;

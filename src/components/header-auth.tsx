@@ -13,8 +13,8 @@ import {
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server"; // Server client
-import { db } from "@/db"; // Server Drizzle client
-import { profilesTable } from "@/db/schema";
+import { db } from "@/lib/db"; // Server Drizzle client
+import { profilesTable } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { hasEnvVars } from "@/lib/supabase/check-env-vars"; // Keep this utility
 import { SubmitGameDialog } from "./nav/submit-game-dialog";
