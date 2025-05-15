@@ -1,16 +1,21 @@
 import React from "react";
-import { GameCardViewModel } from "@/services/game-service";
-import { GameCard } from "@/components/game-card";
-import { getGameUrl } from "@/utils/game-url";
+import { GameCardViewModel } from "@/services/game-service"; // Assuming GameCardViewModel is a good representation for a generic 'game' content item
+import { GameCard } from "../game/game-card";
 
+// Define a more generic ContentItem type if needed, or specialize per type
+// For now, we'll assume GameCardViewModel can represent a 'game' content item directly
+// or we can define a more specific type if ContentRenderer handles more than just games.
 export interface ContentItemBase {
   id: string | number;
   type: "game" | "video" | "article" | "social" | "unknown";
+  // other common fields
 }
 
-export type GameContentItem = GameCardViewModel & { type: "game" };
+export type GameContentItem = GameCardViewModel & { type: "game" }; // Augmenting with type
+// Define VideoContentItem, ArticleContentItem etc. as needed
+
 export type AnyContentItem =
-  | GameContentItem
+  | GameContentItem /* | VideoContentItem | ... */
   | (ContentItemBase & { type: "unknown" });
 
 interface ContentRendererProps {
@@ -18,13 +23,16 @@ interface ContentRendererProps {
   variant?: "compact" | "standard" | "detailed";
 }
 
-const GameContentComponent: React.FC<{
+// Mock simple components for different content types and variants
+const GameContent: React.FC<{
   content: GameContentItem;
   variant: ContentRendererProps["variant"];
 }> = ({ content, variant }) => {
-  const detailsLinkHref = getGameUrl(content.id, content.title);
-
-  return <GameCard game={content} detailsLinkHref={detailsLinkHref} />;
+  return (
+    <div>
+      <GameCard game={content as GameContentItem} />
+    </div>
+  );
 };
 
 const FallbackContent: React.FC<{
@@ -51,12 +59,13 @@ export function ContentRenderer({
 }: ContentRendererProps) {
   switch (content.type) {
     case "game":
+      // Type assertion might be needed if AnyContentItem is a broader union
       return (
-        <GameContentComponent
-          content={content as GameContentItem}
-          variant={variant}
-        />
+        <GameContent content={content as GameContentItem} variant={variant} />
       );
+    // Add cases for 'video', 'article', 'social' when their specific components and types are defined
+    // case 'video':
+    //   return <VideoContent content={content as VideoContentItem} variant={variant} />;
     default:
       console.warn("ContentRenderer: Unknown content type -", content.type);
       return <FallbackContent content={content} variant={variant} />;

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Metadata, ResolvingMetadata } from "next"; // Import Metadata types
 // import { Database } from "@/lib/database.types"; // Removed - Use Drizzle types implicitly
-import { GameGrid } from "@/components/game-grid"; // Import GameGrid
+import { GameGrid } from "@/components/game/game-grid"; // Import GameGrid
 import { profilesTable, libraryTable, gamesTable } from "@/db/schema"; // Import schema tables
 import { db } from "@/db"; // Import Drizzle instance
 import { eq, and, sql, count } from "drizzle-orm";

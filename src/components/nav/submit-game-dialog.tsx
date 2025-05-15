@@ -22,7 +22,7 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { GameCard } from "@/components/game-card";
+import { GameCard } from "@/components/game/game-card";
 import { getGameUrl } from "@/utils/game-url";
 
 export function SubmitGameDialog() {

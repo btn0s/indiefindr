@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn, getGameUrl } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLibrary } from "@/contexts/LibraryContext"; // Import the hook
-import { GameImage } from "./game-image"; // Import the reusable GameImage component
+import { GameImage } from "@/components/game/game-image"; // Import the reusable GameImage component
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Bookmark, BookmarkCheck, ImageOff, Share2, Check } from "lucide-react";
 import { ensureHttps } from "@/lib/utils"; // Import the ensureHttps helper

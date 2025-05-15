@@ -1,7 +1,7 @@
 import React from "react";
 import { createClient } from "@/utils/supabase/server";
 import { removeFromLibrary, addToLibrary } from "@/app/(api)/actions/library";
-import { GameGrid } from "@/components/game-grid";
+import { GameGrid } from "@/components/game/game-grid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DefaultGameService } from "@/services/game-service";
 import type { GameCardViewModel } from "@/services/game-service";

@@ -1,19 +1,23 @@
 import React from "react";
-// Path to content-renderer will need to be updated after it's renamed
 import {
   AnyContentItem,
   ContentRenderer,
-} from "@/components/content/content-renderer";
+} from "@/components/content/content-renderer"; // Adjust path as needed
 
 interface FeedItemProps {
   item: AnyContentItem;
+  // We can add more props here later, e.g., interaction handlers, layout preferences
 }
 
 export const FeedItem: React.FC<FeedItemProps> = ({ item }) => {
+  // The FeedItem itself might have some wrapper styling or logic common to all feed items
   return (
-    <div className="feed-item-wrapper" style={{ marginBottom: "1rem" }}>
-      {/* Ensure variant="standard" or similar is passed if ContentRenderer expects it */}
+    <div className="feed-item-wrapper">
       <ContentRenderer content={item} variant="standard" />
+      {/* 
+        Potentially add common actions here like save, share, etc.,
+        or pass interaction handlers down to ContentRenderer/specific content components.
+      */}
     </div>
   );
 };

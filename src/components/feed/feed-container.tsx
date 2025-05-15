@@ -2,9 +2,9 @@
 
 import React from "react";
 import { useFeed, FeedType, FeedOptions } from "@/hooks/useFeed"; // Adjust path as needed
-import { FeedItem } from "@/components/feed/FeedItem";
+import { FeedItem } from "@/components/feed/feed-item";
 import { GameCardViewModel } from "@/services/game-service";
-import { GameContentItem } from "@/components/content/ContentRenderer";
+import { GameContentItem } from "@/components/content/content-renderer";
 import { Button } from "../ui/button";
 import { Loader, Loader2 } from "lucide-react";
 interface FeedContainerProps {

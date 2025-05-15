@@ -2,23 +2,11 @@
 
 import React from "react";
 import { GameCardMini } from "./game-card-mini";
-import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
 import { getGameUrl } from "@/lib/utils"; // Import utility for generating game URLs
-
-// Define a more comprehensive type for the games expected by the grid
-// This should align with the props needed by GameCardMini
-interface GridGame {
-  id: number;
-  title: string | null;
-  steamAppid: string | null;
-  descriptionShort?: string | null;
-  rawData?: SteamRawData | null; // GameCardMini uses this via GameImage
-  foundByUsername?: string | null; // GameCardMini uses this
-  foundByAvatarUrl?: string | null; // Add avatar URL for the user who found the game
-}
+import { GameCardViewModel } from "@/services/game-service";
 
 interface GameGridProps {
-  games: GridGame[]; // Use the more comprehensive type
+  games: GameCardViewModel[]; // Use the more comprehensive type
   loggedInUserLibraryIds: Set<number>;
   onAddToLibrary?: (gameId: number) => Promise<any>;
   onRemoveFromLibrary?: (gameId: number) => Promise<any>;
@@ -41,8 +29,6 @@ export function GameGrid({
       {games.map((game) => (
         <GameCardMini
           key={game.id}
-          // Pass the entire game object down.
-          // GameCardMini will pick the properties it needs.
           game={game}
           detailsLinkHref={getGameUrl(game.id, game.title)}
           isInLibrary={loggedInUserLibraryIds.has(game.id)}
