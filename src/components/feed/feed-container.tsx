@@ -1,15 +1,10 @@
 "use client"; // This component uses hooks, so it's a client component
 
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { useFeed, FeedType, FeedOptions } from "@/hooks/useFeed"; // Adjust path as needed
 import { FeedItem as FeedItemComponent } from "@/components/feed/feed-item";
 import type { FeedItem as FeedItemType } from "@/services/feed-service"; // Import the type for items array
-// Remove unused import for GameContentItem as it was deleted from content-renderer
-// import { GameContentItem } from "@/components/content/content-renderer";
-// GameCardViewModel might also be unused here now if items are directly FeedItemType
-// import { GameCardViewModel } from "@/services/game-service";
-import { Button } from "../ui/button";
-import { Loader, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface FeedContainerProps {
   feedType: FeedType;
@@ -40,6 +35,53 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
     isEmpty,
     isReachingEnd,
   } = useFeed(feedType, feedOptions);
+
+  const observerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const currentTarget = observerRef.current;
+    // Conditions for setting up the observer:
+    // - We have a target element to observe.
+    // - There are more items to load.
+    // - Not in an initial loading state.
+    // - Not currently loading more items.
+    // - Not in a general loading state.
+    if (
+      !currentTarget ||
+      !hasMore ||
+      isLoadingInitialData ||
+      isLoadingMore ||
+      isLoading
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        // Check conditions again inside callback, as state might have changed
+        if (
+          entry.isIntersecting &&
+          hasMore &&
+          !isLoading &&
+          !isLoadingInitialData &&
+          !isLoadingMore
+        ) {
+          loadMore();
+        }
+      },
+      {
+        rootMargin: "0px 0px 300px 0px", // Trigger when 300px from bottom of viewport
+        threshold: 0.01, // Trigger as soon as a tiny part is visible within the margin
+      }
+    );
+
+    observer.observe(currentTarget);
+
+    return () => {
+      observer.unobserve(currentTarget);
+    };
+  }, [loadMore, hasMore, isLoading, isLoadingInitialData, isLoadingMore]);
 
   if (isLoadingInitialData) {
     return (
@@ -93,12 +135,28 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
 
       {!isEmpty && (
         <div className="feed-items-list flex flex-col">
-          {items.map((item: FeedItemType) => (
-            <div key={item.feedItemKey}>
-              {/* Apply itemClassName here if provided */}
-              <FeedItemComponent item={item} />
-            </div>
-          ))}
+          {items.map((item: FeedItemType, index: number) => {
+            const isSentinelTarget = index === items.length / 2;
+            return (
+              <React.Fragment key={item.feedItemKey}>
+                <div>
+                  {/* Apply itemClassName here if provided */}
+                  <FeedItemComponent item={item} />
+                </div>
+                {isSentinelTarget &&
+                  hasMore &&
+                  !isLoading &&
+                  !isLoadingInitialData &&
+                  !isLoadingMore && (
+                    <div
+                      ref={observerRef}
+                      style={{ height: "1px", width: "1px" }}
+                      aria-hidden="true"
+                    />
+                  )}
+              </React.Fragment>
+            );
+          })}
         </div>
       )}
 
@@ -107,19 +165,6 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
           <p className="text-gray-500 dark:text-gray-400">
             Loading more items...
           </p>
-        </div>
-      )}
-
-      {hasMore && !isLoading && !isLoadingInitialData && (
-        <div className="mt-6 text-center">
-          <Button
-            variant="ghost"
-            onClick={loadMore}
-            disabled={isLoadingMore}
-            className="w-full"
-          >
-            {isLoadingMore ? "Loading..." : "Load More"}
-          </Button>
         </div>
       )}
 

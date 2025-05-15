@@ -200,12 +200,6 @@ export function ContentRenderer({
   content,
   variant = "standard",
 }: ContentRendererProps) {
-  // Add this console.log for debugging
-  console.log(
-    "ContentRenderer received content:",
-    JSON.stringify(content, null, 2)
-  );
-
   switch (content.type) {
     case "game_find":
       return <GameContent gameData={content.content} variant={variant} />;

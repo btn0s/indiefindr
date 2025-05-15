@@ -22,8 +22,6 @@ export function GameImage({
   const [imageIndex, setImageIndex] = useState(0);
   const [urlsToTry, setUrlsToTry] = useState<string[]>([]);
 
-  console.log("gameData", gameData);
-
   // Construct the list of URLs to try from gameData
   useEffect(() => {
     const headerUrl = gameData?.header_image;
