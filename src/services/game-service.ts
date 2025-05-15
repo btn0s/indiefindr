@@ -1,18 +1,25 @@
 import type {
-  Game,
+  Game as OriginalGame, // Rename to avoid conflict if Game is defined locally
   GameInsert, // Ensure GameInsert is imported if needed by new service method indirectly
-  GameWithSubmitter,
+  GameWithSubmitter as OriginalGameWithSubmitter, // Rename
 } from "@/lib/repositories/game-repository";
 import { DrizzleGameRepository } from "@/lib/repositories/game-repository"; // For direct instantiation
 import { EnrichmentService } from "@/services/enrichment-service"; // Import EnrichmentService
 import { DefaultLibraryService } from "@/services/library-service"; // Import LibraryService
 import type { SteamRawData } from "@/types/steam"; // For rawData type if needed for intermediate processing
 import { enrichSteamAppId } from "@/lib/workers/steam-enrichment"; // Import the worker
+// TODO: Adjust path if gameEnrichmentTable is located elsewhere
+// Assuming gameEnrichmentTable is exported from a schema definition file
+import { gameEnrichmentTable } from "@/db/schema"; // User updated path
+import type { InferSelectModel } from "drizzle-orm"; // Re-adding for GameEnrichment type
 
 // --- Constants for Personalized Feed Logic ---
 const MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING = 1;
-const FEED_SIZE = 12;
 const VECTOR_DIMENSIONS = 1536; // Should match your embedding model dimensions
+
+// --- Export Game and GameWithSubmitter types for FeedService ---
+export type Game = OriginalGame;
+export type GameWithSubmitter = OriginalGameWithSubmitter;
 
 // --- View Model Interfaces ---
 
@@ -77,6 +84,80 @@ export interface GameProfileViewModel extends GameCardViewModel {
 // Potentially a simpler list item view model if GameCardViewModel is too heavy for some lists
 // export interface GameListItemViewModel { /* ... */ }
 
+// --- GameEnrichment Type (from Drizzle schema) ---
+export type GameEnrichment = InferSelectModel<typeof gameEnrichmentTable>;
+
+// --- Feed Item Types ---
+export interface BaseFeedItem {
+  // A unique key for React lists, combination of type and original ID.
+  // Example: `game_find-${gameId}` or `video_enrichment-${enrichmentId}`
+  feedItemKey: string;
+  type: string; // Discriminator
+  timestamp: Date; // For sorting (e.g., game.createdAt or enrichment.createdAt)
+  gameId: number; // ID of the associated game
+  gameSteamAppid: string | null; // SteamAppID of the associated game
+  gameTitle: string; // Title of the associated game
+}
+
+export interface GameContentFeedItem extends BaseFeedItem {
+  type: "game_find";
+  content: GameCardViewModel; // The game card data itself
+}
+
+// Base for all enrichment-derived feed items
+export interface EnrichmentFeedItemBase extends BaseFeedItem {
+  enrichmentId: number; // The ID from the game_enrichment table
+  enrichmentCreatorUserId: GameEnrichment["submittedBy"];
+  // TODO: Consider fetching/joining submitter username/avatar for enrichments if needed in UI
+  // submitterUsername?: string | null;
+  // submitterAvatarUrl?: string | null;
+  sourceName: GameEnrichment["sourceName"];
+  // No contentJson here, it's processed into specific fields below
+}
+
+export interface VideoEnrichmentFeedItem extends EnrichmentFeedItemBase {
+  type: "video_enrichment";
+  videoUrl: string | null;
+  videoTitle: string | null;
+  videoDescription: string | null;
+  thumbnailUrl: string | null;
+}
+
+export interface ArticleEnrichmentFeedItem extends EnrichmentFeedItemBase {
+  type: "article_enrichment";
+  articleTitle: string | null;
+  articleSnippet: string | null; // A short summary or excerpt
+  // fullArticleUrl: string | null; // This would be sourceUrl
+}
+
+export interface ImageEnrichmentFeedItem extends EnrichmentFeedItemBase {
+  type: "image_enrichment";
+  imageUrl: string | null;
+  imageAltText: string | null;
+  imageCaption: string | null;
+}
+
+export interface AudioEnrichmentFeedItem extends EnrichmentFeedItemBase {
+  type: "audio_enrichment";
+  audioUrl: string | null;
+  audioTitle: string | null;
+  audioDescription: string | null;
+}
+
+export interface SnippetEnrichmentFeedItem extends EnrichmentFeedItemBase {
+  type: "snippet_enrichment"; // e.g., a quote, a fact, a small piece of text
+  text: string | null;
+}
+
+// Union of all possible feed item types
+export type FeedItem =
+  | GameContentFeedItem
+  | VideoEnrichmentFeedItem
+  | ArticleEnrichmentFeedItem
+  | ImageEnrichmentFeedItem
+  | AudioEnrichmentFeedItem
+  | SnippetEnrichmentFeedItem;
+
 // --- Game Service Interface ---
 
 export interface GameService {
@@ -116,10 +197,10 @@ export interface GameService {
    * Fetches recent games using the GameRepository and transforms them into GameCardViewModels.
    * Suitable for use in feeds or API responses that need recent game data in UI-ready format.
    */
-  getRecentGamesForFeed(
-    limit?: number,
-    page?: number
-  ): Promise<GameCardViewModel[]>;
+  getRecentGames(options: {
+    limit: number;
+    page: number;
+  }): Promise<GameWithSubmitter[]>;
 
   /**
    * Submits a new game by its Steam App ID. Checks for existence,
@@ -136,14 +217,13 @@ export interface GameService {
     gameId?: string; // Internal DB ID if exists
   }>;
 
-  /**
-   * Fetches a personalized game feed for a user, or a fallback.
-   */
-  getPersonalizedFeedForUser(
-    userId: string,
-    limit?: number,
-    page?: number
-  ): Promise<GameCardViewModel[]>;
+  // New method specifically for FeedService to get embeddings for a list of games
+  getEmbeddingsForGames(
+    gameIds: number[]
+  ): Promise<{ id: number; embedding: number[] | null }[]>;
+
+  // Method to get library game IDs, potentially used by FeedService via GameService, or FeedService uses LibraryService directly
+  getUserLibraryGameIds(userId: string): Promise<number[]>;
 
   // --- Utility/Helper functions (could be private or exposed if generally useful) ---
   // These might live in a separate utils file but are conceptually part of the service's domain.
@@ -157,7 +237,7 @@ export interface GameService {
 
 /**
  * Provides methods to transform raw game data from repositories
- * into structured view models suitable for UI components.
+ * into structured view models suitable for UI components and feeds.
  */
 export class DefaultGameService implements GameService {
   private gameRepository: DrizzleGameRepository;
@@ -401,36 +481,24 @@ export class DefaultGameService implements GameService {
   }
 
   // New method to get recent games for feed/actions
-  public async getRecentGamesForFeed(
-    limit: number = FEED_SIZE,
-    page: number = 1
-  ): Promise<GameCardViewModel[]> {
-    console.log(
-      `[SERVICE ENTRY] getRecentGamesForFeed CALLED WITH: limit=${limit}, page=${page}`
-    );
-
+  public async getRecentGames(options: {
+    limit: number;
+    page: number;
+  }): Promise<GameWithSubmitter[]> {
+    const { limit, page } = options;
     const offset = (page - 1) * limit;
     console.log(
-      `GameService: Fetching recent games for feed. Limit: ${limit}, Page: ${page}, Offset: ${offset}`
+      `GameService:getRecentGames - Fetching (limit ${limit}, page ${page}, offset ${offset}). Aiming to include embeddings.`
     );
-    try {
-      // Assuming getRecent in repository now accepts offset
-      const recentGamesData = await this.gameRepository.getRecent(
-        limit,
-        undefined,
-        offset
-      );
-      if (!recentGamesData) {
-        return [];
-      }
-      return this.toGameCardViewModels(recentGamesData);
-    } catch (error) {
-      console.error(
-        "GameService: Error fetching recent games for feed:",
-        error
-      );
-      return [];
-    }
+    // TODO: Ensure DrizzleGameRepository.getRecent is implemented to *always* try to fetch games with their embeddings.
+    // The GameWithSubmitter type should support an optional 'embedding' field.
+    // This call assumes the repository's getRecent method handles fetching embeddings as part of its standard operation for this context.
+    const games = await this.gameRepository.getRecent(
+      limit,
+      undefined /* no exclusions here */,
+      offset
+    );
+    return games;
   }
 
   public async submitNewGameBySteamAppId(
@@ -517,143 +585,21 @@ export class DefaultGameService implements GameService {
     }
   }
 
-  private _calculateAverageVector(
-    vectors: (number[] | null)[]
-  ): number[] | null {
-    const validVectors = vectors.filter(
-      (e): e is number[] => e !== null && e.length === VECTOR_DIMENSIONS
+  public async getEmbeddingsForGames(
+    gameIds: number[]
+  ): Promise<{ id: number; embedding: number[] | null }[]> {
+    if (gameIds.length === 0) return [];
+    console.log(
+      `GameService:getEmbeddingsForGames - Fetching embeddings for ${gameIds.length} games.`
     );
-    if (!validVectors || validVectors.length === 0) return null;
-
-    const numVectors = validVectors.length;
-    const average = new Array(VECTOR_DIMENSIONS).fill(0);
-
-    for (const vector of validVectors) {
-      for (let i = 0; i < VECTOR_DIMENSIONS; i++) {
-        average[i] += vector[i];
-      }
-    }
-    for (let i = 0; i < VECTOR_DIMENSIONS; i++) {
-      average[i] /= numVectors;
-    }
-    return average;
+    return this.gameRepository.getEmbeddingsForGames(gameIds);
   }
 
-  private async _rankGamesBySimilarity(
-    games: GameWithSubmitter[],
-    userProfileVector: number[]
-  ): Promise<GameWithSubmitter[]> {
-    const gamesWithScores = games.map((game) => {
-      let score = -1; // Default score for games without embedding or if no similarity
-      if (game.embedding && game.embedding.length === VECTOR_DIMENSIONS) {
-        // Cosine similarity calculation (simplified: dot product for normalized vectors)
-        // A more robust library might be used for vector math in a production system.
-        // For now, assuming pgvector gives us normalized-enough embeddings or this is a proxy.
-        // The closer to 1 (or higher dot product for non-normalized but positive vectors), the more similar.
-        // If pgvector <=> is cosine distance (0 to 2), then score = 1 - (distance / 2) or similar.
-        // For simplicity, let's assume a dot product like similarity or a placeholder.
-        // This part would need a proper similarity function.
-        // For now, a placeholder:
-        let dotProduct = 0;
-        for (let i = 0; i < VECTOR_DIMENSIONS; i++) {
-          dotProduct += (game.embedding[i] ?? 0) * userProfileVector[i];
-        }
-        score = dotProduct; // Higher is better
-      }
-      return { ...game, similarityScore: score };
-    });
-
-    // Sort by createdAt (descending), then by similarity score (descending) as a tie-breaker
-    return gamesWithScores.sort((a, b) => {
-      const dateA = new Date(a.createdAt ?? 0).getTime();
-      const dateB = new Date(b.createdAt ?? 0).getTime();
-
-      if (dateB !== dateA) {
-        return dateB - dateA; // Most recent first
-      }
-      return b.similarityScore - a.similarityScore; // Higher score for same timestamp
-    });
-  }
-
-  public async getPersonalizedFeedForUser(
-    userId: string,
-    limit: number = FEED_SIZE,
-    page: number = 1
-  ): Promise<GameCardViewModel[]> {
+  public async getUserLibraryGameIds(userId: string): Promise<number[]> {
     console.log(
-      `[SERVICE ENTRY] getPersonalizedFeedForUser (New Logic) CALLED WITH: userId=${userId}, limit=${limit}, page=${page}`
+      `GameService:getUserLibraryGameIds - Fetching library game IDs for user ${userId}`
     );
-    if (!userId) return [];
-
-    const offset = (page - 1) * limit;
-    const libraryGameIds =
-      await this.libraryService.getUserLibraryGameIds(userId);
-    const excludedIds = libraryGameIds.length > 0 ? libraryGameIds : [-1]; // -1 to prevent issues with empty IN () in SQL
-
-    // Fetch a larger pool of recent games to allow for personalization filtering/ranking
-    // The pool size can be adjusted based on performance and desired personalization quality.
-    const poolLimit = limit * 3; // Fetch 3x the amount needed
-
-    console.log(
-      `GameService: Fetching ${poolLimit} recent games (excluding ${
-        excludedIds.length
-      } library items) for user ${userId}, page ${page} (offset ${offset}).`
-    );
-
-    let candidateGamesRaw = await this.gameRepository.getRecent(
-      poolLimit,
-      excludedIds,
-      offset
-    );
-
-    if (candidateGamesRaw.length === 0) {
-      console.log(
-        `GameService: No recent games found for user ${userId} after exclusions.`
-      );
-      return [];
-    }
-
-    // Attempt to personalize (rank) the fetched recent games
-    let personalizedRankedGames: GameWithSubmitter[] = candidateGamesRaw;
-
-    if (libraryGameIds.length >= MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING) {
-      console.log(
-        `GameService: User ${userId} library size ${libraryGameIds.length}, attempting to rank recent games.`
-      );
-      const libraryEmbeddingsData =
-        await this.gameRepository.getEmbeddingsForGames(libraryGameIds);
-      const averageVector = this._calculateAverageVector(
-        libraryEmbeddingsData.map((e) => e.embedding)
-      );
-
-      if (averageVector) {
-        console.log(
-          `GameService: Calculated average vector for user ${userId}. Ranking ${candidateGamesRaw.length} recent games.`
-        );
-        personalizedRankedGames = await this._rankGamesBySimilarity(
-          candidateGamesRaw,
-          averageVector
-        );
-      } else {
-        console.log(
-          `GameService: Could not calculate average vector for user ${userId}. Using recency order.`
-        );
-        // Games are already sorted by recency from getRecent()
-      }
-    } else {
-      console.log(
-        `GameService: Library size too small for user ${userId} (${libraryGameIds.length}). Using recency order for feed.`
-      );
-      // Games are already sorted by recency
-    }
-
-    // Slice to the final limit after ranking
-    const finalGamesRaw = personalizedRankedGames.slice(0, limit);
-
-    console.log(
-      `GameService: Returning ${finalGamesRaw.length} personalized/recent games for user ${userId}.`
-    );
-    return this.toGameCardViewModels(finalGamesRaw);
+    return this.libraryService.getUserLibraryGameIds(userId);
   }
 }
 

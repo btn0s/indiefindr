@@ -1,3 +1,8 @@
+import { InferSelectModel } from "drizzle-orm";
+import { gameEnrichmentTable } from "@/db/schema";
+
+export type GameEnrichment = InferSelectModel<typeof gameEnrichmentTable>;
+
 export interface EnrichedMedia {
   type: "video" | "image" | "screeenshot";
   url: string;
