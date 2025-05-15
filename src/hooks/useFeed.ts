@@ -57,9 +57,13 @@ export function useFeed(feedType: FeedType, options: FeedOptions = {}) {
 
       try {
         const limit = options.limit || 10; // Default page size
-        const response = await fetch(
-          `/api/feed?type=${feedType}&page=${pageToLoad}&pageSize=${limit}`
-        );
+        let apiUrl = `/api/feed?type=${feedType}&page=${pageToLoad}&pageSize=${limit}`;
+
+        if (feedType === "personalized") {
+          apiUrl += "&sortBy=recent";
+        }
+
+        const response = await fetch(apiUrl);
 
         if (!response.ok) {
           const errorData = await response

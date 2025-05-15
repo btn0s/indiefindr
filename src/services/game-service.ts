@@ -408,7 +408,7 @@ export class DefaultGameService implements GameService {
     console.log(
       `[SERVICE ENTRY] getRecentGamesForFeed CALLED WITH: limit=${limit}, page=${page}`
     );
-    
+
     const offset = (page - 1) * limit;
     console.log(
       `GameService: Fetching recent games for feed. Limit: ${limit}, Page: ${page}, Offset: ${offset}`
@@ -539,30 +539,86 @@ export class DefaultGameService implements GameService {
     return average;
   }
 
+  private async _rankGamesBySimilarity(
+    games: GameWithSubmitter[],
+    userProfileVector: number[]
+  ): Promise<GameWithSubmitter[]> {
+    const gamesWithScores = games.map((game) => {
+      let score = -1; // Default score for games without embedding or if no similarity
+      if (game.embedding && game.embedding.length === VECTOR_DIMENSIONS) {
+        // Cosine similarity calculation (simplified: dot product for normalized vectors)
+        // A more robust library might be used for vector math in a production system.
+        // For now, assuming pgvector gives us normalized-enough embeddings or this is a proxy.
+        // The closer to 1 (or higher dot product for non-normalized but positive vectors), the more similar.
+        // If pgvector <=> is cosine distance (0 to 2), then score = 1 - (distance / 2) or similar.
+        // For simplicity, let's assume a dot product like similarity or a placeholder.
+        // This part would need a proper similarity function.
+        // For now, a placeholder:
+        let dotProduct = 0;
+        for (let i = 0; i < VECTOR_DIMENSIONS; i++) {
+          dotProduct += (game.embedding[i] ?? 0) * userProfileVector[i];
+        }
+        score = dotProduct; // Higher is better
+      }
+      return { ...game, similarityScore: score };
+    });
+
+    // Sort by similarity score (descending), then by createdAt (descending) as a tie-breaker
+    return gamesWithScores.sort((a, b) => {
+      if (b.similarityScore !== a.similarityScore) {
+        return b.similarityScore - a.similarityScore;
+      }
+      return (
+        new Date(b.createdAt ?? 0).getTime() -
+        new Date(a.createdAt ?? 0).getTime()
+      );
+    });
+  }
+
   public async getPersonalizedFeedForUser(
     userId: string,
     limit: number = FEED_SIZE,
     page: number = 1
   ): Promise<GameCardViewModel[]> {
     console.log(
-      `[SERVICE ENTRY] getPersonalizedFeedForUser CALLED WITH: userId=${userId}, limit=${limit}, page=${page}`
-    );
-
-    console.log(
-      `GameService: Getting personalized feed for user ${userId}, limit ${limit}, page ${page}`
+      `[SERVICE ENTRY] getPersonalizedFeedForUser (New Logic) CALLED WITH: userId=${userId}, limit=${limit}, page=${page}`
     );
     if (!userId) return [];
 
     const offset = (page - 1) * limit;
     const libraryGameIds =
       await this.libraryService.getUserLibraryGameIds(userId);
-    const excludedIds = libraryGameIds.length > 0 ? libraryGameIds : [-1];
+    const excludedIds = libraryGameIds.length > 0 ? libraryGameIds : [-1]; // -1 to prevent issues with empty IN () in SQL
 
-    let recommendedGamesRaw: GameWithSubmitter[] = [];
+    // Fetch a larger pool of recent games to allow for personalization filtering/ranking
+    // The pool size can be adjusted based on performance and desired personalization quality.
+    const poolLimit = limit * 3; // Fetch 3x the amount needed
+
+    console.log(
+      `GameService: Fetching ${poolLimit} recent games (excluding ${
+        excludedIds.length
+      } library items) for user ${userId}, page ${page} (offset ${offset}).`
+    );
+
+    let candidateGamesRaw = await this.gameRepository.getRecent(
+      poolLimit,
+      excludedIds,
+      offset
+    );
+
+    if (candidateGamesRaw.length === 0) {
+      console.log(
+        `GameService: No recent games found for user ${userId} after exclusions.`
+      );
+      return [];
+    }
+
+    // Attempt to personalize (rank) the fetched recent games
+    let personalizedRankedGames: GameWithSubmitter[] = candidateGamesRaw;
 
     if (libraryGameIds.length >= MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING) {
       console.log(
-        `GameService: User ${userId} library size ${libraryGameIds.length}, attempting average embedding search.`
+        `GameService: User ${userId} library size ${libraryGameIds.length}, attempting to rank recent games.`
       );
       const libraryEmbeddingsData =
         await this.gameRepository.getEmbeddingsForGames(libraryGameIds);
@@ -572,55 +628,31 @@ export class DefaultGameService implements GameService {
 
       if (averageVector) {
         console.log(
-          `GameService: Calculated average vector for user ${userId}.`
+          `GameService: Calculated average vector for user ${userId}. Ranking ${candidateGamesRaw.length} recent games.`
         );
-        // Pass offset to getGamesBySimilarity
-        recommendedGamesRaw = await this.gameRepository.getGamesBySimilarity(
-          averageVector,
-          excludedIds,
-          limit,
-          offset
-        );
-        console.log(
-          `GameService: Found ${recommendedGamesRaw.length} recommendations via average embedding for user ${userId}.`
+        personalizedRankedGames = await this._rankGamesBySimilarity(
+          candidateGamesRaw,
+          averageVector
         );
       } else {
         console.log(
-          `GameService: Could not calculate average vector for user ${userId}.`
+          `GameService: Could not calculate average vector for user ${userId}. Using recency order.`
         );
+        // Games are already sorted by recency from getRecent()
       }
+    } else {
+      console.log(
+        `GameService: Library size too small for user ${userId} (${libraryGameIds.length}). Using recency order for feed.`
+      );
+      // Games are already sorted by recency
     }
 
-    if (recommendedGamesRaw.length < limit) {
-      // If not enough recommendations, fill with recent games
-      const neededToFill = limit - recommendedGamesRaw.length;
-      // Calculate offset for recent games based on how many personalized results we already have for *this page*.
-      // This simple offset might fetch overlapping recent games if personalized results partially filled the page.
-      // A more sophisticated approach might need to fetch more recents and then slice, or adjust offset based on *total* personalized items found if we were doing deeper pagination into personalized results first.
-      // For now, this fills the current page.
-      // We also need to exclude IDs that were already part of `recommendedGamesRaw` from this fallback query.
-      const currentRecommendedIds = recommendedGamesRaw.map((g) => g.id);
-      const combinedExcludedIds = Array.from(
-        new Set([...excludedIds, ...currentRecommendedIds])
-      );
+    // Slice to the final limit after ranking
+    const finalGamesRaw = personalizedRankedGames.slice(0, limit);
 
-      console.log(
-        `GameService: User ${userId} - Filling ${neededToFill} spots with recent games.`
-      );
-      const recentFallbackGames = await this.gameRepository.getRecent(
-        neededToFill,
-        combinedExcludedIds,
-        offset
-      ); // Pass offset here too
-      recommendedGamesRaw.push(...recentFallbackGames);
-      console.log(
-        `GameService: Found ${recentFallbackGames.length} recent games as fallback for user ${userId}. Total now: ${recommendedGamesRaw.length}`
-      );
-    }
-
-    // Ensure we don't exceed the limit due to concatenation if both sources return items
-    const finalGamesRaw = recommendedGamesRaw.slice(0, limit);
-
+    console.log(
+      `GameService: Returning ${finalGamesRaw.length} personalized/recent games for user ${userId}.`
+    );
     return this.toGameCardViewModels(finalGamesRaw);
   }
 }

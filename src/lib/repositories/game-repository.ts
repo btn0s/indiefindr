@@ -614,6 +614,7 @@ export class DrizzleGameRepository implements GameRepository {
         .orderBy(drizzleSql`embedding <=> '${drizzleSql.raw(vectorString)}'`)
         .limit(limit)
         .offset(offset);
+        
 
       return results as GameWithSubmitter[];
     } catch (error) {
