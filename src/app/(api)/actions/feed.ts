@@ -107,12 +107,12 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
 
       // 1. Fetch embeddings for library games
       const libraryEmbeddingsResult = await db
-        .select({ embedding: schema.externalSourceTable.embedding })
-        .from(schema.externalSourceTable)
+        .select({ embedding: schema.gamesTable.embedding })
+        .from(schema.gamesTable)
         .where(
           and(
-            inArray(schema.externalSourceTable.id, libraryGameIds),
-            isNotNull(schema.externalSourceTable.embedding)
+            inArray(schema.gamesTable.id, libraryGameIds),
+            isNotNull(schema.gamesTable.embedding)
           )
         );
 
@@ -130,18 +130,18 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
         // 3. Perform similarity search
         recommendations = await db
           .select({
-            id: schema.externalSourceTable.id,
-            title: schema.externalSourceTable.title,
-            shortDescription: schema.externalSourceTable.descriptionShort,
-            steamAppid: schema.externalSourceTable.steamAppid,
-            tags: schema.externalSourceTable.tags, // Select tags
-            rawData: schema.externalSourceTable.rawData, // Select rawData
+            id: schema.gamesTable.id,
+            title: schema.gamesTable.title,
+            shortDescription: schema.gamesTable.descriptionShort,
+            steamAppid: schema.gamesTable.steamAppid,
+            tags: schema.gamesTable.tags, // Select tags
+            rawData: schema.gamesTable.rawData, // Select rawData
           })
-          .from(schema.externalSourceTable)
+          .from(schema.gamesTable)
           .where(
             and(
-              notInArray(schema.externalSourceTable.id, excludedIds),
-              isNotNull(schema.externalSourceTable.embedding)
+              notInArray(schema.gamesTable.id, excludedIds),
+              isNotNull(schema.gamesTable.embedding)
             )
           )
           .orderBy(
@@ -173,16 +173,16 @@ export async function getPersonalizedFeed(): Promise<FeedResult> {
 
       recommendations = await db
         .select({
-          id: schema.externalSourceTable.id,
-          title: schema.externalSourceTable.title,
-          shortDescription: schema.externalSourceTable.descriptionShort,
-          steamAppid: schema.externalSourceTable.steamAppid,
-          tags: schema.externalSourceTable.tags, // Select tags
-          rawData: schema.externalSourceTable.rawData, // Select rawData
+          id: schema.gamesTable.id,
+          title: schema.gamesTable.title,
+          shortDescription: schema.gamesTable.descriptionShort,
+          steamAppid: schema.gamesTable.steamAppid,
+          tags: schema.gamesTable.tags, // Select tags
+          rawData: schema.gamesTable.rawData, // Select rawData
         })
-        .from(schema.externalSourceTable)
-        .where(notInArray(schema.externalSourceTable.id, excludedIds))
-        .orderBy(desc(schema.externalSourceTable.createdAt)) // Order by most recent
+        .from(schema.gamesTable)
+        .where(notInArray(schema.gamesTable.id, excludedIds))
+        .orderBy(desc(schema.gamesTable.createdAt)) // Order by most recent
         .limit(FEED_SIZE);
 
       console.log(
