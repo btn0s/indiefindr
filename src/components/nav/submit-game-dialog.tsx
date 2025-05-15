@@ -82,7 +82,7 @@ export function SubmitGameDialog() {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto px-1 py-1 scrollbar-thin scrollbar-thumb-muted-foreground/50">
-            <GameCard game={game} detailsLinkHref={detailsHref} />
+            <GameCard game={game} />
           </div>
           <DialogFooter className="mt-4">
             <DialogClose asChild>
@@ -114,7 +114,7 @@ export function SubmitGameDialog() {
                     <Link
                       href={getGameUrl(
                         parseInt(submissionResult.gameId, 10),
-                        submissionResult.existingGameTitle || null
+                        submissionResult.submittedGameData?.title || null
                       )}
                       className="underline ml-1 font-medium"
                     >
