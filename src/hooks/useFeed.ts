@@ -62,7 +62,7 @@ export function useFeed(feedType: FeedType, options: FeedOptions = {}) {
       }));
 
       try {
-        const limit = options.limit || 12; // Default page size, matching API
+        const limit = options.limit || 4; // Default page size, matching API
         // The API endpoint determines personalization based on userId (from auth context on server)
         // The 'type' parameter can still be used for other feed types like 'recent', 'trending' if implemented.
         let apiUrl = `/api/feed?type=${feedType}&page=${pageToLoad}&pageSize=${limit}`;
