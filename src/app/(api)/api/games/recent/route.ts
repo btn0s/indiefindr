@@ -4,8 +4,8 @@ import {
   GameWithSubmitter,
   GameSearchParams,
 } from "@/lib/repositories/game-repository";
-import { DefaultGameService } from "@/services/game-service";
-import type { GameCardViewModel } from "@/services/game-service";
+import { DefaultGameService } from "@/lib/services/game-service";
+import type { GameCardViewModel } from "@/lib/services/game-service";
 
 interface RecentGamesResult {
   success: boolean;

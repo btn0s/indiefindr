@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { BookmarkCheck, Bookmark, XCircle } from "lucide-react";
 import { GameImage } from "@/components/game/game-image"; // Import the reusable GameImage componen
 import { ClaimFindButton } from "@/components/claim-find-button"; // Import ClaimFindButton
-import { GameCardViewModel } from "@/services/game-service";
+import { GameCardViewModel } from "@/lib/services/game-service";
 
 interface GameCardMiniProps {
   game: GameCardViewModel;

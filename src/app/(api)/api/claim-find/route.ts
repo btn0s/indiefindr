@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { enrichSteamAppId } from "@/lib/workers/steam-enrichment";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export async function POST(request: Request) {

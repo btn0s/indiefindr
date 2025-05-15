@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
-import { DefaultUserService } from "@/services/user-service";
+import { createClient } from "@/lib/supabase/server";
+import { DefaultUserService } from "@/lib/services/user-service";
 import { redirect } from "next/navigation";
 
 const userService = new DefaultUserService();

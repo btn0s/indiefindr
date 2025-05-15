@@ -1,6 +1,9 @@
 "use server";
 
-import { DefaultGameService, GameCardViewModel } from "@/services/game-service";
+import {
+  DefaultGameService,
+  GameCardViewModel,
+} from "@/lib/services/game-service";
 // No longer need direct db access or schema here
 // import { db } from "@/db";
 // import { gamesTable } from "@/db/schema";

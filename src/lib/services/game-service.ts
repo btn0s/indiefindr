@@ -4,8 +4,8 @@ import type {
   GameWithSubmitter as OriginalGameWithSubmitter, // Rename
 } from "@/lib/repositories/game-repository";
 import { DrizzleGameRepository } from "@/lib/repositories/game-repository"; // For direct instantiation
-import { EnrichmentService } from "@/services/enrichment-service"; // Import EnrichmentService
-import { DefaultLibraryService } from "@/services/library-service"; // Import LibraryService
+import { EnrichmentService } from "@/lib/services/enrichment-service"; // Import EnrichmentService
+import { DefaultLibraryService } from "@/lib/services/library-service"; // Import LibraryService
 import type { SteamRawData } from "@/types/steam"; // For rawData type if needed for intermediate processing
 import { enrichSteamAppId } from "@/lib/workers/steam-enrichment"; // Import the worker
 // TODO: Adjust path if gameEnrichmentTable is located elsewhere

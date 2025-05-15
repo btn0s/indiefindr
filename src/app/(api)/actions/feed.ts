@@ -1,10 +1,10 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 // db, schema, and specific drizzle operators are no longer needed directly by the action
 // The GameService will handle interactions with repositories.
-import { DefaultGameService } from "@/services/game-service"; 
-import type { GameCardViewModel } from "@/services/game-service"; 
+import { DefaultGameService } from "@/lib/services/game-service";
+import type { GameCardViewModel } from "@/lib/services/game-service"; 
 // getLibraryGameIds action is no longer needed as GameService uses LibraryService internally.
 
 // Define a structure for the action's return value

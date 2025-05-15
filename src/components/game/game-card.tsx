@@ -12,7 +12,7 @@ import { GameImage } from "@/components/game/game-image"; // Import the reusable
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Bookmark, BookmarkCheck, ImageOff, Share2, Check } from "lucide-react";
 import { ensureHttps } from "@/lib/utils"; // Import the ensureHttps helper
-import type { GameCardViewModel } from "@/services/game-service"; // <-- Import GameCardViewModel
+import type { GameCardViewModel } from "@/lib/services/game-service"; // <-- Import GameCardViewModel
 
 // Helper function to get user initials for avatar fallback
 const getUserInitials = (name?: string | null) => {

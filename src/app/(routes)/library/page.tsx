@@ -1,10 +1,10 @@
 import React from "react";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { removeFromLibrary, addToLibrary } from "@/app/(api)/actions/library";
 import { GameGrid } from "@/components/game/game-grid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DefaultGameService } from "@/services/game-service";
-import type { GameCardViewModel } from "@/services/game-service";
+import { DefaultGameService } from "@/lib/services/game-service";
+import type { GameCardViewModel } from "@/lib/services/game-service";
 import type { Game } from "@/lib/repositories/game-repository";
 import { DrizzleGameRepository } from "@/lib/repositories/game-repository";
 import { DrizzleUserRepository } from "@/lib/repositories/user-repository";

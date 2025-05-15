@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { profilesTable } from "@/db/schema";
@@ -16,10 +16,12 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     await supabase.auth.exchangeCodeForSession(code);
-    
+
     // Check if this is a new user who needs to go through onboarding
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (user) {
       // Check if user already has a profile
       const existingProfile = await db
@@ -27,14 +29,17 @@ export async function GET(request: Request) {
         .from(profilesTable)
         .where(eq(profilesTable.id, user.id))
         .limit(1);
-      
+
       // If no profile exists, redirect to onboarding
       if (existingProfile.length === 0) {
         return NextResponse.redirect(`${origin}/onboarding`);
       }
-      
+
       // If profile exists but onboarding not completed, redirect to onboarding
-      if (existingProfile.length > 0 && !existingProfile[0].hasCompletedOnboarding) {
+      if (
+        existingProfile.length > 0 &&
+        !existingProfile[0].hasCompletedOnboarding
+      ) {
         return NextResponse.redirect(`${origin}/onboarding`);
       }
     }

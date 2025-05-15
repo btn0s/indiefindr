@@ -9,14 +9,14 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getGameUrl } from "@/utils/game-url";
+import { getGameUrl } from "@/lib/utils";
 import type { Metadata } from "next";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { searchSteam, type SteamSearchResult } from "@/lib/steam-search";
 import { DrizzleGameRepository } from "@/lib/repositories/game-repository";
 import type { GameWithSubmitter } from "@/lib/repositories/game-repository";
-import { DefaultGameService } from "@/services/game-service";
-import type { GameCardViewModel } from "@/services/game-service";
+import { DefaultGameService } from "@/lib/services/game-service";
+import type { GameCardViewModel } from "@/lib/services/game-service";
 
 const Loading = () => {
   return (

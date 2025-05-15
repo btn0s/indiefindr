@@ -5,7 +5,7 @@ import { BottomNav } from "@/components/nav/bottom-nav";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { AppProviders } from "@/components/providers";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { DrizzleUserRepository } from "@/lib/repositories/user-repository";
 
 import "./globals.css";

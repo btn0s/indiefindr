@@ -1,6 +1,6 @@
 import React from "react";
 import { ContentRenderer } from "@/components/content/content-renderer"; // Adjust path as needed
-import type { FeedItem as ActualFeedItemType } from "@/services/feed-service"; // Import the new FeedItem type
+import type { FeedItem as ActualFeedItemType } from "@/lib/services/feed-service"; // Import the new FeedItem type
 
 interface FeedItemProps {
   item: ActualFeedItemType; // Use the specific FeedItem type from the service

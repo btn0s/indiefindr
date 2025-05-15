@@ -1,5 +1,5 @@
 import React from "react";
-import { GameCardViewModel } from "@/services/game-service";
+import { GameCardViewModel } from "@/lib/services/game-service";
 import { GameCard } from "../game/game-card";
 import type {
   FeedItem,
@@ -10,7 +10,7 @@ import type {
   AudioEnrichmentFeedItem,
   SnippetEnrichmentFeedItem,
   BaseFeedItem, // Import BaseFeedItem if you want to use it for FallbackContent more specifically
-} from "@/services/feed-service";
+} from "@/lib/services/feed-service";
 
 // Define a more generic ContentItem type if needed, or specialize per type
 // For now, we'll assume GameCardViewModel can represent a 'game' content item directly

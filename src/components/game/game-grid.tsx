@@ -3,7 +3,7 @@
 import React from "react";
 import { GameCardMini } from "@/components/game/game-card-mini";
 import { getGameUrl } from "@/lib/utils"; // Import utility for generating game URLs
-import { GameCardViewModel } from "@/services/game-service";
+import { GameCardViewModel } from "@/lib/services/game-service";
 
 interface GameGridProps {
   games: GameCardViewModel[]; // Use the more comprehensive type

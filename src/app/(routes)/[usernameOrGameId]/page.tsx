@@ -1,5 +1,5 @@
 import React from "react";
-import { createClient } from "@/utils/supabase/server"; // Use standard server client
+import { createClient } from "@/lib/supabase/server"; // Use standard server client
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,10 +16,10 @@ import { addToLibrary, removeFromLibrary } from "@/app/(api)/actions/library"; /
 // import { getGamesFoundByUser } from "@/app/(api)/actions/finds"; // Import the new action <-- REMOVE THIS
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
 import { DrizzleUserRepository } from "@/lib/repositories/user-repository"; // <-- Import UserRepository
-import type { GameCardViewModel } from "@/services/game-service"; // <-- GameCardViewModel from game-service
+import type { GameCardViewModel } from "@/lib/services/game-service"; // <-- GameCardViewModel from game-service
 import type { Profile } from "@/lib/repositories/user-repository"; // <-- Profile from user-repository
 import { DrizzleGameRepository } from "@/lib/repositories/game-repository"; // <-- ADD THIS
-import { DefaultGameService } from "@/services/game-service"; // <-- ADD THIS
+import { DefaultGameService } from "@/lib/services/game-service"; // <-- ADD THIS
 // Note: Profile type might come from user-repository.ts itself after this change.
 // For now, assuming GameService might expose a general Profile type or we use the one from user-repository.
 

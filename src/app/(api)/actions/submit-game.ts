@@ -1,9 +1,9 @@
 "use server";
 
 import { z } from "zod";
-import { createClient } from "@/utils/supabase/server";
-import { DefaultGameService } from "@/services/game-service";
-import type { GameCardViewModel } from "@/services/game-service";
+import { createClient } from "@/lib/supabase/server";
+import { DefaultGameService } from "@/lib/services/game-service";
+import type { GameCardViewModel } from "@/lib/services/game-service";
 
 // Define the shape of the state returned by the action
 export interface SubmitGameState {

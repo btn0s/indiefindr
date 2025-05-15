@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
-import { DefaultLibraryService } from "@/services/library-service";
+import { createClient } from "@/lib/supabase/server";
+import { DefaultLibraryService } from "@/lib/services/library-service";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 

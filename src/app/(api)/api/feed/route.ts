@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { FeedType } from "@/hooks/useFeed";
-import { DefaultFeedService, type FeedItem } from "@/services/feed-service";
-import { DefaultGameService } from "@/services/game-service";
-import { DefaultLibraryService } from "@/services/library-service";
+import { DefaultFeedService, type FeedItem } from "@/lib/services/feed-service";
+import { DefaultGameService } from "@/lib/services/game-service";
+import { DefaultLibraryService } from "@/lib/services/library-service";
 import { DrizzleGameRepository } from "@/lib/repositories/game-repository";
 import { DrizzleEnrichmentRepository } from "@/lib/repositories/enrichment-repository";
 

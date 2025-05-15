@@ -11,7 +11,7 @@ import {
   addToLibrary as addToLibraryAction,
   removeFromLibrary as removeFromLibraryAction,
 } from "@/app/(api)/actions/library"; // Adjust path as necessary
-import { createClient } from "@/utils/supabase/client"; // For client-side Supabase
+import { createClient } from "@/lib/supabase/client"; // For client-side Supabase
 import { Game } from "@/lib/repositories/game-repository"; // Assuming Game type is needed
 import { User } from "@supabase/supabase-js";
 

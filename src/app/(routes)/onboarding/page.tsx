@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { ProfileSetupForm } from "@/components/onboarding/profile-setup-form";
 import { db } from "@/db";
 import { profilesTable } from "@/db/schema";

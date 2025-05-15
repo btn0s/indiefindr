@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from "react";
 import { useFeed, FeedType, FeedOptions } from "@/hooks/useFeed"; // Adjust path as needed
 import { FeedItem as FeedItemComponent } from "@/components/feed/feed-item";
-import type { FeedItem as FeedItemType } from "@/services/feed-service"; // Import the type for items array
+import type { FeedItem as FeedItemType } from "@/lib/services/feed-service"; // Import the type for items array
 import { Loader2 } from "lucide-react";
 
 interface FeedContainerProps {

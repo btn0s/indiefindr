@@ -12,11 +12,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { createClient as createServerSupabaseClient } from "@/utils/supabase/server"; // Server client
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server"; // Server client
 import { db } from "@/db"; // Server Drizzle client
 import { profilesTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { hasEnvVars } from "@/utils/supabase/check-env-vars"; // Keep this utility
+import { hasEnvVars } from "@/lib/supabase/check-env-vars"; // Keep this utility
 import { SubmitGameDialog } from "./nav/submit-game-dialog";
 import { signOutAction } from "@/app/(api)/actions/auth";
 

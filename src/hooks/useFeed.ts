@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 // Import FeedItem and FeedType from their respective service/hook locations
-import type { FeedItem } from "@/services/feed-service"; // Path to FeedItem type
+import type { FeedItem } from "@/lib/services/feed-service"; // Path to FeedItem type
 // FeedType is now defined and exported from this file.
 // Remove: import type { FeedType } from "./useFeed"; 
 

@@ -13,7 +13,7 @@ import { GameImage } from "@/components/game/game-image"; // Import the new clie
 import type { Metadata } from "next";
 import { AddToLibraryButton } from "@/components/add-to-library-button"; // Import the new component
 
-import { DefaultGameService } from "@/services/game-service"; // <-- Import GameService
+import { DefaultGameService } from "@/lib/services/game-service"; // <-- Import GameService
 
 const gameRepository = new DrizzleGameRepository(); // Instantiate repository
 const gameService = new DefaultGameService(); // <-- Instantiate GameService

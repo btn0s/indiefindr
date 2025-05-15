@@ -23,7 +23,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { GameCard } from "@/components/game/game-card";
-import { getGameUrl } from "@/utils/game-url";
+import { getGameUrl } from "@/lib/utils";
 
 export function SubmitGameDialog() {
   const initialState: SubmitGameState = { status: "idle", message: "" };

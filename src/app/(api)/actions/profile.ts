@@ -1,10 +1,10 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import {
   DefaultUserService,
   ServiceProfileUpdatePayload,
-} from "@/services/user-service";
+} from "@/lib/services/user-service";
 import { z } from "zod";
 
 // Define a schema for input validation using Zod

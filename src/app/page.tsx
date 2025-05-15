@@ -1,5 +1,5 @@
 import React from "react";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { FeedContainer } from "@/components/feed/feed-container";
 import { db } from "@/db";
 import { profilesTable, libraryTable, gamesTable } from "@/db/schema";
