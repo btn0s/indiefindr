@@ -5,6 +5,7 @@ import { DefaultFeedService, type FeedItem } from "@/services/feed-service";
 import { DefaultGameService } from "@/services/game-service";
 import { DefaultLibraryService } from "@/services/library-service";
 import { DrizzleGameRepository } from "@/lib/repositories/game-repository";
+import { DrizzleEnrichmentRepository } from "@/lib/repositories/enrichment-repository";
 
 interface FeedResponse {
   items: FeedItem[];
@@ -56,13 +57,15 @@ export async function GET(
 
   try {
     const gameRepository = new DrizzleGameRepository();
+    const enrichmentRepository = new DrizzleEnrichmentRepository();
     const libraryService = new DefaultLibraryService();
     const gameService = new DefaultGameService();
 
     const feedService = new DefaultFeedService(
       gameService,
       libraryService,
-      gameRepository
+      gameRepository,
+      enrichmentRepository
     );
 
     console.log(

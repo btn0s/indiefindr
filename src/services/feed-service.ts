@@ -8,11 +8,10 @@ import type {
 } from "./game-service"; // GameCardViewModel will be needed
 import type { DrizzleGameRepository } from "@/lib/repositories/game-repository"; // For GameRepository type
 import type { DefaultLibraryService } from "./library-service"; // For LibraryService type
-// TODO: Import actual EnrichmentRepository when available
-// import type { EnrichmentRepository } from "@/lib/repositories/enrichment-repository";
-
-// --- GameEnrichment Type (from Drizzle schema) ---
-export type GameEnrichment = InferSelectModel<typeof gameEnrichmentTable>;
+import {
+  DrizzleEnrichmentRepository,
+  type GameEnrichment,
+} from "@/lib/repositories/enrichment-repository";
 
 // --- Feed Item Types ---
 export interface BaseFeedItem {
@@ -97,18 +96,18 @@ export class DefaultFeedService implements FeedService {
   private gameService: IGameService;
   private libraryService: DefaultLibraryService;
   private gameRepository: DrizzleGameRepository; // For GameRepository type
-  // private enrichmentRepository: EnrichmentRepository; // TODO: Add when available
+  private enrichmentRepository: DrizzleEnrichmentRepository; // Added
 
   constructor(
     gameService: IGameService,
     libraryService: DefaultLibraryService,
-    gameRepository: DrizzleGameRepository
-    // enrichmentRepository: EnrichmentRepository // TODO: Add when available
+    gameRepository: DrizzleGameRepository,
+    enrichmentRepository: DrizzleEnrichmentRepository // Added
   ) {
     this.gameService = gameService;
     this.libraryService = libraryService;
     this.gameRepository = gameRepository;
-    // this.enrichmentRepository = enrichmentRepository;
+    this.enrichmentRepository = enrichmentRepository; // Added
   }
 
   private _ensureHttps(url: string | null | undefined): string | null {
@@ -382,63 +381,25 @@ export class DefaultFeedService implements FeedService {
     // 2. Fetch Enrichments for all relevant games
     let allEnrichments: GameEnrichment[] = [];
     if (gameIdsForEnrichmentFetching.size > 0) {
-      const gameIdArray = Array.from(gameIdsForEnrichmentFetching).map(String);
+      const gameIdArrayForRepo = Array.from(gameIdsForEnrichmentFetching);
       console.log(
-        `FeedService:getFeed - Fetching enrichments for ${gameIdArray.length} games.`
+        `FeedService:getFeed - Fetching enrichments from DB for ${gameIdArrayForRepo.length} games.`
       );
       try {
-        // const { EnrichmentRepository } = await import("@/lib/repositories/enrichment-repository");
-        // allEnrichments = await EnrichmentRepository.getEnrichmentsForGameIds(gameIdArray);
-        console.warn(
-          "FeedService:getFeed - USING MOCK ENRICHMENT DATA. EnrichmentRepository.getEnrichmentsForGameIds needs implementation."
+        allEnrichments =
+          await this.enrichmentRepository.getEnrichmentsForGameIds(
+            gameIdArrayForRepo
+          );
+        console.log(
+          `FeedService:getFeed - Successfully fetched ${allEnrichments.length} enrichments from DB.`
         );
-        const mockEnrichments: GameEnrichment[] = [];
-        for (const gameIdStr of gameIdArray) {
-          const gameIdNum = parseInt(gameIdStr);
-          if (Math.random() > 0.5) {
-            mockEnrichments.push({
-              id: Math.floor(Math.random() * 100000),
-              gameId: gameIdNum,
-              contentType: "video_url" as GameEnrichment["contentType"],
-              sourceName: "youtube",
-              sourceSpecificId: `vid-${gameIdNum}`,
-              contentJson: {
-                title: "Cool Video Title",
-                url: "https://www.youtube.com/embed/example",
-                thumbnailUrl: `https://i.ytimg.com/vi/example${gameIdNum}/hqdefault.jpg`,
-              },
-              submittedBy: "mock-user-id",
-              createdAt: new Date(
-                Date.now() - Math.random() * 1000 * 3600 * 24 * 5
-              ),
-              updatedAt: new Date(),
-            } as GameEnrichment);
-          }
-          if (Math.random() > 0.7) {
-            mockEnrichments.push({
-              id: Math.floor(Math.random() * 100000) + 100000,
-              gameId: gameIdNum,
-              contentType: "article_url" as GameEnrichment["contentType"],
-              sourceName: "blog",
-              sourceSpecificId: `art-${gameIdNum}`,
-              contentJson: {
-                title: "Insightful Article",
-                snippet: "This article talks about...",
-              },
-              submittedBy: "mock-user-id-2",
-              createdAt: new Date(
-                Date.now() - Math.random() * 1000 * 3600 * 24 * 3
-              ),
-              updatedAt: new Date(),
-            } as GameEnrichment);
-          }
-        }
-        allEnrichments = mockEnrichments;
       } catch (error) {
         console.error(
-          "FeedService:getFeed - Error fetching enrichments:",
+          "FeedService:getFeed - Error fetching enrichments from DB:",
           error
         );
+        // Decide if we should proceed with an empty enrichments list or rethrow/handle error
+        allEnrichments = []; // Default to empty on error to avoid breaking the feed
       }
     }
 
