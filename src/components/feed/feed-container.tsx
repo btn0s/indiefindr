@@ -5,6 +5,7 @@ import { useFeed, FeedType, FeedOptions } from "@/hooks/useFeed"; // Adjust path
 import { FeedItem } from "@/components/feed/FeedItem";
 import { GameCardViewModel } from "@/services/game-service";
 import { GameContentItem } from "@/components/content/ContentRenderer";
+import { Button } from "../ui/button";
 
 interface FeedContainerProps {
   feedType: FeedType;
@@ -43,12 +44,9 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
   }
 
   return (
-    <div
-      className="feed-container"
-      style={{ padding: "20px", border: "1px solid lightgray" }}
-    >
-      {title && <h2>{title}</h2>}
-      <div className="feed-items-list">
+    <div className="feed-container max-w-lg mx-auto">
+      {title && <h2 className="text-2xl font-bold mb-4">{title}</h2>}
+      <div className="feed-items-list flex flex-col gap-4 mb-8">
         {items.map((item) => {
           // The useFeed hook returns GameCardViewModel, adapt it to AnyContentItem for FeedItem
           // This assumes that for now, all feed items are 'game' type.
@@ -61,16 +59,17 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
         })}
       </div>
       {hasMore && (
-        <button
+        <Button
+          variant="ghost"
+          className="w-full"
           onClick={loadMore}
           disabled={isLoading}
-          style={{ marginTop: "20px" }}
         >
           {isLoading ? "Loading more..." : "Load More"}
-        </button>
+        </Button>
       )}
       {!hasMore && items.length > 0 && (
-        <p style={{ textAlign: "center", marginTop: "20px", color: "gray" }}>
+        <p className="text-center text-muted-foreground">
           You've reached the end!
         </p>
       )}

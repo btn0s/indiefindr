@@ -22,17 +22,9 @@ const getUserInitials = (name?: string | null) => {
 
 interface GameCardProps {
   game: GameCardViewModel; // <-- Use GameCardViewModel
-  detailsLinkHref: string; // Add href prop for consistency
-  className?: string;
-  style?: React.CSSProperties; // Allow passing style
 }
 
-export function GameCard({
-  game,
-  detailsLinkHref,
-  className,
-  style,
-}: GameCardProps) {
+export function GameCard({ game }: GameCardProps) {
   const [hasCopied, setHasCopied] = React.useState(false);
   const [canShare, setCanShare] = React.useState(false);
   const [mediaError, setMediaError] = useState(false);
@@ -199,6 +191,7 @@ export function GameCard({
 
   const foundByUsername = game.foundByUsername || "IndieFindr";
   const foundByAvatarUrl = game.foundByAvatarUrl || "/images/avatar.png";
+  const detailsLinkHref = `/game/${game.id}/${game.title.toLowerCase().replace(/ /g, "-")}`;
 
   return (
     <div className="flex flex-col gap-2">
@@ -237,10 +230,8 @@ export function GameCard({
         ref={cardRef}
         className={cn(
           "flex flex-col overflow-hidden transition-shadow hover:shadow-lg w-full group/card",
-          "py-0 gap-0",
-          className
+          "py-0 gap-0"
         )}
-        style={style}
       >
         <Link href={detailsLinkHref} className="flex-grow">
           <CardContent className="p-3 flex flex-col gap-4">

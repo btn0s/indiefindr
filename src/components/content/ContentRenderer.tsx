@@ -1,5 +1,6 @@
 import React from "react";
 import { GameCardViewModel } from "@/services/game-service"; // Assuming GameCardViewModel is a good representation for a generic 'game' content item
+import { GameCard } from "../game-card";
 
 // Define a more generic ContentItem type if needed, or specialize per type
 // For now, we'll assume GameCardViewModel can represent a 'game' content item directly
@@ -28,23 +29,8 @@ const GameContent: React.FC<{
   variant: ContentRendererProps["variant"];
 }> = ({ content, variant }) => {
   return (
-    <div style={{ border: "1px solid #eee", padding: "10px", margin: "5px 0" }}>
-      <h4>
-        Game: {content.title} (Variant: {variant})
-      </h4>
-      <p>{content.shortDescription}</p>
-      {content.coverImageUrl && (
-        <img
-          src={content.coverImageUrl}
-          alt={content.title}
-          style={{ maxWidth: "100px", maxHeight: "60px" }}
-        />
-      )}
-      <p>
-        <small>
-          ID: {content.id}, Type: {content.type}
-        </small>
-      </p>
+    <div>
+      <GameCard game={content as GameContentItem} />
     </div>
   );
 };
