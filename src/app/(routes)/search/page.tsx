@@ -124,11 +124,11 @@ async function getPopularCategories(limit: number = 50): Promise<string[]> {
   try {
     const recentGamesWithCategories = await db
       .select({
-        genres: schema.externalSourceTable.genres,
-        tags: schema.externalSourceTable.tags,
+        genres: schema.gamesTable.genres,
+        tags: schema.gamesTable.tags,
       })
-      .from(schema.externalSourceTable)
-      .orderBy(desc(schema.externalSourceTable.createdAt)) // Get categories from recent additions
+      .from(schema.gamesTable)
+      .orderBy(desc(schema.gamesTable.createdAt)) // Get categories from recent additions
       .limit(limit);
 
     const categoryCounts: { [key: string]: number } = {};
@@ -175,14 +175,14 @@ async function getRecentlyAddedGames(
   try {
     const recentGames = await db
       .select({
-        id: schema.externalSourceTable.id,
-        title: schema.externalSourceTable.title,
-        steamAppid: schema.externalSourceTable.steamAppid,
-        descriptionShort: schema.externalSourceTable.descriptionShort,
-        rawData: schema.externalSourceTable.rawData,
+        id: schema.gamesTable.id,
+        title: schema.gamesTable.title,
+        steamAppid: schema.gamesTable.steamAppid,
+        descriptionShort: schema.gamesTable.descriptionShort,
+        rawData: schema.gamesTable.rawData,
       })
-      .from(schema.externalSourceTable)
-      .orderBy(desc(schema.externalSourceTable.createdAt))
+      .from(schema.gamesTable)
+      .orderBy(desc(schema.gamesTable.createdAt))
       .limit(limit);
     return recentGames.map((game) => ({
       ...game,
@@ -216,14 +216,14 @@ async function getPopularGames(limit: number = 6): Promise<DisplayGame[]> {
     // Step 2: Fetch details for these popular games
     const popularGamesDetails = await db
       .select({
-        id: schema.externalSourceTable.id,
-        title: schema.externalSourceTable.title,
-        steamAppid: schema.externalSourceTable.steamAppid,
-        descriptionShort: schema.externalSourceTable.descriptionShort,
-        rawData: schema.externalSourceTable.rawData,
+        id: schema.gamesTable.id,
+        title: schema.gamesTable.title,
+        steamAppid: schema.gamesTable.steamAppid,
+        descriptionShort: schema.gamesTable.descriptionShort,
+        rawData: schema.gamesTable.rawData,
       })
-      .from(schema.externalSourceTable)
-      .where(inArray(schema.externalSourceTable.id, popularGameIds));
+      .from(schema.gamesTable)
+      .where(inArray(schema.gamesTable.id, popularGameIds));
 
     // Step 3: Map to DisplayGame and preserve order (optional but good practice)
     const gamesMap = new Map<number, DisplayGame>(

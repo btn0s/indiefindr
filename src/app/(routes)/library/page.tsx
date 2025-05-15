@@ -39,14 +39,14 @@ async function getUserLibraryGames(
   try {
     const gamesFromDb = await db
       .select({
-        id: schema.externalSourceTable.id,
-        title: schema.externalSourceTable.title,
-        descriptionShort: schema.externalSourceTable.descriptionShort,
-        steamAppid: schema.externalSourceTable.steamAppid,
-        rawData: schema.externalSourceTable.rawData, // Select the rawData field
+        id: schema.gamesTable.id,
+        title: schema.gamesTable.title,
+        descriptionShort: schema.gamesTable.descriptionShort,
+        steamAppid: schema.gamesTable.steamAppid,
+        rawData: schema.gamesTable.rawData, // Select the rawData field
       })
-      .from(schema.externalSourceTable)
-      .where(inArray(schema.externalSourceTable.id, gameIds))
+      .from(schema.gamesTable)
+      .where(inArray(schema.gamesTable.id, gameIds))
       .execute();
 
     return gamesFromDb.map((game) => ({

@@ -99,12 +99,12 @@ export async function GET(request: Request): Promise<NextResponse<FeedResult>> {
     // 1. Attempt to get recommendations based on average library embedding
     if (libraryGameIds.length >= MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING) {
       const libraryEmbeddingsResult = await db
-        .select({ embedding: schema.externalSourceTable.embedding })
-        .from(schema.externalSourceTable)
+        .select({ embedding: schema.gamesTable.embedding })
+        .from(schema.gamesTable)
         .where(
           and(
-            inArray(schema.externalSourceTable.id, libraryGameIds),
-            isNotNull(schema.externalSourceTable.embedding)
+            inArray(schema.gamesTable.id, libraryGameIds),
+            isNotNull(schema.gamesTable.embedding)
           )
         );
 
@@ -119,16 +119,16 @@ export async function GET(request: Request): Promise<NextResponse<FeedResult>> {
       if (averageVector) {
         // Step 1a: Get IDs based on vector similarity
         const results = await db
-          .select({ id: schema.externalSourceTable.id })
-          .from(schema.externalSourceTable)
+          .select({ id: schema.gamesTable.id })
+          .from(schema.gamesTable)
           .where(
             and(
-              notInArray(schema.externalSourceTable.id, excludedIds),
-              isNotNull(schema.externalSourceTable.embedding)
+              notInArray(schema.gamesTable.id, excludedIds),
+              isNotNull(schema.gamesTable.embedding)
             )
           )
           .orderBy(
-            sql`(${schema.externalSourceTable.embedding}) <=> ${JSON.stringify(averageVector)}`
+            sql`(${schema.gamesTable.embedding}) <=> ${JSON.stringify(averageVector)}`
           )
           .limit(limit)
           .offset(offset);
@@ -140,10 +140,10 @@ export async function GET(request: Request): Promise<NextResponse<FeedResult>> {
     if (recommendationIds.length === 0) {
       // Step 1b: Get IDs based on creation date (fallback)
       const fallbackResults = await db
-        .select({ id: schema.externalSourceTable.id })
-        .from(schema.externalSourceTable)
-        .where(notInArray(schema.externalSourceTable.id, excludedIds))
-        .orderBy(desc(schema.externalSourceTable.createdAt))
+        .select({ id: schema.gamesTable.id })
+        .from(schema.gamesTable)
+        .where(notInArray(schema.gamesTable.id, excludedIds))
+        .orderBy(desc(schema.gamesTable.createdAt))
         .limit(limit)
         .offset(offset);
       recommendationIds = fallbackResults.map((r) => r.id);
@@ -154,22 +154,22 @@ export async function GET(request: Request): Promise<NextResponse<FeedResult>> {
     if (recommendationIds.length > 0) {
       const finalResults = await db
         .select({
-          id: schema.externalSourceTable.id,
-          title: schema.externalSourceTable.title,
-          shortDescription: schema.externalSourceTable.descriptionShort,
-          steamAppid: schema.externalSourceTable.steamAppid,
-          tags: schema.externalSourceTable.tags,
-          rawData: schema.externalSourceTable.rawData,
+          id: schema.gamesTable.id,
+          title: schema.gamesTable.title,
+          shortDescription: schema.gamesTable.descriptionShort,
+          steamAppid: schema.gamesTable.steamAppid,
+          tags: schema.gamesTable.tags,
+          rawData: schema.gamesTable.rawData,
           foundByUsername: schema.profilesTable.username,
           foundByAvatarUrl: schema.profilesTable.avatarUrl,
-          createdAt: schema.externalSourceTable.createdAt,
+          createdAt: schema.gamesTable.createdAt,
         })
-        .from(schema.externalSourceTable)
+        .from(schema.gamesTable)
         .leftJoin(
           schema.profilesTable,
-          eq(schema.externalSourceTable.foundBy, schema.profilesTable.id)
+          eq(schema.gamesTable.foundBy, schema.profilesTable.id)
         )
-        .where(inArray(schema.externalSourceTable.id, recommendationIds));
+        .where(inArray(schema.gamesTable.id, recommendationIds));
 
       // Optional: Re-order finalResults based on recommendationIds if needed
       // (Drizzle/DB doesn't guarantee order preservation with inArray)
