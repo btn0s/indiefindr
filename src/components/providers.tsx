@@ -5,7 +5,13 @@ import { ThemeProvider } from "next-themes";
 import { LibraryProvider } from "@/contexts/LibraryContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
+export function AppProviders({
+  children,
+  initialLibraryGameIds,
+}: {
+  children: React.ReactNode;
+  initialLibraryGameIds?: number[];
+}) {
   return (
     <ThemeProvider
       attribute="class"
@@ -14,7 +20,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <TooltipProvider>
-        <LibraryProvider>{children}</LibraryProvider>
+        <LibraryProvider initialLibraryGameIds={initialLibraryGameIds}>
+          {children}
+        </LibraryProvider>
       </TooltipProvider>
     </ThemeProvider>
   );

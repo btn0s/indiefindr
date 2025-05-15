@@ -8,11 +8,12 @@ import React, {
   useCallback,
 } from "react";
 import {
-  getLibraryGameIds as getLibraryGameIdsAction,
   addToLibrary as addToLibraryAction,
   removeFromLibrary as removeFromLibraryAction,
 } from "@/app/(api)/actions/library"; // Adjust path as necessary
 import { createClient } from "@/utils/supabase/client"; // For client-side Supabase
+import { Game } from "@/lib/repositories/game-repository"; // Assuming Game type is needed
+import { User } from "@supabase/supabase-js";
 
 interface LibraryContextValue {
   libraryGameIds: Set<number>;
@@ -26,58 +27,106 @@ const LibraryContext = createContext<LibraryContextValue | undefined>(
   undefined
 );
 
-export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({
+export const LibraryProvider: React.FC<{
+  children: React.ReactNode;
+  initialLibraryGameIds?: number[];
+}> = ({
   children,
+  initialLibraryGameIds = [], // Default to empty array if not provided
 }) => {
-  const [libraryGameIds, setLibraryGameIds] = useState<Set<number>>(new Set());
-  const [isLoading, setIsLoading] = useState(true);
+  const [libraryGameIds, setLibraryGameIds] = useState<Set<number>>(
+    new Set(initialLibraryGameIds)
+  );
+  const [isLoading, setIsLoading] = useState(true); // Default to true, set to false after initial check
   const [userId, setUserId] = useState<string | null>(null);
 
   const supabase = createClient();
 
   useEffect(() => {
-    const getUserAndFetchLibrary = async () => {
+    let isMounted = true; // To prevent state updates on unmounted component
+
+    const initializeProviderState = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      if (!isMounted) return;
+
       if (user) {
         setUserId(user.id);
-        setIsLoading(true);
-        try {
-          const result = await getLibraryGameIdsAction();
-          if (result.success && result.data) {
-            setLibraryGameIds(new Set(result.data));
+        // If initialLibraryGameIds are provided (from SSR) and the set is not empty,
+        // we can assume they are fresh for the initial load.
+        if (initialLibraryGameIds && initialLibraryGameIds.length > 0) {
+          setLibraryGameIds(new Set(initialLibraryGameIds));
+          setIsLoading(false);
+        } else {
+          // No initial IDs, or they were empty (e.g., new user, or SSR with no user)
+          // Fetch from API
+          setIsLoading(true);
+          try {
+            const response = await fetch("/api/me/library-ids");
+            if (!isMounted) return;
+            if (!response.ok) {
+              throw new Error(
+                `API request failed with status ${response.status}`
+              );
+            }
+            const result = await response.json();
+            if (result.gameIds) {
+              setLibraryGameIds(new Set(result.gameIds));
+            }
+          } catch (error) {
+            console.error("Failed to fetch library game IDs:", error);
+            setLibraryGameIds(new Set()); // Clear on error
           }
-        } catch (error) {
-          console.error("Failed to fetch library game IDs:", error);
+          setIsLoading(false);
         }
-        setIsLoading(false);
       } else {
+        // No user logged in
         setUserId(null);
-        setLibraryGameIds(new Set()); // Clear library for logged-out user
+        setLibraryGameIds(new Set());
         setIsLoading(false);
       }
     };
 
-    getUserAndFetchLibrary();
+    initializeProviderState();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "SIGNED_IN") {
-          setUserId(session?.user?.id || null);
-          getUserAndFetchLibrary(); // Refetch library on sign-in
+      async (event, session) => {
+        if (!isMounted) return;
+        setIsLoading(true); // Set loading true during auth changes
+        if (event === "SIGNED_IN" && session?.user) {
+          setUserId(session.user.id);
+          // Fetch library for newly signed-in user
+          try {
+            const response = await fetch("/api/me/library-ids");
+            if (!isMounted) return;
+            if (!response.ok)
+              throw new Error("Failed to fetch library on sign-in");
+            const result = await response.json();
+            if (result.gameIds) setLibraryGameIds(new Set(result.gameIds));
+          } catch (error) {
+            console.error(
+              "Auth Listener: Failed to fetch library game IDs:",
+              error
+            );
+            setLibraryGameIds(new Set());
+          }
         } else if (event === "SIGNED_OUT") {
           setUserId(null);
           setLibraryGameIds(new Set());
-          setIsLoading(false);
         }
+        setIsLoading(false);
       }
     );
 
     return () => {
+      isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, [supabase]);
+    // initialLibraryGameIds is included as a dependency. If it changes (e.g. different user from SSR),
+    // this effect will re-run. Supabase client is stable.
+  }, [supabase, initialLibraryGameIds]);
 
   const addToLibrary = useCallback(
     async (gameId: number) => {

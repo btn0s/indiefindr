@@ -11,6 +11,8 @@ import {
   inArray,
   and,
   SQL,
+  isNotNull,
+  notInArray,
   // ilike, or, and, not, inArray, gte, lte will be added as needed by other methods
 } from "drizzle-orm";
 
@@ -56,7 +58,7 @@ export interface GameRepository {
    * @param steamAppid The Steam App ID
    * @returns The game or null if not found (consider if this should also be GameWithSubmitter)
    */
-  getBySteamAppId(steamAppid: string): Promise<Game | null>;
+  getBySteamAppId(steamAppid: string): Promise<GameWithSubmitter | null>;
 
   /**
    * Search for games based on various criteria
@@ -75,9 +77,14 @@ export interface GameRepository {
   /**
    * Get recently added games, including submitter info if available.
    * @param limit Maximum number of games to return
+   * @param excludeIds IDs to exclude from results (optional)
    * @returns Array of recently added games with submitter details
    */
-  getRecent(limit?: number): Promise<GameWithSubmitter[]>;
+  getRecent(
+    limit?: number,
+    excludeIds?: number[],
+    offset?: number
+  ): Promise<GameWithSubmitter[]>;
 
   /**
    * Get games by user (games found by a specific user)
@@ -98,14 +105,21 @@ export interface GameRepository {
     gameId: number,
     limit?: number,
     excludeIds?: number[]
-  ): Promise<Game[]>;
+  ): Promise<GameWithSubmitter[]>;
+
+  /**
+   * Get multiple games by their IDs.
+   * @param ids Array of game IDs
+   * @returns Array of games (Game type, not GameWithSubmitter)
+   */
+  getGamesByIds(ids: number[]): Promise<GameWithSubmitter[]>;
 
   /**
    * Create a new game
    * @param game The game data to insert
    * @returns The created game
    */
-  create(game: GameInsert): Promise<Game>;
+  create(game: GameInsert): Promise<GameWithSubmitter>;
 
   /**
    * Update an existing game
@@ -113,7 +127,7 @@ export interface GameRepository {
    * @param data The data to update
    * @returns The updated game
    */
-  update(id: number, data: GameUpdate): Promise<Game | null>;
+  update(id: number, data: GameUpdate): Promise<GameWithSubmitter | null>;
 
   /**
    * Delete a game
@@ -128,6 +142,16 @@ export interface GameRepository {
    * @returns Number of games matching the condition
    */
   count(params?: GameSearchParams): Promise<number>;
+
+  getEmbeddingsForGames(
+    gameIds: number[]
+  ): Promise<{ id: number; embedding: number[] | null }[]>;
+  getGamesBySimilarity(
+    targetVector: number[],
+    excludedIds: number[],
+    limit: number,
+    offset?: number
+  ): Promise<GameWithSubmitter[]>;
 }
 
 // Placeholder for the DrizzleGameRepository implementation
@@ -166,7 +190,7 @@ export class DrizzleGameRepository implements GameRepository {
     return result[0] || null;
   }
 
-  async getBySteamAppId(steamAppid: string): Promise<Game | null> {
+  async getBySteamAppId(steamAppid: string): Promise<GameWithSubmitter | null> {
     // The schema has a unique `steam_appid` column and also `external_id`.
     // This method specifically targets `steam_appid`.
     const result = await db
@@ -182,16 +206,17 @@ export class DrizzleGameRepository implements GameRepository {
       limit = 20,
       offset = 0,
       orderBy = "newest",
-      includeSubmitter = false, // Default to false
+      includeSubmitter = false,
     } = params;
+
+    console.log(
+      `[DrizzleGameRepository.search] Received params: limit=${limit}, offset=${offset}, orderBy='${orderBy}', excludeIds=${JSON.stringify(params.excludeIds)}`
+    );
+
     const whereClause = this.buildWhereClause(params);
 
-    // Base query, always select fields for GameWithSubmitter structure
-    // If includeSubmitter is false, foundByUsername/AvatarUrl will be null if not joined,
-    // or if the left join doesn't find a match.
     let queryCore = db
       .select({
-        // Fields from gamesTable (Game part)
         id: gamesTable.id,
         platform: gamesTable.platform,
         externalId: gamesTable.externalId,
@@ -209,7 +234,6 @@ export class DrizzleGameRepository implements GameRepository {
         lastFetched: gamesTable.lastFetched,
         createdAt: gamesTable.createdAt,
         foundBy: gamesTable.foundBy,
-        // Fields from profilesTable (Submitter part) - conditionally populated by JOIN
         foundByUsername: includeSubmitter
           ? profilesTable.username
           : drizzleSql`null`.as<string | null>("foundByUsername"),
@@ -218,7 +242,7 @@ export class DrizzleGameRepository implements GameRepository {
           : drizzleSql`null`.as<string | null>("foundByAvatarUrl"),
       })
       .from(gamesTable)
-      .$dynamic(); // For conditional parts
+      .$dynamic();
 
     if (includeSubmitter) {
       queryCore = queryCore.leftJoin(
@@ -234,13 +258,13 @@ export class DrizzleGameRepository implements GameRepository {
 
     let orderedQuery;
     switch (orderBy) {
-      case "popular":
+      case "popular": // Placeholder, needs actual popularity metric
         orderedQuery = queryWithConditions.orderBy(
           desc(gamesTable.createdAt),
           desc(gamesTable.id)
         );
         break;
-      case "relevance":
+      case "relevance": // Placeholder, needs actual relevance metric for query
         orderedQuery = queryWithConditions.orderBy(
           desc(gamesTable.createdAt),
           desc(gamesTable.id)
@@ -256,14 +280,18 @@ export class DrizzleGameRepository implements GameRepository {
     }
 
     const paginatedQuery = orderedQuery.limit(limit).offset(offset);
+
     const results = await paginatedQuery.execute();
 
-    // Ensure the shape matches GameWithSubmitter. Explicit nulls are fine.
+    console.log(
+      `[DrizzleGameRepository.search] Query executed. Found ${results.length} results. First few IDs: ${results
+        .slice(0, 5)
+        .map((r) => r.id)
+        .join(", ")}`
+    );
+
     return results.map((r) => ({
       ...r,
-      // If not includeSubmitter, foundByUsername/AvatarUrl were selected as sql`null`
-      // so they should exist on `r` but be null.
-      // If includeSubmitter was true but no join match, they'd also be null.
     })) as GameWithSubmitter[];
   }
 
@@ -279,9 +307,21 @@ export class DrizzleGameRepository implements GameRepository {
     return results;
   }
 
-  async getRecent(limit: number = 10): Promise<GameWithSubmitter[]> {
-    // Now calls search and explicitly includes submitter info.
-    return this.search({ limit, orderBy: "newest", includeSubmitter: true });
+  async getRecent(
+    limit: number = 10,
+    excludeIds?: number[],
+    offset: number = 0
+  ): Promise<GameWithSubmitter[]> {
+    const searchParams: GameSearchParams = {
+      limit,
+      offset,
+      orderBy: "newest",
+      includeSubmitter: true,
+    };
+    if (excludeIds && excludeIds.length > 0) {
+      searchParams.excludeIds = excludeIds;
+    }
+    return this.search(searchParams);
   }
 
   async getByUser(
@@ -304,7 +344,7 @@ export class DrizzleGameRepository implements GameRepository {
     gameId: number,
     limit: number = 10,
     excludeIds?: number[]
-  ): Promise<Game[]> {
+  ): Promise<GameWithSubmitter[]> {
     // Step 1: Get the embedding of the reference game
     const referenceGame = await db
       .select({ embedding: gamesTable.embedding })
@@ -347,7 +387,53 @@ export class DrizzleGameRepository implements GameRepository {
     return similarGames;
   }
 
-  async create(game: GameInsert): Promise<Game> {
+  async getGamesByIds(ids: number[]): Promise<GameWithSubmitter[]> {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+    const gamesData = await db
+      .select({
+        // Explicitly select all needed fields from gamesTable for GameWithSubmitter
+        id: gamesTable.id,
+        title: gamesTable.title,
+        platform: gamesTable.platform,
+        externalId: gamesTable.externalId,
+        steamAppid: gamesTable.steamAppid,
+        developer: gamesTable.developer,
+        descriptionShort: gamesTable.descriptionShort,
+        descriptionDetailed: gamesTable.descriptionDetailed,
+        genres: gamesTable.genres,
+        tags: gamesTable.tags,
+        rawData: gamesTable.rawData,
+        embedding: gamesTable.embedding,
+        enrichmentStatus: gamesTable.enrichmentStatus,
+        isFeatured: gamesTable.isFeatured,
+        lastFetched: gamesTable.lastFetched,
+        createdAt: gamesTable.createdAt,
+        foundBy: gamesTable.foundBy,
+        // And explicitly select submitter details
+        foundByUsername: profilesTable.username,
+        foundByAvatarUrl: profilesTable.avatarUrl,
+      })
+      .from(gamesTable)
+      .leftJoin(profilesTable, eq(gamesTable.foundBy, profilesTable.id))
+      .where(inArray(gamesTable.id, ids));
+
+    // Drizzle returns results, but order based on `inArray` is not guaranteed.
+    // Re-order based on the original `ids` array.
+    const orderMap = new Map(ids.map((id, index) => [id, index]));
+    const orderedGamesData = [...gamesData].sort(
+      (a, b) =>
+        (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity)
+    );
+
+    return orderedGamesData.map((game) => ({
+      ...game,
+      rawData: game.rawData as any, // GameService will parse this
+    })) as GameWithSubmitter[];
+  }
+
+  async create(game: GameInsert): Promise<GameWithSubmitter> {
     const result = await db.insert(gamesTable).values(game).returning();
     if (result.length === 0) {
       // This case should ideally not happen if the insert is successful without errors
@@ -457,5 +543,85 @@ export class DrizzleGameRepository implements GameRepository {
     }
 
     return result[0]?.value || 0;
+  }
+
+  async getEmbeddingsForGames(
+    gameIds: number[]
+  ): Promise<{ id: number; embedding: number[] | null }[]> {
+    if (!gameIds || gameIds.length === 0) {
+      return [];
+    }
+    try {
+      const results = await db
+        .select({ id: gamesTable.id, embedding: gamesTable.embedding })
+        .from(gamesTable)
+        .where(
+          and(inArray(gamesTable.id, gameIds), isNotNull(gamesTable.embedding))
+        );
+      return results;
+    } catch (error) {
+      console.error(
+        "DrizzleGameRepository: Error fetching embeddings for games:",
+        error
+      );
+      return [];
+    }
+  }
+
+  async getGamesBySimilarity(
+    targetVector: number[],
+    excludedIds: number[],
+    limit: number,
+    offset: number = 0
+  ): Promise<GameWithSubmitter[]> {
+    if (!targetVector || targetVector.length === 0) {
+      return [];
+    }
+    const conditions: SQL[] = [];
+    if (excludedIds && excludedIds.length > 0) {
+      conditions.push(notInArray(gamesTable.id, excludedIds));
+    }
+    conditions.push(isNotNull(gamesTable.embedding));
+
+    const vectorString = JSON.stringify(targetVector);
+
+    try {
+      const results = await db
+        .select({
+          id: gamesTable.id,
+          platform: gamesTable.platform,
+          externalId: gamesTable.externalId,
+          title: gamesTable.title,
+          developer: gamesTable.developer,
+          descriptionShort: gamesTable.descriptionShort,
+          descriptionDetailed: gamesTable.descriptionDetailed,
+          genres: gamesTable.genres,
+          tags: gamesTable.tags,
+          embedding: gamesTable.embedding,
+          rawData: gamesTable.rawData,
+          enrichmentStatus: gamesTable.enrichmentStatus,
+          isFeatured: gamesTable.isFeatured,
+          steamAppid: gamesTable.steamAppid,
+          lastFetched: gamesTable.lastFetched,
+          createdAt: gamesTable.createdAt,
+          foundBy: gamesTable.foundBy,
+          foundByUsername: profilesTable.username,
+          foundByAvatarUrl: profilesTable.avatarUrl,
+        })
+        .from(gamesTable)
+        .leftJoin(profilesTable, eq(gamesTable.foundBy, profilesTable.id))
+        .where(and(...conditions))
+        .orderBy(drizzleSql`embedding <=> '${drizzleSql.raw(vectorString)}'`)
+        .limit(limit)
+        .offset(offset);
+
+      return results as GameWithSubmitter[];
+    } catch (error) {
+      console.error(
+        "DrizzleGameRepository: Error fetching games by similarity:",
+        error
+      );
+      return [];
+    }
   }
 }

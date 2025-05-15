@@ -1,44 +1,44 @@
 import React from "react";
 import { createClient } from "@/utils/supabase/server";
-import {
-  getLibraryGameIds,
-  removeFromLibrary,
-  addToLibrary,
-} from "@/app/(api)/actions/library";
-import { db, schema } from "@/db";
-import { inArray, eq } from "drizzle-orm";
+import { removeFromLibrary, addToLibrary } from "@/app/(api)/actions/library";
 import { GameGrid } from "@/components/game-grid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getGamesFoundByUser } from "@/app/(api)/actions/finds";
 import { DefaultGameService } from "@/services/game-service";
 import type { GameCardViewModel } from "@/services/game-service";
 import type { Game } from "@/lib/repositories/game-repository";
+import { DrizzleGameRepository } from "@/lib/repositories/game-repository";
+import { DrizzleUserRepository } from "@/lib/repositories/user-repository";
 
 const gameService = new DefaultGameService();
+const gameRepository = new DrizzleGameRepository();
+const userRepository = new DrizzleUserRepository();
 
 async function getUserLibraryGames(
   userId: string
 ): Promise<GameCardViewModel[]> {
-  const libraryResult = await getLibraryGameIds();
+  const supabase = await createClient();
+  const {
+    data: { user: authenticatedUser },
+    error: authError,
+  } = await supabase.auth.getUser();
 
-  if (
-    !libraryResult.success ||
-    !libraryResult.data ||
-    libraryResult.data.length === 0
-  ) {
+  if (authError || !authenticatedUser || authenticatedUser.id !== userId) {
+    console.error(
+      "Authentication error or mismatch in getUserLibraryGames",
+      authError
+    );
     return [];
   }
 
-  const gameIds = libraryResult.data;
-
   try {
-    const gamesFromDb = await db
-      .select()
-      .from(schema.gamesTable)
-      .where(inArray(schema.gamesTable.id, gameIds))
-      .execute();
-
-    return gameService.toGameCardViewModels(gamesFromDb as Game[]);
+    const gameIds = await userRepository.getLibraryGameIds(
+      authenticatedUser.id
+    );
+    if (!gameIds || gameIds.length === 0) {
+      return [];
+    }
+    const gamesFromDb: Game[] = await gameRepository.getGamesByIds(gameIds);
+    return gameService.toGameCardViewModels(gamesFromDb);
   } catch (error) {
     console.error("Error fetching library game details:", error);
     return [];
@@ -60,10 +60,8 @@ export default async function LibraryPage() {
   // Get the games found by the current user
   let foundGames: GameCardViewModel[] = [];
   try {
-    const foundGamesResult = await getGamesFoundByUser(user.id);
-    if (foundGamesResult.success && foundGamesResult.data) {
-      foundGames = foundGamesResult.data;
-    }
+    const rawFoundGames = await gameRepository.getByUser(user.id);
+    foundGames = gameService.toGameCardViewModels(rawFoundGames);
   } catch (error) {
     console.error("Error fetching user's found games:", error);
   }

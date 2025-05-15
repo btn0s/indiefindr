@@ -1,12 +1,15 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { db } from "@/db";
-import { profilesTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { DefaultUserService } from "@/services/user-service";
 import { redirect } from "next/navigation";
 
-export async function completeOnboarding() {
+const userService = new DefaultUserService();
+
+export async function completeOnboarding(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
   try {
     const supabase = await createClient();
     const {
@@ -14,33 +17,43 @@ export async function completeOnboarding() {
     } = await supabase.auth.getUser();
 
     if (!user) {
+      console.warn("completeOnboarding Action: User not authenticated.");
       return { success: false, error: "Not authenticated" };
     }
 
-    // Update the profile to mark onboarding as completed
-    await db
-      .update(profilesTable)
-      .set({ 
-        hasCompletedOnboarding: true,
-        updatedAt: new Date()
-      })
-      .where(eq(profilesTable.id, user.id));
+    const result = await userService.markOnboardingAsCompleted(user.id);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Failed to complete onboarding via service.",
+      };
+    }
 
     return { success: true };
   } catch (error) {
-    console.error("Error completing onboarding:", error);
-    return { success: false, error: "Failed to complete onboarding" };
+    console.error("Error in completeOnboarding action:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred in the action.",
+    };
   }
 }
 
 export async function completeOnboardingAndRedirect() {
   const result = await completeOnboarding();
-  
+
   if (result.success) {
     redirect("/");
   } else {
-    // If there's an error, still redirect to the feed but don't mark onboarding as complete
-    redirect("/?onboarding_error=true");
+    const queryParams = new URLSearchParams();
+    if (result.error) {
+      queryParams.set("onboarding_error_message", result.error);
+    }
+    redirect(`/?${queryParams.toString()}`);
   }
 }
 

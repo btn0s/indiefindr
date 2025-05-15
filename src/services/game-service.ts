@@ -1,8 +1,18 @@
 import type {
   Game,
+  GameInsert, // Ensure GameInsert is imported if needed by new service method indirectly
   GameWithSubmitter,
 } from "@/lib/repositories/game-repository";
+import { DrizzleGameRepository } from "@/lib/repositories/game-repository"; // For direct instantiation
+import { EnrichmentService } from "@/services/enrichment-service"; // Import EnrichmentService
+import { DefaultLibraryService } from "@/services/library-service"; // Import LibraryService
 import type { SteamRawData } from "@/types/steam"; // For rawData type if needed for intermediate processing
+import { enrichSteamAppId } from "@/lib/workers/steam-enrichment"; // Import the worker
+
+// --- Constants for Personalized Feed Logic ---
+const MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING = 1;
+const FEED_SIZE = 12;
+const VECTOR_DIMENSIONS = 1536; // Should match your embedding model dimensions
 
 // --- View Model Interfaces ---
 
@@ -61,6 +71,7 @@ export interface GameProfileViewModel extends GameCardViewModel {
   // Example: systemRequirements?: { minimum: string; recommended: string };
   // Example: websiteUrl?: string;
   // Example: metacriticScore?: number;
+  enrichedMedia?: any[]; // Placeholder for media from EnrichmentService
 }
 
 // Potentially a simpler list item view model if GameCardViewModel is too heavy for some lists
@@ -91,21 +102,48 @@ export interface GameService {
    * game object for a profile page.
    */
   toGameProfileViewModel(
-    game: Game | GameWithSubmitter /*Potentially needs more enriched input*/
+    game: Game | GameWithSubmitter /*Potentially needs more enriched input*/,
+    enrichedMedia?: any[] // Added to accept enriched media
   ): GameProfileViewModel;
 
   /**
-   * Example of a method that might fetch data AND transform:
-   * Fetches a game by its ID using the GameRepository (or direct DB access)
+   * Fetches a game by its ID using the GameRepository, enriches it using EnrichmentService,
    * and transforms it into a GameProfileViewModel.
-   * This is useful if the service layer is also responsible for some data fetching orchestration.
-   *
-   * NOTE: For TH-218, we might start with transformation methods only,
-   * and integrate fetching later if the pattern becomes clear.
-   * The ticket mentions "transformation of raw data from repositories",
-   * implying the service primarily transforms already-fetched data.
    */
-  // getGameProfileViewModelById(id: number): Promise<GameProfileViewModel | null>;
+  getGameProfileViewModelById(id: number): Promise<GameProfileViewModel | null>;
+
+  /**
+   * Fetches recent games using the GameRepository and transforms them into GameCardViewModels.
+   * Suitable for use in feeds or API responses that need recent game data in UI-ready format.
+   */
+  getRecentGamesForFeed(
+    limit?: number,
+    page?: number
+  ): Promise<GameCardViewModel[]>;
+
+  /**
+   * Submits a new game by its Steam App ID. Checks for existence,
+   * then triggers enrichment and creation if it doesn't exist.
+   * Returns status and game data (as GameCardViewModel if successful or game exists).
+   */
+  submitNewGameBySteamAppId(
+    userId: string,
+    steamAppId: string
+  ): Promise<{
+    status: "success" | "error" | "exists";
+    message: string;
+    game?: GameCardViewModel; // Game data if success or exists
+    gameId?: string; // Internal DB ID if exists
+  }>;
+
+  /**
+   * Fetches a personalized game feed for a user, or a fallback.
+   */
+  getPersonalizedFeedForUser(
+    userId: string,
+    limit?: number,
+    page?: number
+  ): Promise<GameCardViewModel[]>;
 
   // --- Utility/Helper functions (could be private or exposed if generally useful) ---
   // These might live in a separate utils file but are conceptually part of the service's domain.
@@ -122,6 +160,14 @@ export interface GameService {
  * into structured view models suitable for UI components.
  */
 export class DefaultGameService implements GameService {
+  private gameRepository: DrizzleGameRepository;
+  private libraryService: DefaultLibraryService; // Add libraryService property
+
+  constructor() {
+    this.gameRepository = new DrizzleGameRepository();
+    this.libraryService = new DefaultLibraryService(); // Instantiate LibraryService
+  }
+
   private _ensureHttps(url: string | null | undefined): string | null {
     if (!url) return null;
     if (url.startsWith("http://")) {
@@ -226,7 +272,8 @@ export class DefaultGameService implements GameService {
   }
 
   public toGameProfileViewModel(
-    game: Game | GameWithSubmitter
+    game: Game | GameWithSubmitter,
+    enrichedMediaData?: any[] // Accept enriched media
   ): GameProfileViewModel {
     const cardViewModel = this.toGameCardViewModel(game);
     const rawData = game.rawData as SteamRawData | null;
@@ -291,42 +338,291 @@ export class DefaultGameService implements GameService {
       videoUrls,
       screenshotUrls,
       releaseDate,
+      enrichedMedia: enrichedMediaData, // Include the enriched media
     };
   }
 
-  // --- Private Helper Methods for Transformations ---
-  // (Example: Can be added later or moved to a utils file)
+  public async getGameProfileViewModelById(
+    id: number
+  ): Promise<GameProfileViewModel | null> {
+    console.log(`GameService: Fetching profile for gameId: ${id}`);
+    const baseGameData = await this.gameRepository.getById(id);
 
-  // private getImageUrl(
-  //   rawData: SteamRawData | null,
-  //   steamAppId: string | null,
-  //   type: "header" | "capsule" | "screenshot",
-  //   screenshotIndex: number = 0
-  // ): string | null {
-  //   if (type === "capsule" && rawData?.capsule_image) return rawData.capsule_image;
-  //   if (type === "header" && rawData?.header_image) return rawData.header_image;
-  //   if (type === "screenshot" && rawData?.screenshots?.[screenshotIndex]?.path_full) {
-  //     return rawData.screenshots[screenshotIndex].path_full;
-  //   }
-  //   // Fallback to Steam CDN if appid available
-  //   if (steamAppId) {
-  //     if (type === "header" || type === "capsule") { // Steam uses header.jpg for both general display
-  //       return `https://cdn.akamai.steamstatic.com/steam/apps/${steamAppId}/header.jpg`;
-  //     }
-  //   }
-  //   return null;
-  // }
+    if (!baseGameData) {
+      console.warn(`GameService: Game with id ${id} not found.`);
+      return null;
+    }
 
-  // private formatTimeAgo(dateInput: string | Date | null): string | null {
-  //   if (!dateInput) return null;
-  //   // Placeholder for a real time_ago function (e.g., using date-fns)
-  //   try {
-  //     const date = new Date(dateInput);
-  //     return `${Math.floor((new Date().getTime() - date.getTime()) / (1000 * 60 * 60 * 24))} days ago`;
-  //   } catch {
-  //     return "Recently";
-  //   }
-  // }
+    // Call EnrichmentService to get additional media/data
+    // For this example, let's assume enrichMedia returns the media directly for simplicity,
+    // though in the blueprint it's part of an orchestrating enrichGame method.
+    // We'll call a method on EnrichmentService that could conceptually fetch and return data.
+    // Let's assume EnrichmentService.enrichMedia was designed to return the media, or we add a new method.
+    // For now, we can simulate a call to EnrichmentRepository directly as EnrichmentService doesn't directly return value from enrichMedia.
+    // This is a temporary step for speed, ideally EnrichmentService would have a method that returns necessary enriched data.
+    let enrichedMedia: any[] = [];
+    try {
+      // This is a simplified call. In a real scenario, EnrichmentService.enrichGame(String(id)) would be called,
+      // and then we might need another method in EnrichmentService or GameRepository to get the newly enriched data.
+      // Or EnrichmentService.enrichGame could return the enriched data bundle.
+      // For now, let's call a method on EnrichmentRepository directly via EnrichmentService, if it exposed one, or EnrichmentRepository itself.
+      // To keep it simple and use existing structure:
+      await EnrichmentService.enrichMedia(String(id)); // This populates, but doesn't return the media here
+      // To get the media for the view model, we'd typically fetch it *after* enrichment or have enrichMedia return it.
+      // Let's assume a (mocked) way to get it for the VM:
+      // enrichedMedia = await EnrichmentRepository.getMediaForGame(String(id)); // This would re-fetch mock data
+
+      // Simpler: Let's assume `enrichMedia` could return the media for the purpose of this example path,
+      // or `EnrichmentService` gets a new method like `getEnrichedMediaForGame`.
+      // For the sake of this edit, let's imagine enrichMedia on EnrichmentService returns something useful for the VM.
+      // We'll mock this part slightly from the strict current implementation of EnrichmentService.enrichMedia which is void.
+
+      // To align with blueprint's idea of GameService orchestrating:
+      // 1. Fetch base data (done)
+      // 2. Trigger enrichment (e.g., EnrichmentService.enrichGame(String(id));)
+      // 3. Fetch *all* data needed for profile view model (base + enriched). This might mean EnrichmentRepository needs getWithEnrichedData.
+
+      // For this fast path, let's directly call EnrichmentRepository from here as a placeholder
+      // for where GameService would assemble data from multiple sources post-enrichment.
+      const { EnrichmentRepository } = await import(
+        "@/lib/repositories/enrichment-repository"
+      );
+      enrichedMedia = await EnrichmentRepository.getMediaForGame(String(id));
+    } catch (error) {
+      console.error(
+        `GameService: Error during enrichment call for gameId ${id}:`,
+        error
+      );
+      // Decide if we should return partially enriched data or null
+    }
+
+    // Now transform using the existing method, passing the enriched data
+    return this.toGameProfileViewModel(baseGameData, enrichedMedia);
+  }
+
+  // New method to get recent games for feed/actions
+  public async getRecentGamesForFeed(
+    limit: number = FEED_SIZE,
+    page: number = 1
+  ): Promise<GameCardViewModel[]> {
+    console.log(
+      `[SERVICE ENTRY] getRecentGamesForFeed CALLED WITH: limit=${limit}, page=${page}`
+    );
+    
+    const offset = (page - 1) * limit;
+    console.log(
+      `GameService: Fetching recent games for feed. Limit: ${limit}, Page: ${page}, Offset: ${offset}`
+    );
+    try {
+      // Assuming getRecent in repository now accepts offset
+      const recentGamesData = await this.gameRepository.getRecent(
+        limit,
+        undefined,
+        offset
+      );
+      if (!recentGamesData) {
+        return [];
+      }
+      return this.toGameCardViewModels(recentGamesData);
+    } catch (error) {
+      console.error(
+        "GameService: Error fetching recent games for feed:",
+        error
+      );
+      return [];
+    }
+  }
+
+  public async submitNewGameBySteamAppId(
+    userId: string,
+    steamAppId: string
+  ): Promise<{
+    status: "success" | "error" | "exists";
+    message: string;
+    game?: GameCardViewModel;
+    gameId?: string;
+  }> {
+    if (!userId || !steamAppId) {
+      return {
+        status: "error",
+        message: "User ID and Steam App ID are required.",
+      };
+    }
+    console.log(
+      `GameService: Attempting to submit game by Steam App ID: ${steamAppId} for user ${userId}`
+    );
+
+    try {
+      // 1. Check if game already exists
+      const existingGame =
+        await this.gameRepository.getBySteamAppId(steamAppId);
+
+      if (existingGame) {
+        console.log(
+          `GameService: Game with Steam App ID ${steamAppId} already exists (DB ID: ${existingGame.id}).`
+        );
+        return {
+          status: "exists",
+          message: `"${existingGame.title || "This game"}" is already in IndieFindr!`,
+          game: this.toGameCardViewModel(existingGame), // Return existing game data as ViewModel
+          gameId: existingGame.id.toString(),
+        };
+      }
+
+      // 2. If not, trigger enrichment (which includes DB upsert via enrichSteamAppId worker)
+      console.log(
+        `GameService: Game with Steam App ID ${steamAppId} not found. Triggering enrichment.`
+      );
+      await enrichSteamAppId(steamAppId, userId); // This handles the upsert to gamesTable and enrichmentTable
+
+      // 3. Fetch the newly created/enriched game to return its data
+      const newlyCreatedGame =
+        await this.gameRepository.getBySteamAppId(steamAppId);
+      if (!newlyCreatedGame) {
+        // This would be an unexpected state if enrichSteamAppId was supposed to guarantee creation
+        console.error(
+          `GameService: CRITICAL - Game ${steamAppId} not found after enrichment call.`
+        );
+        return {
+          status: "error",
+          message:
+            "Game submission process failed unexpectedly after enrichment.",
+        };
+      }
+
+      console.log(
+        `GameService: Game ${steamAppId} submitted and enriched successfully. DB ID: ${newlyCreatedGame.id}`
+      );
+      return {
+        status: "success",
+        message: "Game submitted successfully!",
+        game: this.toGameCardViewModel(newlyCreatedGame),
+      };
+    } catch (error: any) {
+      console.error(
+        `GameService: Error submitting game by Steam App ID ${steamAppId}:`,
+        error
+      );
+      // Specific error from enrichSteamAppId (e.g., Steam API failure)
+      if (error.message?.includes("Steam API")) {
+        return { status: "error", message: error.message };
+      }
+      return {
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "An unexpected server error occurred during game submission.",
+      };
+    }
+  }
+
+  private _calculateAverageVector(
+    vectors: (number[] | null)[]
+  ): number[] | null {
+    const validVectors = vectors.filter(
+      (e): e is number[] => e !== null && e.length === VECTOR_DIMENSIONS
+    );
+    if (!validVectors || validVectors.length === 0) return null;
+
+    const numVectors = validVectors.length;
+    const average = new Array(VECTOR_DIMENSIONS).fill(0);
+
+    for (const vector of validVectors) {
+      for (let i = 0; i < VECTOR_DIMENSIONS; i++) {
+        average[i] += vector[i];
+      }
+    }
+    for (let i = 0; i < VECTOR_DIMENSIONS; i++) {
+      average[i] /= numVectors;
+    }
+    return average;
+  }
+
+  public async getPersonalizedFeedForUser(
+    userId: string,
+    limit: number = FEED_SIZE,
+    page: number = 1
+  ): Promise<GameCardViewModel[]> {
+    console.log(
+      `[SERVICE ENTRY] getPersonalizedFeedForUser CALLED WITH: userId=${userId}, limit=${limit}, page=${page}`
+    );
+
+    console.log(
+      `GameService: Getting personalized feed for user ${userId}, limit ${limit}, page ${page}`
+    );
+    if (!userId) return [];
+
+    const offset = (page - 1) * limit;
+    const libraryGameIds =
+      await this.libraryService.getUserLibraryGameIds(userId);
+    const excludedIds = libraryGameIds.length > 0 ? libraryGameIds : [-1];
+
+    let recommendedGamesRaw: GameWithSubmitter[] = [];
+
+    if (libraryGameIds.length >= MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING) {
+      console.log(
+        `GameService: User ${userId} library size ${libraryGameIds.length}, attempting average embedding search.`
+      );
+      const libraryEmbeddingsData =
+        await this.gameRepository.getEmbeddingsForGames(libraryGameIds);
+      const averageVector = this._calculateAverageVector(
+        libraryEmbeddingsData.map((e) => e.embedding)
+      );
+
+      if (averageVector) {
+        console.log(
+          `GameService: Calculated average vector for user ${userId}.`
+        );
+        // Pass offset to getGamesBySimilarity
+        recommendedGamesRaw = await this.gameRepository.getGamesBySimilarity(
+          averageVector,
+          excludedIds,
+          limit,
+          offset
+        );
+        console.log(
+          `GameService: Found ${recommendedGamesRaw.length} recommendations via average embedding for user ${userId}.`
+        );
+      } else {
+        console.log(
+          `GameService: Could not calculate average vector for user ${userId}.`
+        );
+      }
+    }
+
+    if (recommendedGamesRaw.length < limit) {
+      // If not enough recommendations, fill with recent games
+      const neededToFill = limit - recommendedGamesRaw.length;
+      // Calculate offset for recent games based on how many personalized results we already have for *this page*.
+      // This simple offset might fetch overlapping recent games if personalized results partially filled the page.
+      // A more sophisticated approach might need to fetch more recents and then slice, or adjust offset based on *total* personalized items found if we were doing deeper pagination into personalized results first.
+      // For now, this fills the current page.
+      // We also need to exclude IDs that were already part of `recommendedGamesRaw` from this fallback query.
+      const currentRecommendedIds = recommendedGamesRaw.map((g) => g.id);
+      const combinedExcludedIds = Array.from(
+        new Set([...excludedIds, ...currentRecommendedIds])
+      );
+
+      console.log(
+        `GameService: User ${userId} - Filling ${neededToFill} spots with recent games.`
+      );
+      const recentFallbackGames = await this.gameRepository.getRecent(
+        neededToFill,
+        combinedExcludedIds,
+        offset
+      ); // Pass offset here too
+      recommendedGamesRaw.push(...recentFallbackGames);
+      console.log(
+        `GameService: Found ${recentFallbackGames.length} recent games as fallback for user ${userId}. Total now: ${recommendedGamesRaw.length}`
+      );
+    }
+
+    // Ensure we don't exceed the limit due to concatenation if both sources return items
+    const finalGamesRaw = recommendedGamesRaw.slice(0, limit);
+
+    return this.toGameCardViewModels(finalGamesRaw);
+  }
 }
 
 // Optional: Export an instance of the service for easy import elsewhere

@@ -1,6 +1,6 @@
 import React from "react";
 import { createClient } from "@/utils/supabase/server";
-import { Feed } from "@/components/feed";
+import { FeedContainer } from "@/components/feed/feed-container";
 import { db } from "@/db";
 import { profilesTable, libraryTable, gamesTable } from "@/db/schema";
 import { eq, count } from "drizzle-orm";
@@ -84,7 +84,10 @@ export default async function HomePage() {
 
         {/* Feed Section (Right Side or Main Area on Mobile) */}
         <section className="w-full">
-          <Feed isLoggedIn={isLoggedIn} />
+          <FeedContainer
+            feedType={isLoggedIn ? "personalized" : "all"}
+
+          />
         </section>
 
         {/* <aside className="w-1/4"></aside> */}
