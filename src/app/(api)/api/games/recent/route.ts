@@ -4,15 +4,18 @@ import {
   GameWithSubmitter,
   GameSearchParams,
 } from "@/lib/repositories/game-repository";
+import { DefaultGameService } from "@/services/game-service";
+import type { GameCardViewModel } from "@/services/game-service";
 
 interface RecentGamesResult {
   success: boolean;
-  data?: GameWithSubmitter[]; // Directly use GameWithSubmitter
+  data?: GameCardViewModel[];
   message?: string;
 }
 
 const DEFAULT_LIMIT = 10; // Default number of games for this route
 const gameRepository = new DrizzleGameRepository();
+const gameService = new DefaultGameService();
 
 export async function GET(
   request: NextRequest
@@ -36,18 +39,14 @@ export async function GET(
   };
 
   try {
-    const recentGames: GameWithSubmitter[] =
+    const recentGamesFromRepo: GameWithSubmitter[] =
       await gameRepository.search(searchParams);
 
-    // The old RecentApiGame had a shortDescription field. GameWithSubmitter has descriptionShort.
-    // Let's ensure the API response is consistent or update frontend if it now expects descriptionShort.
-    // For now, I'll map to ensure shortDescription exists if the frontend still relies on it.
-    const apiResponseData = recentGames.map((game) => ({
-      ...game,
-      shortDescription: game.descriptionShort, // Explicitly map for compatibility
-    }));
+    // Transform data using GameService
+    const transformedGames: GameCardViewModel[] =
+      gameService.toGameCardViewModels(recentGamesFromRepo);
 
-    return NextResponse.json({ success: true, data: apiResponseData });
+    return NextResponse.json({ success: true, data: transformedGames });
   } catch (error) {
     console.error("Error fetching recent games:", error);
     return NextResponse.json(
