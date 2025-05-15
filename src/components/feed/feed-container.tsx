@@ -27,11 +27,7 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
   feedType,
   feedOptions = {},
   title,
-  showLoadMoreButton = true,
   emptyStateMessage = "No items to display.",
-  className = "",
-  itemClassName = "",
-  // onContentClick,
 }) => {
   const {
     items,
@@ -59,7 +55,7 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
   if (error) {
     return (
       <div
-        className={`p-4 text-red-600 bg-red-100 border border-red-400 rounded-md ${className}`}
+        className={`p-4 text-red-600 bg-red-100 border border-red-400 rounded-md`}
       >
         <p>Error loading feed: {error.message}</p>
       </div>
@@ -68,16 +64,14 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
 
   if (isEmpty) {
     return (
-      <div
-        className={`p-4 text-center text-gray-500 dark:text-gray-400 ${className}`}
-      >
+      <div className={`p-4 text-center text-gray-500 dark:text-gray-400`}>
         <p>{emptyStateMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className={`feed-container ${className}`}>
+    <div className={`feed-container max-w-lg mx-auto`}>
       {title && (
         <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-200">
           {title}
@@ -92,9 +86,7 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
       )}
 
       {!isLoadingInitialData && isEmpty && (
-        <div
-          className={`p-4 text-center text-gray-500 dark:text-gray-400 ${className}`}
-        >
+        <div className={`p-4 text-center text-gray-500 dark:text-gray-400`}>
           <p>{emptyStateMessage}</p>
         </div>
       )}
@@ -102,8 +94,7 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
       {!isEmpty && (
         <div className="feed-items-list flex flex-col">
           {items.map((item: FeedItemType) => (
-            <div key={item.feedItemKey} className={itemClassName}>
-              {" "}
+            <div key={item.feedItemKey}>
               {/* Apply itemClassName here if provided */}
               <FeedItemComponent item={item} />
             </div>
@@ -119,15 +110,16 @@ export const FeedContainer: React.FC<FeedContainerProps> = ({
         </div>
       )}
 
-      {showLoadMoreButton && hasMore && !isLoading && !isLoadingInitialData && (
+      {hasMore && !isLoading && !isLoadingInitialData && (
         <div className="mt-6 text-center">
-          <button
+          <Button
+            variant="ghost"
             onClick={loadMore}
             disabled={isLoadingMore}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 transition-colors duration-150 ease-in-out"
+            className="w-full"
           >
             {isLoadingMore ? "Loading..." : "Load More"}
-          </button>
+          </Button>
         </div>
       )}
 
