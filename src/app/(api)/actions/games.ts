@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { externalSourceTable } from "@/db/schema";
+import { gamesTable } from "@/db/schema";
 import { desc } from "drizzle-orm";
 import type { SteamRawData } from "@/types/steam";
 
@@ -24,15 +24,15 @@ export async function getRecentGames(): Promise<{
   try {
     const recentGamesData = await db
       .select({
-        id: externalSourceTable.id,
-        title: externalSourceTable.title,
-        shortDescription: externalSourceTable.descriptionShort,
-        steamAppid: externalSourceTable.steamAppid,
-        tags: externalSourceTable.tags, // Assuming tags is stored as string[] or similar
-        rawData: externalSourceTable.rawData, // Assuming rawData is stored appropriately
+        id: gamesTable.id,
+        title: gamesTable.title,
+        shortDescription: gamesTable.descriptionShort,
+        steamAppid: gamesTable.steamAppid,
+        tags: gamesTable.tags, // Assuming tags is stored as string[] or similar
+        rawData: gamesTable.rawData, // Assuming rawData is stored appropriately
       })
-      .from(externalSourceTable)
-      .orderBy(desc(externalSourceTable.id)) // Order by ID descending to get recent ones
+      .from(gamesTable)
+      .orderBy(desc(gamesTable.id)) // Order by ID descending to get recent ones
       .limit(20); // Limit to 20 games
 
     // Ensure the fetched data matches the RecentGame interface structure.

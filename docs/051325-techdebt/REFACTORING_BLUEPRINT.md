@@ -48,7 +48,7 @@ export const gameEnrichmentTable = pgTable(
     id: bigserial("id", { mode: "number" }).primaryKey(),
     gameId: bigint("game_id", { mode: "number" })
       .notNull()
-      .references(() => externalSourceTable.id, { onDelete: "cascade" }),
+      .references(() => gamesTable.id, { onDelete: "cascade" }),
     source: text("source").notNull(), // e.g., "youtube", "twitter", "reddit"
     sourceType: text("source_type").notNull(), // e.g., "video", "post", "article"
     content: jsonb("content"), // Flexible JSON structure for different content types

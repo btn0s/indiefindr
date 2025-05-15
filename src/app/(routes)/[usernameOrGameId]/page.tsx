@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Metadata, ResolvingMetadata } from "next"; // Import Metadata types
 // import { Database } from "@/lib/database.types"; // Removed - Use Drizzle types implicitly
 import { GameGrid } from "@/components/game-grid"; // Import GameGrid
-import { profilesTable, libraryTable, externalSourceTable } from "@/db/schema"; // Import schema tables
+import { profilesTable, libraryTable, gamesTable } from "@/db/schema"; // Import schema tables
 import { db } from "@/db"; // Import Drizzle instance
 import { eq, and, sql, count } from "drizzle-orm";
 import type { SteamRawData } from "@/types/steam"; // Import SteamRawData type
@@ -68,8 +68,8 @@ export async function generateMetadata({
 
     const findsCount = await db
       .select({ count: count() })
-      .from(externalSourceTable)
-      .where(eq(externalSourceTable.foundBy, profile.id))
+      .from(gamesTable)
+      .where(eq(gamesTable.foundBy, profile.id))
       .then((rows) => Number(rows[0]?.count) || 0);
 
     const title = `${profile.username} on IndieFindr`;
@@ -148,17 +148,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   try {
     libraryGames = await db
       .select({
-        id: externalSourceTable.id,
-        title: externalSourceTable.title,
-        descriptionShort: externalSourceTable.descriptionShort, // Correct field name
-        steamAppid: externalSourceTable.steamAppid,
-        rawData: sql<SteamRawData | null>`${externalSourceTable.rawData}`, // Select and cast rawData
+        id: gamesTable.id,
+        title: gamesTable.title,
+        descriptionShort: gamesTable.descriptionShort, // Correct field name
+        steamAppid: gamesTable.steamAppid,
+        rawData: sql<SteamRawData | null>`${gamesTable.rawData}`, // Select and cast rawData
       })
       .from(libraryTable)
-      .innerJoin(
-        externalSourceTable,
-        eq(libraryTable.gameRefId, externalSourceTable.id)
-      )
+      .innerJoin(gamesTable, eq(libraryTable.gameRefId, gamesTable.id))
       .where(eq(libraryTable.userId, profileData.id));
   } catch (error) {
     console.error("Library fetch error:", error);

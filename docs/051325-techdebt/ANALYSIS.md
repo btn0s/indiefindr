@@ -53,7 +53,7 @@ This document outlines a comprehensive plan to address technical debt, improve c
 ```typescript
 // src/lib/repositories/game-repository.ts
 import { db } from "@/db";
-import { externalSourceTable /*, potential_enriched_data_table */ } from "@/db/schema";
+import { gamesTable /*, potential_enriched_data_table */ } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export const GameRepository = {
@@ -61,8 +61,8 @@ export const GameRepository = {
     // Example: Querying base game data
     return db
       .select()
-      .from(externalSourceTable)
-      .where(eq(externalSourceTable.id, id))
+      .from(gamesTable)
+      .where(eq(gamesTable.id, id))
       .limit(1)
       .then(results => results[0] || null);
   },
