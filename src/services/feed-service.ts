@@ -91,6 +91,12 @@ const FEED_POOL_MULTIPLIER = 3; // How many more items to fetch initially for ra
 const MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING = 1;
 const VECTOR_DIMENSIONS = 1536; // Should match embedding model dimensions
 
+const VIDEO_IGNORE_SOURCES = ["steam"];
+const IMAGE_IGNORE_SOURCES = ["steam"];
+const ARTICLE_IGNORE_SOURCES = ["steam"];
+const SNIPPET_IGNORE_SOURCES = ["steam"];
+const REVIEW_SNIPPET_IGNORE_SOURCES = ["steam"];
+
 // --- Feed Service Implementation (Placeholder) ---
 export class DefaultFeedService implements FeedService {
   private gameService: IGameService;
@@ -172,10 +178,27 @@ export class DefaultFeedService implements FeedService {
     });
   }
 
+  private _stripHtmlAndSnip(
+    html: string | null,
+    maxLength: number = 150
+  ): string | null {
+    if (!html) return null;
+    const plainText = html
+      .replace(/<[^>]+>/g, "")
+      .replace(/\s+/g, " ")
+      .trim(); // Strip HTML tags and normalize whitespace
+    if (plainText.length <= maxLength) return plainText;
+    return plainText.substring(0, maxLength) + "...";
+  }
+
   private _transformEnrichmentToFeedItem(
     enrichment: GameEnrichment,
     parentGame: { id: number; title: string; steamAppid: string | null }
   ): FeedItem | null {
+    console.log(
+      `FeedService._transformEnrichmentToFeedItem BEGIN: enrichmentId: ${enrichment.id}, dbContentType: '${enrichment.contentType}', gameId: ${enrichment.gameId}`
+    );
+
     if (!enrichment.createdAt) {
       console.warn(
         `FeedService: Skipping enrichment ID ${enrichment.id} due to null createdAt.`
@@ -196,31 +219,49 @@ export class DefaultFeedService implements FeedService {
       sourceName: enrichment.sourceName,
     };
 
+    let resultFeedItem: FeedItem | null = null;
+
     switch (enrichment.contentType) {
       case "video_url": {
-        const videoTitle =
-          cJson && typeof cJson.title === "string" ? cJson.title : null;
-        let videoUrl =
-          cJson && typeof cJson.url === "string"
-            ? this._ensureHttps(cJson.url)
-            : null;
-        if (
-          !videoUrl &&
-          typeof enrichment.contentJson === "string" &&
-          enrichment.contentJson.startsWith("http")
-        ) {
-          videoUrl = this._ensureHttps(enrichment.contentJson);
+        if (VIDEO_IGNORE_SOURCES.includes(enrichment.sourceName)) {
+          console.warn(
+            `FeedService: Skipping video_url enrichment ID ${enrichment.id} because its sourceName ('${enrichment.sourceName}') is in VIDEO_IGNORE_SOURCES.`
+          );
+          resultFeedItem = null;
+          break;
         }
+        const videoTitle =
+          cJson && typeof cJson.name === "string"
+            ? cJson.name // Use .name from cJson for title
+            : cJson && typeof cJson.title === "string"
+              ? cJson.title
+              : null; // Fallback
+        let videoUrl =
+          typeof enrichment.contentValue === "string" &&
+          enrichment.contentValue.startsWith("http")
+            ? this._ensureHttps(enrichment.contentValue)
+            : null;
+        // Fallback to cJson.url if contentValue wasn't the primary source or was null
+        if (!videoUrl && cJson && typeof cJson.url === "string") {
+          videoUrl = this._ensureHttps(cJson.url);
+        }
+        const thumbnailUrl =
+          cJson && typeof cJson.thumbnail === "string"
+            ? this._ensureHttps(cJson.thumbnail)
+            : null; // Use .thumbnail
         const videoDescription =
           cJson && typeof cJson.description === "string"
             ? cJson.description
-            : null;
-        const thumbnailUrl =
-          cJson && typeof cJson.thumbnailUrl === "string"
-            ? this._ensureHttps(cJson.thumbnailUrl)
-            : null;
-        if (!videoUrl) return null;
-        return {
+            : null; // Optional
+
+        if (!videoUrl) {
+          console.warn(
+            `FeedService: video_url enrichment ID ${enrichment.id} missing videoUrl from contentValue or cJson.url.`
+          );
+          resultFeedItem = null;
+          break;
+        }
+        resultFeedItem = {
           ...baseEnrichmentItem,
           type: "video_enrichment",
           feedItemKey: `video_enrichment-${enrichment.id}`,
@@ -229,33 +270,66 @@ export class DefaultFeedService implements FeedService {
           videoDescription,
           thumbnailUrl,
         };
+        break;
       }
       case "article_url": {
+        if (ARTICLE_IGNORE_SOURCES.includes(enrichment.sourceName)) {
+          console.warn(
+            `FeedService: Skipping article_url enrichment ID ${enrichment.id} because its sourceName ('${enrichment.sourceName}') is in ARTICLE_IGNORE_SOURCES.`
+          );
+          resultFeedItem = null;
+          break;
+        }
         const articleTitle =
           cJson && typeof cJson.title === "string" ? cJson.title : null;
         const articleSnippet =
           cJson && typeof cJson.snippet === "string" ? cJson.snippet : null;
-        return {
+        // Assuming article_url itself might be in source_url or content_value if not in cJson
+        // For now, ArticleEnrichmentDisplay relies on sourceName and title/snippet.
+        // If the URL is crucial here, it needs to be explicitly extracted.
+        resultFeedItem = {
           ...baseEnrichmentItem,
           type: "article_enrichment",
           feedItemKey: `article_enrichment-${enrichment.id}`,
           articleTitle,
           articleSnippet,
         };
+        break;
       }
       case "image_url": {
+        if (IMAGE_IGNORE_SOURCES.includes(enrichment.sourceName)) {
+          console.warn(
+            `FeedService: Skipping image_url enrichment ID ${enrichment.id} because its sourceName ('${enrichment.sourceName}') is in IMAGE_IGNORE_SOURCES.`
+          );
+          resultFeedItem = null;
+          break;
+        }
         let imageUrl =
-          cJson && typeof cJson.url === "string"
-            ? this._ensureHttps(cJson.url)
-            : typeof enrichment.contentJson === "string"
-              ? this._ensureHttps(enrichment.contentJson)
-              : null;
+          typeof enrichment.contentValue === "string" &&
+          enrichment.contentValue.startsWith("http")
+            ? this._ensureHttps(enrichment.contentValue)
+            : null;
+        // Fallback to cJson.url if contentValue wasn't the primary source or was null
+        if (!imageUrl && cJson && typeof cJson.url === "string") {
+          imageUrl = this._ensureHttps(cJson.url);
+        }
         const imageAltText =
-          cJson && typeof cJson.altText === "string" ? cJson.altText : null;
+          cJson && typeof cJson.altText === "string"
+            ? cJson.altText
+            : parentGame.title
+              ? `${cJson?.type || "Image"} for ${parentGame.title}`
+              : null; // Default alt text
         const imageCaption =
           cJson && typeof cJson.caption === "string" ? cJson.caption : null;
-        if (!imageUrl) return null;
-        return {
+
+        if (!imageUrl) {
+          console.warn(
+            `FeedService: image_url enrichment ID ${enrichment.id} missing imageUrl from contentValue or cJson.url.`
+          );
+          resultFeedItem = null;
+          break;
+        }
+        resultFeedItem = {
           ...baseEnrichmentItem,
           type: "image_enrichment",
           feedItemKey: `image_enrichment-${enrichment.id}`,
@@ -263,31 +337,66 @@ export class DefaultFeedService implements FeedService {
           imageAltText,
           imageCaption,
         };
+        break;
       }
-      case "description":
-      case "review_snippet": {
-        const text =
-          cJson && typeof cJson.text === "string"
-            ? cJson.text
-            : typeof enrichment.contentJson === "string"
-              ? enrichment.contentJson
-              : null;
-        if (!text) return null;
-        return {
+      case "description": {
+        if (SNIPPET_IGNORE_SOURCES.includes(enrichment.sourceName)) {
+          console.warn(
+            `FeedService: Skipping description (snippet) enrichment ID ${enrichment.id} because its sourceName ('${enrichment.sourceName}') is in SNIPPET_IGNORE_SOURCES.`
+          );
+          resultFeedItem = null;
+          break;
+        }
+        const rawHtml = enrichment.contentValue;
+        let text = this._stripHtmlAndSnip(rawHtml, 280);
+
+        if (!text && cJson && typeof cJson.text === "string") {
+          text = cJson.text;
+        }
+
+        if (!text) {
+          console.warn(
+            `FeedService: description enrichment ID ${enrichment.id} resulted in empty text.`
+          );
+          resultFeedItem = null;
+          break;
+        }
+        resultFeedItem = {
           ...baseEnrichmentItem,
           type: "snippet_enrichment",
-          feedItemKey: `snippet_enrichment-${enrichment.contentType}-${enrichment.id}`,
+          feedItemKey: `snippet_enrichment-desc-${enrichment.id}`,
           text,
         };
+        break;
+      }
+      case "review_snippet": {
+        if (REVIEW_SNIPPET_IGNORE_SOURCES.includes(enrichment.sourceName)) {
+          console.warn(
+            `FeedService: Skipping review_snippet enrichment ID ${enrichment.id} because its sourceName ('${enrichment.sourceName}') is in REVIEW_SNIPPET_IGNORE_SOURCES.`
+          );
+          resultFeedItem = null;
+          break;
+        }
+        // For now, we don't have the snippet text, so we skip this type.
+        // Future: could create a ReviewLinkFeedItem or adapt if snippet text is added to DB.
+        console.warn(
+          `FeedService: review_snippet enrichment ID ${enrichment.id} - actual snippet text not available in DB. Skipping.`
+        );
+        resultFeedItem = null;
+        break;
       }
       default:
         const unhandledType: GameEnrichment["contentType"] =
           enrichment.contentType;
         console.warn(
-          `FeedService: Unhandled enrichment contentType "${unhandledType}" for enrichment ID ${enrichment.id}. Consider mapping it.`
+          `FeedService._transformEnrichmentToFeedItem: Unhandled DB contentType "${unhandledType}" for enrichment ID ${enrichment.id}.`
         );
-        return null;
+        resultFeedItem = null;
     }
+    console.log(
+      `FeedService._transformEnrichmentToFeedItem END: enrichmentId: ${enrichment.id}, constructed FeedItem.type: ${resultFeedItem?.type || "null"}`
+    );
+    return resultFeedItem;
   }
 
   public async getFeed(options: {
@@ -297,12 +406,10 @@ export class DefaultFeedService implements FeedService {
   }): Promise<FeedItem[]> {
     const { userId, limit = FEED_SIZE, page = 1 } = options;
     const gamePoolLimit = limit * FEED_POOL_MULTIPLIER;
-
     let candidateGames: GameWithSubmitter[] = [];
     let userLibraryGameIds: number[] = [];
     const gameIdsForEnrichmentFetching = new Set<number>();
 
-    // 1. Fetch a pool of recent games (with embeddings)
     console.log(
       `FeedService:getFeed - Fetching recent game pool (limit ${gamePoolLimit}, page ${page})`
     );
@@ -312,12 +419,9 @@ export class DefaultFeedService implements FeedService {
     });
 
     if (userId) {
-      // --- Personalized Feed Logic ---
       console.log(`FeedService:getFeed - Personalizing for user ${userId}`);
       userLibraryGameIds =
         await this.libraryService.getUserLibraryGameIds(userId);
-
-      // Filter out games already in the user's library from the recent pool
       const libraryGameIdSet = new Set(userLibraryGameIds);
       candidateGames = recentGamesPool.filter(
         (game) => !libraryGameIdSet.has(game.id)
@@ -325,8 +429,6 @@ export class DefaultFeedService implements FeedService {
       console.log(
         `FeedService:getFeed - Filtered recent pool to ${candidateGames.length} non-library games.`
       );
-
-      // Rank the filtered candidate games if library is sufficient
       if (
         userLibraryGameIds.length >= MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING &&
         candidateGames.length > 0
@@ -339,7 +441,6 @@ export class DefaultFeedService implements FeedService {
         const averageVector = this._calculateAverageVector(
           libraryEmbeddingsData.map((e) => e.embedding)
         );
-
         if (averageVector) {
           console.log(
             `FeedService:getFeed - Calculated average vector. Ranking candidate games.`
@@ -352,33 +453,24 @@ export class DefaultFeedService implements FeedService {
           console.log(
             `FeedService:getFeed - Could not calculate average vector. Using recency for candidate games.`
           );
-          // Games are already sorted by recency from getRecentGames, then filtered
         }
       } else {
         console.log(
           `FeedService:getFeed - Library too small or no candidates to rank. Using recency for ${candidateGames.length} games.`
         );
-        // Games are already sorted by recency then filtered
       }
-
-      // Add (filtered, possibly ranked) candidate games and all library games to enrichment fetching list
       candidateGames.forEach((game) =>
         gameIdsForEnrichmentFetching.add(game.id)
       );
       userLibraryGameIds.forEach((id) => gameIdsForEnrichmentFetching.add(id));
     } else {
-      // --- Public Feed Logic ---
       console.log(`FeedService:getFeed - Public feed mode.`);
-      candidateGames = recentGamesPool; // Use the full recent pool
+      candidateGames = recentGamesPool;
       candidateGames.forEach((game) =>
         gameIdsForEnrichmentFetching.add(game.id)
       );
     }
 
-    // At this point, `candidateGames` are the games to be shown as `GameContentFeedItem`s
-    // (filtered and ranked if user feed, or just recent if public)
-
-    // 2. Fetch Enrichments for all relevant games
     let allEnrichments: GameEnrichment[] = [];
     if (gameIdsForEnrichmentFetching.size > 0) {
       const gameIdArrayForRepo = Array.from(gameIdsForEnrichmentFetching);
@@ -398,19 +490,16 @@ export class DefaultFeedService implements FeedService {
           "FeedService:getFeed - Error fetching enrichments from DB:",
           error
         );
-        // Decide if we should proceed with an empty enrichments list or rethrow/handle error
-        allEnrichments = []; // Default to empty on error to avoid breaking the feed
+        allEnrichments = [];
       }
     }
 
-    // 3. Transform games and enrichments into FeedItem objects
     const feedItems: FeedItem[] = [];
-
-    // Game Content Items (from candidateGames)
+    // Game Content Items
     candidateGames.forEach((game) => {
       if (game.createdAt) {
         const cardViewModel = this.gameService.toGameCardViewModel(game);
-        feedItems.push({
+        const gameFeedItem: GameContentFeedItem = {
           feedItemKey: `game_find-${game.id}`,
           type: "game_find",
           timestamp: new Date(game.createdAt ?? new Date()),
@@ -418,7 +507,9 @@ export class DefaultFeedService implements FeedService {
           gameTitle: cardViewModel.title,
           gameSteamAppid: cardViewModel.steamAppid,
           content: cardViewModel,
-        });
+        };
+        // console.log("FeedService: Pushing GameContentFeedItem:", JSON.stringify(gameFeedItem, null, 2)); // Debug log
+        feedItems.push(gameFeedItem);
       } else {
         console.warn(
           `FeedService:getFeed - Skipping game ID ${game.id} (candidate game) from feed due to null createdAt.`
@@ -427,23 +518,19 @@ export class DefaultFeedService implements FeedService {
     });
 
     // Enrichment Feed Items
-    // Create a map of all games we might need context for (candidateGames + any library games not in candidateGames)
     const allGamesForEnrichmentContextMap = new Map<
       number,
       GameWithSubmitter | Game
     >();
     candidateGames.forEach((g) => allGamesForEnrichmentContextMap.set(g.id, g));
-
     const missingGameIdsForContext = new Set<number>();
     if (userId) {
-      // Only need to check for missing library games if it's a user feed
       userLibraryGameIds.forEach((libGameId) => {
         if (!allGamesForEnrichmentContextMap.has(libGameId)) {
           missingGameIdsForContext.add(libGameId);
         }
       });
     }
-
     if (missingGameIdsForContext.size > 0) {
       console.log(
         `FeedService:getFeed - Fetching context for ${missingGameIdsForContext.size} additional library games for enrichments.`
@@ -461,34 +548,37 @@ export class DefaultFeedService implements FeedService {
       if (parentGameData) {
         const parentGameInfo = {
           id: parentGameData.id,
-          title: parentGameData.title ?? "Unknown Game", // Fallback title
+          title: parentGameData.title ?? "Unknown Game",
           steamAppid: parentGameData.steamAppid ?? null,
         };
-        const feedItem = this._transformEnrichmentToFeedItem(
+        const transformedEnrichmentItem = this._transformEnrichmentToFeedItem(
           enrichment,
           parentGameInfo
         );
-        if (feedItem) {
-          feedItems.push(feedItem);
+        if (transformedEnrichmentItem) {
+          // 3. Log the transformedEnrichmentItem before pushing
+          console.log(
+            "FeedService:getFeed - Pushing to feedItems:",
+            JSON.stringify(transformedEnrichmentItem, null, 2)
+          );
+          feedItems.push(transformedEnrichmentItem);
         }
       } else {
-        // This might happen if an enrichment exists for a game that was filtered out (e.g. old game no longer in recent pool)
-        // Or if there's an issue with mock data / real data consistency.
         console.warn(
           `FeedService:getFeed - Could not find parent game context for enrichment ID ${enrichment.id} (Game ID: ${enrichment.gameId})`
         );
       }
     });
 
-    // 4. Sort all feed items by timestamp (descending)
     feedItems.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-    // 5. Apply the final limit to the combined and sorted list
     const finalFeedItems = feedItems.slice(0, limit);
-
+    // 4. Log before returning from getFeed
     console.log(
-      `FeedService:getFeed - Returning ${finalFeedItems.length} items for the feed.`
+      "FeedService:getFeed - FINALIZED (first item type if any):",
+      finalFeedItems.length > 0 ? finalFeedItems[0].type : "empty_feed"
     );
+    // For more detail on all items being returned:
+    // console.log("FeedService:getFeed - FINALIZED Full finalFeedItems:", JSON.stringify(finalFeedItems, null, 2));
     return finalFeedItems;
   }
 }
