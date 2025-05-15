@@ -1,103 +1,99 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { DefaultGameService, GameCardViewModel } from "@/services/game-service";
-import { DrizzleUserRepository } from "@/lib/repositories/user-repository";
 import { FeedType } from "@/hooks/useFeed";
-
-const ITEMS_PER_PAGE = 12; // Default limit, service might have its own internal default too
+import { DefaultFeedService, type FeedItem } from "@/services/feed-service";
+import { DefaultGameService } from "@/services/game-service";
+import { DefaultLibraryService } from "@/services/library-service";
+import { DrizzleGameRepository } from "@/lib/repositories/game-repository";
 
 interface FeedResponse {
-  items: (GameCardViewModel & { isInLibrary: boolean })[];
+  items: FeedItem[];
   nextPage: number | null;
   page: number;
   pageSize: number;
   feedType: FeedType;
   hasMore: boolean;
-  // totalItems: number; // Total available games for the query is harder to get with current service methods
+  totalItems?: number;
 }
 
 export async function GET(
   req: NextRequest
 ): Promise<NextResponse<FeedResponse | { message: string; error?: string }>> {
-  // Instantiate services per request
-  const gameService = new DefaultGameService();
-  const userRepository = new DrizzleUserRepository();
-
-  const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get("page") || "1", 10);
-  // The `limit` will be passed to the service, which uses FEED_SIZE (12) as its internal default if not specified.
-  const limit = parseInt(
-    searchParams.get("limit") || ITEMS_PER_PAGE.toString(),
-    10
-  );
-
+  // Use existing Supabase client and auth pattern
   const supabase = await createClient();
   const {
-    data: { user: authenticatedUser },
+    data: { user },
     error: authError,
   } = await supabase.auth.getUser();
 
-  let userLibraryGameIdsSet = new Set<number>();
-  if (authenticatedUser && !authError) {
-    try {
-      const ids = await userRepository.getLibraryGameIds(authenticatedUser.id);
-      userLibraryGameIdsSet = new Set(ids);
-    } catch (libError) {
-      console.error(
-        "Feed API: Error fetching library game IDs for user:",
-        authenticatedUser?.id,
-        libError
-      );
-    }
+  if (authError) {
+    // Log error but proceed as anonymous user for feed, or handle as critical error if auth is mandatory
+    console.warn(
+      "API /api/feed: Error fetching Supabase user:",
+      authError.message
+    );
+  }
+  const userId = user?.id;
+
+  const { searchParams } = new URL(req.url);
+
+  const type = searchParams.get("type") || "personalized";
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const pageSize = parseInt(searchParams.get("pageSize") || "12", 10);
+
+  if (isNaN(page) || page < 1) {
+    return NextResponse.json(
+      { message: "Invalid page number" },
+      { status: 400 }
+    );
+  }
+  if (isNaN(pageSize) || pageSize < 1 || pageSize > 50) {
+    return NextResponse.json(
+      { message: "Invalid pageSize (must be between 1 and 50)" },
+      { status: 400 }
+    );
   }
 
   try {
-    let feedGamesData: GameCardViewModel[];
+    const gameRepository = new DrizzleGameRepository();
+    const libraryService = new DefaultLibraryService();
+    const gameService = new DefaultGameService();
 
-    if (authenticatedUser) {
-      console.log(
-        `Feed API: Fetching personalized feed for user ${authenticatedUser.id}, page ${page}, limit ${limit}`
-      );
-      // GameService.getPersonalizedFeedForUser handles its own limit (defaults to FEED_SIZE which is 12)
-      // and excludes library games internally.
-      feedGamesData = await gameService.getPersonalizedFeedForUser(
-        authenticatedUser.id,
-        limit,
-        page
-      );
-    } else {
-      console.log(
-        `Feed API: Fetching generic recent games feed, page ${page}, limit ${limit}`
-      );
-      // GameService.getRecentGamesForFeed also has its own default limit (20 currently)
-      feedGamesData = await gameService.getRecentGamesForFeed(limit, page);
-    }
+    const feedService = new DefaultFeedService(
+      gameService,
+      libraryService,
+      gameRepository
+    );
 
-    const gamesWithLibraryStatus = feedGamesData.map((game) => ({
-      ...game,
-      isInLibrary: userLibraryGameIdsSet.has(game.id),
-    }));
+    console.log(
+      `API /api/feed: type=${type}, userId=${userId || "anonymous"}, page=${page}, pageSize=${pageSize}`
+    );
 
-    // Pagination: nextPage can be determined if the number of items returned is equal to the limit requested.
-    // This isn't a perfect indicator of more data unless the service guarantees to return `limit` items if more exist.
-    const hasMore = gamesWithLibraryStatus.length === limit;
-    const currentFeedType =
-      (searchParams.get("type") as FeedType) ||
-      (authenticatedUser ? "personalized" : "all");
-
-    return NextResponse.json({
-      items: gamesWithLibraryStatus,
-      page: page,
-      pageSize: limit,
-      feedType: currentFeedType,
-      hasMore: hasMore,
-      nextPage: hasMore ? page + 1 : null,
-      // totalItems: gamesWithLibraryStatus.length, // Optional, can be added if needed
+    const feedItems: FeedItem[] = await feedService.getFeed({
+      userId: userId || undefined,
+      limit: pageSize,
+      page,
     });
-  } catch (error: any) {
-    console.error("Error in GET /api/feed:", error);
+
+    const hasMore = feedItems.length === pageSize;
+
+    const responsePayload: FeedResponse = {
+      items: feedItems,
+      page,
+      pageSize,
+      feedType: type as FeedType,
+      hasMore,
+      nextPage: hasMore ? page + 1 : null,
+      totalItems: feedItems.length,
+    };
+
+    return NextResponse.json(responsePayload);
+  } catch (error) {
+    console.error("API /api/feed Error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "An unexpected error occurred";
     return NextResponse.json(
-      { message: "Failed to fetch feed", error: error.message },
+      { message: `Failed to fetch feed: ${errorMessage}` },
       { status: 500 }
     );
   }

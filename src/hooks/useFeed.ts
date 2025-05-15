@@ -1,33 +1,39 @@
 import { useState, useCallback, useEffect } from "react";
-import { GameCardViewModel } from "@/services/game-service"; // Path to GameCardViewModel
+// Import FeedItem and FeedType from their respective service/hook locations
+import type { FeedItem } from "@/services/feed-service"; // Path to FeedItem type
+// FeedType is now defined and exported from this file.
+// Remove: import type { FeedType } from "./useFeed"; 
 
-// Define types for feed options and state
+// Define and export FeedType from here
 export type FeedType =
   | "personalized"
   | "recent"
-  | "trending"
-  | "curated"
-  | "all"; // Added 'all' for a generic case
+  | "trending" // Example, if you plan to implement
+  | "curated" // Example, if you plan to implement
+  | "all"; // General public / fallback type
+
+// Re-define FeedType here if it's not separately defined and exported for API use.
+// For cleaner separation, FeedType could live in a shared types file.
+// export type FeedType = "personalized" | "recent" | "trending" | "curated" | "all";
 
 export interface FeedOptions {
-  // Define any specific options for fetching feeds, e.g., filters, pagination
   limit?: number;
-  // contentFilter?: ContentFilter; // From blueprint - define ContentFilter if needed
 }
 
-// Interface for the expected API response structure
+// Updated to expect FeedItem[]
 interface ApiFeedResponse {
-  items: GameCardViewModel[];
+  items: FeedItem[];
   page: number;
   pageSize: number;
   feedType: FeedType;
   hasMore: boolean;
-  totalItems?: number; // Optional, but good for knowing total count
+  nextPage: number | null; // Added to match the API response structure
+  totalItems?: number;
 }
 
-// Interface for the hook's internal state
+// Updated to store FeedItem[]
 export interface FeedState {
-  items: GameCardViewModel[];
+  items: FeedItem[];
   isLoading: boolean;
   error: Error | null;
   hasMore: boolean;
@@ -40,7 +46,7 @@ export function useFeed(feedType: FeedType, options: FeedOptions = {}) {
     isLoading: true,
     error: null,
     hasMore: true,
-    currentPage: 0, // Start at 0, page 1 will be fetched initially
+    currentPage: 0,
   });
 
   const loadFeedItems = useCallback(
@@ -56,12 +62,15 @@ export function useFeed(feedType: FeedType, options: FeedOptions = {}) {
       }));
 
       try {
-        const limit = options.limit || 10; // Default page size
+        const limit = options.limit || 12; // Default page size, matching API
+        // The API endpoint determines personalization based on userId (from auth context on server)
+        // The 'type' parameter can still be used for other feed types like 'recent', 'trending' if implemented.
         let apiUrl = `/api/feed?type=${feedType}&page=${pageToLoad}&pageSize=${limit}`;
 
-        if (feedType === "personalized") {
-          apiUrl += "&sortBy=recent";
-        }
+        // Example: if feedType was something specific that needs a query param beyond user context
+        // if (feedType === "some_other_filter") {
+        //   apiUrl += "&filter_param=value";
+        // }
 
         const response = await fetch(apiUrl);
 
@@ -80,9 +89,11 @@ export function useFeed(feedType: FeedType, options: FeedOptions = {}) {
         setFeedState((prev: FeedState) => ({
           ...prev,
           isLoading: false,
+          // If it's the first page load for this feedType, replace items.
+          // Otherwise, append to existing items.
           items: pageToLoad === 1 ? data.items : [...prev.items, ...data.items],
           hasMore: data.hasMore,
-          currentPage: pageToLoad,
+          currentPage: pageToLoad, // data.page should reflect the pageToLoad
         }));
       } catch (err) {
         console.error("useFeed: Error loading feed items from API:", err);
@@ -99,19 +110,19 @@ export function useFeed(feedType: FeedType, options: FeedOptions = {}) {
     [feedType, options]
   );
 
-  // Initial load or when feedType changes
   useEffect(() => {
-    // Reset state before loading new feed type
     setFeedState((prev: FeedState) => ({
       ...prev,
       items: [],
       currentPage: 0,
       hasMore: true,
-      error: null, // Clear previous errors
+      error: null,
     }));
-    loadFeedItems(1); // Load first page for the new feed type
+    loadFeedItems(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedType]); // Only re-run if feedType changes. `loadFeedItems` is memoized.
+  }, [feedType]); // `loadFeedItems` is memoized and includes `options` in its deps array.
+  // Re-running only on feedType change for full reset and load page 1.
+  // If options change and you want a reset, options should be in this dep array too.
 
   const loadMore = useCallback(() => {
     if (!feedState.isLoading && feedState.hasMore) {
@@ -130,7 +141,6 @@ export function useFeed(feedType: FeedType, options: FeedOptions = {}) {
     error: feedState.error,
     hasMore: feedState.hasMore,
     loadMore,
-    // SWR-like status indicators based on current state
     isLoadingInitialData:
       feedState.isLoading &&
       feedState.currentPage === 0 &&
@@ -143,7 +153,11 @@ export function useFeed(feedType: FeedType, options: FeedOptions = {}) {
       !feedState.isLoading &&
       feedState.items.length === 0 &&
       !feedState.error &&
-      feedState.currentPage > 0,
+      feedState.currentPage > 0, // Consider if currentPage > 0 is the right condition for isEmpty
     isReachingEnd: !feedState.hasMore && !feedState.isLoading,
   };
 }
+
+// Re-export FeedType if it's defined here, or ensure it's imported by API route from a shared location.
+// If FeedType is defined in this file as shown commented out earlier, export it.
+// export type { FeedType }; 
