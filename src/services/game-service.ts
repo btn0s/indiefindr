@@ -405,6 +405,10 @@ export class DefaultGameService implements GameService {
     limit: number = FEED_SIZE,
     page: number = 1
   ): Promise<GameCardViewModel[]> {
+    console.log(
+      `[SERVICE ENTRY] getRecentGamesForFeed CALLED WITH: limit=${limit}, page=${page}`
+    );
+    
     const offset = (page - 1) * limit;
     console.log(
       `GameService: Fetching recent games for feed. Limit: ${limit}, Page: ${page}, Offset: ${offset}`
@@ -540,6 +544,10 @@ export class DefaultGameService implements GameService {
     limit: number = FEED_SIZE,
     page: number = 1
   ): Promise<GameCardViewModel[]> {
+    console.log(
+      `[SERVICE ENTRY] getPersonalizedFeedForUser CALLED WITH: userId=${userId}, limit=${limit}, page=${page}`
+    );
+
     console.log(
       `GameService: Getting personalized feed for user ${userId}, limit ${limit}, page ${page}`
     );

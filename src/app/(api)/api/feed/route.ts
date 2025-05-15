@@ -16,12 +16,13 @@ interface FeedResponse {
   // totalItems: number; // Total available games for the query is harder to get with current service methods
 }
 
-const gameService = new DefaultGameService();
-const userRepository = new DrizzleUserRepository();
-
 export async function GET(
   req: NextRequest
 ): Promise<NextResponse<FeedResponse | { message: string; error?: string }>> {
+  // Instantiate services per request
+  const gameService = new DefaultGameService();
+  const userRepository = new DrizzleUserRepository();
+
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1", 10);
   // The `limit` will be passed to the service, which uses FEED_SIZE (12) as its internal default if not specified.
@@ -61,14 +62,15 @@ export async function GET(
       // and excludes library games internally.
       feedGamesData = await gameService.getPersonalizedFeedForUser(
         authenticatedUser.id,
-        limit
+        limit,
+        page
       );
     } else {
       console.log(
         `Feed API: Fetching generic recent games feed, page ${page}, limit ${limit}`
       );
       // GameService.getRecentGamesForFeed also has its own default limit (20 currently)
-      feedGamesData = await gameService.getRecentGamesForFeed(limit);
+      feedGamesData = await gameService.getRecentGamesForFeed(limit, page);
     }
 
     const gamesWithLibraryStatus = feedGamesData.map((game) => ({
@@ -79,14 +81,15 @@ export async function GET(
     // Pagination: nextPage can be determined if the number of items returned is equal to the limit requested.
     // This isn't a perfect indicator of more data unless the service guarantees to return `limit` items if more exist.
     const hasMore = gamesWithLibraryStatus.length === limit;
+    const currentFeedType =
+      (searchParams.get("type") as FeedType) ||
+      (authenticatedUser ? "personalized" : "all");
 
     return NextResponse.json({
       items: gamesWithLibraryStatus,
       page: page,
       pageSize: limit,
-      feedType:
-        (searchParams.get("type") as FeedType) ||
-        (authenticatedUser ? "personalized" : "all"),
+      feedType: currentFeedType,
       hasMore: hasMore,
       nextPage: hasMore ? page + 1 : null,
       // totalItems: gamesWithLibraryStatus.length, // Optional, can be added if needed

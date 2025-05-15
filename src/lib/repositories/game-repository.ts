@@ -206,16 +206,17 @@ export class DrizzleGameRepository implements GameRepository {
       limit = 20,
       offset = 0,
       orderBy = "newest",
-      includeSubmitter = false, // Default to false
+      includeSubmitter = false,
     } = params;
+
+    console.log(
+      `[DrizzleGameRepository.search] Received params: limit=${limit}, offset=${offset}, orderBy='${orderBy}', excludeIds=${JSON.stringify(params.excludeIds)}`
+    );
+
     const whereClause = this.buildWhereClause(params);
 
-    // Base query, always select fields for GameWithSubmitter structure
-    // If includeSubmitter is false, foundByUsername/AvatarUrl will be null if not joined,
-    // or if the left join doesn't find a match.
     let queryCore = db
       .select({
-        // Fields from gamesTable (Game part)
         id: gamesTable.id,
         platform: gamesTable.platform,
         externalId: gamesTable.externalId,
@@ -233,7 +234,6 @@ export class DrizzleGameRepository implements GameRepository {
         lastFetched: gamesTable.lastFetched,
         createdAt: gamesTable.createdAt,
         foundBy: gamesTable.foundBy,
-        // Fields from profilesTable (Submitter part) - conditionally populated by JOIN
         foundByUsername: includeSubmitter
           ? profilesTable.username
           : drizzleSql`null`.as<string | null>("foundByUsername"),
@@ -242,7 +242,7 @@ export class DrizzleGameRepository implements GameRepository {
           : drizzleSql`null`.as<string | null>("foundByAvatarUrl"),
       })
       .from(gamesTable)
-      .$dynamic(); // For conditional parts
+      .$dynamic();
 
     if (includeSubmitter) {
       queryCore = queryCore.leftJoin(
@@ -258,13 +258,13 @@ export class DrizzleGameRepository implements GameRepository {
 
     let orderedQuery;
     switch (orderBy) {
-      case "popular":
+      case "popular": // Placeholder, needs actual popularity metric
         orderedQuery = queryWithConditions.orderBy(
           desc(gamesTable.createdAt),
           desc(gamesTable.id)
         );
         break;
-      case "relevance":
+      case "relevance": // Placeholder, needs actual relevance metric for query
         orderedQuery = queryWithConditions.orderBy(
           desc(gamesTable.createdAt),
           desc(gamesTable.id)
@@ -280,14 +280,18 @@ export class DrizzleGameRepository implements GameRepository {
     }
 
     const paginatedQuery = orderedQuery.limit(limit).offset(offset);
+
     const results = await paginatedQuery.execute();
 
-    // Ensure the shape matches GameWithSubmitter. Explicit nulls are fine.
+    console.log(
+      `[DrizzleGameRepository.search] Query executed. Found ${results.length} results. First few IDs: ${results
+        .slice(0, 5)
+        .map((r) => r.id)
+        .join(", ")}`
+    );
+
     return results.map((r) => ({
       ...r,
-      // If not includeSubmitter, foundByUsername/AvatarUrl were selected as sql`null`
-      // so they should exist on `r` but be null.
-      // If includeSubmitter was true but no join match, they'd also be null.
     })) as GameWithSubmitter[];
   }
 
