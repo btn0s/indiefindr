@@ -1,43 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import * as schema from "@/db/schema";
 import { createClient } from "@/utils/supabase/server";
-import {
-  cosineDistance,
-  desc,
-  eq,
-  inArray,
-  isNotNull,
-  and,
-  sql,
-  or,
-  notInArray,
-} from "drizzle-orm";
-// import type { SteamRawData } from "@/types/steam"; // GameService handles rawData transformation
+import { DefaultGameService, GameCardViewModel } from "@/services/game-service";
 import { DrizzleUserRepository } from "@/lib/repositories/user-repository";
-import { DefaultGameService } from "@/services/game-service"; // Import GameService
-import { GameCardViewModel } from "@/services/game-service"; // Import GameCardViewModel
-import type { GameWithSubmitter } from "@/lib/repositories/game-repository"; // For type casting db result
-import { DrizzleGameRepository } from "@/lib/repositories/game-repository"; // <-- ADD THIS
+import { FeedType } from "@/hooks/useFeed";
 
-const VECTOR_DIMENSIONS = 384;
-const MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING = 3;
-const ITEMS_PER_PAGE = 4;
-
-// Remove local FeedGame interface, we will use GameCardViewModel
-// interface FeedGame { ... }
+const ITEMS_PER_PAGE = 12; // Default limit, service might have its own internal default too
 
 interface FeedResponse {
-  games: GameCardViewModel[]; // Expect GameCardViewModel here
+  items: (GameCardViewModel & { isInLibrary: boolean })[];
   nextPage: number | null;
-  totalGames: number;
+  page: number;
+  pageSize: number;
+  feedType: FeedType;
+  hasMore: boolean;
+  // totalItems: number; // Total available games for the query is harder to get with current service methods
 }
+
+const gameService = new DefaultGameService();
+const userRepository = new DrizzleUserRepository();
 
 export async function GET(
   req: NextRequest
 ): Promise<NextResponse<FeedResponse | { message: string; error?: string }>> {
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1", 10);
+  // The `limit` will be passed to the service, which uses FEED_SIZE (12) as its internal default if not specified.
   const limit = parseInt(
     searchParams.get("limit") || ITEMS_PER_PAGE.toString(),
     10
@@ -50,10 +37,6 @@ export async function GET(
   } = await supabase.auth.getUser();
 
   let userLibraryGameIdsSet = new Set<number>();
-  const userRepository = new DrizzleUserRepository();
-  const gameService = new DefaultGameService(); // Instantiate GameService
-  const gameRepository = new DrizzleGameRepository(); // <-- Instantiate GameRepository
-
   if (authenticatedUser && !authError) {
     try {
       const ids = await userRepository.getLibraryGameIds(authenticatedUser.id);
@@ -61,109 +44,52 @@ export async function GET(
     } catch (libError) {
       console.error(
         "Feed API: Error fetching library game IDs for user:",
-        authenticatedUser.id,
+        authenticatedUser?.id,
         libError
       );
     }
   }
 
-  const offset = (page - 1) * limit;
-  let gamesToProcess: GameWithSubmitter[] = [];
-
   try {
-    let recommendationIds: number[] = [];
-    const excludedFromFeed =
-      userLibraryGameIdsSet.size > 0 ? Array.from(userLibraryGameIdsSet) : [-1];
+    let feedGamesData: GameCardViewModel[];
 
-    if (
-      authenticatedUser &&
-      userLibraryGameIdsSet.size >= MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING
-    ) {
-      const libraryEmbeddingsResult = await db
-        .select({ embedding: schema.gamesTable.embedding })
-        .from(schema.gamesTable)
-        .where(
-          and(
-            inArray(schema.gamesTable.id, Array.from(userLibraryGameIdsSet)),
-            isNotNull(schema.gamesTable.embedding)
-          )
-        );
-
-      const validEmbeddings = libraryEmbeddingsResult
-        .map((r) => r.embedding)
-        .filter(
-          (e) => e !== null && e.length === VECTOR_DIMENSIONS
-        ) as number[][];
-
-      if (validEmbeddings.length >= MIN_LIBRARY_SIZE_FOR_AVG_EMBEDDING) {
-        const avgEmbedding = validEmbeddings
-          .reduce(
-            (acc, emb) => emb.map((val, i) => acc[i] + val),
-            Array(VECTOR_DIMENSIONS).fill(0)
-          )
-          .map((val) => val / validEmbeddings.length);
-
-        const similarGames = await db
-          .select({ id: schema.gamesTable.id })
-          .from(schema.gamesTable)
-          .where(
-            and(
-              notInArray(schema.gamesTable.id, excludedFromFeed),
-              isNotNull(schema.gamesTable.embedding)
-            )
-          )
-          .orderBy(cosineDistance(schema.gamesTable.embedding, avgEmbedding))
-          .limit(limit);
-
-        recommendationIds = similarGames.map((g) => g.id);
-      }
+    if (authenticatedUser) {
+      console.log(
+        `Feed API: Fetching personalized feed for user ${authenticatedUser.id}, page ${page}, limit ${limit}`
+      );
+      // GameService.getPersonalizedFeedForUser handles its own limit (defaults to FEED_SIZE which is 12)
+      // and excludes library games internally.
+      feedGamesData = await gameService.getPersonalizedFeedForUser(
+        authenticatedUser.id,
+        limit
+      );
+    } else {
+      console.log(
+        `Feed API: Fetching generic recent games feed, page ${page}, limit ${limit}`
+      );
+      // GameService.getRecentGamesForFeed also has its own default limit (20 currently)
+      feedGamesData = await gameService.getRecentGamesForFeed(limit);
     }
 
-    if (recommendationIds.length < limit) {
-      const needed = limit - recommendationIds.length;
-      const newestGames = await db
-        .select({ id: schema.gamesTable.id })
-        .from(schema.gamesTable)
-        .where(
-          notInArray(schema.gamesTable.id, [
-            ...excludedFromFeed,
-            ...recommendationIds,
-          ])
-        )
-        .orderBy(desc(schema.gamesTable.createdAt))
-        .limit(needed)
-        .offset(recommendationIds.length > 0 ? 0 : offset);
-
-      recommendationIds.push(...newestGames.map((g) => g.id));
-    }
-
-    recommendationIds = [...new Set(recommendationIds)].slice(0, limit);
-
-    if (recommendationIds.length > 0) {
-      // Fetch data using the modified GameRepository.getGamesByIds
-      gamesToProcess = await gameRepository.getGamesByIds(recommendationIds);
-      // The repository method now handles fetching GameWithSubmitter, re-ordering, and casting rawData.
-    }
-
-    // Transform to GameCardViewModel using GameService
-    const finalGamesViewModels: GameCardViewModel[] =
-      gameService.toGameCardViewModels(gamesToProcess);
-
-    // Add isInLibrary property. GameService produces ViewModels, but isInLibrary is context-specific to the current user.
-    const gamesWithLibraryStatus = finalGamesViewModels.map((game) => ({
+    const gamesWithLibraryStatus = feedGamesData.map((game) => ({
       ...game,
       isInLibrary: userLibraryGameIdsSet.has(game.id),
     }));
 
-    console.log(
-      "responseGames (GameCardViewModel with isInLibrary)",
-      gamesWithLibraryStatus
-    );
+    // Pagination: nextPage can be determined if the number of items returned is equal to the limit requested.
+    // This isn't a perfect indicator of more data unless the service guarantees to return `limit` items if more exist.
+    const hasMore = gamesWithLibraryStatus.length === limit;
 
     return NextResponse.json({
-      games: gamesWithLibraryStatus,
-      nextPage: gamesWithLibraryStatus.length === limit ? page + 1 : null,
-      totalGames: gamesWithLibraryStatus.length,
+      items: gamesWithLibraryStatus,
+      page: page,
+      pageSize: limit,
+      feedType:
+        (searchParams.get("type") as FeedType) ||
+        (authenticatedUser ? "personalized" : "all"),
+      hasMore: hasMore,
+      nextPage: hasMore ? page + 1 : null,
+      // totalItems: gamesWithLibraryStatus.length, // Optional, can be added if needed
     });
   } catch (error: any) {
     console.error("Error in GET /api/feed:", error);

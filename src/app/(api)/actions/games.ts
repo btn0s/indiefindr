@@ -1,54 +1,46 @@
 "use server";
 
-import { db } from "@/db";
-import { gamesTable } from "@/db/schema";
-import { desc } from "drizzle-orm";
-import type { SteamRawData } from "@/types/steam";
+import { DefaultGameService, GameCardViewModel } from "@/services/game-service";
+// No longer need direct db access or schema here
+// import { db } from "@/db";
+// import { gamesTable } from "@/db/schema";
+// import { desc } from "drizzle-orm";
+// import type { SteamRawData } from "@/types/steam";
 
-// Define the expected shape of game data, similar to FeedGame in page.tsx
-// and GameCardProps.game in game-card.tsx
-interface RecentGame {
-  id: number;
-  title: string | null;
-  shortDescription: string | null;
-  steamAppid: string | null;
-  tags: string[] | null;
-  rawData?: SteamRawData | null;
-}
+// The GameCardViewModel from game-service is more comprehensive and standardized
+// than the local RecentGame interface, so we can rely on that.
+// interface RecentGame { ... } // This can be removed
 
-export async function getRecentGames(): Promise<{
+const gameService = new DefaultGameService(); // Instantiate the service
+
+export async function getRecentGames(limit: number = 20): Promise<{
   success: boolean;
-  data?: RecentGame[];
+  data?: GameCardViewModel[]; // Use GameCardViewModel as the return type for data
   message?: string;
 }> {
   try {
-    const recentGamesData = await db
-      .select({
-        id: gamesTable.id,
-        title: gamesTable.title,
-        shortDescription: gamesTable.descriptionShort,
-        steamAppid: gamesTable.steamAppid,
-        tags: gamesTable.tags, // Assuming tags is stored as string[] or similar
-        rawData: gamesTable.rawData, // Assuming rawData is stored appropriately
-      })
-      .from(gamesTable)
-      .orderBy(desc(gamesTable.id)) // Order by ID descending to get recent ones
-      .limit(20); // Limit to 20 games
-
-    // Ensure the fetched data matches the RecentGame interface structure.
-    // Drizzle should handle the type mapping based on schema and select, but explicit casting/mapping might be needed
-    // if column names differ significantly or complex transformations are required.
-    // For now, we assume direct mapping for selected fields.
+    // Call the service layer method
+    const recentGamesData = await gameService.getRecentGamesForFeed(limit);
 
     return {
       success: true,
-      data: recentGamesData as RecentGame[], // Cast if confident in structure, otherwise map
+      data: recentGamesData,
     };
   } catch (error) {
-    console.error("Error fetching recent games:", error);
+    console.error(
+      "Error in getRecentGames action while calling gameService:",
+      error
+    );
+    // It's good practice for the service layer to handle its own errors and log them.
+    // The action can then decide how to present that error to the caller/client.
+    // If gameService.getRecentGamesForFeed already returns [] on error or throws a specific type of error,
+    // this catch block can be adjusted.
     return {
       success: false,
-      message: "Failed to fetch recent games.",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch recent games via service.",
     };
   }
 }

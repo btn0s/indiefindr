@@ -1,16 +1,19 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { db } from "@/db";
-import { libraryTable } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { DefaultLibraryService } from "@/services/library-service";
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { DrizzleUserRepository } from "@/lib/repositories/user-repository";
 
-// Instantiate repository (module scope is fine if stateless)
-const userRepository = new DrizzleUserRepository();
+// Schema for input validation
+const gameIdSchema = z
+  .number()
+  .int()
+  .positive("Game ID must be a positive integer.");
 
-export async function addToLibrary(gameId: number) {
+const libraryService = new DefaultLibraryService(); // Instantiate the service
+
+export async function addToLibrary(gameIdInput: number) {
   try {
     const supabase = await createClient();
     const {
@@ -21,35 +24,42 @@ export async function addToLibrary(gameId: number) {
       return { success: false, error: "Not authenticated" };
     }
 
-    // Check if the game is already in the user's library
-    const existingEntry = await db
-      .select()
-      .from(libraryTable)
-      .where(
-        and(
-          eq(libraryTable.userId, user.id),
-          eq(libraryTable.gameRefId, gameId)
-        )
-      )
-      .limit(1);
+    // Validate gameId
+    const validationResult = gameIdSchema.safeParse(gameIdInput);
+    if (!validationResult.success) {
+      return {
+        success: false,
+        error: "Invalid Game ID",
+        details: validationResult.error.flatten().fieldErrors,
+      };
+    }
+    const gameId = validationResult.data;
 
-    if (existingEntry.length === 0) {
-      // Add the game to the user's library
-      await db.insert(libraryTable).values({
-        userId: user.id,
-        gameRefId: gameId,
-        addedAt: new Date(),
-      });
+    // Call the service layer method
+    const result = await libraryService.addGameToUserLibrary(user.id, gameId);
+
+    if (result.success) {
+      // Revalidate relevant paths if the operation was successful
+      // Example: revalidate the page showing the user's library or the game's page
+      revalidatePath("/library"); // Adjust path as needed
+      revalidatePath(`/games/${gameId}`); // Adjust path as needed
     }
 
-    return { success: true };
+    return result; // Return the result from the service { success, error?, entry? }
   } catch (error) {
-    console.error("Error adding game to library:", error);
-    return { success: false, error: "Failed to add game to library" };
+    // Catch unexpected errors in the action itself
+    console.error("Error in addToLibrary action:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "An unexpected server error occurred in the action.",
+    };
   }
 }
 
-export async function removeFromLibrary(gameId: number) {
+export async function removeFromLibrary(gameIdInput: number) {
   try {
     const supabase = await createClient();
     const {
@@ -60,20 +70,39 @@ export async function removeFromLibrary(gameId: number) {
       return { success: false, error: "Not authenticated" };
     }
 
-    // Remove the game from the user's library
-    await db
-      .delete(libraryTable)
-      .where(
-        and(
-          eq(libraryTable.userId, user.id),
-          eq(libraryTable.gameRefId, gameId)
-        )
-      );
+    // Validate gameId
+    const validationResult = gameIdSchema.safeParse(gameIdInput);
+    if (!validationResult.success) {
+      return {
+        success: false,
+        error: "Invalid Game ID",
+        details: validationResult.error.flatten().fieldErrors,
+      };
+    }
+    const gameId = validationResult.data;
 
-    return { success: true };
+    // Call the service layer method
+    const result = await libraryService.removeGameFromUserLibrary(
+      user.id,
+      gameId
+    );
+
+    if (result.success) {
+      // Revalidate relevant paths if the operation was successful
+      revalidatePath("/library"); // Adjust path as needed
+      revalidatePath(`/games/${gameId}`); // Adjust path as needed
+    }
+
+    return result; // Return the result from the service { success, error? }
   } catch (error) {
-    console.error("Error removing game from library:", error);
-    return { success: false, error: "Failed to remove game from library" };
+    console.error("Error in removeFromLibrary action:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "An unexpected server error occurred in the action.",
+    };
   }
 }
 

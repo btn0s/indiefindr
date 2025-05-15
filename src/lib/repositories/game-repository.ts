@@ -11,6 +11,8 @@ import {
   inArray,
   and,
   SQL,
+  isNotNull,
+  notInArray,
   // ilike, or, and, not, inArray, gte, lte will be added as needed by other methods
 } from "drizzle-orm";
 
@@ -75,9 +77,14 @@ export interface GameRepository {
   /**
    * Get recently added games, including submitter info if available.
    * @param limit Maximum number of games to return
+   * @param excludeIds IDs to exclude from results (optional)
    * @returns Array of recently added games with submitter details
    */
-  getRecent(limit?: number): Promise<GameWithSubmitter[]>;
+  getRecent(
+    limit?: number,
+    excludeIds?: number[],
+    offset?: number
+  ): Promise<GameWithSubmitter[]>;
 
   /**
    * Get games by user (games found by a specific user)
@@ -135,6 +142,16 @@ export interface GameRepository {
    * @returns Number of games matching the condition
    */
   count(params?: GameSearchParams): Promise<number>;
+
+  getEmbeddingsForGames(
+    gameIds: number[]
+  ): Promise<{ id: number; embedding: number[] | null }[]>;
+  getGamesBySimilarity(
+    targetVector: number[],
+    excludedIds: number[],
+    limit: number,
+    offset?: number
+  ): Promise<GameWithSubmitter[]>;
 }
 
 // Placeholder for the DrizzleGameRepository implementation
@@ -286,9 +303,21 @@ export class DrizzleGameRepository implements GameRepository {
     return results;
   }
 
-  async getRecent(limit: number = 10): Promise<GameWithSubmitter[]> {
-    // Now calls search and explicitly includes submitter info.
-    return this.search({ limit, orderBy: "newest", includeSubmitter: true });
+  async getRecent(
+    limit: number = 10,
+    excludeIds?: number[],
+    offset: number = 0
+  ): Promise<GameWithSubmitter[]> {
+    const searchParams: GameSearchParams = {
+      limit,
+      offset,
+      orderBy: "newest",
+      includeSubmitter: true,
+    };
+    if (excludeIds && excludeIds.length > 0) {
+      searchParams.excludeIds = excludeIds;
+    }
+    return this.search(searchParams);
   }
 
   async getByUser(
@@ -510,5 +539,85 @@ export class DrizzleGameRepository implements GameRepository {
     }
 
     return result[0]?.value || 0;
+  }
+
+  async getEmbeddingsForGames(
+    gameIds: number[]
+  ): Promise<{ id: number; embedding: number[] | null }[]> {
+    if (!gameIds || gameIds.length === 0) {
+      return [];
+    }
+    try {
+      const results = await db
+        .select({ id: gamesTable.id, embedding: gamesTable.embedding })
+        .from(gamesTable)
+        .where(
+          and(inArray(gamesTable.id, gameIds), isNotNull(gamesTable.embedding))
+        );
+      return results;
+    } catch (error) {
+      console.error(
+        "DrizzleGameRepository: Error fetching embeddings for games:",
+        error
+      );
+      return [];
+    }
+  }
+
+  async getGamesBySimilarity(
+    targetVector: number[],
+    excludedIds: number[],
+    limit: number,
+    offset: number = 0
+  ): Promise<GameWithSubmitter[]> {
+    if (!targetVector || targetVector.length === 0) {
+      return [];
+    }
+    const conditions: SQL[] = [];
+    if (excludedIds && excludedIds.length > 0) {
+      conditions.push(notInArray(gamesTable.id, excludedIds));
+    }
+    conditions.push(isNotNull(gamesTable.embedding));
+
+    const vectorString = JSON.stringify(targetVector);
+
+    try {
+      const results = await db
+        .select({
+          id: gamesTable.id,
+          platform: gamesTable.platform,
+          externalId: gamesTable.externalId,
+          title: gamesTable.title,
+          developer: gamesTable.developer,
+          descriptionShort: gamesTable.descriptionShort,
+          descriptionDetailed: gamesTable.descriptionDetailed,
+          genres: gamesTable.genres,
+          tags: gamesTable.tags,
+          embedding: gamesTable.embedding,
+          rawData: gamesTable.rawData,
+          enrichmentStatus: gamesTable.enrichmentStatus,
+          isFeatured: gamesTable.isFeatured,
+          steamAppid: gamesTable.steamAppid,
+          lastFetched: gamesTable.lastFetched,
+          createdAt: gamesTable.createdAt,
+          foundBy: gamesTable.foundBy,
+          foundByUsername: profilesTable.username,
+          foundByAvatarUrl: profilesTable.avatarUrl,
+        })
+        .from(gamesTable)
+        .leftJoin(profilesTable, eq(gamesTable.foundBy, profilesTable.id))
+        .where(and(...conditions))
+        .orderBy(drizzleSql`embedding <=> '${drizzleSql.raw(vectorString)}'`)
+        .limit(limit)
+        .offset(offset);
+
+      return results as GameWithSubmitter[];
+    } catch (error) {
+      console.error(
+        "DrizzleGameRepository: Error fetching games by similarity:",
+        error
+      );
+      return [];
+    }
   }
 }

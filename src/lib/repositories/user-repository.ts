@@ -13,6 +13,7 @@ export interface UserRepository {
   getByUsername(username: string): Promise<Profile | null>;
   update(userId: string, data: ProfileUpdate): Promise<Profile | null>;
   getLibraryGameIds(userId: string): Promise<number[]>;
+  create(data: ProfileInsert): Promise<Profile | null>;
   // create(data: ProfileInsert): Promise<Profile>; // Placeholder for future create
 }
 
@@ -53,6 +54,20 @@ export class DrizzleUserRepository implements UserRepository {
       .from(libraryTable)
       .where(eq(libraryTable.userId, userId));
     return results.map((r) => r.gameId);
+  }
+
+  async create(data: ProfileInsert): Promise<Profile | null> {
+    try {
+      const result = await db.insert(profilesTable).values(data).returning();
+      return result[0] || null; // Drizzle returns the inserted row(s)
+    } catch (error) {
+      console.error("DrizzleUserRepository: Error creating profile:", error);
+      // Depending on how you want to handle DB errors, you might throw, or return null/error indicator
+      // For now, let's rethrow or handle it more specifically if it's a known constraint violation (e.g. username unique)
+      // If it is a unique constraint violation for username, it might be better to catch it specifically.
+      // For a generic error, rethrowing or returning null is an option.
+      return null; // Or throw error;
+    }
   }
 
   // Example for create, if you add it to the interface
