@@ -6,7 +6,7 @@ import { DefaultGameService } from "@/services/game-service";
 import type { GameCardViewModel } from "@/services/game-service";
 
 // Define the shape of the state returned by the action
-interface SubmitGameState {
+export interface SubmitGameState {
   status: "idle" | "loading" | "success" | "error" | "exists";
   message: string;
   gameId?: string; // For "exists" status (DB ID of existing game)
