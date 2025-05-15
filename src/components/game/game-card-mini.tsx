@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { BookmarkCheck, Bookmark, XCircle } from "lucide-react";
-import { GameImage } from "./game-image"; // Import the reusable GameImage componen
+import { GameImage } from "@/components/game/game-image"; // Import the reusable GameImage componen
 import { ClaimFindButton } from "@/components/claim-find-button"; // Import ClaimFindButton
 import { GameCardViewModel } from "@/services/game-service";
 

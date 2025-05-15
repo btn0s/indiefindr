@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { GameCardMini } from "./game-card-mini";
+import { GameCardMini } from "@/components/game/game-card-mini";
 import { getGameUrl } from "@/lib/utils"; // Import utility for generating game URLs
 import { GameCardViewModel } from "@/services/game-service";
 

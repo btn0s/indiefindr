@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"; // For potential actions later
 import Link from "next/link";
 import { MediaCarousel } from "@/components/media-carousel";
 import type { SteamRawData, MediaItem, Movie, Screenshot } from "@/types/steam"; // Import shared types
-import { GameImage } from "@/components/game-image"; // Import the new client component
+import { GameImage } from "@/components/game/game-image"; // Import the new client component
 import type { Metadata } from "next";
 import { AddToLibraryButton } from "@/components/add-to-library-button"; // Import the new component
 
