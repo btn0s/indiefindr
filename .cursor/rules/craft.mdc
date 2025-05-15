@@ -1,0 +1,31 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# The Spirit of Craft
+
+## What Craft Means to Us
+
+At IndieFindr, "craft" is more than just skill or technique; it's a mindset and an approach to creation. It embodies:
+
+*   **Pride in Workmanship:** A deep-seated desire to create things of quality, things we can be proud of, that reflect care and attention to detail.
+*   **Love of the Process:** Finding joy and satisfaction in the act of building, refining, and perfecting, not just in the final outcome.
+*   **Intentionality:** Making conscious choices about design, architecture, and user experience, aiming for elegance and effectiveness.
+*   **Mastery and Continuous Improvement:** A commitment to honing our skills, learning new techniques, and striving for a higher level of excellence in what we do.
+
+## A Nod to History: Making for Love and Pride
+
+Historically, artisans and craftspeople didn't just produce goods for utility; they imbued their creations with a part of themselves. They crafted for the love of the material, the challenge of the form, and the satisfaction of creating something durable, beautiful, or exceptionally functional. This tradition of taking personal pride in one's work, of aiming for an ideal beyond mere sufficiency, is a powerful motivator.
+
+## Craft at IndieFindr: Balancing Idealism with Pragmatism
+
+We aim to bring this spirit of craft to IndieFindr. We want to build a platform that is not only functional but also well-designed, enjoyable to use, and robust in its construction. This means caring about the details, thinking deeply about the user, and striving for quality in our code, design, and overall product.
+
+However, we also operate in the real world with deadlines and the need to deliver value to our users and the business. The challenge, and our goal, is to **walk the fine line between the aspirational pursuit of perfect craft and the tactical necessity of shipping a product.**
+
+This requires us to be selective and intentional, applying our deepest craft and attention where it delivers the most value and impact, a concept closely related to the [Pareto Principle (80/20 Rule)](mdc:.cursor/rules/pareto-principle.mdc). For other areas, we make conscious decisions about where "good enough" is acceptable, or where a more pragmatic approach is needed to ensure we can ship and iterate.
+
+Our commitment to craft also ties into our pursuit of a [Minimum Excellent Product (MEP)](mdc:.cursor/rules/minimum-excellent-product.mdc) and a [Minimum Lovable Product (MLP)](mdc:.cursor/rules/minimum-lovable-product.mdc). The "excellence" and "lovability" we seek are direct outcomes of applying intentional craft to the core user experience.
+
+By embracing craft, balanced with tactical execution, we aim to build a platform that we are proud of, that users love, and that sustainably delivers on its mission.
