@@ -563,15 +563,15 @@ export class DefaultGameService implements GameService {
       return { ...game, similarityScore: score };
     });
 
-    // Sort by similarity score (descending), then by createdAt (descending) as a tie-breaker
+    // Sort by createdAt (descending), then by similarity score (descending) as a tie-breaker
     return gamesWithScores.sort((a, b) => {
-      if (b.similarityScore !== a.similarityScore) {
-        return b.similarityScore - a.similarityScore;
+      const dateA = new Date(a.createdAt ?? 0).getTime();
+      const dateB = new Date(b.createdAt ?? 0).getTime();
+
+      if (dateB !== dateA) {
+        return dateB - dateA; // Most recent first
       }
-      return (
-        new Date(b.createdAt ?? 0).getTime() -
-        new Date(a.createdAt ?? 0).getTime()
-      );
+      return b.similarityScore - a.similarityScore; // Higher score for same timestamp
     });
   }
 
