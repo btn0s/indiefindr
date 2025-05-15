@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, getGameUrl } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLibrary } from "@/contexts/LibraryContext"; // Import the hook
 import { GameImage } from "./game-image"; // Import the reusable GameImage component
@@ -191,7 +191,7 @@ export function GameCard({ game }: GameCardProps) {
 
   const foundByUsername = game.foundByUsername || "IndieFindr";
   const foundByAvatarUrl = game.foundByAvatarUrl || "/images/avatar.png";
-  const detailsLinkHref = `/game/${game.id}/${game.title.toLowerCase().replace(/ /g, "-")}`;
+  const detailsLinkHref = getGameUrl(game.id, game.title);
 
   return (
     <div className="flex flex-col gap-2">
