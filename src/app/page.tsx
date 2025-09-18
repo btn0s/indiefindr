@@ -1,97 +1,28 @@
-import React from "react";
-import { createClient } from "@/lib/supabase/server";
-import { FeedContainer } from "@/components/feed/feed-container";
-import { db } from "@/lib/db";
-import { profilesTable, libraryTable, gamesTable } from "@/lib/db/schema";
-import { eq, count } from "drizzle-orm";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
-export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const isLoggedIn = !!user;
-  let userProfile = null;
-  let libraryCount = 0;
-  let findsCount = 0;
-
-  if (isLoggedIn && user) {
-    // Fetch user profile data
-    const profileResult = await db
-      .select({
-        username: profilesTable.username,
-        avatarUrl: profilesTable.avatarUrl,
-        bio: profilesTable.bio,
-        fullName: profilesTable.fullName,
-      })
-      .from(profilesTable)
-      .where(eq(profilesTable.id, user.id))
-      .limit(1);
-
-    if (profileResult.length > 0) {
-      userProfile = profileResult[0];
-    }
-
-    // Fetch library count
-    const libraryCountResult = await db
-      .select({ value: count() })
-      .from(libraryTable)
-      .where(eq(libraryTable.userId, user.id));
-    if (libraryCountResult.length > 0) {
-      libraryCount = libraryCountResult[0].value;
-    }
-
-    // Fetch finds count
-    const findsCountResult = await db
-      .select({ value: count() })
-      .from(gamesTable)
-      .where(eq(gamesTable.foundBy, user.id));
-    if (findsCountResult.length > 0) {
-      findsCount = findsCountResult[0].value;
-    }
-  }
-
+export default function ComingSoonPage() {
   return (
-    <main className="mx-auto py-8">
-      {!isLoggedIn && (
-        <section className="mb-12 py-12 text-center md:py-16 lg:py-20">
-          <div className="container px-4 md:px-6">
-            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none">
-              Discover Your Next Favorite Indie Game
-            </h1>
-            <p className="mx-auto mt-4 max-w-[700px] text-lg text-muted-foreground md:text-xl">
-              A simple, personalized way to discover and play unique indie games
-              you'll love.
-            </p>
-          </div>
-        </section>
-      )}
+    <div className="fixed inset-0 bg-background flex items-center justify-center p-4">
+      <div className="text-center max-w-2xl mx-auto">
+        <h1 className="text-6xl font-bold mb-6">Indiefindr</h1>
 
-      {/* Layout for Profile Card and Feed */}
-      <div className="flex flex-col items-start md:flex-row">
-        {/* Profile Card Section (Left Side) - Using the new component */}
-        {/* <aside className="w-1/4 relative">
-          {isLoggedIn && (
-            <ProfileMiniCard
-              isLoggedIn={isLoggedIn}
-              userProfile={userProfile}
-              libraryCount={libraryCount}
-              findsCount={findsCount}
-            />
-          )}
-        </aside> */}
+        <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+          Discover your next favorite indie game.
+        </p>
 
-        {/* Feed Section (Right Side or Main Area on Mobile) */}
-        <section className="w-full">
-          <FeedContainer
-            feedType={isLoggedIn ? "personalized" : "all"}
+        <p className="text-lg text-muted-foreground mb-12">Coming soon.</p>
 
-          />
-        </section>
-
-        {/* <aside className="w-1/4"></aside> */}
+        <Link
+          href="https://x.com/indiefindr"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 bg-foreground text-background px-8 py-4 rounded-full text-lg font-medium hover:opacity-90 transition-opacity"
+        >
+          Follow us on Twitter for updates
+          <ExternalLink className="h-5 w-5" />
+        </Link>
       </div>
-    </main>
+    </div>
   );
 }
