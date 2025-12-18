@@ -13,18 +13,25 @@ export async function GET(
       return NextResponse.json({ error: "Invalid app ID" }, { status: 400 });
     }
 
-    // Check if game has embeddings
+    // Check which facets have embeddings
     const { data: game } = await supabase
       .from("games")
       .select("aesthetic_embedding, gameplay_embedding, narrative_embedding")
       .eq("id", appId)
       .single();
 
-    const hasEmbeddings =
-      game &&
-      game.aesthetic_embedding !== null &&
-      game.gameplay_embedding !== null &&
-      game.narrative_embedding !== null;
+    if (!game) {
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    }
+
+    // Determine which facets have embeddings
+    const availableFacets = [
+      game.aesthetic_embedding !== null && "aesthetic",
+      game.gameplay_embedding !== null && "gameplay",
+      game.narrative_embedding !== null && "narrative",
+    ].filter(Boolean) as string[];
+
+    const hasEmbeddings = availableFacets.length > 0;
 
     if (!hasEmbeddings) {
       return NextResponse.json({
@@ -38,11 +45,13 @@ export async function GET(
     const limit = parseInt(searchParams.get("limit") || "10", 10);
     const threshold = parseFloat(searchParams.get("threshold") || "0.55");
 
-    const facets = ["aesthetic", "gameplay", "narrative"];
+    const allFacets = ["aesthetic", "gameplay", "narrative"];
     const requestedFacets =
-      facet === "all" ? facets : [facet].filter((f) => facets.includes(f));
+      facet === "all"
+        ? availableFacets // Only search facets that have embeddings
+        : [facet].filter((f) => allFacets.includes(f) && availableFacets.includes(f));
 
-    // Fetch related games for each requested facet
+    // Fetch related games for each requested facet that has embeddings
     const results: Record<string, any[]> = {};
 
     for (const facetName of requestedFacets) {

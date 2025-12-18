@@ -1,5 +1,6 @@
 import { GameFacets } from '../ai/facet-extractor';
-import { NormalizedGameData } from '../steam/providers/steamStoreProvider';
+import { WebGroundedFacet } from "../ai/perplexity";
+import { SteamStoreData } from '../steam/providers';
 
 export interface FacetDocs {
   aesthetic: string;
@@ -122,51 +123,65 @@ function bucketTags(tags: string[]): TagBuckets {
 }
 
 /**
- * Build facet text documents from vision output and lightly bucketed Steam tags.
+ * Build facet text documents from web-grounded Perplexity searches.
  *
- * Strategy: keep the vision descriptions as the core signal, then append
- * bucketed tags per facet (aesthetic/gameplay/narrative) plus meta tags so the
- * embedding encodes exact industry terms without over-weighting generic tags.
+ * Strategy:
+ * - Use Perplexity web search results (refined to descriptor words) for all facets
+ * - Fall back to vision model output if Perplexity returns null
+ * - Ignore Steam tags (they're generic and don't capture community language well)
+ *
+ * @param gameData - Store data from Steam API (description, screenshots, etc) - kept for compatibility but not used
+ * @param communityTags - Community tags from steam-user - kept for compatibility but not used
+ * @param visionFacets - Facets extracted by vision model (used as fallback)
+ * @param webFacets - Web-grounded facet descriptions from Perplexity (refined descriptor words)
  */
 export function buildFacetDocs(
-  gameData: NormalizedGameData,
-  visionFacets: GameFacets
+  gameData: SteamStoreData,
+  communityTags: Record<string, number>,
+  visionFacets: GameFacets,
+  webFacets?: {
+    aesthetic?: WebGroundedFacet | null;
+    gameplay?: WebGroundedFacet | null;
+    narrative?: WebGroundedFacet | null;
+  }
 ): FacetDocs {
-  const meaningfulTags = filterMeaningfulTags([
-    ...gameData.genres,
-    ...gameData.tags,
-  ]);
-  const buckets = bucketTags(meaningfulTags);
+  console.log("\n[BUILD_FACETS] Building facet documents");
+  console.log("[BUILD_FACETS] Web aesthetic:", webFacets?.aesthetic?.description || "null");
+  console.log("[BUILD_FACETS] Web gameplay:", webFacets?.gameplay?.description || "null");
+  console.log("[BUILD_FACETS] Web narrative:", webFacets?.narrative?.description || "null");
 
-  const summarize = (label: string, values: string[]) =>
-    values.length > 0 ? `${label}: ${values.slice(0, 8).join(', ')}` : '';
+  // Extract vision descriptions as fallback
+  const visionAestheticDesc =
+    !visionFacets.aesthetics
+      ? ""
+      : typeof visionFacets.aesthetics === "string"
+      ? visionFacets.aesthetics
+      : visionFacets.aesthetics.description || "";
 
-  const aestheticTags = summarize('Aesthetic tags', buckets.aesthetic);
-  const gameplayTags = summarize('Gameplay tags', buckets.gameplay);
-  const narrativeTags = summarize('Narrative tags', buckets.narrative);
-  const metaTags = summarize('Meta tags', buckets.meta);
-
-  return {
-    aesthetic: typeof visionFacets.aesthetics === 'string' 
-      ? visionFacets.aesthetics 
-      : [
-          visionFacets.aesthetics.description,
-          aestheticTags,
-          metaTags,
-        ].filter(Boolean).join('\n\n'),
-    gameplay: typeof visionFacets.gameplay === 'string'
+  const visionGameplayDesc =
+    !visionFacets.gameplay
+      ? ""
+      : typeof visionFacets.gameplay === "string"
       ? visionFacets.gameplay
-      : [
-          visionFacets.gameplay.description,
-          gameplayTags,
-          metaTags,
-        ].filter(Boolean).join('\n\n'),
-    narrative: typeof visionFacets.narrativeMood === 'string'
+      : visionFacets.gameplay.description || "";
+
+  const visionNarrativeDesc =
+    !visionFacets.narrativeMood
+      ? ""
+      : typeof visionFacets.narrativeMood === "string"
       ? visionFacets.narrativeMood
-      : [
-          visionFacets.narrativeMood.description,
-          narrativeTags,
-          metaTags,
-        ].filter(Boolean).join('\n\n'),
+      : visionFacets.narrativeMood.description || "";
+
+  // Prioritize Perplexity results (community language), fall back to vision
+  const result = {
+    aesthetic: webFacets?.aesthetic?.description || visionAestheticDesc || "",
+    gameplay: webFacets?.gameplay?.description || visionGameplayDesc || "",
+    narrative: webFacets?.narrative?.description || visionNarrativeDesc || "",
   };
+
+  console.log("[BUILD_FACETS] Final aesthetic doc:\n", result.aesthetic);
+  console.log("[BUILD_FACETS] Final gameplay doc:\n", result.gameplay);
+  console.log("[BUILD_FACETS] Final narrative doc:\n", result.narrative);
+
+  return result;
 }

@@ -167,16 +167,25 @@ export async function extractGameFacets(
   steamTags: string[] = [],
   modelId: string = VISION_MODEL
 ): Promise<GameFacets> {
+  console.log("\n[VISION] Starting facet extraction");
+  console.log("[VISION] Game name:", gameName);
+  console.log("[VISION] Model:", modelId);
+  console.log("[VISION] Screenshots provided:", screenshots.length);
+  console.log("[VISION] Steam tags:", steamTags);
+
   // Limit to 4-6 representative screenshots for cost/context efficiency
   // Strategy: first, middle, and last screenshots to get diverse views
-  const selectedScreenshots = screenshots.length <= 6 
-    ? screenshots 
-    : [
-        screenshots[0], // First screenshot
-        screenshots[Math.floor(screenshots.length / 3)], // Early middle
-        screenshots[Math.floor((screenshots.length * 2) / 3)], // Late middle
-        screenshots[screenshots.length - 1], // Last screenshot
-      ].filter(Boolean);
+  const selectedScreenshots =
+    screenshots.length <= 6
+      ? screenshots
+      : [
+          screenshots[0], // First screenshot
+          screenshots[Math.floor(screenshots.length / 3)], // Early middle
+          screenshots[Math.floor((screenshots.length * 2) / 3)], // Late middle
+          screenshots[screenshots.length - 1], // Last screenshot
+        ].filter(Boolean);
+
+  console.log("[VISION] Selected screenshots:", selectedScreenshots);
 
   // Extract Steam tags for context - prioritize industry-standard terms
   const steamTagsList = steamTags.length > 0 
@@ -199,55 +208,98 @@ For each facet, select 1-3 keywords from the taxonomy (prioritize Steam tags if 
 
 Extract the aesthetics, gameplay, and narrative/mood facets based on the visual information in the screenshots. Use exact industry-standard terms in your descriptions.`;
 
-  try {
-    const result = await retry(
-      () =>
-        generateObject({
-          model: modelId,
-          schema: GameFacetsSchema,
-          system: FACET_EXTRACTOR_SYSTEM_PROMPT,
-          messages: [
-            {
-              role: "user" as const,
-              content: [
-                { type: "text" as const, text: userPrompt },
-                ...selectedScreenshots.map((image) => ({ type: "image" as const, image })),
-              ],
-            },
-          ],
-        }),
-      {
-        maxAttempts: 3,
-        initialDelayMs: 2000, // Longer delay for AI calls
-        maxDelayMs: 30000,
-        retryable: (error: any) => {
-          // Retry on rate limits, timeouts, and server errors
-          const errorMessage = error?.message?.toLowerCase() || '';
-          const status = error?.status || error?.response?.status;
-          
-          if (status === 429 || status >= 500) return true;
-          if (errorMessage.includes('rate limit')) return true;
-          if (errorMessage.includes('timeout')) return true;
-          if (errorMessage.includes('server error')) return true;
-          if (errorMessage.includes('service unavailable')) return true;
-          
-          return false;
-        },
-      }
-    );
+  console.log("[VISION] User prompt:", userPrompt);
 
-    return result.object;
-  } catch (error: any) {
+  try {
+    // COMMENTED OUT: Vision model call that sends images to visual model
+    // console.log("[VISION] Calling vision model...");
+    // const result = await retry(
+    //   () =>
+    //     generateObject({
+    //       model: modelId,
+    //       schema: GameFacetsSchema,
+    //       system: FACET_EXTRACTOR_SYSTEM_PROMPT,
+    //       messages: [
+    //         {
+    //           role: "user" as const,
+    //           content: [
+    //             { type: "text" as const, text: userPrompt },
+    //             ...selectedScreenshots.map((image) => ({ type: "image" as const, image })),
+    //           ],
+    //         },
+    //       ],
+    //     }),
+    //   {
+    //     maxAttempts: 3,
+    //     initialDelayMs: 2000, // Longer delay for AI calls
+    //     maxDelayMs: 30000,
+    //     retryable: (error: any) => {
+    //       // Retry on rate limits, timeouts, and server errors
+    //       const errorMessage = error?.message?.toLowerCase() || '';
+    //       const status = error?.status || error?.response?.status;
+    //
+    //       if (status === 429 || status >= 500) return true;
+    //       if (errorMessage.includes('rate limit')) return true;
+    //       if (errorMessage.includes('timeout')) return true;
+    //       if (errorMessage.includes('server error')) return true;
+    //       if (errorMessage.includes('service unavailable')) return true;
+    //
+    //       return false;
+    //     },
+    //   }
+    // );
+
+    // console.log("[VISION] Response received:");
+    // console.log("[VISION] Raw object:", JSON.stringify(result.object, null, 2));
+
+    // return result.object;
+
+    // TEMPORARY: Return empty structure while vision extraction is commented out
+    console.log(
+      "[VISION] Vision extraction commented out, returning empty structure"
+    );
+    return {
+      aesthetics: {
+        keywords: {
+          renderingStyle: [],
+          artDirection: [],
+        },
+        description: "",
+      },
+      gameplay: {
+        keywords: {
+          coreGenre: [],
+          structure: [],
+          mechanicalEmphasis: [],
+        },
+        description: "",
+      },
+      narrativeMood: {
+        keywords: {
+          narrativeStructure: [],
+          playerRole: [],
+          toneGenre: [],
+        },
+        description: "",
+      },
+    };
+  } catch (error: unknown) {
+    console.log("[VISION] ERROR:", error);
+
     // Check if the error contains a value with a "properties" wrapper (JSON Schema format)
     // Some models return {"type": "object", "properties": {...}} instead of the direct object
+    const err = error as {
+      cause?: { value?: { properties?: unknown; type?: unknown } };
+    };
     if (
-      error?.cause?.value &&
-      typeof error.cause.value === "object" &&
-      "properties" in error.cause.value &&
-      "type" in error.cause.value
+      err?.cause?.value &&
+      typeof err.cause.value === "object" &&
+      "properties" in err.cause.value &&
+      "type" in err.cause.value
     ) {
       // Extract the actual data from the properties wrapper
-      const extracted = error.cause.value.properties;
+      const extracted = err.cause.value.properties;
+      console.log("[VISION] Extracted from properties wrapper:", extracted);
       // Validate and return the extracted object
       return GameFacetsSchema.parse(extracted);
     }

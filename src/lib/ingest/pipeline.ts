@@ -1,5 +1,11 @@
-import { parseSteamUrl, fetchSteamGameData } from '../steam/providers';
+import { fetchSteamGameData } from '../steam/providers';
+import { parseSteamUrl } from '../steam/parser';
 import { extractGameFacets } from '../ai/facet-extractor';
+import {
+  searchGameAesthetic,
+  searchGameGameplay,
+  searchGameNarrative,
+} from "../ai/perplexity";
 import { buildFacetDocs } from '../facets/buildFacetDocs';
 import { embed, EMBEDDING_MODEL, VISION_MODEL } from '../ai/gateway';
 import { supabase } from '../supabase/server';
@@ -21,9 +27,15 @@ export type IngestResult = {
  * 5. Upsert into games table
  */
 export async function ingestGame(steamUrl: string): Promise<IngestResult> {
+  console.log("\n========================================");
+  console.log("[PIPELINE] Starting ingest");
+  console.log("[PIPELINE] Steam URL:", steamUrl);
+  
   const appId = parseSteamUrl(steamUrl);
+  console.log("[PIPELINE] Parsed appId:", appId);
   
   if (!appId) {
+    console.log("[PIPELINE] ERROR: Invalid Steam URL");
     return {
       success: false,
       error: `Invalid Steam URL: ${steamUrl}`,
@@ -67,67 +79,171 @@ export async function ingestGame(steamUrl: string): Promise<IngestResult> {
   
   try {
     // Step 1: Fetch Steam data
-    const { storeData, reviewSummary, tags } = await fetchSteamGameData(steamUrl);
-    
-    // Step 2: Extract facets using vision model
+    console.log("\n[PIPELINE] Step 1: Fetching Steam data...");
+    const { storeData, reviewSummary, tags } = await fetchSteamGameData(
+      steamUrl
+    );
+
+    console.log("[PIPELINE] Steam data received:");
+    console.log("[PIPELINE]   name:", storeData.name);
+    console.log(
+      "[PIPELINE]   description:",
+      storeData.description?.substring(0, 200) + "..."
+    );
+    console.log("[PIPELINE]   header_image:", storeData.header_image);
+    console.log(
+      "[PIPELINE]   screenshots:",
+      JSON.stringify(storeData.screenshots, null, 2)
+    );
+    console.log(
+      "[PIPELINE]   videos:",
+      JSON.stringify(storeData.videos, null, 2)
+    );
+    console.log("[PIPELINE]   store tags:", JSON.stringify(storeData.tags, null, 2));
+    console.log("[PIPELINE]   reviewSummary:", reviewSummary);
+    console.log("[PIPELINE]   tags (weighted):", JSON.stringify(tags, null, 2));
+
+    // Step 2: Extract facets using vision model + web search for aesthetics
     if (!storeData.screenshots || storeData.screenshots.length === 0) {
-      throw new Error('No screenshots available for vision analysis');
+      throw new Error("No screenshots available for vision analysis");
     }
-    
+
     // Extract Steam tags for context - pass to model so it uses exact industry terms
     const steamTags = Object.keys(tags);
-    const facets = await extractGameFacets(
-      storeData.name,
-      storeData.description,
-      storeData.screenshots,
-      steamTags,
-      VISION_MODEL
+    console.log("[PIPELINE]   steamTags for vision:", steamTags);
+
+    // Run vision extraction and web searches for all facets in parallel
+    console.log(
+      "\n[PIPELINE] Step 2: Running vision extraction + web searches for all facets in parallel..."
     );
-    
-    // Build facet documents (extracts descriptions from structured facets)
-    const facetDocs = buildFacetDocs(storeData, facets);
-    
-    // Step 3: Generate embeddings for each facet with retries
-    const [aestheticEmbedding, gameplayEmbedding, narrativeEmbedding] = await Promise.all([
-      retry(
-        () => embed({ model: EMBEDDING_MODEL, value: facetDocs.aesthetic }),
-        {
-          maxAttempts: 3,
-          initialDelayMs: 1000,
-          retryable: (error: any) => {
-            const errorMessage = error?.message?.toLowerCase() || '';
-            const status = error?.status || error?.response?.status;
-            return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
-          },
-        }
+    const [facets, webAesthetic, webGameplay, webNarrative] = await Promise.all([
+      extractGameFacets(
+        storeData.name,
+        storeData.description,
+        storeData.screenshots,
+        steamTags,
+        VISION_MODEL
       ),
-      retry(
-        () => embed({ model: EMBEDDING_MODEL, value: facetDocs.gameplay }),
-        {
-          maxAttempts: 3,
-          initialDelayMs: 1000,
-          retryable: (error: any) => {
-            const errorMessage = error?.message?.toLowerCase() || '';
-            const status = error?.status || error?.response?.status;
-            return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
-          },
-        }
-      ),
-      retry(
-        () => embed({ model: EMBEDDING_MODEL, value: facetDocs.narrative }),
-        {
-          maxAttempts: 3,
-          initialDelayMs: 1000,
-          retryable: (error: any) => {
-            const errorMessage = error?.message?.toLowerCase() || '';
-            const status = error?.status || error?.response?.status;
-            return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
-          },
-        }
-      ),
-    ]).then(results => results.map(r => r.embedding));
-    
-    // Step 4: Upsert into games table
+      searchGameAesthetic(storeData.name),
+      searchGameGameplay(storeData.name),
+      searchGameNarrative(storeData.name),
+    ]);
+
+    console.log("\n[PIPELINE] Vision facets received:");
+    console.log(
+      "[PIPELINE]   aesthetics:",
+      JSON.stringify(facets.aesthetics, null, 2)
+    );
+    console.log(
+      "[PIPELINE]   gameplay:",
+      JSON.stringify(facets.gameplay, null, 2)
+    );
+    console.log(
+      "[PIPELINE]   narrativeMood:",
+      JSON.stringify(facets.narrativeMood, null, 2)
+    );
+
+    console.log("\n[PIPELINE] Web facets received:");
+    console.log(
+      "[PIPELINE]   webAesthetic:",
+      webAesthetic?.description || "null"
+    );
+    console.log(
+      "[PIPELINE]   webGameplay:",
+      webGameplay?.description || "null"
+    );
+    console.log(
+      "[PIPELINE]   webNarrative:",
+      webNarrative?.description || "null"
+    );
+
+    // Build facet documents - use Perplexity results for all facets
+    console.log("\n[PIPELINE] Step 3: Building facet documents...");
+    const facetDocs = buildFacetDocs(storeData, tags, facets, {
+      aesthetic: webAesthetic,
+      gameplay: webGameplay,
+      narrative: webNarrative,
+    });
+
+    console.log("\n[PIPELINE] Facet documents built:");
+    console.log("[PIPELINE]   aesthetic text:\n", facetDocs.aesthetic);
+    console.log("\n[PIPELINE]   gameplay text:\n", facetDocs.gameplay);
+    console.log("\n[PIPELINE]   narrative text:\n", facetDocs.narrative);
+
+    // Step 4: Generate embeddings for each facet with retries
+    console.log("\n[PIPELINE] Step 4: Generating embeddings...");
+    console.log("[PIPELINE]   model:", EMBEDDING_MODEL);
+    const [aestheticEmbedding, gameplayEmbedding, narrativeEmbedding] =
+      await Promise.all([
+        retry(
+          () => embed({ model: EMBEDDING_MODEL, value: facetDocs.aesthetic }),
+          {
+            maxAttempts: 3,
+            initialDelayMs: 1000,
+            retryable: (error: any) => {
+              const errorMessage = error?.message?.toLowerCase() || "";
+              const status = error?.status || error?.response?.status;
+              return (
+                status === 429 ||
+                status >= 500 ||
+                errorMessage.includes("rate limit") ||
+                errorMessage.includes("timeout")
+              );
+            },
+          }
+        ),
+        retry(
+          () => embed({ model: EMBEDDING_MODEL, value: facetDocs.gameplay }),
+          {
+            maxAttempts: 3,
+            initialDelayMs: 1000,
+            retryable: (error: any) => {
+              const errorMessage = error?.message?.toLowerCase() || "";
+              const status = error?.status || error?.response?.status;
+              return (
+                status === 429 ||
+                status >= 500 ||
+                errorMessage.includes("rate limit") ||
+                errorMessage.includes("timeout")
+              );
+            },
+          }
+        ),
+        retry(
+          () => embed({ model: EMBEDDING_MODEL, value: facetDocs.narrative }),
+          {
+            maxAttempts: 3,
+            initialDelayMs: 1000,
+            retryable: (error: any) => {
+              const errorMessage = error?.message?.toLowerCase() || "";
+              const status = error?.status || error?.response?.status;
+              return (
+                status === 429 ||
+                status >= 500 ||
+                errorMessage.includes("rate limit") ||
+                errorMessage.includes("timeout")
+              );
+            },
+          }
+        ),
+      ]).then((results) => results.map((r) => r.embedding));
+
+    console.log("[PIPELINE] Embeddings generated:");
+    console.log(
+      "[PIPELINE]   aesthetic embedding length:",
+      aestheticEmbedding.length
+    );
+    console.log(
+      "[PIPELINE]   gameplay embedding length:",
+      gameplayEmbedding.length
+    );
+    console.log(
+      "[PIPELINE]   narrative embedding length:",
+      narrativeEmbedding.length
+    );
+
+    // Step 5: Upsert into games table
+    console.log("\n[PIPELINE] Step 5: Upserting to database...");
     const gameData: Omit<Game, 'created_at' | 'updated_at'> = {
       id: appId,
       name: storeData.name,
@@ -192,12 +308,19 @@ export async function ingestGame(steamUrl: string): Promise<IngestResult> {
         .eq('id', jobId);
     }
     
+    console.log("\n[PIPELINE] SUCCESS");
+    console.log("[PIPELINE] Game ID:", appId);
+    console.log("========================================\n");
+    
     return {
       success: true,
       gameId: appId,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.log("\n[PIPELINE] ERROR:", errorMessage);
+    console.log("[PIPELINE] Full error:", error);
+    console.log("========================================\n");
     
     // Update ingest job with error
     const jobId = job?.id || (await supabase

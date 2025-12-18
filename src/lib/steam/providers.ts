@@ -1,3 +1,4 @@
+import SteamUser from 'steam-user';
 import { parseSteamUrl } from './parser';
 import { retry } from '../utils/retry';
 
@@ -10,6 +11,9 @@ export type SteamStoreData = {
   videos: string[];
   tags: Record<string, number>;
 };
+
+// Cache for tag ID -> name mapping
+let tagNameCache: Map<string, string> | null = null;
 
 export type SteamReviewSummary = {
   review_score: number;
@@ -167,14 +171,93 @@ export class SteamReviewsProvider {
 }
 
 /**
- * Steam Tags Provider
- * Extracts tags from store page (can be enhanced with SteamSpy later)
+ * Fetches the tag ID -> name mapping from Steam
+ */
+async function fetchTagNameMap(): Promise<Map<string, string>> {
+  if (tagNameCache) return tagNameCache;
+
+  const response = await fetch(
+    'https://store.steampowered.com/tagdata/populartags/english'
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch tag names: ${response.status}`);
+  }
+
+  const tags: Array<{ tagid: number; name: string }> = await response.json();
+  tagNameCache = new Map(tags.map((t) => [String(t.tagid), t.name]));
+  return tagNameCache;
+}
+
+/**
+ * Steam Tags Provider using steam-user library
+ * Fetches community tags via anonymous login and getProductInfo()
  */
 export class SteamTagsProvider {
-  async fetchTags(appId: number, storeData: SteamStoreData): Promise<Record<string, number>> {
-    // For now, return tags from store data
-    // Later, this can be enhanced with SteamSpy API or web scraping
-    return storeData.tags;
+  private readonly timeoutMs = 45000;
+
+  async fetchTags(appId: number): Promise<Record<string, number>> {
+    const [tagIds, tagNameMap] = await Promise.all([
+      this.fetchTagIds(appId),
+      fetchTagNameMap(),
+    ]);
+
+    // Convert tag IDs to names with vote counts as weights
+    const tags: Record<string, number> = {};
+    for (const [tagId, voteCount] of Object.entries(tagIds)) {
+      const tagName = tagNameMap.get(tagId);
+      if (tagName) {
+        tags[tagName] = voteCount;
+      }
+    }
+
+    return tags;
+  }
+
+  private fetchTagIds(appId: number): Promise<Record<string, number>> {
+    return new Promise((resolve, reject) => {
+      const client = new SteamUser();
+      let resolved = false;
+
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          client.logOff();
+          reject(new Error(`Steam client timeout after ${this.timeoutMs}ms`));
+        }
+      }, this.timeoutMs);
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          client.logOff();
+        }
+      };
+
+      client.on('error', (err) => {
+        cleanup();
+        reject(err);
+      });
+
+      client.on('loggedOn', () => {
+        client.getProductInfo([appId], [], true, (err, apps) => {
+          if (err) {
+            cleanup();
+            reject(err);
+            return;
+          }
+
+          const appInfo = apps[appId];
+          const storeTags = appInfo?.appinfo?.common?.store_tags || {};
+
+          cleanup();
+          resolve(storeTags);
+        });
+      });
+
+      client.logOn({ anonymous: true });
+    });
   }
 }
 
@@ -187,22 +270,22 @@ export async function fetchSteamGameData(steamUrl: string): Promise<{
   tags: Record<string, number>;
 }> {
   const appId = parseSteamUrl(steamUrl);
-  
+
   if (!appId) {
     throw new Error(`Invalid Steam URL: ${steamUrl}`);
   }
-  
+
   const storeProvider = new SteamStoreProvider();
   const reviewsProvider = new SteamReviewsProvider();
   const tagsProvider = new SteamTagsProvider();
-  
-  const [storeData, reviewSummary] = await Promise.all([
+
+  // Fetch all data in parallel - tags now come from steam-user
+  const [storeData, reviewSummary, tags] = await Promise.all([
     storeProvider.fetchGameDetails(appId),
     reviewsProvider.fetchReviewSummary(appId),
+    tagsProvider.fetchTags(appId),
   ]);
-  
-  const tags = await tagsProvider.fetchTags(appId, storeData);
-  
+
   return {
     storeData,
     reviewSummary,

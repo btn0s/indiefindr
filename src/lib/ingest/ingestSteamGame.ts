@@ -1,9 +1,18 @@
 import { revalidatePath } from "next/cache";
 import { supabase } from "../supabase/server";
-import { parseSteamAppId } from "../steam/parseSteamUrl";
-import { fetchSteamGameData } from "../steam/providers/steamStoreProvider";
-import { fetchSteamReviewSummary } from "../steam/providers/steamReviewsProvider";
+import {
+  fetchSteamGameData,
+  SteamStoreProvider,
+  SteamReviewsProvider,
+  SteamTagsProvider,
+} from "../steam/providers";
+import { parseSteamUrl } from "../steam/parser";
 import { extractGameFacets } from "../ai/facet-extractor";
+import {
+  searchGameAesthetic,
+  searchGameGameplay,
+  searchGameNarrative,
+} from "../ai/perplexity";
 import { buildFacetDocs } from "../facets/buildFacetDocs";
 import { embed } from "../ai/gateway";
 import { retry } from "../utils/retry";
@@ -30,20 +39,14 @@ export async function quickIngestSteamGame(
   steamUrl: string
 ): Promise<{ gameId: number } | { error: string }> {
   // Parse app ID
-  const appId = parseSteamAppId(steamUrl);
+  const appId = parseSteamUrl(steamUrl);
   if (!appId) {
     return { error: `Invalid Steam URL: ${steamUrl}` };
   }
 
   try {
-    // Fetch only basic Steam store data (fast)
-    const gameData = await fetchSteamGameData(appId);
-
-    // Prepare tags as JSONB (tag -> weight, default weight 1.0)
-    const tagsJsonb: Record<string, number> = {};
-    [...gameData.genres, ...gameData.tags].forEach((tag) => {
-      tagsJsonb[tag] = 1.0;
-    });
+    // Fetch Steam data using the unified provider
+    const { storeData, tags } = await fetchSteamGameData(steamUrl);
 
     // Upsert game with only basic data (no embeddings, no facets yet)
     await retry(
@@ -51,12 +54,12 @@ export async function quickIngestSteamGame(
         const { error } = await supabase.from("games").upsert(
           {
             id: appId,
-            name: gameData.name,
-            description: gameData.description,
-            header_image: gameData.header_image,
-            screenshots: gameData.screenshots,
-            videos: gameData.videos.length > 0 ? gameData.videos : null,
-            tags: tagsJsonb,
+            name: storeData.name,
+            description: storeData.description,
+            header_image: storeData.header_image,
+            screenshots: storeData.screenshots,
+            videos: storeData.videos.length > 0 ? storeData.videos : null,
+            tags, // Community tags with vote counts from steam-user
             // Leave embeddings, facet texts, and models as null for now
             updated_at: new Date().toISOString(),
           },
@@ -98,97 +101,160 @@ export async function quickIngestSteamGame(
  * This should be called after quickIngestSteamGame to finish processing
  */
 async function completeIngestion(appId: number, jobId: string): Promise<void> {
-  try {
-    // Fetch Steam data again (or we could pass it, but this is simpler)
-    const gameData = await fetchSteamGameData(appId);
-    const reviewSummary = await fetchSteamReviewSummary(appId);
+  console.log("\n========================================");
+  console.log("[INGEST] Starting complete ingestion for appId:", appId);
 
-    // Extract facets using vision - pass Steam tags so model uses exact industry terms
-    const steamTags = [...gameData.genres, ...gameData.tags];
-    const visionFacets = await extractGameFacets(
-      gameData.name,
-      gameData.description,
-      gameData.screenshots,
-      steamTags,
-      VISION_MODEL
+  try {
+    // Fetch Steam data using the individual providers
+    const storeProvider = new SteamStoreProvider();
+    const reviewsProvider = new SteamReviewsProvider();
+    const tagsProvider = new SteamTagsProvider();
+
+    const [storeData, reviewSummary, communityTags] = await Promise.all([
+      storeProvider.fetchGameDetails(appId),
+      reviewsProvider.fetchReviewSummary(appId),
+      tagsProvider.fetchTags(appId),
+    ]);
+
+    console.log("[INGEST] Game data fetched:", storeData.name);
+    console.log("[INGEST] Community tags:", Object.keys(communityTags).length, "tags");
+
+    // Get tag names for vision model context (sorted by vote count)
+    const steamTagNames = Object.entries(communityTags)
+      .sort(([, a], [, b]) => b - a)
+      .map(([name]) => name);
+
+    console.log(
+      "[INGEST] Running vision extraction + web searches for all facets in parallel..."
     );
 
-    // Build facet documents
-    const facetDocs = buildFacetDocs(gameData, visionFacets);
+    const [visionFacets, webAesthetic, webGameplay, webNarrative] =
+      await Promise.all([
+        extractGameFacets(
+          storeData.name,
+          storeData.description,
+          storeData.screenshots,
+          steamTagNames,
+          VISION_MODEL
+        ),
+        searchGameAesthetic(storeData.name),
+        searchGameGameplay(storeData.name),
+        searchGameNarrative(storeData.name),
+      ]);
 
+    console.log("[INGEST] Vision facets received");
+    console.log("[INGEST] Web aesthetic:", webAesthetic?.description || "null");
+    console.log("[INGEST] Web gameplay:", webGameplay?.description || "null");
+    console.log("[INGEST] Web narrative:", webNarrative?.description || "null");
+
+    // Build facet documents - use Perplexity results for all facets
+    const facetDocs = buildFacetDocs(storeData, communityTags, visionFacets, {
+      aesthetic: webAesthetic,
+      gameplay: webGameplay,
+      narrative: webNarrative,
+    });
+
+    console.log("[INGEST] Generating embeddings...");
     // Generate embeddings for all three facets with retries
+    // Skip embedding generation for empty documents (embedding API requires non-empty input)
     const [aestheticEmbedding, gameplayEmbedding, narrativeEmbedding] =
       await Promise.all([
-        retry(
-          () => embed({ model: EMBEDDING_MODEL, value: facetDocs.aesthetic }),
-          {
-            maxAttempts: 3,
-            initialDelayMs: 1000,
-            retryable: (error: any) => {
-              const errorMessage = error?.message?.toLowerCase() || "";
-              const status = error?.status || error?.response?.status;
-              return (
-                status === 429 ||
-                status >= 500 ||
-                errorMessage.includes("rate limit") ||
-                errorMessage.includes("timeout")
-              );
-            },
-          }
-        ),
-        retry(
-          () => embed({ model: EMBEDDING_MODEL, value: facetDocs.gameplay }),
-          {
-            maxAttempts: 3,
-            initialDelayMs: 1000,
-            retryable: (error: any) => {
-              const errorMessage = error?.message?.toLowerCase() || "";
-              const status = error?.status || error?.response?.status;
-              return (
-                status === 429 ||
-                status >= 500 ||
-                errorMessage.includes("rate limit") ||
-                errorMessage.includes("timeout")
-              );
-            },
-          }
-        ),
-        retry(
-          () => embed({ model: EMBEDDING_MODEL, value: facetDocs.narrative }),
-          {
-            maxAttempts: 3,
-            initialDelayMs: 1000,
-            retryable: (error: any) => {
-              const errorMessage = error?.message?.toLowerCase() || "";
-              const status = error?.status || error?.response?.status;
-              return (
-                status === 429 ||
-                status >= 500 ||
-                errorMessage.includes("rate limit") ||
-                errorMessage.includes("timeout")
-              );
-            },
-          }
-        ),
-      ]).then((results) => results.map((r) => r.embedding));
+        facetDocs.aesthetic.trim()
+          ? retry(
+              () => embed({ model: EMBEDDING_MODEL, value: facetDocs.aesthetic }),
+              {
+                maxAttempts: 3,
+                initialDelayMs: 1000,
+                retryable: (error: any) => {
+                  const errorMessage = error?.message?.toLowerCase() || "";
+                  const status = error?.status || error?.response?.status;
+                  return (
+                    status === 429 ||
+                    status >= 500 ||
+                    errorMessage.includes("rate limit") ||
+                    errorMessage.includes("timeout")
+                  );
+                },
+              }
+            ).then((r) => r.embedding)
+          : Promise.resolve(null),
+        facetDocs.gameplay.trim()
+          ? retry(
+              () => embed({ model: EMBEDDING_MODEL, value: facetDocs.gameplay }),
+              {
+                maxAttempts: 3,
+                initialDelayMs: 1000,
+                retryable: (error: any) => {
+                  const errorMessage = error?.message?.toLowerCase() || "";
+                  const status = error?.status || error?.response?.status;
+                  return (
+                    status === 429 ||
+                    status >= 500 ||
+                    errorMessage.includes("rate limit") ||
+                    errorMessage.includes("timeout")
+                  );
+                },
+              }
+            ).then((r) => r.embedding)
+          : Promise.resolve(null),
+        facetDocs.narrative.trim()
+          ? retry(
+              () => embed({ model: EMBEDDING_MODEL, value: facetDocs.narrative }),
+              {
+                maxAttempts: 3,
+                initialDelayMs: 1000,
+                retryable: (error: any) => {
+                  const errorMessage = error?.message?.toLowerCase() || "";
+                  const status = error?.status || error?.response?.status;
+                  return (
+                    status === 429 ||
+                    status >= 500 ||
+                    errorMessage.includes("rate limit") ||
+                    errorMessage.includes("timeout")
+                  );
+                },
+              }
+            ).then((r) => r.embedding)
+          : Promise.resolve(null),
+      ]);
 
-    // Update game with embeddings and facet texts
+    console.log("[INGEST] Embeddings generated:");
+    console.log(
+      "[INGEST]   aesthetic:",
+      aestheticEmbedding ? `${aestheticEmbedding.length} dimensions` : "skipped (empty)"
+    );
+    console.log(
+      "[INGEST]   gameplay:",
+      gameplayEmbedding ? `${gameplayEmbedding.length} dimensions` : "skipped (empty)"
+    );
+    console.log(
+      "[INGEST]   narrative:",
+      narrativeEmbedding ? `${narrativeEmbedding.length} dimensions` : "skipped (empty)"
+    );
+
+    console.log("[INGEST] Updating database...");
+    // Update game with embeddings, facet texts, and community tags
     await retry(
       async () => {
+        const updateData: Record<string, any> = {
+          tags: communityTags, // Update with full community tags
+          review_summary: reviewSummary,
+          aesthetic_text: facetDocs.aesthetic || null,
+          gameplay_text: facetDocs.gameplay || null,
+          narrative_text: facetDocs.narrative || null,
+          vision_model: VISION_MODEL,
+          embedding_model: EMBEDDING_MODEL,
+          updated_at: new Date().toISOString(),
+        };
+        
+        // Only include embeddings if they were generated (non-null)
+        if (aestheticEmbedding) updateData.aesthetic_embedding = aestheticEmbedding;
+        if (gameplayEmbedding) updateData.gameplay_embedding = gameplayEmbedding;
+        if (narrativeEmbedding) updateData.narrative_embedding = narrativeEmbedding;
+
         const { error } = await supabase
           .from("games")
-          .update({
-            review_summary: reviewSummary,
-            aesthetic_text: facetDocs.aesthetic,
-            gameplay_text: facetDocs.gameplay,
-            narrative_text: facetDocs.narrative,
-            aesthetic_embedding: aestheticEmbedding,
-            gameplay_embedding: gameplayEmbedding,
-            narrative_embedding: narrativeEmbedding,
-            vision_model: VISION_MODEL,
-            embedding_model: EMBEDDING_MODEL,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("id", appId);
         if (error) {
           throw new Error(`Failed to update game: ${error.message}`);
@@ -220,6 +286,9 @@ async function completeIngestion(appId: number, jobId: string): Promise<void> {
       })
       .eq("id", jobId);
 
+    console.log("[INGEST] SUCCESS for appId:", appId);
+    console.log("========================================\n");
+
     // Revalidate the game detail page so Next.js cache is invalidated
     try {
       revalidatePath(`/games/${appId}`);
@@ -228,6 +297,9 @@ async function completeIngestion(appId: number, jobId: string): Promise<void> {
       console.log("Note: revalidatePath called outside request context");
     }
   } catch (error) {
+    console.log("[INGEST] ERROR for appId:", appId);
+    console.log("[INGEST] Error:", error);
+    console.log("========================================\n");
     // Update job with error
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
@@ -251,7 +323,7 @@ export async function ingestSteamGame(
   steamUrl: string
 ): Promise<IngestResult | IngestError> {
   // Parse app ID
-  const appId = parseSteamAppId(steamUrl);
+  const appId = parseSteamUrl(steamUrl);
   if (!appId) {
     throw new Error(`Invalid Steam URL: ${steamUrl}`);
   }
