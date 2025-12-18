@@ -1,16 +1,18 @@
-import Link from "next/link";
 import { supabase } from "@/lib/supabase/server";
 import { IngestForm } from "@/components/IngestForm";
+import { RelatedGameCard } from "@/components/RelatedGameCard";
 
 type GameListItem = {
   id: number;
   name: string;
+  header_image: string | null;
+  videos: string[] | null;
 };
 
 async function getGames(): Promise<GameListItem[]> {
   const { data: games, error } = await supabase
     .from("games")
-    .select("id, name")
+    .select("id, name, header_image, videos")
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -44,18 +46,19 @@ export default async function Home() {
               No games ingested yet. Start by ingesting a game above.
             </p>
           ) : (
-            <ul className="flex flex-col gap-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {games.map((game) => (
-                <li key={game.id}>
-                  <Link
-                    href={`/games/${game.id}`}
-                    className="text-blue-600 hover:underline dark:text-blue-400"
-                  >
-                    {game.name} ({game.id})
-                  </Link>
-                </li>
+                <RelatedGameCard
+                  key={game.id}
+                  game={{
+                    appid: game.id,
+                    name: game.name,
+                    header_image: game.header_image,
+                    videos: game.videos,
+                  }}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </main>
