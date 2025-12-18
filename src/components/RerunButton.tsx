@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
+
 interface RerunButtonProps {
   appid: string;
 }
@@ -12,6 +14,11 @@ export function RerunButton({ appid }: RerunButtonProps) {
   const router = useRouter();
   const [rerunning, setRerunning] = useState(false);
   const [rerunError, setRerunError] = useState<string | null>(null);
+
+  // Only show in dev mode
+  if (!IS_DEV) {
+    return null;
+  }
 
   const handleRerun = async () => {
     setRerunning(true);

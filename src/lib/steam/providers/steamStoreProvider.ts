@@ -6,6 +6,7 @@ export interface SteamMovie {
   id: number;
   name: string;
   thumbnail: string;
+  // Old format (legacy)
   webm?: {
     '480'?: string;
     max?: string;
@@ -14,6 +15,10 @@ export interface SteamMovie {
     '480'?: string;
     max?: string;
   };
+  // New format (current)
+  dash_av1?: string;
+  dash_h264?: string;
+  hls_h264?: string;
   highlight?: boolean;
 }
 
@@ -94,7 +99,7 @@ export async function fetchSteamGameData(
 
   // Extract video URLs from movies/trailers
   // Prefer highlight trailers, then any trailer
-  // Prefer MP4 max quality, fallback to 480p, then WebM
+  // Prefer HLS (most compatible), then DASH H.264, then legacy MP4/WebM
   const videos: string[] = [];
   if (gameData.movies && gameData.movies.length > 0) {
     // Sort: highlight trailers first, then by ID
@@ -105,8 +110,12 @@ export async function fetchSteamGameData(
     });
 
     for (const movie of sortedMovies) {
-      // Prefer MP4 max, then MP4 480p, then WebM max, then WebM 480p
+      // Prefer new format: HLS H.264 (most compatible for web), then DASH H.264
+      // Fallback to legacy MP4/WebM formats if new format not available
       const videoUrl =
+        movie.hls_h264 ||
+        movie.dash_h264 ||
+        movie.dash_av1 ||
         movie.mp4?.max ||
         movie.mp4?.['480'] ||
         movie.webm?.max ||

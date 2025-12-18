@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import Hls from "hls.js";
 import type { RelatedGame } from "@/lib/supabase/types";
 
 interface RelatedGameCardProps {
@@ -17,9 +18,57 @@ interface RelatedGameCardProps {
 
 export function RelatedGameCard({ game }: RelatedGameCardProps) {
   const [videoError, setVideoError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const videos = game.videos ?? [];
   const hasVideo = videos.length > 0 && !videoError;
   const videoUrl = hasVideo ? videos[0] : null;
+  const isHls = videoUrl?.endsWith('.m3u8') || videoUrl?.includes('/hls_');
+
+  useEffect(() => {
+    if (!hasVideo || !videoUrl || !videoRef.current) return;
+
+    const video = videoRef.current;
+
+    // Handle HLS videos
+    if (isHls) {
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: false,
+        });
+        hls.loadSource(videoUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                setVideoError(true);
+                break;
+            }
+          }
+        });
+
+        return () => {
+          hls.destroy();
+        };
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support (Safari)
+        video.src = videoUrl;
+      } else {
+        setVideoError(true);
+      }
+    } else {
+      // Regular video format
+      video.src = videoUrl;
+    }
+  }, [hasVideo, videoUrl, isHls]);
 
   return (
     <Link href={`/games/${game.appid}`} className="block">
@@ -27,7 +76,7 @@ export function RelatedGameCard({ game }: RelatedGameCardProps) {
         <div className="relative w-full h-32 mb-2 overflow-hidden rounded-md bg-muted">
           {hasVideo && videoUrl ? (
             <video
-              src={videoUrl}
+              ref={videoRef}
               autoPlay
               muted
               loop

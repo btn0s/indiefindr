@@ -1,6 +1,11 @@
 import { supabase } from "@/lib/supabase/server";
 import { IngestForm } from "@/components/IngestForm";
 import { RelatedGameCard } from "@/components/RelatedGameCard";
+import {
+  RerunAllButton,
+  RerunAllProvider,
+  RerunAllMessages,
+} from "@/components/RerunAllButton";
 
 type GameListItem = {
   id: number;
@@ -28,40 +33,48 @@ export default async function Home() {
   const games = await getGames();
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black">
-      <main className="container mx-auto max-w-4xl px-4 py-8 flex flex-col gap-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold">Games Graph</h1>
-          <p className="text-muted-foreground">
-            Paste a Steam link to ingest game data and find similar games.
-          </p>
-        </div>
-
-        <IngestForm />
-
-        <div className="flex flex-col gap-4">
-          <h2 className="text-xl font-semibold">Ingested Games</h2>
-          {games.length === 0 ? (
+    <RerunAllProvider>
+      <div className="min-h-screen bg-zinc-50 dark:bg-black">
+        <main className="container mx-auto max-w-4xl px-4 py-8 flex flex-col gap-8">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-semibold">Games Graph</h1>
             <p className="text-muted-foreground">
-              No games ingested yet. Start by ingesting a game above.
+              Paste a Steam link to ingest game data and find similar games.
             </p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {games.map((game) => (
-                <RelatedGameCard
-                  key={game.id}
-                  game={{
-                    appid: game.id,
-                    name: game.name,
-                    header_image: game.header_image,
-                    videos: game.videos,
-                  }}
-                />
-              ))}
+          </div>
+
+          <IngestForm />
+
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Ingested Games</h2>
+              <RerunAllButton />
             </div>
-          )}
-        </div>
-      </main>
-    </div>
+            {games.length === 0 ? (
+              <p className="text-muted-foreground">
+                No games ingested yet. Start by ingesting a game above.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {games.map((game) => (
+                    <RelatedGameCard
+                      key={game.id}
+                      game={{
+                        appid: game.id,
+                        name: game.name,
+                        header_image: game.header_image,
+                        videos: game.videos,
+                      }}
+                    />
+                  ))}
+                </div>
+                <RerunAllMessages />
+              </>
+            )}
+          </div>
+        </main>
+      </div>
+    </RerunAllProvider>
   );
 }
