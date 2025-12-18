@@ -1,3 +1,5 @@
+import { retry } from '../../utils/retry';
+
 const STEAM_REVIEWS_API = 'https://store.steampowered.com/appreviews';
 
 export interface ReviewSummary {
@@ -16,7 +18,27 @@ export async function fetchSteamReviewSummary(
 ): Promise<ReviewSummary | null> {
   try {
     const url = `${STEAM_REVIEWS_API}/${appId}?json=1&language=all&purchase_type=all&num_per_page=0`;
-    const response = await fetch(url);
+    
+    const response = await retry(
+      async () => {
+        const res = await fetch(url);
+        if (!res.ok && res.status !== 404) {
+          // Only throw for non-404 errors (404 means no reviews)
+          throw new Error(`Steam Reviews API error: ${res.status} ${res.statusText}`);
+        }
+        return res;
+      },
+      {
+        maxAttempts: 3,
+        initialDelayMs: 1000,
+        retryable: (error) => {
+          // Retry on network errors and 5xx/429 status codes
+          if (error instanceof TypeError) return true;
+          const status = parseInt(error.message?.match(/\d+/)?.[0] || '0');
+          return status >= 500 || status === 429;
+        },
+      }
+    );
 
     if (!response.ok) {
       // Reviews API might not be available for all games

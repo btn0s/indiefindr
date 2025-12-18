@@ -1,4 +1,21 @@
+import { retry } from '../../utils/retry';
+
 const STEAM_API_BASE = 'https://store.steampowered.com/api';
+
+export interface SteamMovie {
+  id: number;
+  name: string;
+  thumbnail: string;
+  webm?: {
+    '480'?: string;
+    max?: string;
+  };
+  mp4?: {
+    '480'?: string;
+    max?: string;
+  };
+  highlight?: boolean;
+}
 
 export interface SteamGameData {
   steam_appid: number;
@@ -6,6 +23,7 @@ export interface SteamGameData {
   short_description?: string;
   header_image?: string;
   screenshots?: Array<{ id: number; path_thumbnail: string; path_full: string }>;
+  movies?: SteamMovie[];
   developers?: string[];
   publishers?: string[];
   genres?: Array<{ id: string; description: string }>;
@@ -24,6 +42,7 @@ export interface NormalizedGameData {
   description: string;
   header_image: string;
   screenshots: string[];
+  videos: string[]; // Array of video URLs (preferring highlight trailers, then first trailer)
   developers: string[];
   publishers: string[];
   genres: string[];
@@ -37,11 +56,26 @@ export async function fetchSteamGameData(
   appId: number
 ): Promise<NormalizedGameData> {
   const url = `${STEAM_API_BASE}/appdetails?appids=${appId}&cc=US&l=en`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Steam API error: ${response.status} ${response.statusText}`);
-  }
+  
+  const response = await retry(
+    async () => {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Steam API error: ${res.status} ${res.statusText}`);
+      }
+      return res;
+    },
+    {
+      maxAttempts: 3,
+      initialDelayMs: 1000,
+      retryable: (error) => {
+        // Retry on network errors and 5xx/429 status codes
+        if (error instanceof TypeError) return true;
+        const status = parseInt(error.message?.match(/\d+/)?.[0] || '0');
+        return status >= 500 || status === 429;
+      },
+    }
+  );
 
   const data = await response.json();
   const appData = data[appId.toString()];
@@ -58,6 +92,34 @@ export async function fetchSteamGameData(
     tags.push(...gameData.categories.map((cat) => cat.description));
   }
 
+  // Extract video URLs from movies/trailers
+  // Prefer highlight trailers, then any trailer
+  // Prefer MP4 max quality, fallback to 480p, then WebM
+  const videos: string[] = [];
+  if (gameData.movies && gameData.movies.length > 0) {
+    // Sort: highlight trailers first, then by ID
+    const sortedMovies = [...gameData.movies].sort((a, b) => {
+      if (a.highlight && !b.highlight) return -1;
+      if (!a.highlight && b.highlight) return 1;
+      return a.id - b.id;
+    });
+
+    for (const movie of sortedMovies) {
+      // Prefer MP4 max, then MP4 480p, then WebM max, then WebM 480p
+      const videoUrl =
+        movie.mp4?.max ||
+        movie.mp4?.['480'] ||
+        movie.webm?.max ||
+        movie.webm?.['480'];
+      
+      if (videoUrl) {
+        videos.push(videoUrl);
+        // Limit to first 3 videos for card display
+        if (videos.length >= 3) break;
+      }
+    }
+  }
+
   // Normalize the data
   return {
     steam_appid: gameData.steam_appid,
@@ -67,6 +129,7 @@ export async function fetchSteamGameData(
     screenshots: gameData.screenshots
       ? gameData.screenshots.map((s) => s.path_full)
       : [],
+    videos,
     developers: gameData.developers || [],
     publishers: gameData.publishers || [],
     genres: gameData.genres

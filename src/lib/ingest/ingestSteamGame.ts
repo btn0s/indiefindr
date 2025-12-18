@@ -5,6 +5,7 @@ import { fetchSteamReviewSummary } from '../steam/providers/steamReviewsProvider
 import { extractGameFacets } from '../ai/facet-extractor';
 import { buildFacetDocs } from '../facets/buildFacetDocs';
 import { embed } from '../ai/gateway';
+import { retry } from '../utils/retry';
 
 const VISION_MODEL = process.env.AI_MODEL_VISION || 'openai/gpt-4o-mini';
 const EMBEDDING_MODEL =
@@ -67,12 +68,45 @@ export async function ingestSteamGame(
     // Build facet documents
     const facetDocs = buildFacetDocs(gameData, visionFacets);
 
-    // Generate embeddings for all three facets
+    // Generate embeddings for all three facets with retries
     const [aestheticEmbedding, gameplayEmbedding, narrativeEmbedding] =
       await Promise.all([
-        embed({ model: EMBEDDING_MODEL, value: facetDocs.aesthetic }),
-        embed({ model: EMBEDDING_MODEL, value: facetDocs.gameplay }),
-        embed({ model: EMBEDDING_MODEL, value: facetDocs.narrative }),
+        retry(
+          () => embed({ model: EMBEDDING_MODEL, value: facetDocs.aesthetic }),
+          {
+            maxAttempts: 3,
+            initialDelayMs: 1000,
+            retryable: (error: any) => {
+              const errorMessage = error?.message?.toLowerCase() || '';
+              const status = error?.status || error?.response?.status;
+              return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
+            },
+          }
+        ),
+        retry(
+          () => embed({ model: EMBEDDING_MODEL, value: facetDocs.gameplay }),
+          {
+            maxAttempts: 3,
+            initialDelayMs: 1000,
+            retryable: (error: any) => {
+              const errorMessage = error?.message?.toLowerCase() || '';
+              const status = error?.status || error?.response?.status;
+              return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
+            },
+          }
+        ),
+        retry(
+          () => embed({ model: EMBEDDING_MODEL, value: facetDocs.narrative }),
+          {
+            maxAttempts: 3,
+            initialDelayMs: 1000,
+            retryable: (error: any) => {
+              const errorMessage = error?.message?.toLowerCase() || '';
+              const status = error?.status || error?.response?.status;
+              return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
+            },
+          }
+        ),
       ]).then(results => results.map(r => r.embedding));
 
     // Prepare tags as JSONB (tag -> weight, default weight 1.0)
@@ -81,34 +115,54 @@ export async function ingestSteamGame(
       tagsJsonb[tag] = 1.0;
     });
 
-    // Upsert game
-    const { error: upsertError } = await supabase.from('games').upsert(
-      {
-        id: appId,
-        name: gameData.name,
-        description: gameData.description,
-        header_image: gameData.header_image,
-        screenshots: gameData.screenshots,
-        tags: tagsJsonb,
-        review_summary: reviewSummary,
-        aesthetic_text: facetDocs.aesthetic,
-        gameplay_text: facetDocs.gameplay,
-        narrative_text: facetDocs.narrative,
-        aesthetic_embedding: aestheticEmbedding,
-        gameplay_embedding: gameplayEmbedding,
-        narrative_embedding: narrativeEmbedding,
-        vision_model: VISION_MODEL,
-        embedding_model: EMBEDDING_MODEL,
-        updated_at: new Date().toISOString(),
+    // Upsert game with retries
+    await retry(
+      async () => {
+        const { error } = await supabase.from('games').upsert(
+          {
+            id: appId,
+            name: gameData.name,
+            description: gameData.description,
+            header_image: gameData.header_image,
+            screenshots: gameData.screenshots,
+            videos: gameData.videos.length > 0 ? gameData.videos : null,
+            tags: tagsJsonb,
+            review_summary: reviewSummary,
+            aesthetic_text: facetDocs.aesthetic,
+            gameplay_text: facetDocs.gameplay,
+            narrative_text: facetDocs.narrative,
+            aesthetic_embedding: aestheticEmbedding,
+            gameplay_embedding: gameplayEmbedding,
+            narrative_embedding: narrativeEmbedding,
+            vision_model: VISION_MODEL,
+            embedding_model: EMBEDDING_MODEL,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: 'id',
+          }
+        );
+        if (error) {
+          throw new Error(`Failed to upsert game: ${error.message}`);
+        }
       },
       {
-        onConflict: 'id',
+        maxAttempts: 3,
+        initialDelayMs: 500,
+        retryable: (error: any) => {
+          // Retry on connection errors and transient database errors
+          const errorMessage = error?.message?.toLowerCase() || '';
+          const errorCode = error?.code || '';
+          return (
+            errorMessage.includes('connection') ||
+            errorMessage.includes('timeout') ||
+            errorMessage.includes('network') ||
+            errorCode === 'PGRST116' || // Connection error
+            errorCode === 'PGRST301' // Service unavailable
+          );
+        },
       }
     );
-
-    if (upsertError) {
-      throw new Error(`Failed to upsert game: ${upsertError.message}`);
-    }
 
     // Update job status
     await supabase

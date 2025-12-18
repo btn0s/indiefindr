@@ -4,6 +4,7 @@ import { buildFacetDocs } from '../facets/buildFacetDocs';
 import { embed, EMBEDDING_MODEL, VISION_MODEL } from '../ai/gateway';
 import { supabase } from '../supabase/server';
 import type { Game } from '../supabase/types';
+import { retry } from '../utils/retry';
 
 export type IngestResult = {
   success: boolean;
@@ -86,11 +87,44 @@ export async function ingestGame(steamUrl: string): Promise<IngestResult> {
     // Build facet documents (extracts descriptions from structured facets)
     const facetDocs = buildFacetDocs(storeData, facets);
     
-    // Step 3: Generate embeddings for each facet
+    // Step 3: Generate embeddings for each facet with retries
     const [aestheticEmbedding, gameplayEmbedding, narrativeEmbedding] = await Promise.all([
-      embed({ model: EMBEDDING_MODEL, value: facetDocs.aesthetic }),
-      embed({ model: EMBEDDING_MODEL, value: facetDocs.gameplay }),
-      embed({ model: EMBEDDING_MODEL, value: facetDocs.narrative }),
+      retry(
+        () => embed({ model: EMBEDDING_MODEL, value: facetDocs.aesthetic }),
+        {
+          maxAttempts: 3,
+          initialDelayMs: 1000,
+          retryable: (error: any) => {
+            const errorMessage = error?.message?.toLowerCase() || '';
+            const status = error?.status || error?.response?.status;
+            return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
+          },
+        }
+      ),
+      retry(
+        () => embed({ model: EMBEDDING_MODEL, value: facetDocs.gameplay }),
+        {
+          maxAttempts: 3,
+          initialDelayMs: 1000,
+          retryable: (error: any) => {
+            const errorMessage = error?.message?.toLowerCase() || '';
+            const status = error?.status || error?.response?.status;
+            return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
+          },
+        }
+      ),
+      retry(
+        () => embed({ model: EMBEDDING_MODEL, value: facetDocs.narrative }),
+        {
+          maxAttempts: 3,
+          initialDelayMs: 1000,
+          retryable: (error: any) => {
+            const errorMessage = error?.message?.toLowerCase() || '';
+            const status = error?.status || error?.response?.status;
+            return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
+          },
+        }
+      ),
     ]).then(results => results.map(r => r.embedding));
     
     // Step 4: Upsert into games table
@@ -100,6 +134,7 @@ export async function ingestGame(steamUrl: string): Promise<IngestResult> {
       description: storeData.description,
       header_image: storeData.header_image,
       screenshots: storeData.screenshots,
+      videos: storeData.videos.length > 0 ? storeData.videos : null,
       tags,
       review_summary: reviewSummary,
       aesthetic_text: facetDocs.aesthetic,
@@ -112,15 +147,34 @@ export async function ingestGame(steamUrl: string): Promise<IngestResult> {
       embedding_model: EMBEDDING_MODEL,
     };
     
-    const { error: upsertError } = await supabase
-      .from('games')
-      .upsert(gameData, {
-        onConflict: 'id',
-      });
-    
-    if (upsertError) {
-      throw new Error(`Failed to upsert game: ${upsertError.message}`);
-    }
+    await retry(
+      async () => {
+        const { error } = await supabase
+          .from('games')
+          .upsert(gameData, {
+            onConflict: 'id',
+          });
+        if (error) {
+          throw new Error(`Failed to upsert game: ${error.message}`);
+        }
+      },
+      {
+        maxAttempts: 3,
+        initialDelayMs: 500,
+        retryable: (error: any) => {
+          // Retry on connection errors and transient database errors
+          const errorMessage = error?.message?.toLowerCase() || '';
+          const errorCode = error?.code || '';
+          return (
+            errorMessage.includes('connection') ||
+            errorMessage.includes('timeout') ||
+            errorMessage.includes('network') ||
+            errorCode === 'PGRST116' || // Connection error
+            errorCode === 'PGRST301' // Service unavailable
+          );
+        },
+      }
+    );
     
     // Update ingest job status
     const jobId = job?.id || (await supabase

@@ -4,6 +4,7 @@ export type Game = {
   description: string | null;
   header_image: string | null;
   screenshots: string[] | null;
+  videos: string[] | null;
   tags: Record<string, number> | null;
   review_summary: Record<string, any> | null;
   aesthetic_text: string | null;
@@ -32,5 +33,6 @@ export type RelatedGame = {
   appid: number;
   name: string;
   header_image: string | null;
+  videos: string[] | null;
   similarity: number;
 };

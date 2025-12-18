@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { generateObject } from "ai";
 import { VISION_MODEL } from "./gateway";
+import { retry } from "../utils/retry";
 
 /**
  * Visual/aesthetic keyword taxonomy
@@ -199,20 +200,41 @@ For each facet, select 1-3 keywords from the taxonomy (prioritize Steam tags if 
 Extract the aesthetics, gameplay, and narrative/mood facets based on the visual information in the screenshots. Use exact industry-standard terms in your descriptions.`;
 
   try {
-    const result = await generateObject({
-      model: modelId,
-      schema: GameFacetsSchema,
-      system: FACET_EXTRACTOR_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user" as const,
-          content: [
-            { type: "text" as const, text: userPrompt },
-            ...selectedScreenshots.map((image) => ({ type: "image" as const, image })),
+    const result = await retry(
+      () =>
+        generateObject({
+          model: modelId,
+          schema: GameFacetsSchema,
+          system: FACET_EXTRACTOR_SYSTEM_PROMPT,
+          messages: [
+            {
+              role: "user" as const,
+              content: [
+                { type: "text" as const, text: userPrompt },
+                ...selectedScreenshots.map((image) => ({ type: "image" as const, image })),
+              ],
+            },
           ],
+        }),
+      {
+        maxAttempts: 3,
+        initialDelayMs: 2000, // Longer delay for AI calls
+        maxDelayMs: 30000,
+        retryable: (error: any) => {
+          // Retry on rate limits, timeouts, and server errors
+          const errorMessage = error?.message?.toLowerCase() || '';
+          const status = error?.status || error?.response?.status;
+          
+          if (status === 429 || status >= 500) return true;
+          if (errorMessage.includes('rate limit')) return true;
+          if (errorMessage.includes('timeout')) return true;
+          if (errorMessage.includes('server error')) return true;
+          if (errorMessage.includes('service unavailable')) return true;
+          
+          return false;
         },
-      ],
-    });
+      }
+    );
 
     return result.object;
   } catch (error: any) {

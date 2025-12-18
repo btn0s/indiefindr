@@ -1,4 +1,5 @@
 import { parseSteamUrl } from './parser';
+import { retry } from '../utils/retry';
 
 export type SteamStoreData = {
   appid: number;
@@ -6,6 +7,7 @@ export type SteamStoreData = {
   description: string | null;
   header_image: string | null;
   screenshots: string[];
+  videos: string[];
   tags: Record<string, number>;
 };
 
@@ -27,10 +29,24 @@ export class SteamStoreProvider {
   async fetchGameDetails(appId: number): Promise<SteamStoreData> {
     const url = `${this.baseUrl}/appdetails?appids=${appId}&l=english`;
     
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Steam store data: ${response.statusText}`);
-    }
+    const response = await retry(
+      async () => {
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch Steam store data: ${res.status} ${res.statusText}`);
+        }
+        return res;
+      },
+      {
+        maxAttempts: 3,
+        initialDelayMs: 1000,
+        retryable: (error) => {
+          if (error instanceof TypeError) return true;
+          const status = parseInt(error.message?.match(/\d+/)?.[0] || '0');
+          return status >= 500 || status === 429;
+        },
+      }
+    );
     
     const data = await response.json();
     const appData = data[appId.toString()];
@@ -43,6 +59,34 @@ export class SteamStoreProvider {
     
     // Extract screenshots
     const screenshots = (game.screenshots || []).map((s: any) => s.path_full || s.path_thumbnail).filter(Boolean);
+    
+    // Extract video URLs from movies/trailers
+    // Prefer highlight trailers, then any trailer
+    // Prefer MP4 max quality, fallback to 480p, then WebM
+    const videos: string[] = [];
+    if (game.movies && game.movies.length > 0) {
+      // Sort: highlight trailers first, then by ID
+      const sortedMovies = [...game.movies].sort((a: any, b: any) => {
+        if (a.highlight && !b.highlight) return -1;
+        if (!a.highlight && b.highlight) return 1;
+        return a.id - b.id;
+      });
+
+      for (const movie of sortedMovies) {
+        // Prefer MP4 max, then MP4 480p, then WebM max, then WebM 480p
+        const videoUrl =
+          movie.mp4?.max ||
+          movie.mp4?.['480'] ||
+          movie.webm?.max ||
+          movie.webm?.['480'];
+        
+        if (videoUrl) {
+          videos.push(videoUrl);
+          // Limit to first 3 videos for card display
+          if (videos.length >= 3) break;
+        }
+      }
+    }
     
     // Extract tags (from categories/genres)
     const tags: Record<string, number> = {};
@@ -63,6 +107,7 @@ export class SteamStoreProvider {
       description: game.detailed_description || game.short_description || null,
       header_image: game.header_image || null,
       screenshots: screenshots.slice(0, 10), // Limit to 10 screenshots
+      videos,
       tags,
     };
   }
@@ -78,10 +123,24 @@ export class SteamReviewsProvider {
   async fetchReviewSummary(appId: number): Promise<SteamReviewSummary> {
     const url = `${this.baseUrl}/${appId}?json=1&language=english&purchase_type=all`;
     
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Steam reviews: ${response.statusText}`);
-    }
+    const response = await retry(
+      async () => {
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`Failed to fetch Steam reviews: ${res.status} ${res.statusText}`);
+        }
+        return res;
+      },
+      {
+        maxAttempts: 3,
+        initialDelayMs: 1000,
+        retryable: (error) => {
+          if (error instanceof TypeError) return true;
+          const status = parseInt(error.message?.match(/\d+/)?.[0] || '0');
+          return status >= 500 || status === 429;
+        },
+      }
+    );
     
     const data = await response.json();
     
