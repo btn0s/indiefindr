@@ -36,13 +36,19 @@ export function IngestForm() {
       }
 
       setSteamUrl("");
-      // Refresh the page to show updated games list
-      router.refresh();
+
+      // Navigate immediately to the game detail page
+      if (data.gameId) {
+        router.push(`/games/${data.gameId}`);
+      } else {
+        // Fallback: refresh the page to show updated games list
+        router.refresh();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
-    } finally {
       setLoading(false);
     }
+    // Note: Don't set loading to false here if navigating, as the component will unmount
   };
 
   return (

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ingestSteamGame } from "@/lib/ingest/ingestSteamGame";
+import {
+  ingestSteamGame,
+  quickIngestSteamGame,
+} from "@/lib/ingest/ingestSteamGame";
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,14 +11,22 @@ export async function POST(request: NextRequest) {
 
     // Single ingest (backward compatible)
     if (steamUrl && typeof steamUrl === "string") {
-      const result = await ingestSteamGame(steamUrl);
-      if ("error" in result) {
-        return NextResponse.json(
-          { error: result.error, jobId: result.jobId },
-          { status: 500 }
-        );
+      // Use quick ingest for immediate response, then continue processing in background
+      const quickResult = await quickIngestSteamGame(steamUrl);
+      if ("error" in quickResult) {
+        return NextResponse.json({ error: quickResult.error }, { status: 500 });
       }
-      return NextResponse.json(result);
+
+      // Start full ingestion in background (don't await)
+      ingestSteamGame(steamUrl).catch((err) => {
+        console.error(
+          `Background ingestion failed for ${quickResult.gameId}:`,
+          err
+        );
+      });
+
+      // Return immediately with gameId for navigation
+      return NextResponse.json({ gameId: quickResult.gameId });
     }
 
     // Batch ingest

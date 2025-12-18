@@ -13,10 +13,30 @@ export async function GET(
       return NextResponse.json({ error: "Invalid app ID" }, { status: 400 });
     }
 
+    // Check if game has embeddings
+    const { data: game } = await supabase
+      .from("games")
+      .select("aesthetic_embedding, gameplay_embedding, narrative_embedding")
+      .eq("id", appId)
+      .single();
+
+    const hasEmbeddings =
+      game &&
+      game.aesthetic_embedding !== null &&
+      game.gameplay_embedding !== null &&
+      game.narrative_embedding !== null;
+
+    if (!hasEmbeddings) {
+      return NextResponse.json({
+        hasEmbeddings: false,
+        relatedGames: null,
+      });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const facet = searchParams.get("facet") || "all";
     const limit = parseInt(searchParams.get("limit") || "10", 10);
-    const threshold = parseFloat(searchParams.get("threshold") || "0.7");
+    const threshold = parseFloat(searchParams.get("threshold") || "0.55");
 
     const facets = ["aesthetic", "gameplay", "narrative"];
     const requestedFacets =
@@ -41,7 +61,14 @@ export async function GET(
       }
     }
 
-    return NextResponse.json(results);
+    return NextResponse.json({
+      hasEmbeddings: true,
+      relatedGames: {
+        aesthetic: results.aesthetic || [],
+        gameplay: results.gameplay || [],
+        narrative: results.narrative || [],
+      },
+    });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

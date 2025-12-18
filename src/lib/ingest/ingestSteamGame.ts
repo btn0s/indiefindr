@@ -1,15 +1,16 @@
-import { supabase } from '../supabase/server';
-import { parseSteamAppId } from '../steam/parseSteamUrl';
-import { fetchSteamGameData } from '../steam/providers/steamStoreProvider';
-import { fetchSteamReviewSummary } from '../steam/providers/steamReviewsProvider';
-import { extractGameFacets } from '../ai/facet-extractor';
-import { buildFacetDocs } from '../facets/buildFacetDocs';
-import { embed } from '../ai/gateway';
-import { retry } from '../utils/retry';
+import { revalidatePath } from "next/cache";
+import { supabase } from "../supabase/server";
+import { parseSteamAppId } from "../steam/parseSteamUrl";
+import { fetchSteamGameData } from "../steam/providers/steamStoreProvider";
+import { fetchSteamReviewSummary } from "../steam/providers/steamReviewsProvider";
+import { extractGameFacets } from "../ai/facet-extractor";
+import { buildFacetDocs } from "../facets/buildFacetDocs";
+import { embed } from "../ai/gateway";
+import { retry } from "../utils/retry";
 
-const VISION_MODEL = process.env.AI_MODEL_VISION || 'openai/gpt-4o-mini';
+const VISION_MODEL = process.env.AI_MODEL_VISION || "openai/gpt-4o-mini";
 const EMBEDDING_MODEL =
-  process.env.AI_MODEL_EMBEDDING || 'openai/text-embedding-3-small';
+  process.env.AI_MODEL_EMBEDDING || "openai/text-embedding-3-small";
 
 export interface IngestResult {
   gameId: number;
@@ -22,36 +23,83 @@ export interface IngestError {
 }
 
 /**
- * Ingest a Steam game: fetch data, extract facets, generate embeddings, and store
+ * Quick ingest: fetch and save basic Steam data immediately (without embeddings)
+ * This allows instant navigation to the detail page while processing continues in background
  */
-export async function ingestSteamGame(
+export async function quickIngestSteamGame(
   steamUrl: string
-): Promise<IngestResult | IngestError> {
+): Promise<{ gameId: number } | { error: string }> {
   // Parse app ID
   const appId = parseSteamAppId(steamUrl);
   if (!appId) {
-    throw new Error(`Invalid Steam URL: ${steamUrl}`);
+    return { error: `Invalid Steam URL: ${steamUrl}` };
   }
-
-  // Create ingest job
-  const { data: job, error: jobError } = await supabase
-    .from('ingest_jobs')
-    .insert({
-      steam_url: steamUrl,
-      steam_appid: appId,
-      status: 'running',
-    })
-    .select()
-    .single();
-
-  if (jobError || !job) {
-    throw new Error(`Failed to create ingest job: ${jobError?.message}`);
-  }
-
-  const jobId = job.id;
 
   try {
-    // Fetch Steam data
+    // Fetch only basic Steam store data (fast)
+    const gameData = await fetchSteamGameData(appId);
+
+    // Prepare tags as JSONB (tag -> weight, default weight 1.0)
+    const tagsJsonb: Record<string, number> = {};
+    [...gameData.genres, ...gameData.tags].forEach((tag) => {
+      tagsJsonb[tag] = 1.0;
+    });
+
+    // Upsert game with only basic data (no embeddings, no facets yet)
+    await retry(
+      async () => {
+        const { error } = await supabase.from("games").upsert(
+          {
+            id: appId,
+            name: gameData.name,
+            description: gameData.description,
+            header_image: gameData.header_image,
+            screenshots: gameData.screenshots,
+            videos: gameData.videos.length > 0 ? gameData.videos : null,
+            tags: tagsJsonb,
+            // Leave embeddings, facet texts, and models as null for now
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "id",
+          }
+        );
+        if (error) {
+          throw new Error(`Failed to upsert game: ${error.message}`);
+        }
+      },
+      {
+        maxAttempts: 3,
+        initialDelayMs: 500,
+        retryable: (error: any) => {
+          const errorMessage = error?.message?.toLowerCase() || "";
+          const errorCode = error?.code || "";
+          return (
+            errorMessage.includes("connection") ||
+            errorMessage.includes("timeout") ||
+            errorMessage.includes("network") ||
+            errorCode === "PGRST116" ||
+            errorCode === "PGRST301"
+          );
+        },
+      }
+    );
+
+    return { gameId: appId };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    return { error: errorMessage };
+  }
+}
+
+/**
+ * Complete ingestion: extract facets, generate embeddings, and update game record
+ * This should be called after quickIngestSteamGame to finish processing
+ */
+async function completeIngestion(appId: number, jobId: string): Promise<void> {
+  try {
+    // Fetch Steam data again (or we could pass it, but this is simpler)
     const gameData = await fetchSteamGameData(appId);
     const reviewSummary = await fetchSteamReviewSummary(appId);
 
@@ -77,9 +125,14 @@ export async function ingestSteamGame(
             maxAttempts: 3,
             initialDelayMs: 1000,
             retryable: (error: any) => {
-              const errorMessage = error?.message?.toLowerCase() || '';
+              const errorMessage = error?.message?.toLowerCase() || "";
               const status = error?.status || error?.response?.status;
-              return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
+              return (
+                status === 429 ||
+                status >= 500 ||
+                errorMessage.includes("rate limit") ||
+                errorMessage.includes("timeout")
+              );
             },
           }
         ),
@@ -89,9 +142,14 @@ export async function ingestSteamGame(
             maxAttempts: 3,
             initialDelayMs: 1000,
             retryable: (error: any) => {
-              const errorMessage = error?.message?.toLowerCase() || '';
+              const errorMessage = error?.message?.toLowerCase() || "";
               const status = error?.status || error?.response?.status;
-              return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
+              return (
+                status === 429 ||
+                status >= 500 ||
+                errorMessage.includes("rate limit") ||
+                errorMessage.includes("timeout")
+              );
             },
           }
         ),
@@ -101,32 +159,25 @@ export async function ingestSteamGame(
             maxAttempts: 3,
             initialDelayMs: 1000,
             retryable: (error: any) => {
-              const errorMessage = error?.message?.toLowerCase() || '';
+              const errorMessage = error?.message?.toLowerCase() || "";
               const status = error?.status || error?.response?.status;
-              return status === 429 || status >= 500 || errorMessage.includes('rate limit') || errorMessage.includes('timeout');
+              return (
+                status === 429 ||
+                status >= 500 ||
+                errorMessage.includes("rate limit") ||
+                errorMessage.includes("timeout")
+              );
             },
           }
         ),
-      ]).then(results => results.map(r => r.embedding));
+      ]).then((results) => results.map((r) => r.embedding));
 
-    // Prepare tags as JSONB (tag -> weight, default weight 1.0)
-    const tagsJsonb: Record<string, number> = {};
-    [...gameData.genres, ...gameData.tags].forEach((tag) => {
-      tagsJsonb[tag] = 1.0;
-    });
-
-    // Upsert game with retries
+    // Update game with embeddings and facet texts
     await retry(
       async () => {
-        const { error } = await supabase.from('games').upsert(
-          {
-            id: appId,
-            name: gameData.name,
-            description: gameData.description,
-            header_image: gameData.header_image,
-            screenshots: gameData.screenshots,
-            videos: gameData.videos.length > 0 ? gameData.videos : null,
-            tags: tagsJsonb,
+        const { error } = await supabase
+          .from("games")
+          .update({
             review_summary: reviewSummary,
             aesthetic_text: facetDocs.aesthetic,
             gameplay_text: facetDocs.gameplay,
@@ -137,28 +188,24 @@ export async function ingestSteamGame(
             vision_model: VISION_MODEL,
             embedding_model: EMBEDDING_MODEL,
             updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: 'id',
-          }
-        );
+          })
+          .eq("id", appId);
         if (error) {
-          throw new Error(`Failed to upsert game: ${error.message}`);
+          throw new Error(`Failed to update game: ${error.message}`);
         }
       },
       {
         maxAttempts: 3,
         initialDelayMs: 500,
         retryable: (error: any) => {
-          // Retry on connection errors and transient database errors
-          const errorMessage = error?.message?.toLowerCase() || '';
-          const errorCode = error?.code || '';
+          const errorMessage = error?.message?.toLowerCase() || "";
+          const errorCode = error?.code || "";
           return (
-            errorMessage.includes('connection') ||
-            errorMessage.includes('timeout') ||
-            errorMessage.includes('network') ||
-            errorCode === 'PGRST116' || // Connection error
-            errorCode === 'PGRST301' // Service unavailable
+            errorMessage.includes("connection") ||
+            errorMessage.includes("timeout") ||
+            errorMessage.includes("network") ||
+            errorCode === "PGRST116" ||
+            errorCode === "PGRST301"
           );
         },
       }
@@ -166,13 +213,80 @@ export async function ingestSteamGame(
 
     // Update job status
     await supabase
-      .from('ingest_jobs')
+      .from("ingest_jobs")
       .update({
-        status: 'succeeded',
+        status: "succeeded",
         updated_at: new Date().toISOString(),
       })
-      .eq('id', jobId);
+      .eq("id", jobId);
 
+    // Revalidate the game detail page so Next.js cache is invalidated
+    try {
+      revalidatePath(`/games/${appId}`);
+    } catch {
+      // revalidatePath might not work outside request context
+      console.log("Note: revalidatePath called outside request context");
+    }
+  } catch (error) {
+    // Update job with error
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    await supabase
+      .from("ingest_jobs")
+      .update({
+        status: "failed",
+        error: errorMessage,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", jobId);
+    throw error;
+  }
+}
+
+/**
+ * Ingest a Steam game: fetch data, extract facets, generate embeddings, and store
+ * This is the full ingestion pipeline (for backward compatibility)
+ */
+export async function ingestSteamGame(
+  steamUrl: string
+): Promise<IngestResult | IngestError> {
+  // Parse app ID
+  const appId = parseSteamAppId(steamUrl);
+  if (!appId) {
+    throw new Error(`Invalid Steam URL: ${steamUrl}`);
+  }
+
+  // Create ingest job
+  const { data: job, error: jobError } = await supabase
+    .from("ingest_jobs")
+    .insert({
+      steam_url: steamUrl,
+      steam_appid: appId,
+      status: "running",
+    })
+    .select()
+    .single();
+
+  if (jobError || !job) {
+    throw new Error(`Failed to create ingest job: ${jobError?.message}`);
+  }
+
+  const jobId = job.id;
+
+  try {
+    // First do quick ingest to save basic data
+    const quickResult = await quickIngestSteamGame(steamUrl);
+    if ("error" in quickResult) {
+      throw new Error(quickResult.error);
+    }
+
+    // Then complete the ingestion (facets + embeddings) in background
+    // Don't await - let it run asynchronously
+    completeIngestion(appId, jobId).catch((err) => {
+      console.error(`Background ingestion failed for ${appId}:`, err);
+    });
+
+    // Return immediately with gameId so user can navigate
     return {
       gameId: appId,
       jobId,
@@ -180,15 +294,15 @@ export async function ingestSteamGame(
   } catch (error) {
     // Update job with error
     const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
+      error instanceof Error ? error.message : "Unknown error";
     await supabase
-      .from('ingest_jobs')
+      .from("ingest_jobs")
       .update({
-        status: 'failed',
+        status: "failed",
         error: errorMessage,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', jobId);
+      .eq("id", jobId);
 
     return {
       jobId,

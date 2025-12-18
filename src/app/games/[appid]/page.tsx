@@ -3,11 +3,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RelatedGameCard } from "@/components/RelatedGameCard";
+import { RelatedGamesSection } from "@/components/RelatedGamesSection";
 import { RerunButton } from "@/components/RerunButton";
 import { ManualSimilarEditor } from "@/components/ManualSimilarEditor";
 import { supabase } from "@/lib/supabase/server";
-import type { Game, RelatedGame } from "@/lib/supabase/types";
+import type { Game } from "@/lib/supabase/types";
 import { ArrowLeftIcon } from "lucide-react";
 
 type ManualLink = {
@@ -37,43 +37,6 @@ async function getGame(appid: string): Promise<Game | null> {
   }
 
   return game;
-}
-
-async function getRelatedGames(appid: string): Promise<{
-  aesthetic: RelatedGame[];
-  gameplay: RelatedGame[];
-  narrative: RelatedGame[];
-} | null> {
-  const appId = parseInt(appid, 10);
-
-  if (isNaN(appId)) {
-    return null;
-  }
-
-  const facets = ["aesthetic", "gameplay", "narrative"];
-  const results: Record<string, RelatedGame[]> = {};
-
-  for (const facetName of facets) {
-    const { data, error } = await supabase.rpc("get_related_games", {
-      p_appid: appId,
-      p_facet: facetName,
-      p_limit: 10,
-      p_threshold: 0.55,
-    });
-
-    if (error) {
-      console.error(`Error fetching ${facetName} similar games:`, error);
-      results[facetName] = [];
-    } else {
-      results[facetName] = (data || []) as RelatedGame[];
-    }
-  }
-
-  return {
-    aesthetic: results.aesthetic || [],
-    gameplay: results.gameplay || [],
-    narrative: results.narrative || [],
-  };
 }
 
 async function getManualSimilarGames(appid: string): Promise<ManualLink[]> {
@@ -123,9 +86,8 @@ export default async function GameDetailPage({
   params: Promise<{ appid: string }>;
 }) {
   const { appid } = await params;
-  const [game, relatedGames, manualLinks] = await Promise.all([
+  const [game, manualLinks] = await Promise.all([
     getGame(appid),
-    getRelatedGames(appid),
     getManualSimilarGames(appid),
   ]);
 
@@ -196,60 +158,14 @@ export default async function GameDetailPage({
         </div>
 
         {isDev && (
-          <ManualSimilarEditor appid={appIdNumber} existingLinks={manualLinks} />
+          <ManualSimilarEditor
+            appid={appIdNumber}
+            existingLinks={manualLinks}
+          />
         )}
 
         {/* Related Games by Facet */}
-        {relatedGames && (
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-semibold">Similar by Aesthetics</h2>
-              {relatedGames.aesthetic.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  No similar games found.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {relatedGames.aesthetic.map((related) => (
-                    <RelatedGameCard key={related.appid} game={related} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-semibold">Similar by Gameplay</h2>
-              {relatedGames.gameplay.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  No similar games found.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {relatedGames.gameplay.map((related) => (
-                    <RelatedGameCard key={related.appid} game={related} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-semibold">
-                Similar by Narrative/Mood
-              </h2>
-              {relatedGames.narrative.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  No similar games found.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {relatedGames.narrative.map((related) => (
-                    <RelatedGameCard key={related.appid} game={related} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <RelatedGamesSection appid={appid} />
       </main>
     </div>
   );
