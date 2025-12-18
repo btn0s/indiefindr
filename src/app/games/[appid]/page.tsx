@@ -1,115 +1,84 @@
-"use client";
-
-import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RelatedGameCard } from "@/components/RelatedGameCard";
+import { RerunButton } from "@/components/RerunButton";
+import { supabase } from "@/lib/supabase/server";
 import type { Game, RelatedGame } from "@/lib/supabase/types";
 import { ArrowLeftIcon } from "lucide-react";
 
-export default function GameDetailPage() {
-  const params = useParams();
-  const appid = params.appid as string;
-  const [game, setGame] = useState<Game | null>(null);
-  const [relatedGames, setRelatedGames] = useState<{
-    aesthetic: RelatedGame[];
-    gameplay: RelatedGame[];
-    narrative: RelatedGame[];
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [rerunning, setRerunning] = useState(false);
-  const [rerunError, setRerunError] = useState<string | null>(null);
+async function getGame(appid: string): Promise<Game | null> {
+  const appId = parseInt(appid, 10);
 
-  const loadGameData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [gameResponse, relatedResponse] = await Promise.all([
-        fetch(`/api/games/${appid}`),
-        fetch(`/api/games/${appid}/related?facet=all&limit=10&threshold=0.55`),
-      ]);
-
-      if (!gameResponse.ok) {
-        throw new Error("Failed to load game");
-      }
-
-      const gameData = await gameResponse.json();
-      setGame(gameData);
-
-      if (relatedResponse.ok) {
-        const relatedData = await relatedResponse.json();
-        setRelatedGames(relatedData);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load game data");
-    } finally {
-      setLoading(false);
-    }
-  }, [appid]);
-
-  useEffect(() => {
-    if (appid) {
-      loadGameData();
-    }
-  }, [appid, loadGameData]);
-
-  const handleRerun = async () => {
-    if (!game) return;
-
-    setRerunning(true);
-    setRerunError(null);
-
-    try {
-      // Construct Steam URL from appid
-      const steamUrl = `https://store.steampowered.com/app/${appid}/`;
-
-      const response = await fetch("/api/games/ingest", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ steamUrl }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to rerun ingestion");
-      }
-
-      // Reload game data after successful rerun
-      await loadGameData();
-    } catch (err) {
-      setRerunError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setRerunning(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
+  if (isNaN(appId)) {
+    return null;
   }
 
+  const { data: game, error } = await supabase
+    .from("games")
+    .select("*")
+    .eq("id", appId)
+    .single();
+
   if (error || !game) {
-    return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-black">
-        <main className="container mx-auto max-w-4xl px-4 py-8">
-          <div className="flex flex-col gap-4">
-            <p className="text-destructive">{error || "Game not found"}</p>
-            <Link href="/">
-              <Button variant="outline">Back to Home</Button>
-            </Link>
-          </div>
-        </main>
-      </div>
-    );
+    return null;
+  }
+
+  return game;
+}
+
+async function getRelatedGames(appid: string): Promise<{
+  aesthetic: RelatedGame[];
+  gameplay: RelatedGame[];
+  narrative: RelatedGame[];
+} | null> {
+  const appId = parseInt(appid, 10);
+
+  if (isNaN(appId)) {
+    return null;
+  }
+
+  const facets = ["aesthetic", "gameplay", "narrative"];
+  const results: Record<string, RelatedGame[]> = {};
+
+  for (const facetName of facets) {
+    const { data, error } = await supabase.rpc("get_related_games", {
+      p_appid: appId,
+      p_facet: facetName,
+      p_limit: 10,
+      p_threshold: 0.55,
+    });
+
+    if (error) {
+      console.error(`Error fetching ${facetName} similar games:`, error);
+      results[facetName] = [];
+    } else {
+      results[facetName] = (data || []) as RelatedGame[];
+    }
+  }
+
+  return {
+    aesthetic: results.aesthetic || [],
+    gameplay: results.gameplay || [],
+    narrative: results.narrative || [],
+  };
+}
+
+export default async function GameDetailPage({
+  params,
+}: {
+  params: Promise<{ appid: string }>;
+}) {
+  const { appid } = await params;
+  const [game, relatedGames] = await Promise.all([
+    getGame(appid),
+    getRelatedGames(appid),
+  ]);
+
+  if (!game) {
+    notFound();
   }
 
   const tags = game.tags ? Object.keys(game.tags) : [];
@@ -117,21 +86,16 @@ export default function GameDetailPage() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
       <main className="container mx-auto max-w-4xl px-4 py-8 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between relative">
           <Link href="/">
             <Button variant="ghost">
               <ArrowLeftIcon className="size-4" /> Back to Home
             </Button>
           </Link>
-          <Button onClick={handleRerun} disabled={rerunning} variant="outline">
-            {rerunning ? "Rerunning..." : "Rerun Ingestion"}
-          </Button>
-        </div>
-        {rerunError && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-            <p className="text-destructive text-sm">{rerunError}</p>
+          <div className="relative">
+            <RerunButton appid={appid} />
           </div>
-        )}
+        </div>
 
         <h1 className="text-2xl font-semibold">Games like {game.name}</h1>
 
