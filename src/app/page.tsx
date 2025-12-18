@@ -36,14 +36,13 @@ export default async function Home() {
     <RerunAllProvider>
       <div className="min-h-screen bg-zinc-50 dark:bg-black">
         <main className="container mx-auto max-w-4xl px-4 py-8 flex flex-col gap-8">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-semibold">Games Graph</h1>
-            <p className="text-muted-foreground">
+          <div className="flex flex-col">
+            <h1 className="text-lg font-bold">Games Graph</h1>
+            <p className="text-muted-foreground mb-2">
               Paste a Steam link to ingest game data and find similar games.
             </p>
+            <IngestForm />
           </div>
-
-          <IngestForm />
 
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
