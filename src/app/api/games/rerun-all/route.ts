@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { ingestSteamGame } from "@/lib/ingest/ingestSteamGame";
 import { IS_DEV } from "@/lib/utils/dev";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   if (!IS_DEV) {
     return NextResponse.json(
       { error: "This endpoint is only available in development mode" },
