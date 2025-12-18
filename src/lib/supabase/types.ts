@@ -36,3 +36,14 @@ export type RelatedGame = {
   videos: string[] | null;
   similarity: number;
 };
+
+export type ManualSimilarity = {
+  id: string;
+  source_appid: number;
+  target_appid: number;
+  facets: string[] | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};

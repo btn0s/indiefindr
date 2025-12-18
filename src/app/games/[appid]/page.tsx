@@ -5,9 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RelatedGameCard } from "@/components/RelatedGameCard";
 import { RerunButton } from "@/components/RerunButton";
+import { ManualSimilarEditor } from "@/components/ManualSimilarEditor";
 import { supabase } from "@/lib/supabase/server";
 import type { Game, RelatedGame } from "@/lib/supabase/types";
 import { ArrowLeftIcon } from "lucide-react";
+
+type ManualLink = {
+  id: string;
+  otherAppid: number;
+  otherName: string;
+  otherHeader: string | null;
+  facets: string[];
+  note: string | null;
+};
 
 async function getGame(appid: string): Promise<Game | null> {
   const appId = parseInt(appid, 10);
@@ -66,22 +76,66 @@ async function getRelatedGames(appid: string): Promise<{
   };
 }
 
+async function getManualSimilarGames(appid: string): Promise<ManualLink[]> {
+  const appId = parseInt(appid, 10);
+
+  if (isNaN(appId)) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("manual_similarities")
+    .select(
+      `
+      id,
+      source_appid,
+      target_appid,
+      facets,
+      note,
+      source:source_appid ( id, name, header_image ),
+      target:target_appid ( id, name, header_image )
+    `
+    )
+    .or(`source_appid.eq.${appId},target_appid.eq.${appId}`);
+
+  if (error || !data) {
+    console.error("Error fetching manual links:", error);
+    return [];
+  }
+
+  return (data as any[]).map((row) => {
+    const isSource = row.source_appid === appId;
+    const other = isSource ? row.target : row.source;
+    return {
+      id: row.id,
+      otherAppid: other?.id ?? (isSource ? row.target_appid : row.source_appid),
+      otherName: other?.name ?? "Unknown game",
+      otherHeader: other?.header_image ?? null,
+      facets: row.facets ?? [],
+      note: row.note ?? null,
+    };
+  });
+}
+
 export default async function GameDetailPage({
   params,
 }: {
   params: Promise<{ appid: string }>;
 }) {
   const { appid } = await params;
-  const [game, relatedGames] = await Promise.all([
+  const [game, relatedGames, manualLinks] = await Promise.all([
     getGame(appid),
     getRelatedGames(appid),
+    getManualSimilarGames(appid),
   ]);
 
   if (!game) {
     notFound();
   }
 
+  const appIdNumber = parseInt(appid, 10);
   const tags = game.tags ? Object.keys(game.tags) : [];
+  const isDev = process.env.NEXT_PUBLIC_ENV === "development";
 
   return (
     <div className="min-h-screen">
@@ -140,6 +194,10 @@ export default async function GameDetailPage({
             )}
           </div>
         </div>
+
+        {isDev && (
+          <ManualSimilarEditor appid={appIdNumber} existingLinks={manualLinks} />
+        )}
 
         {/* Related Games by Facet */}
         {relatedGames && (
