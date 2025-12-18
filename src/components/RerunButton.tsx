@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-
-const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
+import { IS_DEV } from "@/lib/utils/dev";
 
 interface RerunButtonProps {
   appid: string;

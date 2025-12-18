@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { ingestSteamGame } from "@/lib/ingest/ingestSteamGame";
-import { isDevMode } from "@/lib/utils/dev";
+import { IS_DEV } from "@/lib/utils/dev";
 
 export async function POST(request: NextRequest) {
-  // Only allow in dev mode
-  if (!isDevMode()) {
+  if (!IS_DEV) {
     return NextResponse.json(
       { error: "This endpoint is only available in development mode" },
       { status: 403 }
@@ -34,13 +33,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Process games sequentially to avoid overwhelming the API
-    const results: Array<{ appid: number; name: string; success: boolean; error?: string }> = [];
-    
+    const results: Array<{
+      appid: number;
+      name: string;
+      success: boolean;
+      error?: string;
+    }> = [];
+
     for (const game of games) {
       try {
         const steamUrl = `https://store.steampowered.com/app/${game.id}/`;
         const result = await ingestSteamGame(steamUrl);
-        
+
         if ("error" in result) {
           results.push({
             appid: game.id,
