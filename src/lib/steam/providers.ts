@@ -1,0 +1,152 @@
+import { parseSteamUrl } from './parser';
+
+export type SteamStoreData = {
+  appid: number;
+  name: string;
+  description: string | null;
+  header_image: string | null;
+  screenshots: string[];
+  tags: Record<string, number>;
+};
+
+export type SteamReviewSummary = {
+  review_score: number;
+  review_score_desc: string;
+  total_positive: number;
+  total_negative: number;
+  total_reviews: number;
+};
+
+/**
+ * Steam Store API Provider
+ * Fetches game details from Steam Store API
+ */
+export class SteamStoreProvider {
+  private readonly baseUrl = 'https://store.steampowered.com/api';
+  
+  async fetchGameDetails(appId: number): Promise<SteamStoreData> {
+    const url = `${this.baseUrl}/appdetails?appids=${appId}&l=english`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Steam store data: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const appData = data[appId.toString()];
+    
+    if (!appData || !appData.success) {
+      throw new Error(`Steam app ${appId} not found or unavailable`);
+    }
+    
+    const game = appData.data;
+    
+    // Extract screenshots
+    const screenshots = (game.screenshots || []).map((s: any) => s.path_full || s.path_thumbnail).filter(Boolean);
+    
+    // Extract tags (from categories/genres)
+    const tags: Record<string, number> = {};
+    if (game.genres) {
+      game.genres.forEach((genre: any) => {
+        tags[genre.description] = 1;
+      });
+    }
+    if (game.categories) {
+      game.categories.forEach((cat: any) => {
+        tags[cat.description] = (tags[cat.description] || 0) + 0.5;
+      });
+    }
+    
+    return {
+      appid: appId,
+      name: game.name,
+      description: game.detailed_description || game.short_description || null,
+      header_image: game.header_image || null,
+      screenshots: screenshots.slice(0, 10), // Limit to 10 screenshots
+      tags,
+    };
+  }
+}
+
+/**
+ * Steam Reviews Provider
+ * Fetches review summary from Steam Store API
+ */
+export class SteamReviewsProvider {
+  private readonly baseUrl = 'https://store.steampowered.com/appreviews';
+  
+  async fetchReviewSummary(appId: number): Promise<SteamReviewSummary> {
+    const url = `${this.baseUrl}/${appId}?json=1&language=english&purchase_type=all`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Steam reviews: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.query_summary) {
+      return {
+        review_score: 0,
+        review_score_desc: 'No reviews',
+        total_positive: 0,
+        total_negative: 0,
+        total_reviews: 0,
+      };
+    }
+    
+    const summary = data.query_summary;
+    
+    return {
+      review_score: summary.review_score || 0,
+      review_score_desc: summary.review_score_desc || 'No reviews',
+      total_positive: summary.total_positive || 0,
+      total_negative: summary.total_negative || 0,
+      total_reviews: summary.total_reviews || 0,
+    };
+  }
+}
+
+/**
+ * Steam Tags Provider
+ * Extracts tags from store page (can be enhanced with SteamSpy later)
+ */
+export class SteamTagsProvider {
+  async fetchTags(appId: number, storeData: SteamStoreData): Promise<Record<string, number>> {
+    // For now, return tags from store data
+    // Later, this can be enhanced with SteamSpy API or web scraping
+    return storeData.tags;
+  }
+}
+
+/**
+ * Main Steam data fetcher that combines all providers
+ */
+export async function fetchSteamGameData(steamUrl: string): Promise<{
+  storeData: SteamStoreData;
+  reviewSummary: SteamReviewSummary;
+  tags: Record<string, number>;
+}> {
+  const appId = parseSteamUrl(steamUrl);
+  
+  if (!appId) {
+    throw new Error(`Invalid Steam URL: ${steamUrl}`);
+  }
+  
+  const storeProvider = new SteamStoreProvider();
+  const reviewsProvider = new SteamReviewsProvider();
+  const tagsProvider = new SteamTagsProvider();
+  
+  const [storeData, reviewSummary] = await Promise.all([
+    storeProvider.fetchGameDetails(appId),
+    reviewsProvider.fetchReviewSummary(appId),
+  ]);
+  
+  const tags = await tagsProvider.fetchTags(appId, storeData);
+  
+  return {
+    storeData,
+    reviewSummary,
+    tags,
+  };
+}

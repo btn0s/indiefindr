@@ -1,36 +1,173 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Games Graph MVP
 
-## Getting Started
+A Next.js application that ingests Steam games, extracts three facets (Aesthetics, Gameplay, Narrative/Mood) using AI vision models, generates embeddings, and provides similarity-based game recommendations.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Steam Game Ingestion**: Paste a Steam URL to ingest game data, screenshots, and metadata
+- **AI-Powered Facet Extraction**: Uses vision models to extract three distinct facets from game screenshots
+- **Vector Similarity Search**: Stores embeddings in pgvector and finds similar games by each facet
+- **Interactive UI**: Home page with game list and detail pages showing facet-based recommendations
+
+## Architecture
+
+### Database (Supabase + pgvector)
+- `games` table with three embedding columns (aesthetic, gameplay, narrative)
+- `ingest_jobs` table for tracking ingestion status
+- Vector indexes for efficient similarity search
+- RPC function `get_related_games` for similarity queries
+
+### AI Integration
+- AI Gateway client (configured via environment variables)
+- Vision model: `openai/gpt-4o-mini` for facet extraction
+- Embedding model: `openai/text-embedding-3-small` (1536 dimensions)
+- Model ID format: `provider/model` (e.g., `openai/gpt-4o-mini`)
+
+### Ingestion Pipeline
+1. Parse Steam URL → Extract AppID
+2. Fetch Steam data (store, reviews, tags)
+3. Extract facets using vision model
+4. Generate embeddings for each facet
+5. Upsert into database
+
+## Setup
+
+### Prerequisites
+- Node.js 18+ and pnpm
+- Supabase project with pgvector extension
+- AI Gateway configured and accessible
+
+### Environment Variables
+
+Create a `.env.local` file with:
+
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# AI Gateway Configuration
+AI_GATEWAY_BASE_URL=https://your-ai-gateway-url.com
+AI_GATEWAY_API_KEY=your_ai_gateway_api_key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Database Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Apply Migrations**: Run the Supabase migration to create tables and indexes:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Using Supabase CLI
+supabase db push
 
-## Learn More
+# Or manually apply the migration file:
+# supabase/migrations/20250101000000_initial_schema.sql
+```
 
-To learn more about Next.js, take a look at the following resources:
+The migration includes:
+- pgvector extension
+- `games` table with 3 embedding columns
+- `ingest_jobs` table
+- Vector indexes (IVFFlat with cosine distance)
+- RPC function for similarity queries
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Install Dependencies
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm install
+```
 
-## Deploy on Vercel
+### Run Development Server
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open [http://localhost:3000](http://localhost:3000) to see the application.
+
+## Usage
+
+1. **Ingest a Game**: Paste a Steam URL (e.g., `https://store.steampowered.com/app/123456/GameName/`) on the home page
+2. **View Games**: See a list of all ingested games
+3. **Explore Similar Games**: Click on a game to see similar games by:
+   - Aesthetics (visual style, art direction)
+   - Gameplay (mechanics, player perspective)
+   - Narrative/Mood (theme, atmosphere)
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   └── games/
+│   │       ├── ingest/route.ts          # POST /api/games/ingest
+│   │       ├── [appid]/route.ts         # GET /api/games/[appid]
+│   │       └── [appid]/related/route.ts # GET /api/games/[appid]/related
+│   ├── games/
+│   │   └── [appid]/page.tsx             # Game detail page
+│   └── page.tsx                          # Home page
+├── lib/
+│   ├── ai/
+│   │   ├── gateway.ts                   # AI Gateway client
+│   │   └── facet-extractor.ts           # Vision facet extraction
+│   ├── ingest/
+│   │   └── pipeline.ts                   # Main ingestion pipeline
+│   ├── steam/
+│   │   ├── parser.ts                     # Steam URL parser
+│   │   └── providers.ts                  # Steam API providers
+│   └── supabase/
+│       ├── client.ts                     # Supabase clients
+│       └── types.ts                       # TypeScript types
+└── components/
+    └── ui/                                # UI components (shadcn)
+```
+
+## API Routes
+
+### POST `/api/games/ingest`
+Ingest a new game from a Steam URL.
+
+**Request:**
+```json
+{
+  "steamUrl": "https://store.steampowered.com/app/123456/GameName/"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "gameId": 123456
+}
+```
+
+### GET `/api/games`
+Get list of all ingested games.
+
+### GET `/api/games/[appid]`
+Get game details by AppID.
+
+### GET `/api/games/[appid]/related?facet=all&limit=10&threshold=0.7`
+Get similar games by facet(s).
+
+**Query Parameters:**
+- `facet`: `aesthetic` | `gameplay` | `narrative` | `all` (default: `all`)
+- `limit`: Number of results (default: `10`)
+- `threshold`: Minimum similarity score 0-1 (default: `0.7`)
+
+## Notes
+
+- The AI Gateway must support the `provider/model` format for model routing
+- Embedding dimension is fixed at 1536 (text-embedding-3-small)
+- Vector indexes use IVFFlat with cosine distance
+- Similarity scores are calculated as `1 - cosine_distance`
+
+## Next Steps
+
+- Add graph-building capabilities
+- Support additional aggregation providers (SteamSpy, etc.)
+- Implement global similarity view (average of three facets)
+- Add pagination and filtering
+- Enhance UI with more game metadata
