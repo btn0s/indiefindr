@@ -6,6 +6,10 @@ import { useState, useEffect, useRef, memo } from "react";
 import Hls from "hls.js";
 import type { GameNew } from "@/lib/supabase/types";
 
+type GameCardProps = GameNew & {
+  explanation?: string;
+};
+
 function GameCard({
   appid,
   screenshots,
@@ -15,7 +19,8 @@ function GameCard({
   short_description,
   long_description,
   raw,
-}: GameNew) {
+  explanation,
+}: GameCardProps) {
   const [videoError, setVideoError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
@@ -136,6 +141,11 @@ function GameCard({
           )}
         </div>
         <div className="font-medium text-sm">{title}</div>
+        {explanation && (
+          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+            {explanation}
+          </div>
+        )}
       </div>
     </Link>
   );

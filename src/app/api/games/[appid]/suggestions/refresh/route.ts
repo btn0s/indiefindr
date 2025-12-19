@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { suggestGames } from "@/lib/suggest";
 import { ingest } from "@/lib/ingest";
+import { Suggestion } from "@/lib/supabase/types";
 
 /**
  * POST /api/games/[appid]/suggestions/refresh
- * 
+ *
  * Refresh suggestions by calling suggestGames() and merging the response with existing suggestions.
  * Auto-ingests missing suggested games via ingest().
  */
@@ -24,7 +25,9 @@ export async function POST(
     // Fetch game data
     const { data: gameData, error: gameError } = await supabase
       .from("games_new")
-      .select("screenshots, title, short_description, long_description, suggested_game_appids")
+      .select(
+        "screenshots, title, short_description, long_description, suggested_game_appids"
+      )
       .eq("appid", appId)
       .single();
 
@@ -49,27 +52,31 @@ export async function POST(
       .filter(Boolean)
       .join(". ");
 
-    console.log("[REFRESH SUGGESTIONS] Generating suggestions for:", gameData.title);
-    const suggestions = await suggestGames(firstScreenshot, textContext);
+    console.log(
+      "[REFRESH SUGGESTIONS] Generating suggestions for:",
+      gameData.title
+    );
+    const result = await suggestGames(firstScreenshot, textContext);
 
-    // Find games that already suggest this game (bidirectional linking)
-    const { data: reverseLinks } = await supabase
-      .from("games_new")
-      .select("appid")
-      .contains("suggested_game_appids", [appId]);
+    // Merge new suggestions with existing (deduplicated by appId, preferring new explanations)
+    const existingSuggestions: Suggestion[] =
+      gameData.suggested_game_appids || [];
+    const newSuggestions = result.suggestions;
 
-    const reverseLinkAppIds = (reverseLinks || []).map((g) => g.appid);
-
-    // Merge suggestGames() response with existing suggestions
-    const existingAppIds: number[] = gameData.suggested_game_appids || [];
-    const newAppIds = suggestions.validatedAppIds;
-    const mergedAppIds = [...new Set([...newAppIds, ...reverseLinkAppIds, ...existingAppIds])];
+    const suggestionMap = new Map<number, Suggestion>();
+    for (const s of existingSuggestions) {
+      suggestionMap.set(s.appId, s);
+    }
+    for (const s of newSuggestions) {
+      suggestionMap.set(s.appId, s);
+    }
+    const mergedSuggestions = Array.from(suggestionMap.values());
 
     // Save merged suggestions
     const { error: saveError } = await supabase
       .from("games_new")
       .update({
-        suggested_game_appids: mergedAppIds,
+        suggested_game_appids: mergedSuggestions,
         updated_at: new Date().toISOString(),
       })
       .eq("appid", appId);
@@ -79,29 +86,34 @@ export async function POST(
     }
 
     // Add this game to each suggested game's list (make it bidirectional)
-    for (const suggestedAppId of newAppIds) {
+    for (const suggestion of newSuggestions) {
       const { data: suggestedGame } = await supabase
         .from("games_new")
         .select("suggested_game_appids")
-        .eq("appid", suggestedAppId)
+        .eq("appid", suggestion.appId)
         .maybeSingle();
 
       if (suggestedGame) {
-        const theirSuggestions: number[] = suggestedGame.suggested_game_appids || [];
-        if (!theirSuggestions.includes(appId)) {
+        const theirSuggestions: Suggestion[] =
+          suggestedGame.suggested_game_appids || [];
+        const alreadyHasLink = theirSuggestions.some((s) => s.appId === appId);
+        if (!alreadyHasLink) {
           await supabase
             .from("games_new")
             .update({
-              suggested_game_appids: [...theirSuggestions, appId],
+              suggested_game_appids: [
+                ...theirSuggestions,
+                { appId, explanation: "Suggested by similar game" },
+              ],
               updated_at: new Date().toISOString(),
             })
-            .eq("appid", suggestedAppId);
+            .eq("appid", suggestion.appId);
         }
       }
     }
 
-    // Auto-ingest missing games via ingest() (it handles existence checks and auto-ingestion)
-    // Note: Global rate limiter handles the 2s delay between Steam API requests
+    // Auto-ingest missing games via ingest()
+    const mergedAppIds = mergedSuggestions.map((s) => s.appId);
     const { data: existingGames } = await supabase
       .from("games_new")
       .select("appid")
@@ -111,16 +123,19 @@ export async function POST(
     const missingAppids = mergedAppIds.filter((id) => !existingAppids.has(id));
 
     if (missingAppids.length > 0) {
-      console.log(`[REFRESH SUGGESTIONS] Auto-ingesting ${missingAppids.length} missing games...`);
-      
+      console.log(
+        `[REFRESH SUGGESTIONS] Auto-ingesting ${missingAppids.length} missing games...`
+      );
+
       // Fire off background ingestion but don't wait for it
-      // The ingest function handles rate limiting internally
       (async () => {
         for (const missingAppid of missingAppids) {
           const steamUrl = `https://store.steampowered.com/app/${missingAppid}/`;
           try {
             await ingest(steamUrl);
-            console.log(`[REFRESH SUGGESTIONS] Successfully auto-ingested ${missingAppid}`);
+            console.log(
+              `[REFRESH SUGGESTIONS] Successfully auto-ingested ${missingAppid}`
+            );
           } catch (err) {
             console.error(
               `[REFRESH SUGGESTIONS] Failed to auto-ingest ${missingAppid}:`,
@@ -128,16 +143,17 @@ export async function POST(
             );
           }
         }
-        console.log(`[REFRESH SUGGESTIONS] Completed auto-ingestion of ${missingAppids.length} games`);
+        console.log(
+          `[REFRESH SUGGESTIONS] Completed auto-ingestion of ${missingAppids.length} games`
+        );
       })().catch(console.error);
     }
 
     return NextResponse.json({
       success: true,
-      validatedAppIds: mergedAppIds,
-      newCount: newAppIds.length,
-      totalCount: mergedAppIds.length,
-      reverseLinkCount: reverseLinkAppIds.length,
+      suggestions: mergedSuggestions,
+      newCount: newSuggestions.length,
+      totalCount: mergedSuggestions.length,
       queuedForIngestion: missingAppids.length,
     });
   } catch (error) {

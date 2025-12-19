@@ -42,9 +42,14 @@ interface SuggestionResult {
   error?: string;
 }
 
+interface Suggestion {
+  appId: number;
+  explanation: string;
+}
+
 interface RefreshResponse {
   success: boolean;
-  validatedAppIds?: number[];
+  suggestions?: Suggestion[];
   error?: string;
 }
 
@@ -87,9 +92,7 @@ async function checkGamesExist(appids: number[]): Promise<number[]> {
   return appids.filter((appid) => !existingAppids.has(appid));
 }
 
-async function queueGamesForIngestion(
-  appids: number[]
-): Promise<QueuedGame[]> {
+async function queueGamesForIngestion(appids: number[]): Promise<QueuedGame[]> {
   if (appids.length === 0) {
     return [];
   }
@@ -165,14 +168,13 @@ async function generateSuggestions(
       return { success: false, error: data.error };
     }
 
-    const validatedAppIds = data.validatedAppIds || [];
-    console.log(
-      `✅ Success! Found ${validatedAppIds.length} suggestions`
-    );
+    const suggestions = data.suggestions || [];
+    const validatedAppIds = suggestions.map((s) => s.appId);
+    console.log(`✅ Success! Found ${suggestions.length} suggestions`);
 
     // Check which suggested games don't exist in the database
     const missingAppids = await checkGamesExist(validatedAppIds);
-    
+
     if (missingAppids.length > 0) {
       console.log(
         `📋 Found ${missingAppids.length} suggested games not in database, adding to queue...`

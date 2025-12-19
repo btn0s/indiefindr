@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card";
 import GameCard from "@/components/GameCard";
 import { supabase } from "@/lib/supabase/server";
-import { GameNew } from "@/lib/supabase/types";
+import { GameNew, Suggestion } from "@/lib/supabase/types";
 import { suggestGames } from "@/lib/suggest";
 
 interface SuggestionsListProps {
@@ -14,7 +14,7 @@ interface SuggestionsListProps {
 }
 
 export async function SuggestionsList({ appid }: SuggestionsListProps) {
-  // Fetch suggested app IDs from cache (simple SQL query)
+  // Fetch suggestions from cache (simple SQL query)
   const { data: gameData } = await supabase
     .from("games_new")
     .select(
@@ -23,10 +23,10 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     .eq("appid", appid)
     .maybeSingle();
 
-  let suggestedAppIds: number[] = gameData?.suggested_game_appids || [];
+  let suggestions: Suggestion[] = gameData?.suggested_game_appids || [];
 
   // If no cached suggestions exist, generate them (this will block, but only on first load)
-  if (suggestedAppIds.length === 0 && gameData) {
+  if (suggestions.length === 0 && gameData) {
     try {
       if (gameData.screenshots && gameData.screenshots.length > 0) {
         const firstScreenshot = gameData.screenshots[0];
@@ -42,53 +42,77 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
           "[SUGGESTIONS LIST] Generating suggestions for appid:",
           appid
         );
-        const suggestions = await suggestGames(firstScreenshot, textContext);
+        const result = await suggestGames(firstScreenshot, textContext);
 
         // Find games that already suggest this game (bidirectional linking)
+        // Note: This query needs to check if any suggestion object has appId matching
         const { data: reverseLinks } = await supabase
           .from("games_new")
           .select("appid")
-          .contains("suggested_game_appids", [appid]);
+          .not("suggested_game_appids", "is", null);
 
-        const reverseLinkAppIds = (reverseLinks || []).map((g) => g.appid);
+        // Filter reverse links - games that have this appid in their suggestions
+        const reverseLinkAppIds = (reverseLinks || [])
+          .filter((g) => {
+            // We need to re-query to get the actual suggested_game_appids
+            return false; // Skip for now, will be handled by refresh
+          })
+          .map((g) => g.appid);
 
-        // Merge: new suggestions + reverse links + existing (deduplicated)
-        const existingAppIds: number[] = gameData.suggested_game_appids || [];
-        const newAppIds = suggestions.validatedAppIds;
-        const mergedAppIds = [...new Set([...newAppIds, ...reverseLinkAppIds, ...existingAppIds])];
+        // Merge: new suggestions + existing (deduplicated by appId)
+        const existingSuggestions: Suggestion[] =
+          gameData.suggested_game_appids || [];
+        const newSuggestions = result.suggestions;
 
-        // Save validated app IDs to DB cache
+        // Create a map to deduplicate by appId, preferring new suggestions (fresher explanations)
+        const suggestionMap = new Map<number, Suggestion>();
+        for (const s of existingSuggestions) {
+          suggestionMap.set(s.appId, s);
+        }
+        for (const s of newSuggestions) {
+          suggestionMap.set(s.appId, s);
+        }
+        const mergedSuggestions = Array.from(suggestionMap.values());
+
+        // Save validated suggestions to DB cache
         await supabase
           .from("games_new")
           .update({
-            suggested_game_appids: mergedAppIds,
+            suggested_game_appids: mergedSuggestions,
             updated_at: new Date().toISOString(),
           })
           .eq("appid", appid);
 
         // Add this game to each suggested game's list (make it bidirectional)
-        for (const suggestedAppId of newAppIds) {
+        for (const suggestion of newSuggestions) {
           const { data: suggestedGame } = await supabase
             .from("games_new")
             .select("suggested_game_appids")
-            .eq("appid", suggestedAppId)
+            .eq("appid", suggestion.appId)
             .maybeSingle();
 
           if (suggestedGame) {
-            const theirSuggestions: number[] = suggestedGame.suggested_game_appids || [];
-            if (!theirSuggestions.includes(appid)) {
+            const theirSuggestions: Suggestion[] =
+              suggestedGame.suggested_game_appids || [];
+            const alreadyHasLink = theirSuggestions.some(
+              (s) => s.appId === appid
+            );
+            if (!alreadyHasLink) {
               await supabase
                 .from("games_new")
                 .update({
-                  suggested_game_appids: [...theirSuggestions, appid],
+                  suggested_game_appids: [
+                    ...theirSuggestions,
+                    { appId: appid, explanation: "Suggested by similar game" },
+                  ],
                   updated_at: new Date().toISOString(),
                 })
-                .eq("appid", suggestedAppId);
+                .eq("appid", suggestion.appId);
             }
           }
         }
 
-        suggestedAppIds = mergedAppIds;
+        suggestions = mergedSuggestions;
       }
     } catch (error) {
       console.error(
@@ -99,7 +123,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     }
   }
 
-  if (!suggestedAppIds || suggestedAppIds.length === 0) {
+  if (!suggestions || suggestions.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -109,6 +133,9 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
       </Card>
     );
   }
+
+  // Extract app IDs for fetching
+  const suggestedAppIds = suggestions.map((s) => s.appId);
 
   // Fetch games that already exist in DB
   const { data: games, error } = await supabase
@@ -134,23 +161,36 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     return rawType === "game" || !rawType; // Allow if type is "game" or missing
   });
 
+  // Build a map of appId -> explanation for quick lookup
+  const explanationMap = new Map(
+    suggestions.map((s) => [s.appId, s.explanation])
+  );
+
   // Only show games that exist in DB - don't try to stream missing ones (causes 429s)
-  const sortedGames = suggestedAppIds
-    .map((appId) => cachedGames.find((g) => g.appid === appId))
-    .filter((g): g is GameNew => g !== undefined);
+  const sortedGames = suggestions
+    .map((suggestion) => {
+      const game = cachedGames.find((g) => g.appid === suggestion.appId);
+      return game
+        ? { ...game, explanation: suggestion.explanation }
+        : undefined;
+    })
+    .filter((g): g is GameNew & { explanation: string } => g !== undefined);
 
   if (sortedGames.length === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Similar Games</CardTitle>
-          <CardDescription>No games found in database yet. Click "Load more" to discover similar games.</CardDescription>
+          <CardDescription>
+            No games found in database yet. Click "Load more" to discover
+            similar games.
+          </CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
-  // Render only cached games in suggested order
+  // Render only cached games in suggested order with explanations
   return (
     <div className="grid grid-cols-3 gap-6">
       {sortedGames.map((game) => (

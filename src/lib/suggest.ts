@@ -1,11 +1,12 @@
 import { generateText } from "ai";
 import { retry } from "./utils/retry";
 import { fetchSteamGame } from "./steam";
+import { Suggestion } from "./supabase/types";
 
 const SONAR_MODEL = "perplexity/sonar-pro";
 
 export type SuggestGamesResult = {
-  validatedAppIds: number[]; // Validated and corrected app IDs
+  suggestions: Suggestion[]; // Validated suggestions with explanations
 };
 
 export type ParsedSuggestion = {
@@ -17,7 +18,7 @@ export type ParsedSuggestion = {
 /**
  * Suggest similar games based on an image and optional text context.
  * Uses Perplexity to search for games similar to the provided image.
- * 
+ *
  * @param image - Base64 image data (data:image/...) or image URL
  * @param text - Optional text context about the game
  * @returns Promise resolving to search results with similar games and platforms
@@ -27,7 +28,9 @@ export async function suggestGames(
   text?: string
 ): Promise<SuggestGamesResult> {
   if (!image || typeof image !== "string") {
-    throw new Error("image (string) is required. Provide base64 data URL or image URL.");
+    throw new Error(
+      "image (string) is required. Provide base64 data URL or image URL."
+    );
   }
 
   console.log("[SUGGEST] Starting search");
@@ -53,7 +56,11 @@ Each line must have: game title (comma), Steam app ID number (comma), brief expl
   // Prepare the message content with image
   // Handle both base64 and URLs
   let imageUrl = image;
-  if (!image.startsWith("data:") && !image.startsWith("http://") && !image.startsWith("https://")) {
+  if (
+    !image.startsWith("data:") &&
+    !image.startsWith("http://") &&
+    !image.startsWith("https://")
+  ) {
     // If it's just base64 without data URL prefix, add it
     imageUrl = `data:image/jpeg;base64,${image}`;
   }
@@ -97,13 +104,13 @@ Each line must have: game title (comma), Steam app ID number (comma), brief expl
   console.log("[SUGGEST] Response received");
   console.log("[SUGGEST] Raw text:", result.text);
 
-  // Parse and validate app IDs
+  // Parse and validate suggestions (with explanations)
   const parsed = parseSuggestions(result.text);
-  const validatedAppIds = await validateAndCorrectAppIds(parsed);
+  const suggestions = await validateAndCorrectSuggestions(parsed);
 
-  console.log("[SUGGEST] Validated app IDs:", validatedAppIds);
+  console.log("[SUGGEST] Validated suggestions:", suggestions);
 
-  return { validatedAppIds };
+  return { suggestions };
 }
 
 /**
@@ -122,13 +129,13 @@ function parseSuggestions(text: string): ParsedSuggestion[] {
     // Parse format: title, steam_appid, explanation
     // Handle commas that might be in the title or explanation by splitting carefully
     const parts = line.split(",").map((p) => p.trim());
-    
+
     if (parts.length >= 2) {
       // Title is everything before the last 2 parts
       const title = parts.slice(0, -2).join(", ").trim();
       const appIdStr = parts[parts.length - 2];
       const explanation = parts[parts.length - 1];
-      
+
       const appId = parseInt(appIdStr, 10);
       if (!isNaN(appId) && appId > 0 && title) {
         items.push({
@@ -151,15 +158,16 @@ function parseSuggestions(text: string): ParsedSuggestion[] {
 }
 
 /**
- * Validate and correct app IDs from parsed suggestions.
+ * Validate and correct suggestions from parsed data.
  * Tests each app ID, and if invalid, tries to find the correct one by searching.
+ * Returns validated suggestions with explanations preserved.
  */
-async function validateAndCorrectAppIds(
-  suggestions: ParsedSuggestion[]
-): Promise<number[]> {
-  const validatedAppIds: number[] = [];
+async function validateAndCorrectSuggestions(
+  parsedSuggestions: ParsedSuggestion[]
+): Promise<Suggestion[]> {
+  const validatedSuggestions: Suggestion[] = [];
 
-  for (const suggestion of suggestions) {
+  for (const suggestion of parsedSuggestions) {
     let appId = suggestion.appId;
 
     // If no app ID, try searching by title
@@ -171,7 +179,10 @@ async function validateAndCorrectAppIds(
     if (appId) {
       const isValid = await validateAppId(appId);
       if (isValid) {
-        validatedAppIds.push(appId);
+        validatedSuggestions.push({
+          appId,
+          explanation: suggestion.explanation,
+        });
       } else {
         // Try to find correct app ID by title
         console.log(
@@ -179,13 +190,16 @@ async function validateAndCorrectAppIds(
         );
         const correctedId = await searchAppIdByTitle(suggestion.title);
         if (correctedId) {
-          validatedAppIds.push(correctedId);
+          validatedSuggestions.push({
+            appId: correctedId,
+            explanation: suggestion.explanation,
+          });
         }
       }
     }
   }
 
-  return validatedAppIds;
+  return validatedSuggestions;
 }
 
 /**

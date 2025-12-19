@@ -25,6 +25,11 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+interface Suggestion {
+  appId: number;
+  explanation: string;
+}
+
 async function ingestSuggestedGames(appid: number) {
   console.log(`\n🔍 Checking game ${appid}...\n`);
 
@@ -40,12 +45,13 @@ async function ingestSuggestedGames(appid: number) {
     return;
   }
 
-  console.log(`✓ Found: ${game.title}`);
-  console.log(
-    `  Suggested games: ${game.suggested_game_appids?.length || 0}\n`
-  );
+  const suggestions: Suggestion[] = game.suggested_game_appids || [];
+  const suggestedAppIds = suggestions.map((s) => s.appId);
 
-  if (!game.suggested_game_appids || game.suggested_game_appids.length === 0) {
+  console.log(`✓ Found: ${game.title}`);
+  console.log(`  Suggested games: ${suggestions.length}\n`);
+
+  if (suggestions.length === 0) {
     console.log("⚠️  No suggested games to ingest");
     return;
   }
@@ -54,15 +60,15 @@ async function ingestSuggestedGames(appid: number) {
   const { data: existingGames } = await supabase
     .from("games_new")
     .select("appid")
-    .in("appid", game.suggested_game_appids);
+    .in("appid", suggestedAppIds);
 
   const existingAppids = new Set((existingGames || []).map((g) => g.appid));
-  const missingAppids = game.suggested_game_appids.filter(
+  const missingAppids = suggestedAppIds.filter(
     (id: number) => !existingAppids.has(id)
   );
 
   console.log(`📊 Status:`);
-  console.log(`   Total suggested: ${game.suggested_game_appids.length}`);
+  console.log(`   Total suggested: ${suggestions.length}`);
   console.log(`   Already in DB: ${existingAppids.size}`);
   console.log(`   Missing: ${missingAppids.length}\n`);
 
