@@ -10,11 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import GameCard from "@/components/GameCard";
 import { supabase } from "@/lib/supabase/server";
 import { GameNew, ParsedSuggestionItem } from "@/lib/supabase/types";
-import {
-  fetchAndSaveSuggestedGames,
-  extractAppIdsFromSuggestions,
-} from "@/lib/ingest/suggestedGames";
 import { suggestGames } from "@/lib/suggest";
+import { fetchSteamGame, type SteamGameData } from "@/lib/steam";
 
 interface SuggestionsListProps {
   appid: number;
@@ -143,7 +140,119 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
   // Fetch and save suggested games
   if (suggestions.length > 0) {
     try {
-      await fetchAndSaveSuggestedGames(suggestions);
+      // Extract app IDs
+      const appIds = suggestions
+        .map((s) => s.appId)
+        .filter((id): id is number => id !== undefined);
+
+      // Check which games already exist in the database
+      const { data: existingGames } = await supabase
+        .from("games_new")
+        .select("appid")
+        .in("appid", appIds);
+
+      const existingAppIds = new Set((existingGames || []).map((g) => g.appid));
+
+      // Fetch and save each game that doesn't exist yet
+      const promises = suggestions.map(async (suggestion) => {
+        // Skip if we already have this game
+        if (suggestion.appId && existingAppIds.has(suggestion.appId)) {
+          return;
+        }
+
+        let appIdToFetch = suggestion.appId;
+
+        // If no app ID, try searching by title
+        if (!appIdToFetch && suggestion.title) {
+          const { data } = await supabase
+            .from("games_new")
+            .select("appid")
+            .ilike("title", `%${suggestion.title}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (data?.appid) {
+            appIdToFetch = data.appid;
+            console.log(
+              `[SUGGESTIONS LIST] Found game by title "${suggestion.title}": ${appIdToFetch}`
+            );
+          }
+        }
+
+        if (!appIdToFetch) {
+          console.warn(
+            `[SUGGESTIONS LIST] No valid app ID for suggestion: ${suggestion.title}`
+          );
+          return;
+        }
+
+        try {
+          const steamData = await fetchSteamGame(appIdToFetch.toString());
+          await supabase.from("games_new").upsert(
+            {
+              appid: steamData.appid,
+              screenshots: steamData.screenshots,
+              videos: steamData.videos,
+              title: steamData.title,
+              header_image: steamData.header_image,
+              short_description: steamData.short_description,
+              long_description: steamData.long_description,
+              raw: steamData.raw,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "appid" }
+          );
+          console.log(
+            `[SUGGESTIONS LIST] Saved game ${appIdToFetch}: ${steamData.title}`
+          );
+        } catch (error) {
+          // If app ID fetch failed and we have a title, try searching by title
+          if (suggestion.title && suggestion.appId === appIdToFetch) {
+            const { data } = await supabase
+              .from("games_new")
+              .select("appid")
+              .ilike("title", `%${suggestion.title}%`)
+              .limit(1)
+              .maybeSingle();
+
+            const foundAppId = data?.appid;
+            if (foundAppId && foundAppId !== appIdToFetch) {
+              try {
+                const steamData = await fetchSteamGame(foundAppId.toString());
+                await supabase.from("games_new").upsert(
+                  {
+                    appid: steamData.appid,
+                    screenshots: steamData.screenshots,
+                    videos: steamData.videos,
+                    title: steamData.title,
+                    header_image: steamData.header_image,
+                    short_description: steamData.short_description,
+                    long_description: steamData.long_description,
+                    raw: steamData.raw,
+                    updated_at: new Date().toISOString(),
+                  },
+                  { onConflict: "appid" }
+                );
+                console.log(
+                  `[SUGGESTIONS LIST] Fallback: Found and saved "${suggestion.title}" with app ID ${foundAppId}`
+                );
+                return;
+              } catch (fallbackError) {
+                console.error(
+                  `[SUGGESTIONS LIST] Fallback fetch also failed for "${suggestion.title}":`,
+                  fallbackError
+                );
+              }
+            }
+          }
+          console.error(
+            `[SUGGESTIONS LIST] Failed to fetch/save game ${appIdToFetch} (${suggestion.title}):`,
+            error
+          );
+        }
+      });
+
+      await Promise.all(promises);
     } catch (error) {
       console.error(
         "[SUGGESTIONS LIST] Failed to fetch suggested games:",
@@ -153,7 +262,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     }
   }
 
-  // Extract app IDs from suggestions (including ones that might have been found by title)
+  // Extract app IDs from suggestions
   const appIds = suggestions
     .map((s) => s.appId)
     .filter((id): id is number => id !== undefined);
