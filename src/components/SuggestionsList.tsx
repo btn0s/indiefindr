@@ -13,13 +13,61 @@ interface SuggestionsListProps {
   appid: number;
 }
 
+/**
+ * Wait for a game to exist in the database (handles race condition with background ingest)
+ */
+async function waitForGameInDb(
+  appid: number,
+  maxAttempts = 15,
+  delayMs = 1000
+): Promise<{ title: string | null; suggested_game_appids: Suggestion[] | null } | null> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const { data: gameData } = await supabase
+      .from("games_new")
+      .select("title, suggested_game_appids")
+      .eq("appid", appid)
+      .maybeSingle();
+
+    if (gameData) {
+      return gameData;
+    }
+
+    // Wait before retrying
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  return null;
+}
+
 export async function SuggestionsList({ appid }: SuggestionsListProps) {
-  // Fetch suggestions from cache (fast DB query only)
-  const { data: gameData } = await supabase
+  // Fetch suggestions from cache, waiting for game to exist if needed
+  // (handles race condition where ingest is still running in background)
+  let gameData = await supabase
     .from("games_new")
     .select("title, suggested_game_appids")
     .eq("appid", appid)
-    .maybeSingle();
+    .maybeSingle()
+    .then((r) => r.data);
+
+  // If game not in DB yet, wait for background ingest to complete
+  if (!gameData) {
+    console.log(`[SUGGESTIONS LIST] Game ${appid} not in DB, waiting for ingest...`);
+    gameData = await waitForGameInDb(appid);
+    
+    if (!gameData) {
+      console.error(`[SUGGESTIONS LIST] Game ${appid} still not in DB after waiting`);
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Similar Games</CardTitle>
+            <CardDescription>
+              Game is still being processed. Please refresh the page in a moment.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      );
+    }
+  }
 
   let suggestions: Suggestion[] = gameData?.suggested_game_appids || [];
   const gameTitle = gameData?.title || "";
