@@ -1,7 +1,9 @@
 import { supabase } from "@/lib/supabase/server";
 import { Navbar } from "@/components/Navbar";
-import GameCard from "@/components/GameCard";
+import { GamesGrid } from "@/components/GamesGrid";
 import { GameNew } from "@/lib/supabase/types";
+
+const PAGE_SIZE = 24;
 
 async function getGames(): Promise<GameNew[]> {
   const { data: games, error } = await supabase
@@ -9,7 +11,7 @@ async function getGames(): Promise<GameNew[]> {
     .select(
       "appid, title, header_image, videos, screenshots, short_description, long_description, raw, created_at, updated_at, suggested_game_appids"
     )
-    .limit(1000);
+    .range(0, PAGE_SIZE - 1);
 
   if (error) {
     console.error("Error loading games:", error);
@@ -56,15 +58,9 @@ export default async function Home() {
               </p>
             </div>
           ) : (
-            <>
-              <div className="container mx-auto w-full">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {games.map((game) => (
-                    <GameCard key={game.appid} {...game} />
-                  ))}
-                </div>
-              </div>
-            </>
+            <div className="container mx-auto w-full">
+              <GamesGrid initialGames={games} />
+            </div>
           )}
         </div>
       </main>

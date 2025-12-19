@@ -119,8 +119,7 @@ export default async function GameDetailPage({
     notFound();
   }
 
-  const description =
-    gameData.long_description || gameData.short_description || null;
+  const description = gameData.short_description || null;
 
   // Structured data for SEO
   const structuredData = {
@@ -145,7 +144,9 @@ export default async function GameDetailPage({
       />
       <Navbar />
       <main className="container mx-auto max-w-4xl px-4 py-6 sm:py-8 flex flex-col gap-3 sm:gap-4">
-        <h1 className="text-xl sm:text-2xl font-semibold">Games like {gameData.title}</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold">
+          Games like {gameData.title}
+        </h1>
 
         {/* Trailer Video - Full Width */}
         {gameData.videos && gameData.videos.length > 0 && (
@@ -160,37 +161,28 @@ export default async function GameDetailPage({
         )}
 
         {/* Game Header */}
-        <div className="flex flex-col sm:flex-row gap-4 sm:items-center mb-4">
-          {gameData.header_image && (
-            <div className="w-full sm:w-1/3 aspect-steam">
-              <Image
-                src={gameData.header_image}
-                alt={gameData.title}
-                width={460}
-                height={215}
-                className="w-full h-full object-cover rounded-lg"
-                unoptimized
-              />
+        <div className="flex gap-3 sm:gap-4 items-center mb-4">
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="text-sm sm:text-lg font-semibold truncate sm:whitespace-normal">
+              {gameData.title}
             </div>
-          )}
-          <div className="flex-1 flex flex-col">
-            <div className="text-base sm:text-lg font-semibold mb-1 sm:mb-0">{gameData.title}</div>
 
             {description && (
-              <p className="text-muted-foreground line-clamp-3 sm:line-clamp-4 text-sm mb-2">
+              <p className="text-muted-foreground line-clamp-4 text-sm mb-2">
                 {description.replace(/<[^>]*>/g, "").substring(0, 200)}
                 {description.length > 300 ? "..." : ""}
               </p>
             )}
 
-            <Button className="w-full sm:w-fit">
+            <Button className="w-fit mt-1 sm:mt-0" size="sm">
               <a
                 href={`https://store.steampowered.com/app/${appid}/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1"
+                className="flex items-center gap-1"
               >
-                View on Steam
+                <span className="hidden sm:inline">View on Steam</span>
+                <span className="sm:hidden">Steam</span>
                 <ArrowUpRight className="size-3" />
               </a>
             </Button>
@@ -199,8 +191,8 @@ export default async function GameDetailPage({
 
         {/* Suggestions Section */}
         <div className="flex flex-col gap-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h2 className="text-lg sm:text-xl font-semibold">
+          <div className="flex sm:items-center justify-between gap-2">
+            <h2 className="leading-none font-semibold">
               Games similar to {gameData.title}
             </h2>
             <RefreshSuggestionsButton appid={appid} />
