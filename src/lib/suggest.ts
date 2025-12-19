@@ -229,8 +229,8 @@ async function validateAndCorrectSuggestions(
 
 /**
  * Validate an app ID by trying to fetch it from Steam.
- * Returns false for DLCs, mods, demos, etc.
- * On network/rate limit errors, returns true (assume valid, will verify later during ingest).
+ * Returns false for DLCs, mods, demos, or non-existent games.
+ * Only returns true (assume valid) for rate limit errors to avoid skipping valid games.
  */
 async function validateAppId(appId: number): Promise<boolean> {
   try {
@@ -242,10 +242,22 @@ async function validateAppId(appId: number): Promise<boolean> {
     }
     return true;
   } catch (error) {
-    // On error, assume valid - we'll verify during ingest
-    // This prevents rate limiting from rejecting valid games
-    console.log(`[SUGGEST] Validation error for ${appId}, assuming valid:`, 
-      error instanceof Error ? error.message : String(error));
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Rate limit errors: assume valid (don't skip valid games due to rate limiting)
+    if (errorMessage.includes("429") || errorMessage.includes("rate limit")) {
+      console.log(`[SUGGEST] Rate limited for ${appId}, assuming valid`);
+      return true;
+    }
+    
+    // "Not found" errors: game doesn't exist, trigger fallback search
+    if (errorMessage.includes("not found") || errorMessage.includes("unavailable")) {
+      console.log(`[SUGGEST] App ${appId} not found, will try title search`);
+      return false;
+    }
+    
+    // Other errors (network, timeout): assume valid to avoid false rejections
+    console.log(`[SUGGEST] Validation error for ${appId}, assuming valid:`, errorMessage);
     return true;
   }
 }

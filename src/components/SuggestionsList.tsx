@@ -7,37 +7,10 @@ import {
 import GameCard from "@/components/GameCard";
 import { supabase } from "@/lib/supabase/server";
 import { GameNew, Suggestion } from "@/lib/supabase/types";
-import { ingest } from "@/lib/ingest";
+import { autoIngestMissingGames } from "@/lib/ingest";
 
 interface SuggestionsListProps {
   appid: number;
-}
-
-const MIN_SUGGESTIONS = 6;
-
-/**
- * Auto-fetch Steam data for suggested games that don't exist in DB.
- * Runs in background - doesn't block render.
- */
-async function autoFetchMissingSteamData(
-  suggestedAppIds: number[],
-  existingAppIds: Set<number>
-): Promise<void> {
-  const missingAppIds = suggestedAppIds.filter((id) => !existingAppIds.has(id));
-  if (missingAppIds.length === 0) return;
-
-  console.log(
-    `[SUGGESTIONS LIST] Auto-fetching ${missingAppIds.length} missing games`
-  );
-
-  for (const appId of missingAppIds) {
-    try {
-      // skipSuggestions=true: only fetch Steam data
-      await ingest(`https://store.steampowered.com/app/${appId}/`, true);
-    } catch (err) {
-      console.error(`[SUGGESTIONS LIST] Failed to fetch ${appId}`);
-    }
-  }
 }
 
 export async function SuggestionsList({ appid }: SuggestionsListProps) {
@@ -93,8 +66,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
   });
 
   // Auto-fetch Steam data for missing suggested games (runs in background)
-  const existingAppIds = new Set(cachedGames.map((g) => g.appid));
-  autoFetchMissingSteamData(suggestedAppIds, existingAppIds).catch((err) => {
+  autoIngestMissingGames(suggestedAppIds).catch((err) => {
     console.error("[SUGGESTIONS LIST] Error in auto-fetch:", err);
   });
 
@@ -122,10 +94,6 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
       </Card>
     );
   }
-
-  const hasMoreToLoad =
-    sortedGames.length < suggestions.length ||
-    suggestions.length < MIN_SUGGESTIONS;
 
   // Generate structured data for SEO
   const itemListSchema = {

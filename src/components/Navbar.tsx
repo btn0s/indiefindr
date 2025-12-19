@@ -157,7 +157,7 @@ export function Navbar() {
         gameTitle={ingestingGame?.title}
         gameImage={ingestingGame?.image}
       />
-      <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+      <nav className="sticky top-0 z-50 w-full border-b bg-background">
         <div className="container mx-auto max-w-4xl flex h-14 items-center gap-4 px-4 w-full">
           {/* Logo/Brand */}
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">

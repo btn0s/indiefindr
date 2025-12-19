@@ -56,7 +56,7 @@ export async function generateMetadata({
 
   if (isNaN(appId)) {
     return {
-      title: "Game Not Found | IndieFindr",
+      title: "Game Not Found",
     };
   }
 
@@ -64,13 +64,13 @@ export async function generateMetadata({
 
   if (!gameData || !gameData.title) {
     return {
-      title: "Game Not Found | IndieFindr",
+      title: "Game Not Found",
     };
   }
 
   const cleanDescription = `Looking for games like ${gameData.title}? Discover similar indie games with matching gameplay, style, and themes.`;
 
-  const title = `Games like ${gameData.title} | IndieFindr`;
+  const title = `Games like ${gameData.title}`;
 
   // Get base URL dynamically from headers
   const headersList = await headers();
