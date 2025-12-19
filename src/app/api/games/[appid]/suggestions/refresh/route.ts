@@ -19,30 +19,25 @@ export async function POST(
   }
 
   try {
-    // Fetch game data from database
+    // Fetch game data
     const { data: gameData, error: gameError } = await supabase
       .from("games_new")
-      .select("appid, screenshots, title, short_description, long_description")
+      .select("screenshots, title, short_description, long_description")
       .eq("appid", appId)
       .single();
 
     if (gameError || !gameData) {
-      return NextResponse.json(
-        { error: "Game not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }
 
     if (!gameData.screenshots || gameData.screenshots.length === 0) {
       return NextResponse.json(
-        { error: "No screenshots available for this game" },
+        { error: "No screenshots available" },
         { status: 400 }
       );
     }
 
     const firstScreenshot = gameData.screenshots[0];
-    
-    // Build text context from game title and descriptions
     const textContext = [
       gameData.title,
       gameData.short_description,
@@ -54,7 +49,7 @@ export async function POST(
     console.log("[REFRESH SUGGESTIONS] Generating suggestions for:", gameData.title);
     const suggestions = await suggestGames(firstScreenshot, textContext);
 
-    // Save suggestions to DB
+    // Save to DB
     const { error: saveError } = await supabase
       .from("suggestions")
       .upsert(
@@ -64,9 +59,7 @@ export async function POST(
           usage_stats: suggestions.usage || null,
           updated_at: new Date().toISOString(),
         },
-        {
-          onConflict: "steam_appid",
-        }
+        { onConflict: "steam_appid" }
       );
 
     if (saveError) {
