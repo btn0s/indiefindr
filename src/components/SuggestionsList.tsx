@@ -44,11 +44,12 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
   // Fetch suggestions from cache (fast DB query only)
   const { data: gameData } = await supabase
     .from("games_new")
-    .select("suggested_game_appids")
+    .select("title, suggested_game_appids")
     .eq("appid", appid)
     .maybeSingle();
 
   const suggestions: Suggestion[] = gameData?.suggested_game_appids || [];
+  const gameTitle = gameData?.title || "";
 
   // No suggestions? Show empty state with prompt to load
   if (!suggestions || suggestions.length === 0) {
@@ -57,7 +58,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
         <CardHeader>
           <CardTitle>Similar Games</CardTitle>
           <CardDescription>
-            Click "Load more" to discover similar games.
+            Click &quot;Load more&quot; to discover similar games.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -114,8 +115,8 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
         <CardHeader>
           <CardTitle>Similar Games</CardTitle>
           <CardDescription>
-            {suggestions.length} games found, loading details... Click "Load
-            more" to refresh.
+            {suggestions.length} games found, loading details... Click
+            &quot;Load more&quot; to refresh.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -126,20 +127,69 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     sortedGames.length < suggestions.length ||
     suggestions.length < MIN_SUGGESTIONS;
 
+  // Generate structured data for SEO
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Games similar to ${gameTitle}`,
+    itemListElement: sortedGames.map((game, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "VideoGame",
+        name: game.title,
+        url: `https://indiefindr.gg/games/${game.appid}`,
+      },
+    })),
+  };
+
+  const topTitles = sortedGames
+    .slice(0, 3)
+    .map((g) => g.title)
+    .join(", ");
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: `What games are similar to ${gameTitle}?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: `Games like ${gameTitle} include ${
+            topTitles || "various indie games"
+          }. These games share similar gameplay mechanics and visual style.`,
+        },
+      },
+    ],
+  };
+
   // Render cached games in suggested order with explanations
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-6">
-        {sortedGames.map((game) => (
-          <GameCard key={game.appid} {...game} />
-        ))}
-      </div>
-      {hasMoreToLoad && (
-        <p className="text-sm text-muted-foreground text-center">
-          Showing {sortedGames.length} of {suggestions.length} suggestions.
-          Click "Load more" to discover more.
-        </p>
+    <>
+      {sortedGames.length > 0 && (
+        <>
+          <script
+            type="application/ld+json"
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(itemListSchema),
+            }}
+          />
+          <script
+            type="application/ld+json"
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+          />
+        </>
       )}
-    </div>
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-3 gap-6">
+          {sortedGames.map((game) => (
+            <GameCard key={game.appid} {...game} />
+          ))}
+        </div>
+      </div>
+    </>
   );
 }

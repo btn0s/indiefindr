@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { Suspense } from "react";
 import type { Metadata } from "next";
@@ -18,7 +17,9 @@ async function getGameData(appId: number) {
   // Try database first
   const { data: dbGame } = await supabase
     .from("games_new")
-    .select("appid, title, header_image, short_description, long_description, screenshots, videos")
+    .select(
+      "appid, title, header_image, short_description, long_description, screenshots, videos"
+    )
     .eq("appid", appId)
     .maybeSingle();
 
@@ -67,21 +68,17 @@ export async function generateMetadata({
     };
   }
 
-  const description =
-    gameData.long_description || gameData.short_description || null;
-  const cleanDescription = description
-    ? description.replace(/<[^>]*>/g, "").substring(0, 160)
-    : `Discover games similar to ${gameData.title}. Find your next favorite indie game based on gameplay, style, and features.`;
+  const cleanDescription = `Looking for games like ${gameData.title}? Discover similar indie games with matching gameplay, style, and themes.`;
 
   const title = `Games like ${gameData.title} | IndieFindr`;
-  
+
   // Get base URL dynamically from headers
   const headersList = await headers();
   const host = headersList.get("host") || "indiefindr.gg";
   const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;
   const url = `${baseUrl}/games/${appid}`;
-  
+
   return {
     title,
     description: cleanDescription,
@@ -203,7 +200,9 @@ export default async function GameDetailPage({
         {/* Suggestions Section */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Similar Games</h2>
+            <h2 className="text-xl font-semibold">
+              Games similar to {gameData.title}
+            </h2>
             <RefreshSuggestionsButton appid={appid} />
           </div>
           <Suspense fallback={<SuggestionsSkeleton />}>
