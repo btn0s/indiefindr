@@ -100,8 +100,8 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 src/
 ├── app/
 │   ├── api/
+│   │   ├── submit/route.ts              # POST /api/submit
 │   │   └── games/
-│   │       ├── ingest/route.ts          # POST /api/games/ingest
 │   │       ├── [appid]/route.ts         # GET /api/games/[appid]
 │   │       └── [appid]/related/route.ts # GET /api/games/[appid]/related
 │   ├── games/
@@ -125,8 +125,8 @@ src/
 
 ## API Routes
 
-### POST `/api/games/ingest`
-Ingest a new game from a Steam URL.
+### POST `/api/submit`
+Submit a Steam URL for ingestion and suggestion generation.
 
 **Request:**
 ```json
@@ -139,7 +139,10 @@ Ingest a new game from a Steam URL.
 ```json
 {
   "success": true,
-  "gameId": 123456
+  "appid": 123456,
+  "title": "Game Name",
+  "steamData": { ... },
+  "suggestions": { ... }
 }
 ```
 
