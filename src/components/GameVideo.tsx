@@ -12,6 +12,7 @@ interface GameVideoProps {
   autoPlay?: boolean;
   muted?: boolean;
   loop?: boolean;
+  startTime?: number;
 }
 
 export function GameVideo({
@@ -22,6 +23,7 @@ export function GameVideo({
   autoPlay = true,
   muted = true,
   loop = true,
+  startTime = 2,
 }: GameVideoProps) {
   const [videoError, setVideoError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -37,6 +39,12 @@ export function GameVideo({
 
     const video = videoRef.current;
 
+    const setStartTime = () => {
+      if (startTime > 0 && video.duration > startTime) {
+        video.currentTime = startTime;
+      }
+    };
+
     // Handle HLS videos
     if (isHls) {
       if (Hls.isSupported()) {
@@ -45,6 +53,10 @@ export function GameVideo({
         });
         hls.loadSource(videoUrl);
         hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.addEventListener('loadedmetadata', setStartTime, { once: true });
+        });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
@@ -69,14 +81,16 @@ export function GameVideo({
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // Native HLS support (Safari)
         video.src = videoUrl;
+        video.addEventListener('loadedmetadata', setStartTime, { once: true });
       } else {
         setVideoError(true);
       }
     } else {
       // Regular video format
       video.src = videoUrl;
+      video.addEventListener('loadedmetadata', setStartTime, { once: true });
     }
-  }, [hasVideo, videoUrl, isHls]);
+  }, [hasVideo, videoUrl, isHls, startTime]);
 
   return (
     <div className={`relative overflow-hidden rounded-lg bg-muted ${className}`}>
