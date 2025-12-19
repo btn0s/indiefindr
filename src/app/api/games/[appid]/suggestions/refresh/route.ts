@@ -132,7 +132,9 @@ export async function POST(
         for (const missingAppid of missingAppids) {
           const steamUrl = `https://store.steampowered.com/app/${missingAppid}/`;
           try {
-            await ingest(steamUrl);
+            // skipSuggestions=true: only fetch Steam data, don't generate suggestions
+            // We only generate suggestions for the game the user is actively viewing
+            await ingest(steamUrl, true);
             console.log(
               `[REFRESH SUGGESTIONS] Successfully auto-ingested ${missingAppid}`
             );
