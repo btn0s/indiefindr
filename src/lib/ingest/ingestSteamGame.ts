@@ -16,6 +16,7 @@ import { extractGameAesthetic } from "../extractors/aesthetic";
 import { buildFacetDocs } from "../facets/buildFacetDocs";
 import { embed } from "../ai/gateway";
 import { retry } from "../utils/retry";
+import { autoIngestSuggestions } from "./autoSuggest";
 
 const VISION_MODEL = process.env.AI_MODEL_VISION || "openai/gpt-4o-mini";
 const EMBEDDING_MODEL =
@@ -99,8 +100,9 @@ export async function quickIngestSteamGame(
 /**
  * Complete ingestion: extract facets, generate embeddings, and update game record
  * This should be called after quickIngestSteamGame to finish processing
+ * @param triggerSuggestions - If true, auto-ingest community suggestions after completion
  */
-async function completeIngestion(appId: number, jobId: string): Promise<void> {
+async function completeIngestion(appId: number, jobId: string, triggerSuggestions: boolean = true): Promise<void> {
   console.log("\n========================================");
   console.log("[INGEST] Starting complete ingestion for appId:", appId);
 
@@ -295,6 +297,40 @@ async function completeIngestion(appId: number, jobId: string): Promise<void> {
     } catch {
       // revalidatePath might not work outside request context
       console.log("Note: revalidatePath called outside request context");
+    }
+
+    // Auto-ingest community suggestions in the background (only if enabled)
+    if (triggerSuggestions) {
+      autoIngestSuggestions(storeData.name, async (steamUrl: string) => {
+        // Quick ingest only - don't trigger another round of suggestions
+        return quickIngestSteamGame(steamUrl).then(result => {
+          if ("gameId" in result) {
+            // Complete ingestion in background without triggering more suggestions
+            const suggestedAppId = parseSteamUrl(steamUrl);
+            if (suggestedAppId) {
+              // Create a job for the suggested game
+              supabase
+                .from("ingest_jobs")
+                .insert({
+                  steam_url: steamUrl,
+                  steam_appid: suggestedAppId,
+                  status: "running",
+                })
+                .select()
+                .single()
+                .then(({ data: job }) => {
+                  if (job) {
+                    // Run completion without auto-suggest to prevent infinite loops
+                    completeIngestion(suggestedAppId, job.id, false);
+                  }
+                });
+            }
+          }
+          return result;
+        });
+      }).catch(err => {
+        console.error("[INGEST] Auto-suggest error:", err);
+      });
     }
   } catch (error) {
     console.log("[INGEST] ERROR for appId:", appId);

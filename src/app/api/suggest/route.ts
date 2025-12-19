@@ -27,7 +27,12 @@ Return exactly 5 specific Steam game titles, one per line. Just the names, no ex
 
     const suggestions = result.text
       .split("\n")
-      .map(line => line.replace(/^\d+\.\s*/, "").trim())
+      .map(line => line
+        .replace(/^\d+\.\s*/, "")  // Remove numbered list prefixes
+        .replace(/\[\d+\]/g, "")    // Remove citation markers like [1], [2]
+        .replace(/\*\*/g, "")       // Remove markdown bold
+        .trim()
+      )
       .filter(line => line.length > 0 && line.length < 100);
 
     console.log("[SUGGEST] Found suggestions:", suggestions);
