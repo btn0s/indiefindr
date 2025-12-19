@@ -8,6 +8,7 @@ import GameCard from "@/components/GameCard";
 import { supabase } from "@/lib/supabase/server";
 import { GameNew } from "@/lib/supabase/types";
 import { suggestGames } from "@/lib/suggest";
+import { fetchSteamGame } from "@/lib/steam";
 
 interface SuggestionsListProps {
   appid: number;
@@ -91,7 +92,45 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     );
   }
 
-  const gamesList = (games || []) as GameNew[];
+  let gamesList = (games || []) as GameNew[];
+
+  // Check for missing games and fetch them
+  const existingAppIds = new Set(gamesList.map((g) => g.appid));
+  const missingAppIds = suggestedAppIds.filter((id: number) => !existingAppIds.has(id));
+
+  if (missingAppIds.length > 0) {
+    console.log("[SUGGESTIONS LIST] Fetching missing games:", missingAppIds);
+    
+    // Fetch missing games from Steam and save to DB
+    const fetchPromises = missingAppIds.map(async (appId: number) => {
+      try {
+        const steamData = await fetchSteamGame(appId.toString());
+        await supabase.from("games_new").upsert(
+          {
+            appid: steamData.appid,
+            screenshots: steamData.screenshots,
+            videos: steamData.videos,
+            title: steamData.title,
+            header_image: steamData.header_image,
+            short_description: steamData.short_description,
+            long_description: steamData.long_description,
+            raw: steamData.raw,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "appid" }
+        );
+        return steamData as unknown as GameNew;
+      } catch (err) {
+        console.error(`[SUGGESTIONS LIST] Failed to fetch game ${appId}:`, err);
+        return null;
+      }
+    });
+
+    const fetchedGames = (await Promise.all(fetchPromises)).filter(
+      (g): g is GameNew => g !== null
+    );
+    gamesList = [...gamesList, ...fetchedGames];
+  }
 
   if (gamesList.length === 0) {
     return (
