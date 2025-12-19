@@ -20,9 +20,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: {
     default: "IndieFindr - Discover Games Like Your Favorites",
-    template: "%s | IndieFindr",
+    template: "%s",
   },
-  description: "Find indie games similar to your favorites. Discover your next favorite game based on gameplay, style, and features.",
+  description:
+    "Find indie games similar to your favorites. Discover your next favorite game based on gameplay, style, and features.",
   openGraph: {
     siteName: "IndieFindr",
     locale: "en_US",
