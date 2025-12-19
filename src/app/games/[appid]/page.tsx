@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { GameVideo } from "@/components/GameVideo";
 import { SuggestionsList } from "@/components/SuggestionsList";
+import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { RefreshSuggestionsButton } from "@/components/RefreshSuggestionsButton";
 import { ArrowLeftIcon, ArrowUpRight } from "lucide-react";
 import { fetchSteamGame } from "@/lib/steam";
@@ -100,7 +102,9 @@ export default async function GameDetailPage({
             <h2 className="text-xl font-semibold">Similar Games</h2>
             <RefreshSuggestionsButton appid={appid} />
           </div>
-          <SuggestionsList appid={appId} />
+          <Suspense fallback={<SuggestionsSkeleton />}>
+            <SuggestionsList appid={appId} />
+          </Suspense>
         </div>
       </main>
     </div>
