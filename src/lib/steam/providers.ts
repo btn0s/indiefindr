@@ -85,8 +85,11 @@ export class SteamStoreProvider {
 
     // Extract video URLs from movies/trailers
     // Prefer highlight trailers, then any trailer
-    // Prefer MP4 max quality, fallback to 480p, then WebM
+    // Prefer HLS/DASH (new format), then MP4 max quality, fallback to 480p, then WebM
     const videos: string[] = [];
+    // #region agent log
+    fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'providers.ts:89',message:'Checking for videos in Steam API response',data:{hasMovies:!!game.movies,moviesLength:game.movies?.length,firstMovie:game.movies?.[0]?JSON.stringify(Object.keys(game.movies[0])):null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     if (game.movies && game.movies.length > 0) {
       // Sort: highlight trailers first, then by ID
       const sortedMovies = [...game.movies].sort((a: any, b: any) => {
@@ -96,13 +99,22 @@ export class SteamStoreProvider {
       });
 
       for (const movie of sortedMovies) {
-        // Prefer MP4 max, then MP4 480p, then WebM max, then WebM 480p
+        // #region agent log
+        fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'providers.ts:100',message:'Processing movie object',data:{movieKeys:Object.keys(movie),hasMp4:!!movie.mp4,hasWebm:!!movie.webm,hasHls:!!movie.hls_h264,hasDash:!!movie.dash_h264},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        // Prefer HLS/DASH (new format), then MP4 max, then MP4 480p, then WebM max, then WebM 480p
         const videoUrl =
+          movie.hls_h264 ||
+          movie.dash_h264 ||
+          movie.dash_av1 ||
           movie.mp4?.max ||
           movie.mp4?.["480"] ||
           movie.webm?.max ||
           movie.webm?.["480"];
 
+        // #region agent log
+        fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'providers.ts:111',message:'Video URL extracted',data:{videoUrl,videoUrlLength:videoUrl?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         if (videoUrl) {
           videos.push(videoUrl);
           // Limit to first 3 videos for card display
@@ -110,6 +122,9 @@ export class SteamStoreProvider {
         }
       }
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'providers.ts:120',message:'Final videos array',data:{videosLength:videos.length,videos},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
 
     // Extract tags (from categories/genres)
     const tags: Record<string, number> = {};

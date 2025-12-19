@@ -37,6 +37,11 @@ async function getGame(appid: string): Promise<Game | null> {
     return null;
   }
 
+  // #region agent log
+  const logData = {appId,hasVideos:!!game.videos,videosLength:game.videos?.length,videos:game.videos,hasHeaderImage:!!game.header_image};
+  fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:39',message:'Game data fetched from DB',data:logData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+
   return game;
 }
 
@@ -118,6 +123,9 @@ export default async function GameDetailPage({
 
         {/* Trailer Video - Full Width */}
         <div className="w-full aspect-video">
+          {/* #region agent log */}
+          {(()=>{fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:125',message:'Rendering GameVideo component',data:{videos:game.videos,videosLength:game.videos?.length,hasHeaderImage:!!game.header_image},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});return null;})()}
+          {/* #endregion */}
           <GameVideo
             videos={game.videos}
             headerImage={game.header_image}
