@@ -4,29 +4,25 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef, memo } from "react";
 import Hls from "hls.js";
-import type { RelatedGame } from "@/lib/supabase/types";
+import type { GameNew } from "@/lib/supabase/types";
 
-interface RelatedGameCardProps {
-  game:
-    | RelatedGame
-    | {
-        appid: number;
-        name: string;
-        header_image: string | null;
-        videos: string[] | null;
-        similarity?: number;
-      };
-}
-
-function RelatedGameCardComponent({ game }: RelatedGameCardProps) {
+function GameCard({
+  appid,
+  screenshots,
+  videos,
+  title,
+  header_image,
+  short_description,
+  long_description,
+  raw,
+}: GameNew) {
   const [videoError, setVideoError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const videos = game.videos ?? [];
-  const hasVideo = videos.length > 0 && !videoError;
-  const videoUrl = hasVideo ? videos[0] : null;
+  const hasVideo = videos?.length > 0 && !videoError;
+  const videoUrl = hasVideo ? videos?.[0] : null;
   const isHls = videoUrl?.endsWith(".m3u8") || videoUrl?.includes("/hls_");
 
   // Intersection Observer for lazy loading
@@ -105,7 +101,7 @@ function RelatedGameCardComponent({ game }: RelatedGameCardProps) {
   }, [shouldLoadVideo, hasVideo, videoUrl, isHls]);
 
   return (
-    <Link href={`/games/${game.appid}`} className="block">
+    <Link href={`/games/${appid}`} className="block">
       <div ref={cardRef}>
         <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-video">
           {shouldLoadVideo && hasVideo && videoUrl ? (
@@ -118,10 +114,10 @@ function RelatedGameCardComponent({ game }: RelatedGameCardProps) {
               className="w-full h-full object-cover"
               onError={() => setVideoError(true)}
             />
-          ) : game.header_image ? (
+          ) : header_image ? (
             <Image
-              src={game.header_image}
-              alt={game.name}
+              src={header_image}
+              alt={title}
               width={400}
               height={128}
               className="w-full h-full object-cover"
@@ -130,29 +126,10 @@ function RelatedGameCardComponent({ game }: RelatedGameCardProps) {
             />
           ) : null}
         </div>
-        <div className="font-medium text-sm">{game.name}</div>
-        {game.similarity !== undefined && (
-          <div className="text-xs text-muted-foreground">
-            Similarity: {(game.similarity * 100).toFixed(1)}%
-          </div>
-        )}
+        <div className="font-medium text-sm">{title}</div>
       </div>
     </Link>
   );
 }
 
-// Memoize component to prevent unnecessary re-renders
-export const RelatedGameCard = memo(
-  RelatedGameCardComponent,
-  (prevProps, nextProps) => {
-    // Only re-render if game data actually changed
-    return (
-      prevProps.game.appid === nextProps.game.appid &&
-      prevProps.game.name === nextProps.game.name &&
-      prevProps.game.header_image === nextProps.game.header_image &&
-      JSON.stringify(prevProps.game.videos) ===
-        JSON.stringify(nextProps.game.videos) &&
-      prevProps.game.similarity === nextProps.game.similarity
-    );
-  }
-);
+export default GameCard;

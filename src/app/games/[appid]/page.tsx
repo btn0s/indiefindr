@@ -2,89 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { RelatedGamesSection } from "@/components/RelatedGamesSection";
-import { RerunButton } from "@/components/RerunButton";
-import { ManualSimilarEditor } from "@/components/ManualSimilarEditor";
 import { GameVideo } from "@/components/GameVideo";
-import { supabase } from "@/lib/supabase/server";
-import type { Game } from "@/lib/supabase/types";
-import { ArrowLeftIcon } from "lucide-react";
-
-type ManualLink = {
-  id: string;
-  otherAppid: number;
-  otherName: string;
-  otherHeader: string | null;
-  facets: string[];
-  note: string | null;
-};
-
-async function getGame(appid: string): Promise<Game | null> {
-  const appId = parseInt(appid, 10);
-
-  if (isNaN(appId)) {
-    return null;
-  }
-
-  const { data: game, error } = await supabase
-    .from("games")
-    .select("*")
-    .eq("id", appId)
-    .single();
-
-  if (error || !game) {
-    return null;
-  }
-
-  // #region agent log
-  const logData = {appId,hasVideos:!!game.videos,videosLength:game.videos?.length,videos:game.videos,hasHeaderImage:!!game.header_image};
-  fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:39',message:'Game data fetched from DB',data:logData,timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-
-  return game;
-}
-
-async function getManualSimilarGames(appid: string): Promise<ManualLink[]> {
-  const appId = parseInt(appid, 10);
-
-  if (isNaN(appId)) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from("manual_similarities")
-    .select(
-      `
-      id,
-      source_appid,
-      target_appid,
-      facets,
-      note,
-      source:source_appid ( id, name, header_image ),
-      target:target_appid ( id, name, header_image )
-    `
-    )
-    .or(`source_appid.eq.${appId},target_appid.eq.${appId}`);
-
-  if (error || !data) {
-    console.error("Error fetching manual links:", error);
-    return [];
-  }
-
-  return (data as any[]).map((row) => {
-    const isSource = row.source_appid === appId;
-    const other = isSource ? row.target : row.source;
-    return {
-      id: row.id,
-      otherAppid: other?.id ?? (isSource ? row.target_appid : row.source_appid),
-      otherName: other?.name ?? "Unknown game",
-      otherHeader: other?.header_image ?? null,
-      facets: row.facets ?? [],
-      note: row.note ?? null,
-    };
-  });
-}
+import { ArrowLeftIcon, ArrowUpRight } from "lucide-react";
+import { fetchSteamGame } from "@/lib/steam";
 
 export default async function GameDetailPage({
   params,
@@ -92,18 +12,22 @@ export default async function GameDetailPage({
   params: Promise<{ appid: string }>;
 }) {
   const { appid } = await params;
-  const [game, manualLinks] = await Promise.all([
-    getGame(appid),
-    getManualSimilarGames(appid),
-  ]);
+  const appId = parseInt(appid, 10);
 
-  if (!game) {
+  if (isNaN(appId)) {
     notFound();
   }
 
-  const appIdNumber = parseInt(appid, 10);
-  const tags = game.tags ? Object.keys(game.tags) : [];
-  const isDev = process.env.NEXT_PUBLIC_ENV === "development";
+  let gameData: Awaited<ReturnType<typeof fetchSteamGame>>;
+  try {
+    gameData = await fetchSteamGame(appid);
+  } catch (error) {
+    console.error("Failed to fetch game data:", error);
+    notFound();
+  }
+
+  const description =
+    gameData.long_description || gameData.short_description || null;
 
   return (
     <div className="min-h-screen">
@@ -114,33 +38,29 @@ export default async function GameDetailPage({
               <ArrowLeftIcon className="size-4" /> Back to Home
             </Button>
           </Link>
-          <div className="relative">
-            <RerunButton appid={appid} />
-          </div>
         </div>
 
-        <h1 className="text-2xl font-semibold">Games like {game.name}</h1>
+        <h1 className="text-2xl font-semibold">Games like {gameData.title}</h1>
 
         {/* Trailer Video - Full Width */}
-        <div className="w-full aspect-video">
-          {/* #region agent log */}
-          {(()=>{fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:125',message:'Rendering GameVideo component',data:{videos:game.videos,videosLength:game.videos?.length,hasHeaderImage:!!game.header_image},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});return null;})()}
-          {/* #endregion */}
-          <GameVideo
-            videos={game.videos}
-            headerImage={game.header_image}
-            alt={game.name}
-            className="w-full h-full"
-          />
-        </div>
+        {gameData.videos && gameData.videos.length > 0 && (
+          <div className="w-full aspect-video">
+            <GameVideo
+              videos={gameData.videos}
+              headerImage={gameData.header_image}
+              alt={gameData.title}
+              className="w-full h-full"
+            />
+          </div>
+        )}
 
         {/* Game Header */}
         <div className="flex gap-4">
-          {game.header_image && (
+          {gameData.header_image && (
             <div className="w-1/3 aspect-video">
               <Image
-                src={game.header_image}
-                alt={game.name}
+                src={gameData.header_image}
+                alt={gameData.title}
                 width={460}
                 height={215}
                 className="w-full h-full object-cover rounded-lg"
@@ -149,44 +69,28 @@ export default async function GameDetailPage({
             </div>
           )}
           <div className="flex-1 flex flex-col gap-2">
-            <div className="flex flex-col gap-1">
-              <div>{game.name}</div>
+            <div className="text-lg font-semibold mb-0">{gameData.title}</div>
+
+            {description && (
+              <p className="text-muted-foreground line-clamp-4 text-sm mb-2">
+                {description.replace(/<[^>]*>/g, "").substring(0, 300)}
+                {description.length > 300 ? "..." : ""}
+              </p>
+            )}
+
+            <Button className="w-fit">
               <a
                 href={`https://store.steampowered.com/app/${appid}/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 underline text-xs"
+                className="flex items-center gap-1"
               >
                 View on Steam
+                <ArrowUpRight className="size-3" />
               </a>
-            </div>
-            {game.description && (
-              <p className="text-muted-foreground line-clamp-4 text-xs">
-                {game.description.replace(/<[^>]*>/g, "").substring(0, 300)}
-                {game.description.length > 300 ? "..." : ""}
-              </p>
-            )}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {tags.slice(0, 10).map((tag) => (
-                  <Badge key={tag} variant="outline">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
+            </Button>
           </div>
         </div>
-
-        {isDev && (
-          <ManualSimilarEditor
-            appid={appIdNumber}
-            existingLinks={manualLinks}
-          />
-        )}
-
-        {/* Related Games by Facet */}
-        <RelatedGamesSection appid={appid} />
       </main>
     </div>
   );

@@ -26,7 +26,7 @@ export function RerunButton({ appid }: RerunButtonProps) {
     try {
       const steamUrl = `https://store.steampowered.com/app/${appid}/`;
 
-      const response = await fetch("/api/games/ingest", {
+      const response = await fetch("/api/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -36,7 +36,7 @@ export function RerunButton({ appid }: RerunButtonProps) {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         throw new Error(data.error || "Failed to rerun ingestion");
       }
 

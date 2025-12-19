@@ -20,13 +20,13 @@ const games = [
 ];
 
 const baseUrl = process.argv[2] || "http://localhost:3000";
-const ingestUrl = `${baseUrl}/api/games/ingest`;
+const ingestUrl = `${baseUrl}/api/submit`;
 
 async function ingestGame(name, appid) {
   const steamUrl = `https://store.steampowered.com/app/${appid}/`;
-  
+
   console.log(`\n📦 Ingesting: ${name} (${appid})...`);
-  
+
   try {
     const response = await fetch(ingestUrl, {
       method: "POST",
@@ -38,13 +38,13 @@ async function ingestGame(name, appid) {
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || !data.success) {
       console.error(`❌ Failed: ${data.error || "Unknown error"}`);
       return { success: false, error: data.error };
     }
 
-    console.log(`✅ Success! Game ID: ${data.gameId}, Job ID: ${data.jobId}`);
-    return { success: true, gameId: data.gameId };
+    console.log(`✅ Success! App ID: ${data.appid}, Title: ${data.title}`);
+    return { success: true, gameId: data.appid };
   } catch (error) {
     console.error(`❌ Error: ${error.message}`);
     return { success: false, error: error.message };

@@ -21,7 +21,7 @@ export function IngestForm() {
     setError(null);
 
     try {
-      const response = await fetch("/api/games/ingest", {
+      const response = await fetch("/api/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -31,15 +31,15 @@ export function IngestForm() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         throw new Error(data.error || "Failed to ingest game");
       }
 
       setSteamUrl("");
 
       // Navigate immediately to the game detail page
-      if (data.gameId) {
-        router.push(`/games/${data.gameId}`);
+      if (data.appid) {
+        router.push(`/games/${data.appid}`);
       } else {
         // Fallback: refresh the page to show updated games list
         router.refresh();

@@ -4,7 +4,19 @@ import {
   quickIngestSteamGame,
 } from "@/lib/ingest/ingestSteamGame";
 
+/**
+ * @deprecated This endpoint is deprecated. Use /api/submit instead.
+ * This endpoint will be removed in a future version.
+ */
 export async function POST(request: NextRequest) {
+  console.warn(
+    "[DEPRECATED] /api/games/ingest is deprecated. Use /api/submit instead."
+  );
+
+  // Return deprecation warning in response headers
+  const headers = new Headers();
+  headers.set("X-Deprecated", "true");
+  headers.set("X-Deprecated-Message", "Use /api/submit instead");
   try {
     const body = await request.json();
     const { steamUrl, steamUrls } = body;

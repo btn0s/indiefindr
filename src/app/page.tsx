@@ -1,23 +1,19 @@
 import { supabase } from "@/lib/supabase/server";
 import { IngestForm } from "@/components/IngestForm";
-import { RelatedGameCard } from "@/components/RelatedGameCard";
+import GameCard from "@/components/GameCard";
 import {
   RerunAllButton,
   RerunAllProvider,
   RerunAllMessages,
 } from "@/components/RerunAllButton";
+import { GameNew } from "@/lib/supabase/types";
 
-type GameListItem = {
-  id: number;
-  name: string;
-  header_image: string | null;
-  videos: string[] | null;
-};
-
-async function getGames(): Promise<GameListItem[]> {
+async function getGames(): Promise<GameNew[]> {
   const { data: games, error } = await supabase
-    .from("games")
-    .select("id, name, header_image, videos")
+    .from("games_new")
+    .select(
+      "appid, title, header_image, videos, screenshots, short_description, long_description, raw, created_at, updated_at"
+    )
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -26,7 +22,7 @@ async function getGames(): Promise<GameListItem[]> {
     return [];
   }
 
-  return (games || []) as GameListItem[];
+  return (games || []) as GameNew[];
 }
 
 export default async function Home() {
@@ -64,15 +60,7 @@ export default async function Home() {
                 <div className="container mx-auto w-full">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {games.map((game) => (
-                      <RelatedGameCard
-                        key={game.id}
-                        game={{
-                          appid: game.id,
-                          name: game.name,
-                          header_image: game.header_image,
-                          videos: game.videos,
-                        }}
-                      />
+                      <GameCard key={game.appid} {...game} />
                     ))}
                   </div>
                 </div>
