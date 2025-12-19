@@ -158,128 +158,123 @@ export function Navbar() {
         gameImage={ingestingGame?.image}
       />
       <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="container mx-auto max-w-4xl flex h-14 items-center gap-4 px-4 w-full">
-        {/* Logo/Brand */}
-        <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-          IndieFindr
-        </Link>
+        <div className="container mx-auto max-w-4xl flex h-14 items-center gap-4 px-4 w-full">
+          {/* Logo/Brand */}
+          <Link href="/" className="flex items-center gap-2 font-bold text-lg">
+            IndieFindr
+          </Link>
 
-        {/* Search */}
-        <div className="relative flex-1" ref={resultsRef}>
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search games..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => {
-                if (dbResults.length > 0 || steamResults.length > 0) {
-                  setShowResults(true);
-                }
-              }}
-              className="pl-8"
-            />
+          {/* Search */}
+          <div className="relative flex-1" ref={resultsRef}>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search games..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  if (dbResults.length > 0 || steamResults.length > 0) {
+                    setShowResults(true);
+                  }
+                }}
+                className="pl-8"
+              />
+            </div>
+
+            {/* Search Results Dropdown */}
+            {showResults && (
+              <div className="absolute top-full left-0 right-0 mt-1 max-h-96 overflow-y-auto rounded-md border bg-background shadow-lg">
+                {isSearching ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Searching...
+                  </div>
+                ) : dbResults.length > 0 || steamResults.length > 0 ? (
+                  <div className="py-1">
+                    {/* Database Results */}
+                    {dbResults.length > 0 && (
+                      <>
+                        {dbResults.map((game) => (
+                          <button
+                            key={`db-${game.appid}`}
+                            onClick={() => handleResultClick(game)}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors"
+                          >
+                            {game.header_image && (
+                              <img
+                                src={game.header_image}
+                                alt={game.title}
+                                className="h-12 w-20 object-cover rounded"
+                              />
+                            )}
+                            <span className="flex-1 text-sm font-medium">
+                              {game.title}
+                            </span>
+                          </button>
+                        ))}
+                        {steamResults.length > 0 && (
+                          <div className="border-t my-1">
+                            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">
+                              Steam Store
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {/* Steam Results */}
+                    {steamResults.map((game) => (
+                      <button
+                        key={`steam-${game.appid}`}
+                        onClick={() => handleResultClick(game)}
+                        disabled={ingestingAppId === game.appid}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait"
+                      >
+                        {game.header_image && (
+                          <img
+                            src={game.header_image}
+                            alt={game.title}
+                            className="h-12 w-20 object-cover rounded"
+                          />
+                        )}
+                        <span className="flex-1 text-sm font-medium">
+                          {game.title}
+                        </span>
+                        {ingestingAppId === game.appid ? (
+                          <span className="text-xs text-muted-foreground">
+                            Ingesting...
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Add to database
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    No games found
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Search Results Dropdown */}
-          {showResults && (
-            <div className="absolute top-full left-0 right-0 mt-1 max-h-96 overflow-y-auto rounded-md border bg-background shadow-lg">
-              {isSearching ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  Searching...
-                </div>
-              ) : dbResults.length > 0 || steamResults.length > 0 ? (
-                <div className="py-1">
-                  {/* Database Results */}
-                  {dbResults.length > 0 && (
-                    <>
-                      {dbResults.map((game) => (
-                        <button
-                          key={`db-${game.appid}`}
-                          onClick={() => handleResultClick(game)}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors"
-                        >
-                          {game.header_image && (
-                            <img
-                              src={game.header_image}
-                              alt={game.title}
-                              className="h-12 w-20 object-cover rounded"
-                            />
-                          )}
-                          <span className="flex-1 text-sm font-medium">
-                            {game.title}
-                          </span>
-                        </button>
-                      ))}
-                      {steamResults.length > 0 && (
-                        <div className="border-t my-1">
-                          <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">
-                            Steam Store
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {/* Steam Results */}
-                  {steamResults.map((game) => (
-                    <button
-                      key={`steam-${game.appid}`}
-                      onClick={() => handleResultClick(game)}
-                      disabled={ingestingAppId === game.appid}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait"
-                    >
-                      {game.header_image && (
-                        <img
-                          src={game.header_image}
-                          alt={game.title}
-                          className="h-12 w-20 object-cover rounded"
-                        />
-                      )}
-                      <span className="flex-1 text-sm font-medium">
-                        {game.title}
-                      </span>
-                      {ingestingAppId === game.appid ? (
-                        <span className="text-xs text-muted-foreground">
-                          Ingesting...
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Add to database
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  No games found
-                </div>
-              )}
-            </div>
-          )}
+          {/* Add Game Button */}
+          <Dialog>
+            <DialogTrigger render={<Button>Add Game</Button>} />
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add a Game</DialogTitle>
+                <DialogDescription>
+                  Paste a Steam link to ingest game data and find similar games.
+                </DialogDescription>
+              </DialogHeader>
+              <IngestForm />
+            </DialogContent>
+          </Dialog>
         </div>
-
-        {/* Add Game Button */}
-        <Dialog>
-          <DialogTrigger>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Game
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add a Game</DialogTitle>
-              <DialogDescription>
-                Paste a Steam link to ingest game data and find similar games.
-              </DialogDescription>
-            </DialogHeader>
-            <IngestForm />
-          </DialogContent>
-        </Dialog>
-      </div>
-    </nav>
+      </nav>
     </>
   );
 }

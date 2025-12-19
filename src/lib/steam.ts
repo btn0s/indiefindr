@@ -1,3 +1,6 @@
+import { acquireRateLimit } from "./utils/rate-limiter";
+import { retry } from "./utils/retry";
+
 export type SteamGameData = {
   appid: number;
   screenshots: string[];
@@ -58,150 +61,147 @@ export function parseSteamUrl(url: string): number | null {
   return null;
 }
 
-type QueueItem = {
-  url: string;
-  resolve: (data: SteamGameData) => void;
-  reject: (error: Error) => void;
-};
+const STEAM_API_BASE_URL = "https://store.steampowered.com/api";
 
-class SteamQueue {
-  private queue: QueueItem[] = [];
-  private processing = false;
-  private readonly delayMs = 200;
-  private readonly baseUrl = "https://store.steampowered.com/api";
-
-  async add(steamUrl: string): Promise<SteamGameData> {
-    return new Promise((resolve, reject) => {
-      this.queue.push({ url: steamUrl, resolve, reject });
-      this.process();
-    });
-  }
-
-  private async process() {
-    if (this.processing || this.queue.length === 0) {
-      return;
-    }
-
-    this.processing = true;
-
-    let isFirst = true;
-
-    while (this.queue.length > 0) {
-      const item = this.queue.shift();
-      if (!item) break;
-
-      try {
-        // Wait 200ms between items (not before the first one)
-        if (!isFirst) {
-          await new Promise((resolve) => setTimeout(resolve, this.delayMs));
-        }
-        isFirst = false;
-
-        const data = await this.fetchGameData(item.url);
-        item.resolve(data);
-      } catch (error) {
-        item.reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    }
-
-    this.processing = false;
-  }
-
-  private async fetchGameData(steamUrl: string): Promise<SteamGameData> {
-    const appId = parseSteamUrl(steamUrl);
-
-    if (!appId) {
-      throw new Error(`Invalid Steam URL: ${steamUrl}`);
-    }
-
-    const url = `${this.baseUrl}/appdetails?appids=${appId}&l=english`;
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch Steam store data: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-    const appData = data[appId.toString()];
-
-    if (!appData || !appData.success) {
-      throw new Error(`Steam app ${appId} not found or unavailable`);
-    }
-
-    const game = appData.data;
-
-    // Extract screenshots
-    const screenshots = (
-      (game.screenshots as Array<{
-        path_full?: string;
-        path_thumbnail?: string;
-      }>) || []
-    )
-      .map((s) => s.path_full || s.path_thumbnail)
-      .filter((url): url is string => Boolean(url));
-
-    // Extract video URLs
-    const videos: string[] = [];
-    if (game.movies && Array.isArray(game.movies) && game.movies.length > 0) {
-      type Movie = {
-        highlight?: boolean;
-        id: number;
-        hls_h264?: string;
-        dash_h264?: string;
-        dash_av1?: string;
-        mp4?: { max?: string; "480"?: string };
-        webm?: { max?: string; "480"?: string };
-      };
-
-      const sortedMovies = [...(game.movies as Movie[])].sort((a, b) => {
-        if (a.highlight && !b.highlight) return -1;
-        if (!a.highlight && b.highlight) return 1;
-        return a.id - b.id;
-      });
-
-      for (const movie of sortedMovies) {
-        const videoUrl =
-          movie.hls_h264 ||
-          movie.dash_h264 ||
-          movie.dash_av1 ||
-          movie.mp4?.max ||
-          movie.mp4?.["480"] ||
-          movie.webm?.max ||
-          movie.webm?.["480"];
-
-        if (videoUrl) {
-          videos.push(videoUrl);
-        }
-      }
-    }
-
-    return {
-      appid: appId,
-      screenshots,
-      videos,
-      title: (game.name as string) || "",
-      header_image: (game.header_image as string) || null,
-      short_description: (game.short_description as string) || null,
-      long_description: (game.detailed_description as string) || null,
-      type: (game.type as string) || "game",
-      raw: game, // Raw Steam API response
-    };
+/**
+ * Custom error class for Steam API rate limiting
+ */
+class SteamRateLimitError extends Error {
+  status: number;
+  constructor(message: string) {
+    super(message);
+    this.name = "SteamRateLimitError";
+    this.status = 429;
   }
 }
 
-// Singleton instance
-const steamQueue = new SteamQueue();
+/**
+ * Fetch game data from Steam API with global rate limiting and retry logic.
+ * 
+ * @param steamUrl - Steam store URL or app ID
+ * @returns Promise resolving to game data
+ */
+async function fetchGameDataWithRateLimit(steamUrl: string): Promise<SteamGameData> {
+  const appId = parseSteamUrl(steamUrl);
+
+  if (!appId) {
+    throw new Error(`Invalid Steam URL: ${steamUrl}`);
+  }
+
+  // Acquire global rate limit slot (waits for 2s since last request)
+  await acquireRateLimit("steam_api", 2000);
+
+  const url = `${STEAM_API_BASE_URL}/appdetails?appids=${appId}&l=english`;
+
+  const response = await fetch(url);
+
+  if (response.status === 429) {
+    throw new SteamRateLimitError(
+      `Steam API rate limited (429) for app ${appId}`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch Steam store data: ${response.status} ${response.statusText}`
+    );
+  }
+
+  const data = await response.json();
+  const appData = data[appId.toString()];
+
+  if (!appData || !appData.success) {
+    throw new Error(`Steam app ${appId} not found or unavailable`);
+  }
+
+  const game = appData.data;
+
+  // Extract screenshots
+  const screenshots = (
+    (game.screenshots as Array<{
+      path_full?: string;
+      path_thumbnail?: string;
+    }>) || []
+  )
+    .map((s) => s.path_full || s.path_thumbnail)
+    .filter((url): url is string => Boolean(url));
+
+  // Extract video URLs
+  const videos: string[] = [];
+  if (game.movies && Array.isArray(game.movies) && game.movies.length > 0) {
+    type Movie = {
+      highlight?: boolean;
+      id: number;
+      hls_h264?: string;
+      dash_h264?: string;
+      dash_av1?: string;
+      mp4?: { max?: string; "480"?: string };
+      webm?: { max?: string; "480"?: string };
+    };
+
+    const sortedMovies = [...(game.movies as Movie[])].sort((a, b) => {
+      if (a.highlight && !b.highlight) return -1;
+      if (!a.highlight && b.highlight) return 1;
+      return a.id - b.id;
+    });
+
+    for (const movie of sortedMovies) {
+      const videoUrl =
+        movie.hls_h264 ||
+        movie.dash_h264 ||
+        movie.dash_av1 ||
+        movie.mp4?.max ||
+        movie.mp4?.["480"] ||
+        movie.webm?.max ||
+        movie.webm?.["480"];
+
+      if (videoUrl) {
+        videos.push(videoUrl);
+      }
+    }
+  }
+
+  return {
+    appid: appId,
+    screenshots,
+    videos,
+    title: (game.name as string) || "",
+    header_image: (game.header_image as string) || null,
+    short_description: (game.short_description as string) || null,
+    long_description: (game.detailed_description as string) || null,
+    type: (game.type as string) || "game",
+    raw: game, // Raw Steam API response
+  };
+}
 
 /**
  * Fetch Steam game data from a Steam URL.
- * Uses a queue system to prevent overloading with 200ms delay between requests.
+ * Uses global rate limiting (2s between requests) and retry with exponential backoff.
  *
  * @param steamUrl - Steam store URL or app ID
  * @returns Promise resolving to game data
  */
 export async function fetchSteamGame(steamUrl: string): Promise<SteamGameData> {
-  return steamQueue.add(steamUrl);
+  return retry(
+    () => fetchGameDataWithRateLimit(steamUrl),
+    {
+      maxAttempts: 5,
+      initialDelayMs: 3000, // Start with 3s delay on retry (after rate limit)
+      maxDelayMs: 30000, // Max 30s delay
+      backoffMultiplier: 2,
+      retryable: (error: unknown) => {
+        // Retry on rate limit errors
+        if (error instanceof SteamRateLimitError) {
+          console.log("[STEAM] Rate limited, will retry with backoff...");
+          return true;
+        }
+        // Retry on network errors
+        if (error instanceof TypeError && String(error).includes("fetch")) {
+          return true;
+        }
+        // Don't retry on other errors (invalid URL, game not found, etc.)
+        return false;
+      },
+    }
+  );
 }

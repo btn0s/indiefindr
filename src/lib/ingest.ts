@@ -191,6 +191,8 @@ async function saveSuggestionsToDb(
  * Auto-ingest suggested games that don't exist in the database yet.
  * This ensures suggestions are always visible in the UI.
  * Runs in background to avoid blocking the main ingestion.
+ * 
+ * Note: Global rate limiter in steam.ts handles the 2s delay between Steam API requests.
  */
 async function autoIngestSuggestedGames(suggestedAppIds: number[]): Promise<void> {
   if (!suggestedAppIds || suggestedAppIds.length === 0) {
@@ -216,28 +218,24 @@ async function autoIngestSuggestedGames(suggestedAppIds: number[]): Promise<void
 
     console.log(`[INGEST] Found ${missingAppids.length} missing games, queueing for ingestion...`);
 
-    // Queue missing games for ingestion in background (fire and forget)
-    // Use a small delay between each to avoid overwhelming the system
-    // Note: Recursion is prevented because we check for existing games before ingesting
+    // Ingest missing games sequentially to respect rate limits
+    // The global rate limiter in steam.ts handles the 2s delay between Steam API calls
     for (const missingAppid of missingAppids) {
       const steamUrl = `https://store.steampowered.com/app/${missingAppid}/`;
       
-      // Fire and forget - don't await to avoid blocking
-      // Recursion is naturally prevented: when we ingest a suggested game,
-      // it will check for existing games first, and since we just ingested it,
-      // it will skip auto-ingesting its suggestions (they'll already exist or be in progress)
-      ingest(steamUrl).catch((err) => {
+      try {
+        await ingest(steamUrl);
+        console.log(`[INGEST] Successfully auto-ingested game ${missingAppid}`);
+      } catch (err) {
         console.error(
           `[INGEST] Failed to auto-ingest suggested game ${missingAppid}:`,
           err instanceof Error ? err.message : String(err)
         );
-      });
-
-      // Small delay to avoid rate limiting (but don't block the main response)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+        // Continue with next game even if one fails
+      }
     }
 
-    console.log(`[INGEST] Queued ${missingAppids.length} games for background ingestion`);
+    console.log(`[INGEST] Completed auto-ingestion of ${missingAppids.length} games`);
   } catch (error) {
     // Don't throw - auto-ingestion failures shouldn't break the main ingestion
     console.error("[INGEST] Error in auto-ingest suggested games:", error);

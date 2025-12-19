@@ -101,6 +101,7 @@ export async function POST(
     }
 
     // Auto-ingest missing games via ingest() (it handles existence checks and auto-ingestion)
+    // Note: Global rate limiter handles the 2s delay between Steam API requests
     const { data: existingGames } = await supabase
       .from("games_new")
       .select("appid")
@@ -111,16 +112,24 @@ export async function POST(
 
     if (missingAppids.length > 0) {
       console.log(`[REFRESH SUGGESTIONS] Auto-ingesting ${missingAppids.length} missing games...`);
-      for (const missingAppid of missingAppids) {
-        const steamUrl = `https://store.steampowered.com/app/${missingAppid}/`;
-        ingest(steamUrl).catch((err) => {
-          console.error(
-            `[REFRESH SUGGESTIONS] Failed to auto-ingest ${missingAppid}:`,
-            err instanceof Error ? err.message : String(err)
-          );
-        });
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
+      
+      // Fire off background ingestion but don't wait for it
+      // The ingest function handles rate limiting internally
+      (async () => {
+        for (const missingAppid of missingAppids) {
+          const steamUrl = `https://store.steampowered.com/app/${missingAppid}/`;
+          try {
+            await ingest(steamUrl);
+            console.log(`[REFRESH SUGGESTIONS] Successfully auto-ingested ${missingAppid}`);
+          } catch (err) {
+            console.error(
+              `[REFRESH SUGGESTIONS] Failed to auto-ingest ${missingAppid}:`,
+              err instanceof Error ? err.message : String(err)
+            );
+          }
+        }
+        console.log(`[REFRESH SUGGESTIONS] Completed auto-ingestion of ${missingAppids.length} games`);
+      })().catch(console.error);
     }
 
     return NextResponse.json({
