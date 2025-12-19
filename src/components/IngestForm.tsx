@@ -10,6 +10,38 @@ interface IngestFormProps {
   onSuccess?: () => void;
 }
 
+/**
+ * Parse Steam URL to extract AppID
+ */
+function parseSteamUrl(url: string): number | null {
+  const normalizedUrl = url.trim();
+  
+  // Try to extract AppID from various Steam URL patterns
+  const patterns = [
+    /store\.steampowered\.com\/app\/(\d+)/i,
+    /steamcommunity\.com\/app\/(\d+)/i,
+    /\/app\/(\d+)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalizedUrl.match(pattern);
+    if (match && match[1]) {
+      const appId = parseInt(match[1], 10);
+      if (!isNaN(appId) && appId > 0) {
+        return appId;
+      }
+    }
+  }
+
+  // If URL is just a number, treat it as AppID
+  const numericMatch = normalizedUrl.match(/^\d+$/);
+  if (numericMatch) {
+    return parseInt(numericMatch[0], 10);
+  }
+
+  return null;
+}
+
 export function IngestForm({ onSuccess }: IngestFormProps) {
   const router = useRouter();
   const [steamUrl, setSteamUrl] = useState("");
@@ -26,6 +58,20 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
     setError(null);
 
     try {
+      // First, check if the game already exists
+      const appId = parseSteamUrl(steamUrl.trim());
+      if (appId) {
+        const checkResponse = await fetch(`/api/games/${appId}`);
+        if (checkResponse.ok) {
+          // Game exists, redirect immediately
+          setSteamUrl("");
+          onSuccess?.();
+          router.push(`/games/${appId}`);
+          return;
+        }
+      }
+
+      // Game doesn't exist, proceed with ingestion
       const response = await fetch("/api/submit", {
         method: "POST",
         headers: {
