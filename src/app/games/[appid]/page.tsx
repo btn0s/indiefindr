@@ -159,6 +159,7 @@ export default async function GameDetailPage({
     <div className="min-h-screen">
       <script
         type="application/ld+json"
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       <Navbar />
