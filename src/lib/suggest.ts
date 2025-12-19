@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { retry } from "./utils/retry";
-import { validateAppId, searchAppIdByTitle } from "./steam";
+import { validateAppIdWithTitle, searchAppIdByTitle } from "./steam";
 import { Suggestion } from "./supabase/types";
 
 const SONAR_MODEL = "perplexity/sonar-pro";
@@ -138,7 +138,8 @@ function parseSuggestions(text: string): ParsedSuggestion[] {
 
 /**
  * Validate and correct suggestions from parsed data.
- * Tests each app ID, and if invalid, tries to find the correct one by searching.
+ * Tests each app ID, verifies the title matches, and if invalid/mismatched,
+ * tries to find the correct one by searching.
  */
 async function validateAndCorrectSuggestions(
   parsedSuggestions: ParsedSuggestion[]
@@ -154,13 +155,26 @@ async function validateAndCorrectSuggestions(
       appId = await searchAppIdByTitle(title);
     }
 
-    // If we have an app ID, validate it
+    // If we have an app ID, validate it AND verify title matches
     if (appId) {
-      const isValid = await validateAppId(appId);
-      if (isValid) {
+      const result = await validateAppIdWithTitle(appId, title);
+      
+      if (result.valid && result.titleMatch) {
+        // App ID is valid and title matches - use it
         validatedSuggestions.push({ appId, title, explanation: suggestion.explanation });
+      } else if (result.valid && !result.titleMatch) {
+        // App ID exists but wrong game - search by title instead
+        console.log(`[SUGGEST] App ID ${appId} is "${result.actualTitle}", not "${title}" - searching by title`);
+        const correctedId = await searchAppIdByTitle(title);
+        if (correctedId && correctedId !== appId) {
+          // Verify the corrected ID also matches
+          const correctedResult = await validateAppIdWithTitle(correctedId, title);
+          if (correctedResult.valid && correctedResult.titleMatch !== false) {
+            validatedSuggestions.push({ appId: correctedId, title, explanation: suggestion.explanation });
+          }
+        }
       } else {
-        // Try to find correct app ID by title
+        // App ID invalid - try to find correct one by title
         console.log(`[SUGGEST] App ID ${appId} invalid, searching for "${title}"`);
         const correctedId = await searchAppIdByTitle(title);
         if (correctedId) {

@@ -246,6 +246,93 @@ export async function validateAppId(appId: number): Promise<boolean> {
 }
 
 /**
+ * Validate an app ID AND verify it matches the expected title.
+ * Returns { valid: true, actualTitle } if the app exists and is a game.
+ * Returns { valid: false } if not found, wrong type, or title mismatch.
+ */
+export async function validateAppIdWithTitle(
+  appId: number,
+  expectedTitle: string
+): Promise<{ valid: boolean; actualTitle?: string; titleMatch?: boolean }> {
+  try {
+    const game = await fetchSteamGame(appId.toString());
+    
+    // Reject DLCs, demos, mods, etc.
+    if (game.type !== "game") {
+      console.log(`[STEAM] Rejected ${appId}: type is "${game.type}"`);
+      return { valid: false };
+    }
+    
+    // Check if the title matches (case-insensitive, fuzzy)
+    const titleMatch = isTitleMatch(expectedTitle, game.title);
+    
+    if (!titleMatch) {
+      console.log(`[STEAM] Title mismatch for ${appId}: expected "${expectedTitle}", got "${game.title}"`);
+    }
+    
+    return { valid: true, actualTitle: game.title, titleMatch };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Rate limit errors: assume valid but unknown title match
+    if (errorMessage.includes("429") || errorMessage.includes("rate limit")) {
+      console.log(`[STEAM] Rate limited for ${appId}, assuming valid`);
+      return { valid: true, titleMatch: true }; // Assume match to avoid false rejections
+    }
+
+    // "Not found" errors: game doesn't exist
+    if (errorMessage.includes("not found") || errorMessage.includes("unavailable")) {
+      console.log(`[STEAM] App ${appId} not found`);
+      return { valid: false };
+    }
+
+    // Other errors: assume valid but unknown title match
+    console.log(`[STEAM] Validation error for ${appId}, assuming valid:`, errorMessage);
+    return { valid: true, titleMatch: true };
+  }
+}
+
+/**
+ * Check if two game titles match (fuzzy comparison).
+ * Handles cases like "Tetris Effect: Connected" vs "Tetris® Effect: Connected"
+ */
+function isTitleMatch(expected: string, actual: string): boolean {
+  // Normalize both titles
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[®™©]/g, "") // Remove trademark symbols
+      .replace(/[:\-–—]/g, " ") // Normalize separators
+      .replace(/\s+/g, " ") // Collapse whitespace
+      .trim();
+
+  const normExpected = normalize(expected);
+  const normActual = normalize(actual);
+
+  // Exact match after normalization
+  if (normExpected === normActual) return true;
+
+  // Check if one contains the other (for subtitle variations)
+  if (normActual.includes(normExpected) || normExpected.includes(normActual)) {
+    return true;
+  }
+
+  // Check word overlap (at least 60% of words match)
+  const expectedWords = new Set(normExpected.split(" ").filter(w => w.length > 2));
+  const actualWords = new Set(normActual.split(" ").filter(w => w.length > 2));
+  
+  if (expectedWords.size === 0 || actualWords.size === 0) return false;
+  
+  let matches = 0;
+  for (const word of expectedWords) {
+    if (actualWords.has(word)) matches++;
+  }
+  
+  const overlapRatio = matches / Math.min(expectedWords.size, actualWords.size);
+  return overlapRatio >= 0.6;
+}
+
+/**
  * Search for app ID by game title using Steam search API.
  */
 export async function searchAppIdByTitle(title: string): Promise<number | null> {
