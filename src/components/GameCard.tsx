@@ -19,6 +19,7 @@ function GameCard({
   const [videoError, setVideoError] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const hasVideo = videos?.length > 0 && !videoError;
@@ -104,27 +105,35 @@ function GameCard({
     <Link href={`/games/${appid}`} className="block">
       <div ref={cardRef}>
         <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-video">
-          {shouldLoadVideo && hasVideo && videoUrl ? (
+          {/* Always render image as base layer */}
+          {header_image && (
+            <Image
+              src={header_image}
+              alt={title}
+              width={400}
+              height={128}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                videoReady ? "opacity-0" : "opacity-100"
+              }`}
+              loading="lazy"
+              unoptimized
+            />
+          )}
+          {/* Video overlays image, fades in when ready */}
+          {shouldLoadVideo && hasVideo && videoUrl && (
             <video
               ref={videoRef}
               autoPlay
               muted
               loop
               playsInline
-              className="w-full h-full object-cover"
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                videoReady ? "opacity-100" : "opacity-0"
+              }`}
+              onCanPlay={() => setVideoReady(true)}
               onError={() => setVideoError(true)}
             />
-          ) : header_image ? (
-            <Image
-              src={header_image}
-              alt={title}
-              width={400}
-              height={128}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              unoptimized
-            />
-          ) : null}
+          )}
         </div>
         <div className="font-medium text-sm">{title}</div>
       </div>
