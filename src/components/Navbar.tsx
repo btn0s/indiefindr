@@ -67,6 +67,12 @@ export function Navbar() {
           setDbResults(data.db || []);
           setSteamResults(data.steam || []);
           setShowResults(true);
+
+          // Prefetch routes for database results (top 5) to make clicks instant
+          const dbResultsToPrefetch = (data.db || []).slice(0, 5);
+          dbResultsToPrefetch.forEach((game: SearchResult) => {
+            router.prefetch(`/games/${game.appid}`);
+          });
         }
       } catch (error) {
         console.error("Search error:", error);
@@ -80,7 +86,7 @@ export function Navbar() {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery]);
+  }, [searchQuery, router]);
 
   // Close results when clicking outside
   useEffect(() => {
