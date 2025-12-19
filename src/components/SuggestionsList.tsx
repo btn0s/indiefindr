@@ -21,124 +21,37 @@ interface SuggestionsListProps {
 }
 
 /**
- * Extract app ID from Steam URL
- */
-function extractAppIdFromUrl(url: string): number | null {
-  if (!url) return null;
-  const match = url.match(/\/app\/(\d+)/);
-  if (match && match[1]) {
-    const appId = parseInt(match[1], 10);
-    if (!isNaN(appId) && appId > 0) {
-      return appId;
-    }
-  }
-  return null;
-}
-
-/**
- * Parse the suggestions text from Perplexity into structured data
+ * Parse the suggestions text from Perplexity - expects format: title, steam_appid, explanation
  */
 function parseSuggestions(text: string): ParsedSuggestionItem[] {
   const items: ParsedSuggestionItem[] = [];
 
-  // Split by double newlines or patterns that indicate a new game entry
-  // Also handle cases where entries are separated by numbered lists or ** markers
-  const sections = text
-    .split(/\n(?=\*\*[^*])|\n(?=\d+\.\s*\*\*)/)
-    .filter((s) => s.trim());
+  // Split by newlines
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.match(/^(title|example|format)/i)); // Skip header lines
 
-  for (const section of sections) {
-    const lines = section
-      .trim()
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l);
-    if (lines.length === 0) continue;
-
-    // First line should be the game title (may have **bold** markers, numbers, etc.)
-    let titleLine = lines[0];
-    // Remove markdown bold markers
-    titleLine = titleLine.replace(/\*\*/g, "");
-    // Remove numbered list prefixes
-    titleLine = titleLine.replace(/^\d+\.\s*/, "");
-    const title = titleLine.trim();
-
-    // Skip if title is too long or looks like a heading
-    if (
-      !title ||
-      title.length > 200 ||
-      title.toLowerCase().includes("similar games")
-    )
-      continue;
-
-    let steamLink = "";
-    let explanation = "";
-    let explanationStarted = false;
-
-    // First, search the entire section for Steam URLs (they might be anywhere)
-    const fullSection = section.trim();
-    const steamUrlMatch = fullSection.match(
-      /https?:\/\/store\.steampowered\.com\/app\/\d+(?:\/[^\s\)\n]*)?/
-    );
-    if (steamUrlMatch) {
-      steamLink = steamUrlMatch[0].replace(/[\.\)]+$/, ""); // Remove trailing punctuation
-    }
-
-    // Look for Steam Link and Why it's similar
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-
-      // Check for Steam Link (look for Steam store URLs anywhere in the line)
-      if (!steamLink) {
-        const lineSteamUrlMatch = line.match(
-          /https?:\/\/store\.steampowered\.com\/app\/\d+(?:\/[^\s\)]*)?/
-        );
-        if (lineSteamUrlMatch) {
-          steamLink = lineSteamUrlMatch[0].replace(/[\.\)]+$/, ""); // Remove trailing punctuation
-        }
+  for (const line of lines) {
+    // Parse format: title, steam_appid, explanation
+    // Handle commas that might be in the title or explanation by splitting carefully
+    const parts = line.split(",").map((p) => p.trim());
+    
+    if (parts.length >= 2) {
+      // Title is everything before the last 2 parts
+      const title = parts.slice(0, -2).join(", ").trim();
+      const appIdStr = parts[parts.length - 2];
+      const explanation = parts[parts.length - 1];
+      
+      const appId = parseInt(appIdStr, 10);
+      if (!isNaN(appId) && appId > 0 && title) {
+        items.push({
+          title,
+          steamLink: `https://store.steampowered.com/app/${appId}/`,
+          explanation: explanation || "",
+          appId,
+        });
       }
-      // Also check for lines explicitly mentioning Steam Link/URL
-      if (
-        !steamLink &&
-        (line.match(/steam\s+link/i) || line.match(/steam.*url/i))
-      ) {
-        const linkMatch = line.match(/https?:\/\/[^\s\)]+/);
-        if (linkMatch) {
-          steamLink = linkMatch[0].replace(/[\.\)]+$/, ""); // Remove trailing punctuation
-        }
-      }
-      // Check for explanation/similarity reason
-      if (line.match(/why.*similar/i) || line.match(/similar.*because/i)) {
-        explanationStarted = true;
-        explanation = line
-          .replace(/^\*\*Why\s+it'?s?\s+similar:?\*\*\s*-?\s*/i, "")
-          .replace(/^\*\*Similar.*:?\*\*\s*-?\s*/i, "")
-          .replace(/\*\*/g, "")
-          .trim();
-      }
-      // If explanation has started, continue collecting it (might span multiple lines)
-      else if (
-        explanationStarted &&
-        line &&
-        !line.match(/steam/i) &&
-        !line.match(/https?:/)
-      ) {
-        explanation +=
-          (explanation ? " " : "") + line.replace(/\*\*/g, "").trim();
-      }
-    }
-
-    // Extract app ID from Steam link
-    const appId = steamLink ? extractAppIdFromUrl(steamLink) : null;
-
-    // If we have a title, add it (even if we couldn't parse link/explanation)
-    if (title) {
-      items.push({
-        title,
-        steamLink: steamLink || "",
-        explanation: explanation.trim(),
-        appId: appId || undefined,
-      });
     }
   }
 
@@ -227,16 +140,10 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     );
   }
 
-  // Extract Steam links and app IDs from suggestions
-  const steamLinks = suggestions
-    .map((s) => s.steamLink)
-    .filter((link): link is string => Boolean(link));
-  const appIds = extractAppIdsFromSuggestions(steamLinks);
-
-  // Fetch and save Steam data for suggested games (if not already in DB)
-  if (appIds.length > 0) {
+  // Fetch and save suggested games
+  if (suggestions.length > 0) {
     try {
-      await fetchAndSaveSuggestedGames(appIds);
+      await fetchAndSaveSuggestedGames(suggestions);
     } catch (error) {
       console.error(
         "[SUGGESTIONS LIST] Failed to fetch suggested games:",
@@ -245,6 +152,11 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
       // Continue even if fetching fails - we'll just show suggestions without GameCards
     }
   }
+
+  // Extract app IDs from suggestions (including ones that might have been found by title)
+  const appIds = suggestions
+    .map((s) => s.appId)
+    .filter((id): id is number => id !== undefined);
 
   // Fetch game data from database
   let games: GameNew[] = [];
@@ -257,21 +169,58 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     games = (gamesData || []) as GameNew[];
   }
 
+  // Also try to find games by title for suggestions without app IDs
+  const suggestionsWithoutAppIds = suggestions.filter((s) => !s.appId && s.title);
+  if (suggestionsWithoutAppIds.length > 0) {
+    const titleSearchPromises = suggestionsWithoutAppIds.map(async (suggestion) => {
+      const { data } = await supabase
+        .from("games_new")
+        .select("*")
+        .ilike("title", `%${suggestion.title}%`)
+        .limit(1)
+        .maybeSingle();
+
+      return data;
+    });
+
+    const titleMatches = (await Promise.all(titleSearchPromises)).filter(
+      (game): game is GameNew => game !== null
+    );
+    games = [...games, ...titleMatches];
+  }
+
   // Create a map of games by appid for quick lookup
   const gamesMap = new Map<number, GameNew>();
+  // Also create a map by title (case-insensitive) for fallback matching
+  const gamesByTitleMap = new Map<string, GameNew>();
   for (const game of games) {
     gamesMap.set(game.appid, game);
+    if (game.title) {
+      gamesByTitleMap.set(game.title.toLowerCase(), game);
+    }
   }
 
   return (
     <div className="grid grid-cols-3 gap-6">
       {suggestions.map((item, index) => {
-        const gameData = item.appId ? gamesMap.get(item.appId) : null;
+        // Try to find game by app ID first, then by title
+        let gameData = item.appId ? gamesMap.get(item.appId) : null;
+        if (!gameData && item.title) {
+          gameData = gamesByTitleMap.get(item.title.toLowerCase()) || null;
+        }
 
         return (
           <div key={index} className="flex flex-col">
-            {gameData ? <GameCard {...gameData} /> : <div>{item.title}</div>}
-            {item.explanation && <p className="text-xs">{item.explanation}</p>}
+            {gameData ? (
+              <GameCard {...gameData} />
+            ) : (
+              <div>{item.title || `Loading game ${item.appId}...`}</div>
+            )}
+            {item.explanation && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {item.explanation}
+              </p>
+            )}
           </div>
         );
       })}

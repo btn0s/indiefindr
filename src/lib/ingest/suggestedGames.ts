@@ -1,6 +1,7 @@
 import { fetchSteamGame, type SteamGameData } from "../steam";
 import { supabase } from "../supabase/server";
 import { parseSteamUrl } from "../steam";
+import type { ParsedSuggestionItem } from "../supabase/types";
 
 /**
  * Extract Steam app IDs from suggestion items (from their Steam links)
@@ -20,11 +21,34 @@ export function extractAppIdsFromSuggestions(steamLinks: string[]): number[] {
 }
 
 /**
- * Fetch and save Steam data for a list of app IDs
- * Only fetches games that don't already exist in the database
+ * Search for a game in the database by title (case-insensitive partial match)
  */
-export async function fetchAndSaveSuggestedGames(appIds: number[]): Promise<void> {
-  if (appIds.length === 0) return;
+async function findGameByTitle(title: string): Promise<number | null> {
+  if (!title) return null;
+
+  const { data } = await supabase
+    .from("games_new")
+    .select("appid")
+    .ilike("title", `%${title}%`)
+    .limit(1)
+    .maybeSingle();
+
+  return data?.appid || null;
+}
+
+/**
+ * Fetch and save Steam data for suggested games
+ * Uses app ID first, falls back to title search if app ID fetch fails
+ */
+export async function fetchAndSaveSuggestedGames(
+  suggestions: ParsedSuggestionItem[]
+): Promise<void> {
+  if (suggestions.length === 0) return;
+
+  // Extract app IDs
+  const appIds = suggestions
+    .map((s) => s.appId)
+    .filter((id): id is number => id !== undefined);
 
   // Check which games already exist in the database
   const { data: existingGames } = await supabase
@@ -33,29 +57,69 @@ export async function fetchAndSaveSuggestedGames(appIds: number[]): Promise<void
     .in("appid", appIds);
 
   const existingAppIds = new Set((existingGames || []).map((g) => g.appid));
-  const gamesToFetch = appIds.filter((id) => !existingAppIds.has(id));
-
-  if (gamesToFetch.length === 0) {
-    console.log("[SUGGESTED GAMES] All games already exist in database");
-    return;
-  }
 
   console.log(
-    `[SUGGESTED GAMES] Fetching ${gamesToFetch.length} games from Steam...`
+    `[SUGGESTED GAMES] Processing ${suggestions.length} suggestions, ${existingAppIds.size} already exist`
   );
 
   // Fetch and save each game (the queue will handle rate limiting)
-  const promises = gamesToFetch.map(async (appId) => {
+  const promises = suggestions.map(async (suggestion) => {
+    // Skip if we already have this game
+    if (suggestion.appId && existingAppIds.has(suggestion.appId)) {
+      return;
+    }
+
+    let appIdToFetch = suggestion.appId;
+
+    // If no app ID or app ID fetch failed, try searching by title
+    if (!appIdToFetch && suggestion.title) {
+      const foundAppId = await findGameByTitle(suggestion.title);
+      if (foundAppId) {
+        appIdToFetch = foundAppId;
+        console.log(
+          `[SUGGESTED GAMES] Found game by title "${suggestion.title}": ${foundAppId}`
+        );
+      }
+    }
+
+    if (!appIdToFetch) {
+      console.warn(
+        `[SUGGESTED GAMES] No valid app ID for suggestion: ${suggestion.title}`
+      );
+      return;
+    }
+
     try {
-      const steamData = await fetchSteamGame(appId.toString());
+      const steamData = await fetchSteamGame(appIdToFetch.toString());
       await saveSteamDataToDb(steamData);
-      console.log(`[SUGGESTED GAMES] Saved game ${appId}: ${steamData.title}`);
+      console.log(
+        `[SUGGESTED GAMES] Saved game ${appIdToFetch}: ${steamData.title}`
+      );
     } catch (error) {
+      // If app ID fetch failed and we have a title, try searching by title
+      if (suggestion.title && suggestion.appId === appIdToFetch) {
+        const foundAppId = await findGameByTitle(suggestion.title);
+        if (foundAppId && foundAppId !== appIdToFetch) {
+          try {
+            const steamData = await fetchSteamGame(foundAppId.toString());
+            await saveSteamDataToDb(steamData);
+            console.log(
+              `[SUGGESTED GAMES] Fallback: Found and saved "${suggestion.title}" with app ID ${foundAppId}`
+            );
+            return;
+          } catch (fallbackError) {
+            // Fallback also failed, log and continue
+            console.error(
+              `[SUGGESTED GAMES] Fallback fetch also failed for "${suggestion.title}":`,
+              fallbackError
+            );
+          }
+        }
+      }
       console.error(
-        `[SUGGESTED GAMES] Failed to fetch/save game ${appId}:`,
+        `[SUGGESTED GAMES] Failed to fetch/save game ${appIdToFetch} (${suggestion.title}):`,
         error
       );
-      // Continue with other games even if one fails
     }
   });
 

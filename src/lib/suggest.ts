@@ -37,19 +37,16 @@ export async function suggestGames(
     text ? ` and the following context: "${text}"` : ""
   }, find Steam games that are similar to what you see.
 
-CRITICAL REQUIREMENTS:
-- You MUST provide the exact Steam store URL for each game
-- The URL format MUST be: https://store.steampowered.com/app/[APPID]/
-- DO NOT just mention "Steam" as a platform - you MUST include the actual URL
-- Each game MUST have a complete Steam store URL
+Return 8-12 similar Steam games in this EXACT format (one game per line):
 
-Format your response EXACTLY as follows for each game (this format is MANDATORY):
+title, steam_appid, explanation
 
-**Game Title**
-- **Steam Link:** https://store.steampowered.com/app/[APPID]/
-- **Why it's similar:** Brief 1-2 sentence explanation of similarities (visual style, gameplay mechanics, theme, mood, etc.)
+Example:
+Counter-Strike 2, 730, Similar competitive FPS gameplay
+Team Fortress 2, 440, Same team-based shooter mechanics
+Dota 2, 570, Similar MOBA gameplay and visual style
 
-Provide 8-12 similar Steam games. For each game, you MUST include the complete Steam store URL in the format https://store.steampowered.com/app/[APPID]/ - do NOT omit this URL under any circumstances.`;
+Each line must have: game title (comma), Steam app ID number (comma), brief explanation of similarities. Use commas to separate the three fields.`;
 
   // Prepare the message content with image
   // Handle both base64 and URLs
