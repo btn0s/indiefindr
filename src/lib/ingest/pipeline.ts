@@ -2,10 +2,10 @@ import { fetchSteamGameData } from '../steam/providers';
 import { parseSteamUrl } from '../steam/parser';
 import { extractGameFacets } from '../ai/facet-extractor';
 import {
-  searchGameAesthetic,
   searchGameGameplay,
   searchGameNarrative,
 } from "../ai/perplexity";
+import { extractGameAesthetic } from "../extractors/aesthetic";
 import { buildFacetDocs } from '../facets/buildFacetDocs';
 import { embed, EMBEDDING_MODEL, VISION_MODEL } from '../ai/gateway';
 import { supabase } from '../supabase/server';
@@ -112,11 +112,11 @@ export async function ingestGame(steamUrl: string): Promise<IngestResult> {
     const steamTags = Object.keys(tags);
     console.log("[PIPELINE]   steamTags for vision:", steamTags);
 
-    // Run vision extraction and web searches for all facets in parallel
+    // Run vision extraction for aesthetic + web searches for gameplay/narrative in parallel
     console.log(
-      "\n[PIPELINE] Step 2: Running vision extraction + web searches for all facets in parallel..."
+      "\n[PIPELINE] Step 2: Running vision aesthetic + web searches for gameplay/narrative..."
     );
-    const [facets, webAesthetic, webGameplay, webNarrative] = await Promise.all([
+    const [facets, visionAesthetic, webGameplay, webNarrative] = await Promise.all([
       extractGameFacets(
         storeData.name,
         storeData.description,
@@ -124,7 +124,7 @@ export async function ingestGame(steamUrl: string): Promise<IngestResult> {
         steamTags,
         VISION_MODEL
       ),
-      searchGameAesthetic(storeData.name),
+      extractGameAesthetic(storeData.name, storeData.screenshots),
       searchGameGameplay(storeData.name),
       searchGameNarrative(storeData.name),
     ]);
@@ -143,10 +143,10 @@ export async function ingestGame(steamUrl: string): Promise<IngestResult> {
       JSON.stringify(facets.narrativeMood, null, 2)
     );
 
-    console.log("\n[PIPELINE] Web facets received:");
+    console.log("\n[PIPELINE] Extracted facets received:");
     console.log(
-      "[PIPELINE]   webAesthetic:",
-      webAesthetic?.description || "null"
+      "[PIPELINE]   visionAesthetic:",
+      visionAesthetic?.description || "null"
     );
     console.log(
       "[PIPELINE]   webGameplay:",
@@ -157,10 +157,10 @@ export async function ingestGame(steamUrl: string): Promise<IngestResult> {
       webNarrative?.description || "null"
     );
 
-    // Build facet documents - use Perplexity results for all facets
+    // Build facet documents - use vision for aesthetic, Perplexity for gameplay/narrative
     console.log("\n[PIPELINE] Step 3: Building facet documents...");
     const facetDocs = buildFacetDocs(storeData, tags, facets, {
-      aesthetic: webAesthetic,
+      aesthetic: visionAesthetic,
       gameplay: webGameplay,
       narrative: webNarrative,
     });

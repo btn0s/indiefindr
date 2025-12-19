@@ -9,10 +9,10 @@ import {
 import { parseSteamUrl } from "../steam/parser";
 import { extractGameFacets } from "../ai/facet-extractor";
 import {
-  searchGameAesthetic,
   searchGameGameplay,
   searchGameNarrative,
 } from "../ai/perplexity";
+import { extractGameAesthetic } from "../extractors/aesthetic";
 import { buildFacetDocs } from "../facets/buildFacetDocs";
 import { embed } from "../ai/gateway";
 import { retry } from "../utils/retry";
@@ -125,10 +125,10 @@ async function completeIngestion(appId: number, jobId: string): Promise<void> {
       .map(([name]) => name);
 
     console.log(
-      "[INGEST] Running vision extraction + web searches for all facets in parallel..."
+      "[INGEST] Running vision aesthetic extraction + web searches for gameplay/narrative in parallel..."
     );
 
-    const [visionFacets, webAesthetic, webGameplay, webNarrative] =
+    const [visionFacets, visionAesthetic, webGameplay, webNarrative] =
       await Promise.all([
         extractGameFacets(
           storeData.name,
@@ -137,19 +137,19 @@ async function completeIngestion(appId: number, jobId: string): Promise<void> {
           steamTagNames,
           VISION_MODEL
         ),
-        searchGameAesthetic(storeData.name),
+        extractGameAesthetic(storeData.name, storeData.screenshots),
         searchGameGameplay(storeData.name),
         searchGameNarrative(storeData.name),
       ]);
 
     console.log("[INGEST] Vision facets received");
-    console.log("[INGEST] Web aesthetic:", webAesthetic?.description || "null");
+    console.log("[INGEST] Vision aesthetic:", visionAesthetic?.description || "null");
     console.log("[INGEST] Web gameplay:", webGameplay?.description || "null");
     console.log("[INGEST] Web narrative:", webNarrative?.description || "null");
 
-    // Build facet documents - use Perplexity results for all facets
+    // Build facet documents - use vision for aesthetic, Perplexity for gameplay/narrative
     const facetDocs = buildFacetDocs(storeData, communityTags, visionFacets, {
-      aesthetic: webAesthetic,
+      aesthetic: visionAesthetic,
       gameplay: webGameplay,
       narrative: webNarrative,
     });
