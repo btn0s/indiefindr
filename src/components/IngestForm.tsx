@@ -4,8 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DialogClose } from "@/components/ui/dialog";
 
-export function IngestForm() {
+interface IngestFormProps {
+  onSuccess?: () => void;
+}
+
+export function IngestForm({ onSuccess }: IngestFormProps) {
   const router = useRouter();
   const [steamUrl, setSteamUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,6 +41,7 @@ export function IngestForm() {
       }
 
       setSteamUrl("");
+      onSuccess?.();
 
       // Navigate immediately to the game detail page
       if (data.appid) {
@@ -52,8 +58,8 @@ export function IngestForm() {
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-2">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
         <Input
           type="text"
           placeholder="https://store.steampowered.com/app/123456/GameName/"
@@ -67,11 +73,18 @@ export function IngestForm() {
           disabled={loading}
           className="flex-1"
         />
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+      <div className="flex gap-2 justify-end">
+        <DialogClose>
+          <Button variant="outline" disabled={loading}>
+            Cancel
+          </Button>
+        </DialogClose>
         <Button onClick={handleIngest} disabled={loading}>
           {loading ? "Ingesting..." : "Ingest"}
         </Button>
       </div>
-      {error && <p className="text-destructive">{error}</p>}
     </div>
   );
 }

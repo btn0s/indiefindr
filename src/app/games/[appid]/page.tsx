@@ -4,12 +4,13 @@ import Image from "next/image";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { GameVideo } from "@/components/GameVideo";
 import { SuggestionsList } from "@/components/SuggestionsList";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { RefreshSuggestionsButton } from "@/components/RefreshSuggestionsButton";
-import { ArrowLeftIcon, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { fetchSteamGame } from "@/lib/steam";
 import { supabase } from "@/lib/supabase/server";
 
@@ -160,15 +161,8 @@ export default async function GameDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
+      <Navbar />
       <main className="container mx-auto max-w-4xl px-4 py-8 flex flex-col gap-4">
-        <div className="flex items-center justify-between relative">
-          <Link href="/">
-            <Button variant="ghost">
-              <ArrowLeftIcon className="size-4" /> Back to Home
-            </Button>
-          </Link>
-        </div>
-
         <h1 className="text-2xl font-semibold">Games like {gameData.title}</h1>
 
         {/* Trailer Video - Full Width */}

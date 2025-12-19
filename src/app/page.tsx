@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase/server";
-import { IngestForm } from "@/components/IngestForm";
+import { Navbar } from "@/components/Navbar";
 import GameCard from "@/components/GameCard";
 import { GameNew } from "@/lib/supabase/types";
 
@@ -25,27 +25,17 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
-      <main className="flex flex-col gap-8">
-        {/* Header section with max-width for readability */}
-        <div className="container mx-auto max-w-4xl px-4 pt-8">
-          <div className="flex flex-col">
-            <h1 className="text-lg font-bold">IndieFindr</h1>
-            <p className="text-muted-foreground mb-2">
-              Paste a Steam link to ingest game data and find similar games.
-            </p>
-            <IngestForm />
-          </div>
-        </div>
-
+      <Navbar />
+      <main className="flex flex-col gap-8 pt-8">
         {/* Full-width grid section */}
         <div className="flex flex-col gap-4 w-full px-4 pb-8">
           <div className="container mx-auto max-w-7xl w-full flex items-center justify-between">
-            <h2 className="font-semibold">All Games</h2>
+            <h2 className="font-semibold text-xl">All Games</h2>
           </div>
           {games.length === 0 ? (
             <div className="container mx-auto max-w-7xl w-full">
               <p className="text-muted-foreground">
-                No games ingested yet. Start by ingesting a game above.
+                No games ingested yet. Click "Add Game" in the navbar to get started.
               </p>
             </div>
           ) : (
