@@ -33,15 +33,17 @@ export async function suggestGames(
   console.log("[SUGGEST] Optional text:", text || "(none)");
 
   // Build the prompt with structured format requirements
-  const basePrompt = `Based on this image${text ? ` and the following context: "${text}"` : ""}, find games that are similar to what you see and tell me where to play them.
+  const basePrompt = `Based on this image${
+    text ? ` and the following context: "${text}"` : ""
+  }, find Steam games that are similar to what you see.
 
 IMPORTANT: Format your response EXACTLY as follows for each game:
 
 **Game Title**
-- **Platforms:** List all platforms (PC via Steam/Epic/GOG, PlayStation 4/5, Xbox One/Series X|S, Nintendo Switch, etc.)
+- **Steam Link:** The direct Steam store URL (e.g., https://store.steampowered.com/app/123456/)
 - **Why it's similar:** Brief 1-2 sentence explanation of similarities (visual style, gameplay mechanics, theme, mood, etc.)
 
-Provide 8-12 similar games. Search current gaming platforms and stores to find where these games are available. Be specific about platform availability.`;
+Provide 8-12 similar Steam games. ONLY include games that are available on Steam. For each game, ALWAYS include the direct Steam store link (https://store.steampowered.com/app/[APPID]/).`;
 
   // Prepare the message content with image
   // Handle both base64 and URLs
@@ -94,6 +96,21 @@ Provide 8-12 similar games. Search current gaming platforms and stores to find w
 
   return {
     result: result.text,
-    usage: result.usage,
+    usage: result.usage
+      ? {
+          inputTokens:
+            (result.usage as any).promptTokens ??
+            (result.usage as any).inputTokens ??
+            0,
+          outputTokens:
+            (result.usage as any).completionTokens ??
+            (result.usage as any).outputTokens ??
+            0,
+          totalTokens:
+            (result.usage as any).totalTokens ??
+            ((result.usage as any).promptTokens ?? 0) +
+              ((result.usage as any).completionTokens ?? 0),
+        }
+      : undefined,
   };
 }

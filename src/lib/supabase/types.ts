@@ -23,3 +23,13 @@ export type GameNew = {
   created_at: string;
   updated_at: string;
 };
+
+/**
+ * Parsed suggestion item from Perplexity suggestions text
+ */
+export type ParsedSuggestionItem = {
+  title: string;
+  steamLink: string;
+  explanation: string;
+  appId?: number;
+};
