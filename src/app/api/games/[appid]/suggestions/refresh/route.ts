@@ -1,0 +1,141 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase/server";
+import { suggestGames } from "@/lib/suggest";
+import { ingest } from "@/lib/ingest";
+
+/**
+ * POST /api/games/[appid]/suggestions/refresh
+ * 
+ * Refresh suggestions by calling suggestGames() and merging the response with existing suggestions.
+ * Auto-ingests missing suggested games via ingest().
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ appid: string }> }
+) {
+  const { appid } = await params;
+  const appId = parseInt(appid, 10);
+
+  if (isNaN(appId)) {
+    return NextResponse.json({ error: "Invalid appid" }, { status: 400 });
+  }
+
+  try {
+    // Fetch game data
+    const { data: gameData, error: gameError } = await supabase
+      .from("games_new")
+      .select("screenshots, title, short_description, long_description, suggested_game_appids")
+      .eq("appid", appId)
+      .single();
+
+    if (gameError || !gameData) {
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    }
+
+    if (!gameData.screenshots || gameData.screenshots.length === 0) {
+      return NextResponse.json(
+        { error: "No screenshots available" },
+        { status: 400 }
+      );
+    }
+
+    // Call suggestGames() - this is the main work
+    const firstScreenshot = gameData.screenshots[0];
+    const textContext = [
+      gameData.title,
+      gameData.short_description,
+      gameData.long_description,
+    ]
+      .filter(Boolean)
+      .join(". ");
+
+    console.log("[REFRESH SUGGESTIONS] Generating suggestions for:", gameData.title);
+    const suggestions = await suggestGames(firstScreenshot, textContext);
+
+    // Find games that already suggest this game (bidirectional linking)
+    const { data: reverseLinks } = await supabase
+      .from("games_new")
+      .select("appid")
+      .contains("suggested_game_appids", [appId]);
+
+    const reverseLinkAppIds = (reverseLinks || []).map((g) => g.appid);
+
+    // Merge suggestGames() response with existing suggestions
+    const existingAppIds: number[] = gameData.suggested_game_appids || [];
+    const newAppIds = suggestions.validatedAppIds;
+    const mergedAppIds = [...new Set([...newAppIds, ...reverseLinkAppIds, ...existingAppIds])];
+
+    // Save merged suggestions
+    const { error: saveError } = await supabase
+      .from("games_new")
+      .update({
+        suggested_game_appids: mergedAppIds,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("appid", appId);
+
+    if (saveError) {
+      throw new Error(`Failed to save suggestions: ${saveError.message}`);
+    }
+
+    // Add this game to each suggested game's list (make it bidirectional)
+    for (const suggestedAppId of newAppIds) {
+      const { data: suggestedGame } = await supabase
+        .from("games_new")
+        .select("suggested_game_appids")
+        .eq("appid", suggestedAppId)
+        .maybeSingle();
+
+      if (suggestedGame) {
+        const theirSuggestions: number[] = suggestedGame.suggested_game_appids || [];
+        if (!theirSuggestions.includes(appId)) {
+          await supabase
+            .from("games_new")
+            .update({
+              suggested_game_appids: [...theirSuggestions, appId],
+              updated_at: new Date().toISOString(),
+            })
+            .eq("appid", suggestedAppId);
+        }
+      }
+    }
+
+    // Auto-ingest missing games via ingest() (it handles existence checks and auto-ingestion)
+    const { data: existingGames } = await supabase
+      .from("games_new")
+      .select("appid")
+      .in("appid", mergedAppIds);
+
+    const existingAppids = new Set((existingGames || []).map((g) => g.appid));
+    const missingAppids = mergedAppIds.filter((id) => !existingAppids.has(id));
+
+    if (missingAppids.length > 0) {
+      console.log(`[REFRESH SUGGESTIONS] Auto-ingesting ${missingAppids.length} missing games...`);
+      for (const missingAppid of missingAppids) {
+        const steamUrl = `https://store.steampowered.com/app/${missingAppid}/`;
+        ingest(steamUrl).catch((err) => {
+          console.error(
+            `[REFRESH SUGGESTIONS] Failed to auto-ingest ${missingAppid}:`,
+            err instanceof Error ? err.message : String(err)
+          );
+        });
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      validatedAppIds: mergedAppIds,
+      newCount: newAppIds.length,
+      totalCount: mergedAppIds.length,
+      reverseLinkCount: reverseLinkAppIds.length,
+      queuedForIngestion: missingAppids.length,
+    });
+  } catch (error) {
+    console.error("[REFRESH SUGGESTIONS] Error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
+}

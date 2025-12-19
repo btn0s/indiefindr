@@ -3,22 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { IS_DEV } from "@/lib/utils/dev";
 import { Plus } from "lucide-react";
 
 interface RefreshSuggestionsButtonProps {
   appid: string;
 }
 
-export function RefreshSuggestionsButton({ appid }: RefreshSuggestionsButtonProps) {
+export function RefreshSuggestionsButton({
+  appid,
+}: RefreshSuggestionsButtonProps) {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Only show in dev mode
-  if (!IS_DEV) {
-    return null;
-  }
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -27,7 +23,19 @@ export function RefreshSuggestionsButton({ appid }: RefreshSuggestionsButtonProp
     try {
       const response = await fetch(`/api/games/${appid}/suggestions/refresh`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
+
+      // Check if response is OK and is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        throw new Error(
+          `Server returned ${response.status}: ${text.substring(0, 100)}`
+        );
+      }
 
       const data = await response.json();
 
@@ -38,7 +46,10 @@ export function RefreshSuggestionsButton({ appid }: RefreshSuggestionsButtonProp
       // Refresh the page to show updated suggestions
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
+      setError(errorMessage);
+      console.error("Refresh suggestions error:", err);
     } finally {
       setRefreshing(false);
     }
@@ -46,14 +57,14 @@ export function RefreshSuggestionsButton({ appid }: RefreshSuggestionsButtonProp
 
   return (
     <>
-      <Button 
-        onClick={handleRefresh} 
-        disabled={refreshing} 
+      <Button
+        onClick={handleRefresh}
+        disabled={refreshing}
         variant="outline"
         size="sm"
       >
-        <Plus className={`size-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
         {refreshing ? "Loading..." : "Load more"}
+        <Plus className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
       </Button>
       {error && (
         <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">

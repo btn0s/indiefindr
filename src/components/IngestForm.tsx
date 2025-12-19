@@ -72,7 +72,7 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
       }
 
       // Game doesn't exist, proceed with ingestion
-      const response = await fetch("/api/submit", {
+      const response = await fetch("/api/games/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

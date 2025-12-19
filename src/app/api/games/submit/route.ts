@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ingest } from "@/lib/ingest";
 
 /**
- * POST /api/submit
+ * POST /api/games/submit
  *
  * Submit a Steam URL for ingestion and suggestion generation.
  *
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET /api/submit
+ * GET /api/games/submit
  *
  * Get usage info for the endpoint.
  */

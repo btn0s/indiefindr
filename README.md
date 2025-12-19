@@ -100,8 +100,9 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 src/
 ├── app/
 │   ├── api/
-│   │   ├── submit/route.ts              # POST /api/submit
 │   │   └── games/
+│   │       ├── submit/route.ts          # POST /api/games/submit
+│   │       ├── search/route.ts          # GET /api/games/search
 │   │       ├── [appid]/route.ts         # GET /api/games/[appid]
 │   │       └── [appid]/related/route.ts # GET /api/games/[appid]/related
 │   ├── games/
@@ -125,7 +126,7 @@ src/
 
 ## API Routes
 
-### POST `/api/submit`
+### POST `/api/games/submit`
 Submit a Steam URL for ingestion and suggestion generation.
 
 **Request:**
@@ -146,8 +147,23 @@ Submit a Steam URL for ingestion and suggestion generation.
 }
 ```
 
-### GET `/api/games`
-Get list of all ingested games.
+### GET `/api/games/search?q=query`
+Search for games in the database and Steam Store.
+
+**Query Parameters:**
+- `q`: Search query (minimum 2 characters)
+
+**Response:**
+```json
+{
+  "db": [
+    { "appid": 123456, "title": "Game Name", "header_image": "...", "inDatabase": true }
+  ],
+  "steam": [
+    { "appid": 789012, "title": "Another Game", "header_image": "...", "inDatabase": false }
+  ]
+}
+```
 
 ### GET `/api/games/[appid]`
 Get game details by AppID.

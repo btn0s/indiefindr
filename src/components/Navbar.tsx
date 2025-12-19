@@ -16,14 +16,21 @@ import {
 } from "@/components/ui/dialog";
 import { IngestForm } from "@/components/IngestForm";
 
+interface SearchResult {
+  appid: number;
+  title: string;
+  header_image: string | null;
+  inDatabase: boolean;
+}
+
 export function Navbar() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<
-    Array<{ appid: number; title: string; header_image: string | null }>
-  >([]);
+  const [dbResults, setDbResults] = useState<SearchResult[]>([]);
+  const [steamResults, setSteamResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [ingestingAppId, setIngestingAppId] = useState<number | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +41,8 @@ export function Navbar() {
     }
 
     if (searchQuery.trim().length === 0) {
-      setSearchResults([]);
+      setDbResults([]);
+      setSteamResults([]);
       setShowResults(false);
       return;
     }
@@ -51,7 +59,8 @@ export function Navbar() {
         );
         if (response.ok) {
           const data = await response.json();
-          setSearchResults(data);
+          setDbResults(data.db || []);
+          setSteamResults(data.steam || []);
           setShowResults(true);
         }
       } catch (error) {
@@ -85,10 +94,43 @@ export function Navbar() {
     };
   }, []);
 
-  const handleResultClick = (appid: number) => {
+  const handleResultClick = async (result: SearchResult) => {
     setSearchQuery("");
     setShowResults(false);
-    router.push(`/games/${appid}`);
+
+    if (result.inDatabase) {
+      // Game exists in database, navigate directly
+      router.push(`/games/${result.appid}`);
+    } else {
+      // Game doesn't exist, ingest it first
+      setIngestingAppId(result.appid);
+      try {
+        const steamUrl = `https://store.steampowered.com/app/${result.appid}/`;
+        const response = await fetch("/api/games/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ steamUrl }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          router.push(`/games/${result.appid}`);
+        } else {
+          console.error("Failed to ingest game:", data.error);
+          // Still navigate - the game might exist now or we'll show an error page
+          router.push(`/games/${result.appid}`);
+        }
+      } catch (error) {
+        console.error("Error ingesting game:", error);
+        // Still navigate - the game might exist now or we'll show an error page
+        router.push(`/games/${result.appid}`);
+      } finally {
+        setIngestingAppId(null);
+      }
+    }
   };
 
   return (
@@ -109,7 +151,7 @@ export function Navbar() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => {
-                if (searchResults.length > 0) {
+                if (dbResults.length > 0 || steamResults.length > 0) {
                   setShowResults(true);
                 }
               }}
@@ -124,13 +166,45 @@ export function Navbar() {
                 <div className="p-4 text-center text-sm text-muted-foreground">
                   Searching...
                 </div>
-              ) : searchResults.length > 0 ? (
+              ) : dbResults.length > 0 || steamResults.length > 0 ? (
                 <div className="py-1">
-                  {searchResults.map((game) => (
+                  {/* Database Results */}
+                  {dbResults.length > 0 && (
+                    <>
+                      {dbResults.map((game) => (
+                        <button
+                          key={`db-${game.appid}`}
+                          onClick={() => handleResultClick(game)}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors"
+                        >
+                          {game.header_image && (
+                            <img
+                              src={game.header_image}
+                              alt={game.title}
+                              className="h-12 w-20 object-cover rounded"
+                            />
+                          )}
+                          <span className="flex-1 text-sm font-medium">
+                            {game.title}
+                          </span>
+                        </button>
+                      ))}
+                      {steamResults.length > 0 && (
+                        <div className="border-t my-1">
+                          <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">
+                            Steam Store
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {/* Steam Results */}
+                  {steamResults.map((game) => (
                     <button
-                      key={game.appid}
-                      onClick={() => handleResultClick(game.appid)}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors"
+                      key={`steam-${game.appid}`}
+                      onClick={() => handleResultClick(game)}
+                      disabled={ingestingAppId === game.appid}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait"
                     >
                       {game.header_image && (
                         <img
@@ -142,6 +216,15 @@ export function Navbar() {
                       <span className="flex-1 text-sm font-medium">
                         {game.title}
                       </span>
+                      {ingestingAppId === game.appid ? (
+                        <span className="text-xs text-muted-foreground">
+                          Ingesting...
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Add to database
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
