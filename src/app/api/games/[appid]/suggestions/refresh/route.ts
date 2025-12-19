@@ -51,16 +51,13 @@ export async function POST(
 
     // Save to DB
     const { error: saveError } = await supabase
-      .from("suggestions")
-      .upsert(
-        {
-          steam_appid: appId,
-          result_text: suggestions.result,
-          usage_stats: suggestions.usage || null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "steam_appid" }
-      );
+      .from("games_new")
+      .update({
+        suggestions_result_text: suggestions.result,
+        suggestions_usage_stats: suggestions.usage || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("appid", appId);
 
     if (saveError) {
       throw new Error(`Failed to save suggestions: ${saveError.message}`);

@@ -54,25 +54,18 @@ function parseSuggestions(text: string): ParsedSuggestionItem[] {
 
 export async function SuggestionsList({ appid }: SuggestionsListProps) {
   // Fetch suggestions from database
-  const { data: suggestionData } = await supabase
-    .from("suggestions")
-    .select("result_text")
-    .eq("steam_appid", appid)
+  const { data: gameData } = await supabase
+    .from("games_new")
+    .select("suggestions_result_text, screenshots, title, short_description, long_description")
+    .eq("appid", appid)
     .maybeSingle();
 
-  let suggestionsText = suggestionData?.result_text || null;
+  let suggestionsText = gameData?.suggestions_result_text || null;
 
   // If no suggestions exist, generate them automatically
-  if (!suggestionsText) {
+  if (!suggestionsText && gameData) {
     try {
-      // Fetch game data to generate suggestions
-      const { data: gameData } = await supabase
-        .from("games_new")
-        .select("screenshots, title, short_description, long_description")
-        .eq("appid", appid)
-        .single();
-
-      if (gameData && gameData.screenshots && gameData.screenshots.length > 0) {
+      if (gameData.screenshots && gameData.screenshots.length > 0) {
         const firstScreenshot = gameData.screenshots[0];
         const textContext = [
           gameData.title,
@@ -89,15 +82,14 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
         const suggestions = await suggestGames(firstScreenshot, textContext);
 
         // Save to DB
-        await supabase.from("suggestions").upsert(
-          {
-            steam_appid: appid,
-            result_text: suggestions.result,
-            usage_stats: suggestions.usage || null,
+        await supabase
+          .from("games_new")
+          .update({
+            suggestions_result_text: suggestions.result,
+            suggestions_usage_stats: suggestions.usage || null,
             updated_at: new Date().toISOString(),
-          },
-          { onConflict: "steam_appid" }
-        );
+          })
+          .eq("appid", appid);
 
         suggestionsText = suggestions.result;
       }

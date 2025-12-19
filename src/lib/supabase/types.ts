@@ -1,16 +1,3 @@
-export type Suggestion = {
-  id: string;
-  steam_appid: number;
-  result_text: string;
-  usage_stats: {
-    inputTokens: number;
-    outputTokens: number;
-    totalTokens: number;
-  } | null;
-  created_at: string;
-  updated_at: string;
-};
-
 export type GameNew = {
   appid: number;
   screenshots: string[];
@@ -20,6 +7,12 @@ export type GameNew = {
   short_description: string | null;
   long_description: string | null;
   raw: unknown; // Raw Steam API response
+  suggestions_result_text: string | null;
+  suggestions_usage_stats: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  } | null;
   created_at: string;
   updated_at: string;
 };

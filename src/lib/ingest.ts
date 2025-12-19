@@ -9,7 +9,7 @@ export type IngestResult = {
 
 /**
  * Ingest a game by fetching Steam data and generating suggestions.
- * Saves Steam data to DB immediately, then saves suggestions to a separate table.
+ * Saves Steam data to DB immediately, then saves suggestions to games_new table.
  * 
  * @param steamUrl - Steam store URL or app ID
  * @returns Promise resolving to Steam data and game suggestions
@@ -81,25 +81,20 @@ async function saveSteamDataToDb(steamData: SteamGameData): Promise<void> {
 }
 
 /**
- * Save suggestions to the suggestions table
+ * Save suggestions to the games_new table
  */
 async function saveSuggestionsToDb(
   appid: number,
   suggestions: SuggestGamesResult
 ): Promise<void> {
   const { error } = await supabase
-    .from("suggestions")
-    .upsert(
-      {
-        steam_appid: appid,
-        result_text: suggestions.result,
-        usage_stats: suggestions.usage || null,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "steam_appid",
-      }
-    );
+    .from("games_new")
+    .update({
+      suggestions_result_text: suggestions.result,
+      suggestions_usage_stats: suggestions.usage || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("appid", appid);
 
   if (error) {
     throw new Error(`Failed to save suggestions to database: ${error.message}`);
