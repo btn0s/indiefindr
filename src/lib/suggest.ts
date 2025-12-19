@@ -138,14 +138,15 @@ function parseSuggestions(text: string): ParsedSuggestion[] {
 
   for (const line of lines) {
     // Parse format: title, steam_appid, explanation
-    // Handle commas that might be in the title or explanation by splitting carefully
+    // Format is strictly: "Game Title, 123456, explanation that may contain commas"
     const parts = line.split(",").map((p) => p.trim());
 
-    if (parts.length >= 2) {
-      // Title is everything before the last 2 parts
-      const title = parts.slice(0, -2).join(", ").trim();
-      const appIdStr = parts[parts.length - 2];
-      const explanation = parts[parts.length - 1];
+    if (parts.length >= 3) {
+      // Find the appId - it should be the second part (a number)
+      const title = parts[0].trim();
+      const appIdStr = parts[1].trim();
+      // Everything after the first two parts is the explanation (may contain commas)
+      const explanation = parts.slice(2).join(", ").trim();
 
       const appId = parseInt(appIdStr, 10);
       if (!isNaN(appId) && appId > 0 && title) {
@@ -155,11 +156,24 @@ function parseSuggestions(text: string): ParsedSuggestion[] {
           explanation: explanation || "",
         });
       } else if (title) {
-        // Title but no valid app ID
+        // Title but no valid app ID - try to parse differently
+        // Maybe appId is in a different position
         items.push({
           title,
           appId: null,
           explanation: explanation || "",
+        });
+      }
+    } else if (parts.length === 2) {
+      // Only title and appId, no explanation
+      const title = parts[0].trim();
+      const appIdStr = parts[1].trim();
+      const appId = parseInt(appIdStr, 10);
+      if (!isNaN(appId) && appId > 0 && title) {
+        items.push({
+          title,
+          appId,
+          explanation: "",
         });
       }
     }
