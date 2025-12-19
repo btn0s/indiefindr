@@ -19,10 +19,10 @@ export async function POST(
   }
 
   try {
-    // Fetch game data
+    // Fetch game data including existing suggestions
     const { data: gameData, error: gameError } = await supabase
       .from("games_new")
-      .select("screenshots, title, short_description, long_description")
+      .select("screenshots, title, short_description, long_description, suggested_game_appids")
       .eq("appid", appId)
       .single();
 
@@ -49,11 +49,16 @@ export async function POST(
     console.log("[REFRESH SUGGESTIONS] Generating suggestions for:", gameData.title);
     const suggestions = await suggestGames(firstScreenshot, textContext);
 
+    // Merge new suggestions with existing ones (new ones go to front, deduplicated)
+    const existingAppIds: number[] = gameData.suggested_game_appids || [];
+    const newAppIds = suggestions.validatedAppIds;
+    const mergedAppIds = [...new Set([...newAppIds, ...existingAppIds])];
+
     // Save to DB
     const { error: saveError } = await supabase
       .from("games_new")
       .update({
-        suggested_game_appids: suggestions.validatedAppIds,
+        suggested_game_appids: mergedAppIds,
         updated_at: new Date().toISOString(),
       })
       .eq("appid", appId);
@@ -64,7 +69,9 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      validatedAppIds: suggestions.validatedAppIds,
+      validatedAppIds: mergedAppIds,
+      newCount: newAppIds.length,
+      totalCount: mergedAppIds.length,
     });
   } catch (error) {
     console.error("[REFRESH SUGGESTIONS] Error:", error);

@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase/server";
 import { GameNew } from "@/lib/supabase/types";
 import { suggestGames } from "@/lib/suggest";
 import { fetchSteamGame } from "@/lib/steam";
+import { SortableSuggestionsGrid } from "@/components/SortableSuggestionsGrid";
 
 interface SuggestionsListProps {
   appid: number;
@@ -70,10 +71,10 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     .eq("appid", appid)
     .maybeSingle();
 
-  let suggestedAppIds = gameData?.suggested_game_appids || null;
+  let suggestedAppIds: number[] = gameData?.suggested_game_appids || [];
 
   // If no cached suggestions exist, generate them (this will block, but only on first load)
-  if (!suggestedAppIds && gameData) {
+  if (suggestedAppIds.length === 0 && gameData) {
     try {
       if (gameData.screenshots && gameData.screenshots.length > 0) {
         const firstScreenshot = gameData.screenshots[0];
@@ -91,16 +92,21 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
         );
         const suggestions = await suggestGames(firstScreenshot, textContext);
 
+        // Merge new suggestions with existing ones (new ones go to front, deduplicated)
+        const existingAppIds: number[] = gameData.suggested_game_appids || [];
+        const newAppIds = suggestions.validatedAppIds;
+        const mergedAppIds = [...new Set([...newAppIds, ...existingAppIds])];
+
         // Save validated app IDs to DB cache
         await supabase
           .from("games_new")
           .update({
-            suggested_game_appids: suggestions.validatedAppIds,
+            suggested_game_appids: mergedAppIds,
             updated_at: new Date().toISOString(),
           })
           .eq("appid", appid);
 
-        suggestedAppIds = suggestions.validatedAppIds;
+        suggestedAppIds = mergedAppIds;
       }
     } catch (error) {
       console.error(
@@ -145,7 +151,6 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     const rawType = (g.raw as { type?: string })?.type;
     return rawType === "game" || !rawType; // Allow if type is "game" or missing
   });
-  const cachedAppIds = new Set(cachedGames.map((g) => g.appid));
 
   type RenderItem =
     | { type: "cached"; game: GameNew }
@@ -171,17 +176,26 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     );
   }
 
-  // Render: cached games immediately, missing games stream in with Suspense
+  // Separate cached games (sortable) from missing games (streamed)
+  const missingAppIds = renderItems
+    .filter((item) => item.type === "missing")
+    .map((item) => (item as { type: "missing"; appId: number }).appId);
+
+  // Render: sortable grid for cached games, then stream missing ones
   return (
-    <div className="grid grid-cols-3 gap-6">
-      {renderItems.map((item) =>
-        item.type === "cached" ? (
-          <GameCard key={item.game.appid} {...item.game} />
-        ) : (
-          <Suspense key={item.appId} fallback={<GameCardSkeleton />}>
-            <StreamingGameCard appId={item.appId} />
-          </Suspense>
-        )
+    <div className="space-y-6">
+      <SortableSuggestionsGrid
+        games={cachedGames}
+        suggestedOrder={suggestedAppIds}
+      />
+      {missingAppIds.length > 0 && (
+        <div className="grid grid-cols-3 gap-6">
+          {missingAppIds.map((appId) => (
+            <Suspense key={appId} fallback={<GameCardSkeleton />}>
+              <StreamingGameCard appId={appId} />
+            </Suspense>
+          ))}
+        </div>
       )}
     </div>
   );
