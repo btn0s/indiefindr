@@ -7,9 +7,8 @@ async function getGames(): Promise<GameNew[]> {
   const { data: games, error } = await supabase
     .from("games_new")
     .select(
-      "appid, title, header_image, videos, screenshots, short_description, long_description, raw, created_at, updated_at"
+      "appid, title, header_image, videos, screenshots, short_description, long_description, raw, created_at, updated_at, suggested_game_appids"
     )
-    .order("created_at", { ascending: false })
     .limit(100);
 
   if (error) {
@@ -17,7 +16,20 @@ async function getGames(): Promise<GameNew[]> {
     return [];
   }
 
-  return (games || []) as GameNew[];
+  // Sort by number of suggestions (most first), then by created_at as tiebreaker
+  const sorted = (games || []).sort((a, b) => {
+    const aCount = Array.isArray(a.suggested_game_appids) ? a.suggested_game_appids.length : 0;
+    const bCount = Array.isArray(b.suggested_game_appids) ? b.suggested_game_appids.length : 0;
+    
+    if (bCount !== aCount) {
+      return bCount - aCount; // Most suggestions first
+    }
+    
+    // Tiebreaker: most recently created first
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  return sorted as GameNew[];
 }
 
 export default async function Home() {
