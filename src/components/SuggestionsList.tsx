@@ -74,19 +74,33 @@ function parseSuggestions(text: string): ParsedSuggestionItem[] {
     let explanation = "";
     let explanationStarted = false;
 
+    // First, search the entire section for Steam URLs (they might be anywhere)
+    const fullSection = section.trim();
+    const steamUrlMatch = fullSection.match(/https?:\/\/store\.steampowered\.com\/app\/\d+(?:\/[^\s\)\n]*)?/);
+    if (steamUrlMatch) {
+      steamLink = steamUrlMatch[0].replace(/[\.\)]+$/, ""); // Remove trailing punctuation
+    }
+
     // Look for Steam Link and Why it's similar
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
 
-      // Check for Steam Link
-      if (line.match(/steam\s+link/i) || line.match(/steam.*url/i)) {
+      // Check for Steam Link (look for Steam store URLs anywhere in the line)
+      if (!steamLink) {
+        const lineSteamUrlMatch = line.match(/https?:\/\/store\.steampowered\.com\/app\/\d+(?:\/[^\s\)]*)?/);
+        if (lineSteamUrlMatch) {
+          steamLink = lineSteamUrlMatch[0].replace(/[\.\)]+$/, ""); // Remove trailing punctuation
+        }
+      }
+      // Also check for lines explicitly mentioning Steam Link/URL
+      if (!steamLink && (line.match(/steam\s+link/i) || line.match(/steam.*url/i))) {
         const linkMatch = line.match(/https?:\/\/[^\s\)]+/);
         if (linkMatch) {
           steamLink = linkMatch[0].replace(/[\.\)]+$/, ""); // Remove trailing punctuation
         }
       }
       // Check for explanation/similarity reason
-      else if (line.match(/why.*similar/i) || line.match(/similar.*because/i)) {
+      if (line.match(/why.*similar/i) || line.match(/similar.*because/i)) {
         explanationStarted = true;
         explanation = line
           .replace(/^\*\*Why\s+it'?s?\s+similar:?\*\*\s*-?\s*/i, "")
@@ -132,6 +146,11 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     .maybeSingle();
 
   const suggestionsText = suggestionData?.result_text || null;
+  // #region agent log
+  if (suggestionsText) {
+    fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SuggestionsList.tsx:134',message:'Raw suggestions text sample',data:{textLength:suggestionsText.length,textPreview:suggestionsText.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  }
+  // #endregion
 
   if (!suggestionsText) {
     return (
@@ -145,6 +164,9 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
   }
 
   const suggestions = parseSuggestions(suggestionsText);
+  // #region agent log
+  fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SuggestionsList.tsx:147',message:'Parsed suggestions',data:{suggestionsCount:suggestions.length,suggestions:suggestions.map(s=>({title:s.title,steamLink:s.steamLink,appId:s.appId}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
 
   if (suggestions.length === 0) {
     return (
@@ -162,12 +184,24 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     .map((s) => s.steamLink)
     .filter((link): link is string => Boolean(link));
   const appIds = extractAppIdsFromSuggestions(steamLinks);
+  // #region agent log
+  fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SuggestionsList.tsx:186',message:'Extracted appIds from steamLinks',data:{steamLinksCount:steamLinks.length,steamLinks,appIdsCount:appIds.length,appIds},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
 
   // Fetch and save Steam data for suggested games (if not already in DB)
   if (appIds.length > 0) {
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SuggestionsList.tsx:169',message:'Before fetchAndSaveSuggestedGames',data:{appIdsCount:appIds.length,appIds},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       await fetchAndSaveSuggestedGames(appIds);
+      // #region agent log
+      fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SuggestionsList.tsx:171',message:'After fetchAndSaveSuggestedGames - success',data:{appIdsCount:appIds.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SuggestionsList.tsx:173',message:'After fetchAndSaveSuggestedGames - error',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       console.error(
         "[SUGGESTIONS LIST] Failed to fetch suggested games:",
         error
@@ -179,10 +213,13 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
   // Fetch game data from database
   let games: GameNew[] = [];
   if (appIds.length > 0) {
-    const { data: gamesData } = await supabase
+    const { data: gamesData, error: queryError } = await supabase
       .from("games_new")
       .select("*")
       .in("appid", appIds);
+    // #region agent log
+    fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SuggestionsList.tsx:186',message:'Database query result',data:{appIdsCount:appIds.length,appIds,queryError:queryError?.message||null,gamesCount:gamesData?.length||0,gameAppIds:gamesData?.map((g:any)=>g.appid)||[]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
 
     games = (gamesData || []) as GameNew[];
   }
@@ -192,11 +229,17 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
   for (const game of games) {
     gamesMap.set(game.appid, game);
   }
+  // #region agent log
+  fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SuggestionsList.tsx:237',message:'GamesMap created',data:{gamesMapSize:gamesMap.size,gamesMapKeys:Array.from(gamesMap.keys())},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
 
   return (
     <div className="flex flex-col gap-2">
       {suggestions.map((item, index) => {
         const gameData = item.appId ? gamesMap.get(item.appId) : null;
+        // #region agent log
+        fetch('http://127.0.0.1:7248/ingest/055e2add-99d2-4ef2-b7d5-155378144b2a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SuggestionsList.tsx:200',message:'Rendering suggestion item',data:{index,itemAppId:item.appId,itemTitle:item.title,itemSteamLink:item.steamLink,hasGameData:!!gameData,gameDataAppid:gameData?.appid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+        // #endregion
 
         return (
           <div key={index} className="border-b last:border-b-0 pb-6 last:pb-0">
@@ -210,19 +253,6 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
 
               {/* Text Content */}
               <div className="flex-1 flex flex-col gap-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-lg">{item.title}</h3>
-                  {item.steamLink && !gameData && (
-                    <Link
-                      href={item.steamLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0"
-                    >
-                      <Badge variant="outline">View on Steam</Badge>
-                    </Link>
-                  )}
-                </div>
                 {item.explanation && (
                   <p className="text-muted-foreground text-sm">
                     {item.explanation}
