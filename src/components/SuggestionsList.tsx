@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import {
   Card,
   CardDescription,
@@ -5,6 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import GameCard from "@/components/GameCard";
+import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/server";
 import { GameNew } from "@/lib/supabase/types";
 import { suggestGames } from "@/lib/suggest";
@@ -14,11 +16,57 @@ interface SuggestionsListProps {
   appid: number;
 }
 
+// Skeleton for a single game card
+function GameCardSkeleton() {
+  return (
+    <div className="flex flex-col">
+      <Skeleton className="w-full aspect-video mb-2 rounded-md" />
+      <Skeleton className="h-4 w-3/4" />
+    </div>
+  );
+}
+
+// Async component that fetches a single missing game
+async function StreamingGameCard({ appId }: { appId: number }) {
+  try {
+    const steamData = await fetchSteamGame(appId.toString());
+
+    // Skip DLCs, demos, mods, etc.
+    if (steamData.type !== "game") {
+      console.log(`[STREAMING] Skipping ${appId} (type: ${steamData.type})`);
+      return null;
+    }
+
+    // Save to DB in background
+    await supabase.from("games_new").upsert(
+      {
+        appid: steamData.appid,
+        screenshots: steamData.screenshots,
+        videos: steamData.videos,
+        title: steamData.title,
+        header_image: steamData.header_image,
+        short_description: steamData.short_description,
+        long_description: steamData.long_description,
+        raw: steamData.raw,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "appid" }
+    );
+
+    return <GameCard {...(steamData as unknown as GameNew)} />;
+  } catch (err) {
+    console.error(`[STREAMING] Failed to fetch game ${appId}:`, err);
+    return null;
+  }
+}
+
 export async function SuggestionsList({ appid }: SuggestionsListProps) {
   // Fetch suggested app IDs from cache (simple SQL query)
   const { data: gameData } = await supabase
     .from("games_new")
-    .select("suggested_game_appids, screenshots, title, short_description, long_description")
+    .select(
+      "suggested_game_appids, screenshots, title, short_description, long_description"
+    )
     .eq("appid", appid)
     .maybeSingle();
 
@@ -74,7 +122,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     );
   }
 
-  // Simple SQL query: fetch games by app IDs
+  // Fetch games that already exist in DB
   const { data: games, error } = await supabase
     .from("games_new")
     .select("*")
@@ -92,47 +140,27 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     );
   }
 
-  let gamesList = (games || []) as GameNew[];
+  // Filter out DLCs from cached games
+  const cachedGames = ((games || []) as GameNew[]).filter((g) => {
+    const rawType = (g.raw as { type?: string })?.type;
+    return rawType === "game" || !rawType; // Allow if type is "game" or missing
+  });
+  const cachedAppIds = new Set(cachedGames.map((g) => g.appid));
 
-  // Check for missing games and fetch them
-  const existingAppIds = new Set(gamesList.map((g) => g.appid));
-  const missingAppIds = suggestedAppIds.filter((id: number) => !existingAppIds.has(id));
+  type RenderItem =
+    | { type: "cached"; game: GameNew }
+    | { type: "missing"; appId: number };
 
-  if (missingAppIds.length > 0) {
-    console.log("[SUGGESTIONS LIST] Fetching missing games:", missingAppIds);
-    
-    // Fetch missing games from Steam and save to DB
-    const fetchPromises = missingAppIds.map(async (appId: number) => {
-      try {
-        const steamData = await fetchSteamGame(appId.toString());
-        await supabase.from("games_new").upsert(
-          {
-            appid: steamData.appid,
-            screenshots: steamData.screenshots,
-            videos: steamData.videos,
-            title: steamData.title,
-            header_image: steamData.header_image,
-            short_description: steamData.short_description,
-            long_description: steamData.long_description,
-            raw: steamData.raw,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "appid" }
-        );
-        return steamData as unknown as GameNew;
-      } catch (err) {
-        console.error(`[SUGGESTIONS LIST] Failed to fetch game ${appId}:`, err);
-        return null;
-      }
-    });
+  // Build render order matching suggested order
+  const renderItems: RenderItem[] = suggestedAppIds.map((appId: number) => {
+    const cached = cachedGames.find((g) => g.appid === appId);
+    if (cached) {
+      return { type: "cached" as const, game: cached };
+    }
+    return { type: "missing" as const, appId };
+  });
 
-    const fetchedGames = (await Promise.all(fetchPromises)).filter(
-      (g): g is GameNew => g !== null
-    );
-    gamesList = [...gamesList, ...fetchedGames];
-  }
-
-  if (gamesList.length === 0) {
+  if (renderItems.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -143,15 +171,18 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     );
   }
 
-  // Render games
+  // Render: cached games immediately, missing games stream in with Suspense
   return (
     <div className="grid grid-cols-3 gap-6">
-      {gamesList.map((game) => (
-        <GameCard key={game.appid} {...game} />
-      ))}
+      {renderItems.map((item) =>
+        item.type === "cached" ? (
+          <GameCard key={item.game.appid} {...item.game} />
+        ) : (
+          <Suspense key={item.appId} fallback={<GameCardSkeleton />}>
+            <StreamingGameCard appId={item.appId} />
+          </Suspense>
+        )
+      )}
     </div>
   );
 }
-
-
-

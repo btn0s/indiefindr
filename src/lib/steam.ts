@@ -6,6 +6,7 @@ export type SteamGameData = {
   header_image: string | null;
   short_description: string | null;
   long_description: string | null;
+  type: string; // "game", "dlc", "demo", "mod", etc.
   raw: unknown; // Raw Steam API response
 };
 
@@ -185,6 +186,7 @@ class SteamQueue {
       header_image: (game.header_image as string) || null,
       short_description: (game.short_description as string) || null,
       long_description: (game.detailed_description as string) || null,
+      type: (game.type as string) || "game",
       raw: game, // Raw Steam API response
     };
   }

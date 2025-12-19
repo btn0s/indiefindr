@@ -189,12 +189,14 @@ async function validateAndCorrectAppIds(
 }
 
 /**
- * Validate an app ID by trying to fetch it from Steam
+ * Validate an app ID by trying to fetch it from Steam.
+ * Returns false for DLCs, mods, demos, etc.
  */
 async function validateAppId(appId: number): Promise<boolean> {
   try {
-    await fetchSteamGame(appId.toString());
-    return true;
+    const game = await fetchSteamGame(appId.toString());
+    // Only accept actual games, not DLCs, demos, mods, etc.
+    return game.type === "game";
   } catch (error) {
     return false;
   }
