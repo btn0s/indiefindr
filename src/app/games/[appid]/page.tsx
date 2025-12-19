@@ -82,13 +82,6 @@ export async function generateMetadata({
   const baseUrl = `${protocol}://${host}`;
   const url = `${baseUrl}/games/${appid}`;
   
-  // Handle image URL - use absolute URL if provided, otherwise use fallback
-  const image = gameData.header_image 
-    ? (gameData.header_image.startsWith("http") 
-        ? gameData.header_image 
-        : `${baseUrl}${gameData.header_image}`)
-    : `${baseUrl}/vercel.svg`;
-
   return {
     title,
     description: cleanDescription,
@@ -97,14 +90,6 @@ export async function generateMetadata({
       description: cleanDescription,
       url,
       siteName: "IndieFindr",
-      images: [
-        {
-          url: image,
-          width: 1200,
-          height: 630,
-          alt: gameData.title,
-        },
-      ],
       locale: "en_US",
       type: "website",
     },
@@ -112,7 +97,6 @@ export async function generateMetadata({
       card: "summary_large_image",
       title,
       description: cleanDescription,
-      images: [image],
     },
     alternates: {
       canonical: url,
