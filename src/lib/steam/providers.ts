@@ -32,12 +32,14 @@ export class SteamStoreProvider {
   
   async fetchGameDetails(appId: number): Promise<SteamStoreData> {
     const url = `${this.baseUrl}/appdetails?appids=${appId}&l=english`;
-    
+
     const response = await retry(
       async () => {
         const res = await fetch(url);
         if (!res.ok) {
-          throw new Error(`Failed to fetch Steam store data: ${res.status} ${res.statusText}`);
+          throw new Error(
+            `Failed to fetch Steam store data: ${res.status} ${res.statusText}`
+          );
         }
         return res;
       },
@@ -46,24 +48,38 @@ export class SteamStoreProvider {
         initialDelayMs: 1000,
         retryable: (error) => {
           if (error instanceof TypeError) return true;
-          const status = parseInt(error.message?.match(/\d+/)?.[0] || '0');
+          const status = parseInt(error.message?.match(/\d+/)?.[0] || "0");
           return status >= 500 || status === 429;
         },
       }
     );
-    
+
     const data = await response.json();
     const appData = data[appId.toString()];
-    
+
     if (!appData || !appData.success) {
       throw new Error(`Steam app ${appId} not found or unavailable`);
     }
-    
+
     const game = appData.data;
-    
+
+    // Filter out DLCs - Steam identifies them via type or categories
+    const isDLC =
+      game.type === "dlc" ||
+      game.categories?.some(
+        (cat: any) =>
+          cat.description?.toLowerCase().includes("dlc") || cat.id === 21 // Steam category ID for DLC
+      );
+
+    if (isDLC) {
+      throw new Error(`Steam app ${appId} is DLC, skipping ingestion`);
+    }
+
     // Extract screenshots
-    const screenshots = (game.screenshots || []).map((s: any) => s.path_full || s.path_thumbnail).filter(Boolean);
-    
+    const screenshots = (game.screenshots || [])
+      .map((s: any) => s.path_full || s.path_thumbnail)
+      .filter(Boolean);
+
     // Extract video URLs from movies/trailers
     // Prefer highlight trailers, then any trailer
     // Prefer MP4 max quality, fallback to 480p, then WebM
@@ -80,10 +96,10 @@ export class SteamStoreProvider {
         // Prefer MP4 max, then MP4 480p, then WebM max, then WebM 480p
         const videoUrl =
           movie.mp4?.max ||
-          movie.mp4?.['480'] ||
+          movie.mp4?.["480"] ||
           movie.webm?.max ||
-          movie.webm?.['480'];
-        
+          movie.webm?.["480"];
+
         if (videoUrl) {
           videos.push(videoUrl);
           // Limit to first 3 videos for card display
@@ -91,7 +107,7 @@ export class SteamStoreProvider {
         }
       }
     }
-    
+
     // Extract tags (from categories/genres)
     const tags: Record<string, number> = {};
     if (game.genres) {
@@ -104,7 +120,7 @@ export class SteamStoreProvider {
         tags[cat.description] = (tags[cat.description] || 0) + 0.5;
       });
     }
-    
+
     return {
       appid: appId,
       name: game.name,

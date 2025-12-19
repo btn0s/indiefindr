@@ -18,9 +18,16 @@ export async function GET(request: NextRequest) {
     
     const result = await generateText({
       model: "perplexity/sonar-pro",
-      prompt: `Search Reddit, Steam forums, and gaming communities for what games players recommend as VISUALLY and AESTHETICALLY similar to "${gameName}".
+      prompt: `Search Reddit, Steam forums, and gaming communities for INDIE games that players recommend as VISUALLY and AESTHETICALLY similar to "${gameName}".
+
+PRIORITIZE:
+- Indie games and smaller studio releases
+- Hidden gems that look similar but are less well-known
+- Games from solo developers or small teams
 
 Focus on games that LOOK similar - same art style, graphics fidelity, color palette, mood.
+
+AVOID suggesting other AAA games or major studio releases. We want to help players discover indie alternatives.
 
 Return exactly 5 specific Steam game titles, one per line. Just the names, no explanations or numbers.`,
     });
