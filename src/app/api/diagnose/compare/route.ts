@@ -86,10 +86,10 @@ export async function GET(request: NextRequest) {
       const match = relatedData?.find((g: any) => g.appid === game2IdNum);
       if (match) {
         similarityScore = match.similarity;
-        if (similarityScore >= 0.7) {
-          matchStatus = "WOULD MATCH (threshold 0.7)";
-        } else if (similarityScore >= 0.55) {
-          matchStatus = "WOULD MATCH (threshold 0.55)";
+        // Use facet-specific thresholds
+        const threshold = facet === "aesthetic" ? 0.75 : 0.55;
+        if (similarityScore >= threshold) {
+          matchStatus = `WOULD MATCH (threshold ${threshold})`;
         } else {
           matchStatus = "BELOW THRESHOLD";
         }

@@ -43,7 +43,14 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const facet = searchParams.get("facet") || "all";
     const limit = parseInt(searchParams.get("limit") || "10", 10);
-    const threshold = parseFloat(searchParams.get("threshold") || "0.55");
+    const customThreshold = searchParams.get("threshold");
+
+    // Facet-specific default thresholds
+    const defaultThresholds: Record<string, number> = {
+      aesthetic: 0.75, // Higher threshold for visual similarity
+      gameplay: 0.55,
+      narrative: 0.55,
+    };
 
     const allFacets = ["aesthetic", "gameplay", "narrative"];
     const requestedFacets =
@@ -55,6 +62,11 @@ export async function GET(
     const results: Record<string, any[]> = {};
 
     for (const facetName of requestedFacets) {
+      // Use custom threshold if provided, otherwise use facet-specific default
+      const threshold = customThreshold 
+        ? parseFloat(customThreshold) 
+        : defaultThresholds[facetName] || 0.55;
+
       const { data, error } = await supabase.rpc("get_related_games", {
         p_appid: appId,
         p_facet: facetName,
