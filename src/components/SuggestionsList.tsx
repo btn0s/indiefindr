@@ -143,13 +143,16 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
       const existingAppIds = new Set((existingGames || []).map((g) => g.appid));
 
       // Fetch and save each game that doesn't exist yet
-      const promises = suggestions.map(async (suggestion) => {
+      // Returns corrections: { oldAppId: newAppId } or null
+      const promises = suggestions.map(async (suggestion): Promise<{ oldAppId: number; newAppId: number } | null> => {
         // Skip if we already have this game
         if (suggestion.appId && existingAppIds.has(suggestion.appId)) {
-          return;
+          return null;
         }
 
         let appIdToFetch = suggestion.appId;
+        let correction: { oldAppId: number; newAppId: number } | null = null;
+        const originalAppId = suggestion.appId;
 
         // If no app ID, try searching by title
         if (!appIdToFetch && suggestion.title) {
@@ -161,7 +164,12 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
             .maybeSingle();
 
           if (data?.appid) {
-            appIdToFetch = data.appid;
+            const newAppId = data.appid;
+            appIdToFetch = newAppId;
+            // Track correction if we had an original app ID
+            if (typeof originalAppId === 'number' && originalAppId !== newAppId) {
+              correction = { oldAppId: originalAppId, newAppId };
+            }
             console.log(
               `[SUGGESTIONS LIST] Found game by title "${suggestion.title}": ${appIdToFetch}`
             );
@@ -172,7 +180,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
           console.warn(
             `[SUGGESTIONS LIST] No valid app ID for suggestion: ${suggestion.title}`
           );
-          return;
+          return null;
         }
 
         try {
@@ -194,6 +202,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
           console.log(
             `[SUGGESTIONS LIST] Saved game ${appIdToFetch}: ${steamData.title}`
           );
+          return correction;
         } catch (error) {
           // If app ID fetch failed and we have a title, try searching by title
           if (suggestion.title) {
@@ -239,7 +248,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
             }
 
             // If we found a different app ID, try fetching it
-            if (foundAppId && foundAppId !== appIdToFetch) {
+            if (foundAppId && appIdToFetch && foundAppId !== appIdToFetch) {
               try {
                 const steamData = await fetchSteamGame(foundAppId.toString());
                 await supabase.from("games_new").upsert(
@@ -256,10 +265,12 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
                   },
                   { onConflict: "appid" }
                 );
+                // Return the correction - we know appIdToFetch is a number here
+                correction = { oldAppId: appIdToFetch, newAppId: foundAppId };
                 console.log(
                   `[SUGGESTIONS LIST] Fallback: Found and saved "${suggestion.title}" with app ID ${foundAppId}`
                 );
-                return;
+                return correction;
               } catch (fallbackError) {
                 console.error(
                   `[SUGGESTIONS LIST] Fallback fetch also failed for "${suggestion.title}":`,
@@ -272,10 +283,59 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
             `[SUGGESTIONS LIST] Failed to fetch/save game ${appIdToFetch} (${suggestion.title}):`,
             error
           );
+          return null;
         }
       });
 
-      await Promise.all(promises);
+      const results = await Promise.all(promises);
+      
+      // Collect all corrections
+      const appIdCorrections = new Map<number, number>();
+      for (const result of results) {
+        if (result) {
+          appIdCorrections.set(result.oldAppId, result.newAppId);
+        }
+      }
+
+      // If we found any app ID corrections, update the suggestions text and save it
+      if (appIdCorrections.size > 0) {
+        let updatedSuggestionsText = suggestionsText;
+        
+        // Replace old app IDs with new ones in the suggestions text
+        for (const [oldAppId, newAppId] of appIdCorrections.entries()) {
+          // Replace the old app ID with the new one in the text
+          // Match pattern: title, oldAppId, explanation -> title, newAppId, explanation
+          // Preserve whitespace around the app ID
+          const regex = new RegExp(`(,\\s*)${oldAppId}(\\s*,)`, 'g');
+          updatedSuggestionsText = updatedSuggestionsText.replace(regex, `$1${newAppId}$2`);
+        }
+
+        // Update suggestions array with corrected app IDs
+        for (const suggestion of suggestions) {
+          if (suggestion.appId && appIdCorrections.has(suggestion.appId)) {
+            const newAppId = appIdCorrections.get(suggestion.appId)!;
+            suggestion.appId = newAppId;
+            suggestion.steamLink = `https://store.steampowered.com/app/${newAppId}/`;
+          }
+        }
+
+        // Save updated suggestions to database
+        if (updatedSuggestionsText !== suggestionsText) {
+          await supabase
+            .from("games_new")
+            .update({
+              suggestions_result_text: updatedSuggestionsText,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("appid", appid);
+          
+          console.log(
+            `[SUGGESTIONS LIST] Updated suggestions with ${appIdCorrections.size} corrected app IDs`
+          );
+          
+          suggestionsText = updatedSuggestionsText;
+        }
+      }
     } catch (error) {
       console.error(
         "[SUGGESTIONS LIST] Failed to fetch suggested games:",
@@ -285,7 +345,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     }
   }
 
-  // Extract app IDs from suggestions
+  // Extract app IDs from suggestions (may have been corrected)
   const appIds = suggestions
     .map((s) => s.appId)
     .filter((id): id is number => id !== undefined);
