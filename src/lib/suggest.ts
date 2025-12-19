@@ -206,14 +206,23 @@ async function validateAndCorrectSuggestions(
 /**
  * Validate an app ID by trying to fetch it from Steam.
  * Returns false for DLCs, mods, demos, etc.
+ * On network/rate limit errors, returns true (assume valid, will verify later during ingest).
  */
 async function validateAppId(appId: number): Promise<boolean> {
   try {
     const game = await fetchSteamGame(appId.toString());
-    // Only accept actual games, not DLCs, demos, mods, etc.
-    return game.type === "game";
+    // Only reject DLCs, demos, mods, etc. - not actual games
+    if (game.type !== "game") {
+      console.log(`[SUGGEST] Rejected ${appId}: type is "${game.type}"`);
+      return false;
+    }
+    return true;
   } catch (error) {
-    return false;
+    // On error, assume valid - we'll verify during ingest
+    // This prevents rate limiting from rejecting valid games
+    console.log(`[SUGGEST] Validation error for ${appId}, assuming valid:`, 
+      error instanceof Error ? error.message : String(error));
+    return true;
   }
 }
 
@@ -228,12 +237,8 @@ async function searchAppIdByTitle(title: string): Promise<number | null> {
     if (searchResponse.ok) {
       const searchData = await searchResponse.json();
       if (searchData.items && searchData.items.length > 0) {
-        const appId = searchData.items[0].id;
-        // Validate the found app ID
-        const isValid = await validateAppId(appId);
-        if (isValid) {
-          return appId;
-        }
+        // Return first result without additional validation (to avoid rate limits)
+        return searchData.items[0].id;
       }
     }
   } catch (error) {

@@ -179,7 +179,7 @@ export default async function GameDetailPage({
         )}
 
         {/* Game Header */}
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           {gameData.header_image && (
             <div className="w-1/3 aspect-video">
               <Image
@@ -192,7 +192,7 @@ export default async function GameDetailPage({
               />
             </div>
           )}
-          <div className="flex-1 flex flex-col gap-2">
+          <div className="flex-1 flex flex-col">
             <div className="text-lg font-semibold mb-0">{gameData.title}</div>
 
             {description && (

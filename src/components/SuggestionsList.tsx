@@ -8,41 +8,49 @@ import GameCard from "@/components/GameCard";
 import { supabase } from "@/lib/supabase/server";
 import { GameNew, Suggestion } from "@/lib/supabase/types";
 import { suggestGames } from "@/lib/suggest";
+import { ingest } from "@/lib/ingest";
 
 interface SuggestionsListProps {
   appid: number;
 }
 
-// How many suggestions we consider "full" (don't regenerate if we have this many)
-const MIN_SUGGESTIONS_TARGET = 8;
-// How old (in days) before we consider suggestions stale
+const MIN_SUGGESTIONS = 6;
 const STALE_DAYS = 7;
 
-function shouldRegenerateSuggestions(
-  suggestionsCount: number,
-  updatedAt: string | null
-): boolean {
-  // Always regenerate if we have 0-1 suggestions (likely failed or incomplete)
-  if (suggestionsCount <= 1) {
-    return true;
+/**
+ * Auto-fetch Steam data for suggested games that don't exist in DB.
+ */
+async function autoFetchMissingSteamData(
+  suggestedAppIds: number[],
+  existingAppIds: Set<number>
+): Promise<void> {
+  const missingAppIds = suggestedAppIds.filter((id) => !existingAppIds.has(id));
+  if (missingAppIds.length === 0) return;
+
+  console.log(`[SUGGESTIONS LIST] Auto-fetching ${missingAppIds.length} missing games`);
+
+  for (const appId of missingAppIds) {
+    try {
+      await ingest(`https://store.steampowered.com/app/${appId}/`, true);
+    } catch (err) {
+      console.error(`[SUGGESTIONS LIST] Failed to fetch ${appId}`);
+    }
   }
+}
 
-  // If we have a good number of suggestions, don't regenerate
-  if (suggestionsCount >= MIN_SUGGESTIONS_TARGET) {
-    return false;
-  }
+function shouldRegenerate(count: number, updatedAt: string | null): boolean {
+  // Never updated? Regenerate.
+  if (!updatedAt) return true;
 
-  // For 2-7 suggestions: only regenerate if stale (older than STALE_DAYS)
-  if (!updatedAt) {
-    return true; // No timestamp, treat as stale
-  }
+  const days = (Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24);
 
-  const updatedDate = new Date(updatedAt);
-  const now = new Date();
-  const daysSinceUpdate =
-    (now.getTime() - updatedDate.getTime()) / (1000 * 60 * 60 * 24);
+  // Less than 6 suggestions? Regenerate.
+  if (count < MIN_SUGGESTIONS) return true;
 
-  return daysSinceUpdate >= STALE_DAYS;
+  // Stale (>7 days)? Regenerate.
+  if (days >= STALE_DAYS) return true;
+
+  return false;
 }
 
 export async function SuggestionsList({ appid }: SuggestionsListProps) {
@@ -57,12 +65,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
 
   let suggestions: Suggestion[] = gameData?.suggested_game_appids || [];
 
-  // Check if we should regenerate suggestions based on count and staleness
-  const shouldRegenerate =
-    gameData &&
-    shouldRegenerateSuggestions(suggestions.length, gameData.updated_at);
-
-  if (shouldRegenerate && gameData) {
+  if (gameData && shouldRegenerate(suggestions.length, gameData.updated_at)) {
     try {
       if (gameData.screenshots && gameData.screenshots.length > 0) {
         const firstScreenshot = gameData.screenshots[0];
@@ -74,13 +77,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
           .filter(Boolean)
           .join(". ");
 
-        const reason =
-          suggestions.length <= 1
-            ? "too few"
-            : `stale (${suggestions.length} < ${MIN_SUGGESTIONS_TARGET})`;
-        console.log(
-          `[SUGGESTIONS LIST] Generating suggestions for appid: ${appid} (${reason})`
-        );
+        console.log(`[SUGGESTIONS LIST] Regenerating for ${appid} (${suggestions.length} suggestions)`);
         const result = await suggestGames(firstScreenshot, textContext);
 
         // Find games that already suggest this game (bidirectional linking)
@@ -200,10 +197,11 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     return rawType === "game" || !rawType; // Allow if type is "game" or missing
   });
 
-  // Build a map of appId -> explanation for quick lookup
-  const explanationMap = new Map(
-    suggestions.map((s) => [s.appId, s.explanation])
-  );
+  // Auto-fetch Steam data for missing suggested games (runs in background)
+  const existingAppIds = new Set(cachedGames.map((g) => g.appid));
+  autoFetchMissingSteamData(suggestedAppIds, existingAppIds).catch((err) => {
+    console.error("[SUGGESTIONS LIST] Error in auto-fetch:", err);
+  });
 
   // Only show games that exist in DB - don't try to stream missing ones (causes 429s)
   const sortedGames = suggestions
