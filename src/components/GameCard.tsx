@@ -109,7 +109,7 @@ function GameCard({
   return (
     <Link href={`/games/${appid}`} className="block">
       <div ref={cardRef}>
-        <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-video">
+        <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
           {/* Always render image as base layer */}
           {header_image && (
             <Image

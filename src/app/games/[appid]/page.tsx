@@ -181,7 +181,7 @@ export default async function GameDetailPage({
         {/* Game Header */}
         <div className="flex gap-4 items-center">
           {gameData.header_image && (
-            <div className="w-1/3 aspect-[460/215]">
+            <div className="w-1/3 aspect-steam">
               <Image
                 src={gameData.header_image}
                 alt={gameData.title}

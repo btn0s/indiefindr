@@ -124,3 +124,7 @@
     @apply bg-background text-foreground;
   }
 }
+
+.aspect-steam {
+  aspect-ratio: 460 / 215;
+}
