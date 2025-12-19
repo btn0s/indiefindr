@@ -47,7 +47,10 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
   // Extract app IDs for fetching
   const suggestedAppIds = suggestions.map((s) => s.appId);
 
-  // Fetch games that already exist in DB
+  // Ingest any missing games first (Suspense keeps skeleton up while this runs)
+  await autoIngestMissingGames(suggestedAppIds);
+
+  // Now fetch all games from DB (including newly ingested ones)
   const { data: games, error } = await supabase
     .from("games_new")
     .select("*")
@@ -65,15 +68,10 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     );
   }
 
-  // Filter out DLCs from cached games
+  // Filter out DLCs
   const cachedGames = ((games || []) as GameNew[]).filter((g) => {
     const rawType = (g.raw as { type?: string })?.type;
-    return rawType === "game" || !rawType; // Allow if type is "game" or missing
-  });
-
-  // Auto-fetch Steam data for missing suggested games (runs in background)
-  autoIngestMissingGames(suggestedAppIds).catch((err) => {
-    console.error("[SUGGESTIONS LIST] Error in auto-fetch:", err);
+    return rawType === "game" || !rawType;
   });
 
   // Only show games that exist in DB
