@@ -29,7 +29,7 @@ export default async function Home() {
         {/* Header section with max-width for readability */}
         <div className="container mx-auto max-w-4xl px-4 pt-8">
           <div className="flex flex-col">
-            <h1 className="text-lg font-bold">Games Graph</h1>
+            <h1 className="text-lg font-bold">IndieFindr</h1>
             <p className="text-muted-foreground mb-2">
               Paste a Steam link to ingest game data and find similar games.
             </p>
