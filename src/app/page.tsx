@@ -35,40 +35,50 @@ export default async function Home() {
   return (
     <RerunAllProvider>
       <div className="min-h-screen bg-zinc-50 dark:bg-black">
-        <main className="container mx-auto max-w-4xl px-4 py-8 flex flex-col gap-8">
-          <div className="flex flex-col">
-            <h1 className="text-lg font-bold">Games Graph</h1>
-            <p className="text-muted-foreground mb-2">
-              Paste a Steam link to ingest game data and find similar games.
-            </p>
-            <IngestForm />
+        <main className="flex flex-col gap-8">
+          {/* Header section with max-width for readability */}
+          <div className="container mx-auto max-w-4xl px-4 pt-8">
+            <div className="flex flex-col">
+              <h1 className="text-lg font-bold">Games Graph</h1>
+              <p className="text-muted-foreground mb-2">
+                Paste a Steam link to ingest game data and find similar games.
+              </p>
+              <IngestForm />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Ingested Games</h2>
+          {/* Full-width grid section */}
+          <div className="flex flex-col gap-4 w-full px-4 pb-8">
+            <div className="container mx-auto max-w-7xl w-full flex items-center justify-between">
+              <h2 className="font-semibold">All Games</h2>
               <RerunAllButton />
             </div>
             {games.length === 0 ? (
-              <p className="text-muted-foreground">
-                No games ingested yet. Start by ingesting a game above.
-              </p>
+              <div className="container mx-auto max-w-7xl w-full">
+                <p className="text-muted-foreground">
+                  No games ingested yet. Start by ingesting a game above.
+                </p>
+              </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {games.map((game) => (
-                    <RelatedGameCard
-                      key={game.id}
-                      game={{
-                        appid: game.id,
-                        name: game.name,
-                        header_image: game.header_image,
-                        videos: game.videos,
-                      }}
-                    />
-                  ))}
+                <div className="container mx-auto w-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {games.map((game) => (
+                      <RelatedGameCard
+                        key={game.id}
+                        game={{
+                          appid: game.id,
+                          name: game.name,
+                          header_image: game.header_image,
+                          videos: game.videos,
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <RerunAllMessages />
+                <div className="container mx-auto max-w-7xl w-full">
+                  <RerunAllMessages />
+                </div>
               </>
             )}
           </div>
