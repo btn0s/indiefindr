@@ -207,15 +207,49 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
           );
         } catch (error) {
           // If app ID fetch failed and we have a title, try searching by title
-          if (suggestion.title && suggestion.appId === appIdToFetch) {
-            const { data } = await supabase
+          if (suggestion.title) {
+            console.log(
+              `[SUGGESTIONS LIST] App ID ${appIdToFetch} failed, trying title search for "${suggestion.title}"`
+            );
+
+            // First, try searching our database
+            const { data: dbData } = await supabase
               .from("games_new")
               .select("appid")
               .ilike("title", `%${suggestion.title}%`)
               .limit(1)
               .maybeSingle();
 
-            const foundAppId = data?.appid;
+            let foundAppId = dbData?.appid;
+
+            // If not found in database, try Steam search API
+            if (!foundAppId) {
+              try {
+                const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(suggestion.title)}&cc=US&l=en`;
+                const searchResponse = await fetch(searchUrl);
+                if (searchResponse.ok) {
+                  const searchData = await searchResponse.json();
+                  if (searchData.items && searchData.items.length > 0) {
+                    // Get the first result's app ID
+                    foundAppId = searchData.items[0].id;
+                    console.log(
+                      `[SUGGESTIONS LIST] Found app ID ${foundAppId} via Steam search for "${suggestion.title}"`
+                    );
+                  }
+                }
+              } catch (searchError) {
+                console.warn(
+                  `[SUGGESTIONS LIST] Steam search failed for "${suggestion.title}":`,
+                  searchError
+                );
+              }
+            } else {
+              console.log(
+                `[SUGGESTIONS LIST] Found app ID ${foundAppId} in database for "${suggestion.title}"`
+              );
+            }
+
+            // If we found a different app ID, try fetching it
             if (foundAppId && foundAppId !== appIdToFetch) {
               try {
                 const steamData = await fetchSteamGame(foundAppId.toString());
