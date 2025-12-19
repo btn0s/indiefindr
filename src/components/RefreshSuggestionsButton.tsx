@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { IS_DEV } from "@/lib/utils/dev";
-import { RefreshCw } from "lucide-react";
+import { Plus } from "lucide-react";
 
 interface RefreshSuggestionsButtonProps {
   appid: string;
@@ -52,8 +52,8 @@ export function RefreshSuggestionsButton({ appid }: RefreshSuggestionsButtonProp
         variant="outline"
         size="sm"
       >
-        <RefreshCw className={`size-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-        {refreshing ? "Refreshing..." : "Refresh Suggestions"}
+        <Plus className={`size-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+        {refreshing ? "Loading..." : "Load more"}
       </Button>
       {error && (
         <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">

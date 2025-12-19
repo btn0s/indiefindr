@@ -9,6 +9,7 @@ import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { RefreshSuggestionsButton } from "@/components/RefreshSuggestionsButton";
 import { ArrowLeftIcon, ArrowUpRight } from "lucide-react";
 import { fetchSteamGame } from "@/lib/steam";
+import { supabase } from "@/lib/supabase/server";
 
 export default async function GameDetailPage({
   params,
@@ -22,12 +23,43 @@ export default async function GameDetailPage({
     notFound();
   }
 
-  let gameData: Awaited<ReturnType<typeof fetchSteamGame>>;
-  try {
-    gameData = await fetchSteamGame(appid);
-  } catch (error) {
-    console.error("Failed to fetch game data:", error);
-    notFound();
+  // Try database first
+  const { data: dbGame } = await supabase
+    .from("games_new")
+    .select("appid, title, header_image, short_description, long_description, screenshots, videos")
+    .eq("appid", appId)
+    .maybeSingle();
+
+  let gameData: {
+    appid: number;
+    title: string;
+    header_image: string | null;
+    short_description: string | null;
+    long_description: string | null;
+    screenshots: string[];
+    videos: string[];
+  };
+
+  if (dbGame) {
+    // Use cached data from database
+    gameData = {
+      appid: dbGame.appid,
+      title: dbGame.title || "",
+      header_image: dbGame.header_image,
+      short_description: dbGame.short_description,
+      long_description: dbGame.long_description,
+      screenshots: dbGame.screenshots || [],
+      videos: dbGame.videos || [],
+    };
+  } else {
+    // Fall back to Steam API
+    try {
+      const steamData = await fetchSteamGame(appid);
+      gameData = steamData;
+    } catch (error) {
+      console.error("Failed to fetch game data:", error);
+      notFound();
+    }
   }
 
   const description =
