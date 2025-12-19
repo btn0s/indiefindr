@@ -16,9 +16,10 @@ export type IngestResult = {
  * Automatically ingests suggested games that don't exist in the database.
  * 
  * @param steamUrl - Steam store URL or app ID
+ * @param skipSuggestions - If true, only fetch Steam data without generating suggestions (used for suggested games to avoid infinite recursion)
  * @returns Promise resolving to Steam data and game suggestions
  */
-export async function ingest(steamUrl: string): Promise<IngestResult> {
+export async function ingest(steamUrl: string, skipSuggestions = false): Promise<IngestResult> {
   // Parse appid to check if already ingesting or exists
   const appIdMatch = steamUrl.match(/\/(\d+)\/?$/);
   const appId = appIdMatch ? parseInt(appIdMatch[1], 10) : null;
@@ -105,6 +106,16 @@ export async function ingest(steamUrl: string): Promise<IngestResult> {
     );
     await saveSteamDataToDb(steamData);
 
+    // If skipSuggestions is true, return early with empty suggestions
+    // This is used for suggested games to avoid infinite recursion
+    if (skipSuggestions) {
+      console.log("[INGEST] Skipping suggestions for:", steamData.title);
+      return {
+        steamData,
+        suggestions: { suggestions: [] },
+      };
+    }
+
     // Step 3: Generate suggestions using the first screenshot
     if (!steamData.screenshots || steamData.screenshots.length === 0) {
       throw new Error(`No screenshots available for game ${steamData.appid}`);
@@ -133,6 +144,7 @@ export async function ingest(steamUrl: string): Promise<IngestResult> {
 
     // Step 5: Auto-ingest suggested games that don't exist yet (always runs in background)
     // Don't await - run in background to avoid blocking
+    // Only ingests Steam data for suggested games (skipSuggestions=true) to avoid infinite recursion
     const suggestedAppIds = suggestions.suggestions.map((s) => s.appId);
     autoIngestSuggestedGames(suggestedAppIds).catch((err) => {
       console.error("[INGEST] Error in auto-ingest suggested games:", err);
@@ -201,6 +213,9 @@ async function saveSuggestionsToDb(
  * This ensures suggestions are always visible in the UI.
  * Runs in background to avoid blocking the main ingestion.
  * 
+ * Only fetches Steam data for suggested games (skipSuggestions=true) to avoid
+ * infinite recursion. We only go one level deep: original game + its suggestions.
+ * 
  * Note: Global rate limiter in steam.ts handles the 2s delay between Steam API requests.
  */
 async function autoIngestSuggestedGames(suggestedAppIds: number[]): Promise<void> {
@@ -229,11 +244,12 @@ async function autoIngestSuggestedGames(suggestedAppIds: number[]): Promise<void
 
     // Ingest missing games sequentially to respect rate limits
     // The global rate limiter in steam.ts handles the 2s delay between Steam API calls
+    // Pass skipSuggestions=true to only get Steam data (one level deep)
     for (const missingAppid of missingAppids) {
       const steamUrl = `https://store.steampowered.com/app/${missingAppid}/`;
       
       try {
-        await ingest(steamUrl);
+        await ingest(steamUrl, true);
         console.log(`[INGEST] Successfully auto-ingested game ${missingAppid}`);
       } catch (err) {
         console.error(

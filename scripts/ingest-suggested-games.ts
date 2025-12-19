@@ -94,7 +94,7 @@ async function ingestSuggestedGames(appid: number) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ steamUrl }),
+        body: JSON.stringify({ steamUrl, skipSuggestions: true }),
       });
 
       const data = await response.json();

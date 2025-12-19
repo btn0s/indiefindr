@@ -8,13 +8,14 @@ import { ingest } from "@/lib/ingest";
  *
  * Body:
  * {
- *   steamUrl: string    // Required: Steam store URL or app ID
+ *   steamUrl: string       // Required: Steam store URL or app ID
+ *   skipSuggestions?: bool // Optional: If true, only fetch Steam data (no suggestions)
  * }
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { steamUrl } = body;
+    const { steamUrl, skipSuggestions } = body;
 
     if (!steamUrl || typeof steamUrl !== "string") {
       return NextResponse.json(
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[SUBMIT] Processing submission for:", steamUrl);
 
-    const result = await ingest(steamUrl);
+    const result = await ingest(steamUrl, skipSuggestions === true);
 
     return NextResponse.json({
       success: true,

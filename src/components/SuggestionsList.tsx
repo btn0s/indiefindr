@@ -13,20 +13,56 @@ interface SuggestionsListProps {
   appid: number;
 }
 
+// How many suggestions we consider "full" (don't regenerate if we have this many)
+const MIN_SUGGESTIONS_TARGET = 8;
+// How old (in days) before we consider suggestions stale
+const STALE_DAYS = 7;
+
+function shouldRegenerateSuggestions(
+  suggestionsCount: number,
+  updatedAt: string | null
+): boolean {
+  // Always regenerate if we have 0-1 suggestions (likely failed or incomplete)
+  if (suggestionsCount <= 1) {
+    return true;
+  }
+
+  // If we have a good number of suggestions, don't regenerate
+  if (suggestionsCount >= MIN_SUGGESTIONS_TARGET) {
+    return false;
+  }
+
+  // For 2-7 suggestions: only regenerate if stale (older than STALE_DAYS)
+  if (!updatedAt) {
+    return true; // No timestamp, treat as stale
+  }
+
+  const updatedDate = new Date(updatedAt);
+  const now = new Date();
+  const daysSinceUpdate =
+    (now.getTime() - updatedDate.getTime()) / (1000 * 60 * 60 * 24);
+
+  return daysSinceUpdate >= STALE_DAYS;
+}
+
 export async function SuggestionsList({ appid }: SuggestionsListProps) {
   // Fetch suggestions from cache (simple SQL query)
   const { data: gameData } = await supabase
     .from("games_new")
     .select(
-      "suggested_game_appids, screenshots, title, short_description, long_description"
+      "suggested_game_appids, screenshots, title, short_description, long_description, updated_at"
     )
     .eq("appid", appid)
     .maybeSingle();
 
   let suggestions: Suggestion[] = gameData?.suggested_game_appids || [];
 
-  // If no cached suggestions exist, generate them (this will block, but only on first load)
-  if (suggestions.length === 0 && gameData) {
+  // Check if we should regenerate suggestions based on count and staleness
+  const shouldRegenerate =
+    gameData &&
+    shouldRegenerateSuggestions(suggestions.length, gameData.updated_at);
+
+  if (shouldRegenerate && gameData) {
     try {
       if (gameData.screenshots && gameData.screenshots.length > 0) {
         const firstScreenshot = gameData.screenshots[0];
@@ -38,9 +74,12 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
           .filter(Boolean)
           .join(". ");
 
+        const reason =
+          suggestions.length <= 1
+            ? "too few"
+            : `stale (${suggestions.length} < ${MIN_SUGGESTIONS_TARGET})`;
         console.log(
-          "[SUGGESTIONS LIST] Generating suggestions for appid:",
-          appid
+          `[SUGGESTIONS LIST] Generating suggestions for appid: ${appid} (${reason})`
         );
         const result = await suggestGames(firstScreenshot, textContext);
 
