@@ -15,6 +15,9 @@ export type Game = {
   narrative_embedding: number[] | null;
   vision_model: string | null;
   embedding_model: string | null;
+  steam_type: string | null;
+  steam_required_age: number | null;
+  steam_categories: Array<{ id: number; description: string }> | null;
   created_at: string;
   updated_at: string;
 };

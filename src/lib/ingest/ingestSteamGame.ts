@@ -61,6 +61,9 @@ export async function quickIngestSteamGame(
             screenshots: storeData.screenshots,
             videos: storeData.videos.length > 0 ? storeData.videos : null,
             tags, // Community tags with vote counts from steam-user
+            steam_type: storeData.type || null,
+            steam_required_age: storeData.required_age || null,
+            steam_categories: storeData.categories || null,
             // Leave embeddings, facet texts, and models as null for now
             updated_at: new Date().toISOString(),
           },
@@ -235,9 +238,16 @@ async function completeIngestion(appId: number, jobId: string, triggerSuggestion
     );
 
     console.log("[INGEST] Updating database...");
-    // Update game with embeddings, facet texts, and community tags
+    // Update game with embeddings, facet texts, community tags, videos, and Steam metadata
     await retry(
       async () => {
+        // Fetch current game to preserve Steam metadata if already set
+        const { data: currentGame } = await supabase
+          .from("games")
+          .select("steam_type, steam_required_age, steam_categories")
+          .eq("id", appId)
+          .single();
+
         const updateData: Record<string, any> = {
           tags: communityTags, // Update with full community tags
           review_summary: reviewSummary,
@@ -246,6 +256,12 @@ async function completeIngestion(appId: number, jobId: string, triggerSuggestion
           narrative_text: facetDocs.narrative || null,
           vision_model: VISION_MODEL,
           embedding_model: EMBEDDING_MODEL,
+          // Always update videos from storeData (Steam API is source of truth)
+          videos: storeData.videos.length > 0 ? storeData.videos : null,
+          // Update Steam metadata if not already set (preserve existing metadata)
+          steam_type: currentGame?.steam_type || storeData.type || null,
+          steam_required_age: currentGame?.steam_required_age || storeData.required_age || null,
+          steam_categories: currentGame?.steam_categories || storeData.categories || null,
           updated_at: new Date().toISOString(),
         };
         

@@ -10,6 +10,9 @@ export type SteamStoreData = {
   screenshots: string[];
   videos: string[];
   tags: Record<string, number>;
+  type: string | null;
+  required_age: number | null;
+  categories: Array<{ id: number; description: string }> | null;
 };
 
 // Cache for tag ID -> name mapping
@@ -129,6 +132,12 @@ export class SteamStoreProvider {
       screenshots: screenshots.slice(0, 10), // Limit to 10 screenshots
       videos,
       tags,
+      type: game.type || null,
+      required_age: game.required_age ? parseInt(game.required_age) : null,
+      categories: game.categories?.map((cat: any) => ({
+        id: cat.id,
+        description: cat.description,
+      })) || null,
     };
   }
 }
