@@ -82,29 +82,40 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
         return;
       }
 
-      // Game doesn't exist, show loading dialog and navigate immediately
+      // Game doesn't exist, show loading dialog
       setIngestingGame({ title: "Loading game info...", image: null });
 
-      // Start ingestion in background (don't await full response)
-      fetch("/api/games/submit", {
+      // Wait for ingestion to complete before navigating
+      const response = await fetch("/api/games/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ steamUrl: steamUrl.trim() }),
-      })
-        .then((response) => response.json())
-        .catch((error) => {
-          console.error("Error ingesting game:", error);
-        })
-        .finally(() => {
-          setIngestingGame(null);
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to ingest game");
+      }
+
+      // Update dialog with game info before navigating
+      if (result.title || result.steamData?.header_image) {
+        setIngestingGame({
+          title: result.title,
+          image: result.steamData?.header_image,
         });
+      }
+
+      // Small delay to show the game info before navigating
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       setSteamUrl("");
+      setIngestingGame(null);
       onSuccess?.();
 
-      // Navigate immediately - game page will fetch from Steam API if not in DB yet
+      // Navigate after ingest is complete
       router.push(`/games/${appId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
