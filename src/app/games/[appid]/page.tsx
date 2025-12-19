@@ -144,8 +144,8 @@ export default async function GameDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       <Navbar />
-      <main className="container mx-auto max-w-4xl px-4 py-8 flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Games like {gameData.title}</h1>
+      <main className="container mx-auto max-w-4xl px-4 py-6 sm:py-8 flex flex-col gap-3 sm:gap-4">
+        <h1 className="text-xl sm:text-2xl font-semibold">Games like {gameData.title}</h1>
 
         {/* Trailer Video - Full Width */}
         {gameData.videos && gameData.videos.length > 0 && (
@@ -160,9 +160,9 @@ export default async function GameDetailPage({
         )}
 
         {/* Game Header */}
-        <div className="flex gap-4 items-center mb-4">
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-center mb-4">
           {gameData.header_image && (
-            <div className="w-1/3 aspect-steam">
+            <div className="w-full sm:w-1/3 aspect-steam">
               <Image
                 src={gameData.header_image}
                 alt={gameData.title}
@@ -174,21 +174,21 @@ export default async function GameDetailPage({
             </div>
           )}
           <div className="flex-1 flex flex-col">
-            <div className="text-lg font-semibold mb-0">{gameData.title}</div>
+            <div className="text-base sm:text-lg font-semibold mb-1 sm:mb-0">{gameData.title}</div>
 
             {description && (
-              <p className="text-muted-foreground line-clamp-4 text-sm mb-2">
+              <p className="text-muted-foreground line-clamp-3 sm:line-clamp-4 text-sm mb-2">
                 {description.replace(/<[^>]*>/g, "").substring(0, 200)}
                 {description.length > 300 ? "..." : ""}
               </p>
             )}
 
-            <Button className="w-fit">
+            <Button className="w-full sm:w-fit">
               <a
                 href={`https://store.steampowered.com/app/${appid}/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1"
+                className="flex items-center justify-center gap-1"
               >
                 View on Steam
                 <ArrowUpRight className="size-3" />
@@ -199,8 +199,8 @@ export default async function GameDetailPage({
 
         {/* Suggestions Section */}
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h2 className="text-lg sm:text-xl font-semibold">
               Games similar to {gameData.title}
             </h2>
             <RefreshSuggestionsButton appid={appid} />
