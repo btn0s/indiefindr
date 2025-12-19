@@ -1,12 +1,12 @@
 import { generateText } from "ai";
 import { retry } from "./utils/retry";
-import { fetchSteamGame } from "./steam";
+import { validateAppId, searchAppIdByTitle } from "./steam";
 import { Suggestion } from "./supabase/types";
 
 const SONAR_MODEL = "perplexity/sonar-pro";
 
 export type SuggestGamesResult = {
-  suggestions: Suggestion[]; // Validated suggestions with explanations
+  suggestions: Suggestion[];
 };
 
 export type ParsedSuggestion = {
@@ -18,26 +18,17 @@ export type ParsedSuggestion = {
 /**
  * Suggest similar games based on an image and optional text context.
  * Uses Perplexity to search for games similar to the provided image.
- *
- * @param image - Base64 image data (data:image/...) or image URL
- * @param text - Optional text context about the game
- * @returns Promise resolving to search results with similar games and platforms
  */
 export async function suggestGames(
   image: string,
   text?: string
 ): Promise<SuggestGamesResult> {
   if (!image || typeof image !== "string") {
-    throw new Error(
-      "image (string) is required. Provide base64 data URL or image URL."
-    );
+    throw new Error("image (string) is required. Provide base64 data URL or image URL.");
   }
 
   console.log("[SUGGEST] Starting search");
-  console.log("[SUGGEST] Image provided:", image.substring(0, 50) + "...");
-  console.log("[SUGGEST] Optional text:", text || "(none)");
 
-  // Build the prompt with structured format requirements
   const basePrompt = `Based on this image${
     text ? ` and the following context: "${text}"` : ""
   }, find Steam games that are similar to what you see.
@@ -64,15 +55,9 @@ Bad examples (inconsistent tense - DO NOT USE):
 
 Each line must have: game title (comma), Steam app ID number (comma), explanation that explains WHY this game relates to the image/context. Use commas to separate the three fields.`;
 
-  // Prepare the message content with image
   // Handle both base64 and URLs
   let imageUrl = image;
-  if (
-    !image.startsWith("data:") &&
-    !image.startsWith("http://") &&
-    !image.startsWith("https://")
-  ) {
-    // If it's just base64 without data URL prefix, add it
+  if (!image.startsWith("data:") && !image.startsWith("http://") && !image.startsWith("https://")) {
     imageUrl = `data:image/jpeg;base64,${image}`;
   }
 
@@ -82,19 +67,12 @@ Each line must have: game title (comma), Steam app ID number (comma), explanatio
   ];
 
   console.log("[SUGGEST] Sending request to Perplexity");
-  console.log("[SUGGEST] Model:", SONAR_MODEL);
 
-  // Call Perplexity with retry logic
   const result = await retry(
     async () => {
       const response = await generateText({
         model: SONAR_MODEL,
-        messages: [
-          {
-            role: "user",
-            content: messageContent,
-          },
-        ],
+        messages: [{ role: "user", content: messageContent }],
       });
       return response;
     },
@@ -102,10 +80,7 @@ Each line must have: game title (comma), Steam app ID number (comma), explanatio
       maxAttempts: 2,
       initialDelayMs: 1000,
       retryable: (error: unknown) => {
-        const err = error as {
-          status?: number;
-          response?: { status?: number };
-        };
+        const err = error as { status?: number; response?: { status?: number } };
         const status = err?.status || err?.response?.status;
         return status === 429 || (status !== undefined && status >= 500);
       },
@@ -115,7 +90,6 @@ Each line must have: game title (comma), Steam app ID number (comma), explanatio
   console.log("[SUGGEST] Response received");
   console.log("[SUGGEST] Raw text:", result.text);
 
-  // Parse and validate suggestions (with explanations)
   const parsed = parseSuggestions(result.text);
   const suggestions = await validateAndCorrectSuggestions(parsed);
 
@@ -130,51 +104,31 @@ Each line must have: game title (comma), Steam app ID number (comma), explanatio
 function parseSuggestions(text: string): ParsedSuggestion[] {
   const items: ParsedSuggestion[] = [];
 
-  // Split by newlines
   const lines = text
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line && !line.match(/^(title|example|format)/i)); // Skip header lines
+    .filter((line) => line && !line.match(/^(title|example|format)/i));
 
   for (const line of lines) {
-    // Parse format: title, steam_appid, explanation
-    // Format is strictly: "Game Title, 123456, explanation that may contain commas"
     const parts = line.split(",").map((p) => p.trim());
 
     if (parts.length >= 3) {
-      // Find the appId - it should be the second part (a number)
       const title = parts[0].trim();
       const appIdStr = parts[1].trim();
-      // Everything after the first two parts is the explanation (may contain commas)
       const explanation = parts.slice(2).join(", ").trim();
 
       const appId = parseInt(appIdStr, 10);
       if (!isNaN(appId) && appId > 0 && title) {
-        items.push({
-          title,
-          appId,
-          explanation: explanation || "",
-        });
+        items.push({ title, appId, explanation: explanation || "" });
       } else if (title) {
-        // Title but no valid app ID - try to parse differently
-        // Maybe appId is in a different position
-        items.push({
-          title,
-          appId: null,
-          explanation: explanation || "",
-        });
+        items.push({ title, appId: null, explanation: explanation || "" });
       }
     } else if (parts.length === 2) {
-      // Only title and appId, no explanation
       const title = parts[0].trim();
       const appIdStr = parts[1].trim();
       const appId = parseInt(appIdStr, 10);
       if (!isNaN(appId) && appId > 0 && title) {
-        items.push({
-          title,
-          appId,
-          explanation: "",
-        });
+        items.push({ title, appId, explanation: "" });
       }
     }
   }
@@ -185,7 +139,6 @@ function parseSuggestions(text: string): ParsedSuggestion[] {
 /**
  * Validate and correct suggestions from parsed data.
  * Tests each app ID, and if invalid, tries to find the correct one by searching.
- * Returns validated suggestions with explanations preserved.
  */
 async function validateAndCorrectSuggestions(
   parsedSuggestions: ParsedSuggestion[]
@@ -194,92 +147,28 @@ async function validateAndCorrectSuggestions(
 
   for (const suggestion of parsedSuggestions) {
     let appId = suggestion.appId;
+    const title = suggestion.title;
 
     // If no app ID, try searching by title
-    if (!appId && suggestion.title) {
-      appId = await searchAppIdByTitle(suggestion.title);
+    if (!appId && title) {
+      appId = await searchAppIdByTitle(title);
     }
 
     // If we have an app ID, validate it
     if (appId) {
       const isValid = await validateAppId(appId);
       if (isValid) {
-        validatedSuggestions.push({
-          appId,
-          explanation: suggestion.explanation,
-        });
+        validatedSuggestions.push({ appId, title, explanation: suggestion.explanation });
       } else {
         // Try to find correct app ID by title
-        console.log(
-          `[SUGGEST] App ID ${appId} invalid, searching for "${suggestion.title}"`
-        );
-        const correctedId = await searchAppIdByTitle(suggestion.title);
+        console.log(`[SUGGEST] App ID ${appId} invalid, searching for "${title}"`);
+        const correctedId = await searchAppIdByTitle(title);
         if (correctedId) {
-          validatedSuggestions.push({
-            appId: correctedId,
-            explanation: suggestion.explanation,
-          });
+          validatedSuggestions.push({ appId: correctedId, title, explanation: suggestion.explanation });
         }
       }
     }
   }
 
   return validatedSuggestions;
-}
-
-/**
- * Validate an app ID by trying to fetch it from Steam.
- * Returns false for DLCs, mods, demos, or non-existent games.
- * Only returns true (assume valid) for rate limit errors to avoid skipping valid games.
- */
-async function validateAppId(appId: number): Promise<boolean> {
-  try {
-    const game = await fetchSteamGame(appId.toString());
-    // Only reject DLCs, demos, mods, etc. - not actual games
-    if (game.type !== "game") {
-      console.log(`[SUGGEST] Rejected ${appId}: type is "${game.type}"`);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    
-    // Rate limit errors: assume valid (don't skip valid games due to rate limiting)
-    if (errorMessage.includes("429") || errorMessage.includes("rate limit")) {
-      console.log(`[SUGGEST] Rate limited for ${appId}, assuming valid`);
-      return true;
-    }
-    
-    // "Not found" errors: game doesn't exist, trigger fallback search
-    if (errorMessage.includes("not found") || errorMessage.includes("unavailable")) {
-      console.log(`[SUGGEST] App ${appId} not found, will try title search`);
-      return false;
-    }
-    
-    // Other errors (network, timeout): assume valid to avoid false rejections
-    console.log(`[SUGGEST] Validation error for ${appId}, assuming valid:`, errorMessage);
-    return true;
-  }
-}
-
-/**
- * Search for app ID by game title using Steam search API
- */
-async function searchAppIdByTitle(title: string): Promise<number | null> {
-  try {
-    const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(title)}&cc=US&l=en`;
-    const searchResponse = await fetch(searchUrl);
-    
-    if (searchResponse.ok) {
-      const searchData = await searchResponse.json();
-      if (searchData.items && searchData.items.length > 0) {
-        // Return first result without additional validation (to avoid rate limits)
-        return searchData.items[0].id;
-      }
-    }
-  } catch (error) {
-    console.warn(`[SUGGEST] Steam search failed for "${title}":`, error);
-  }
-  
-  return null;
 }

@@ -1,4 +1,4 @@
-import { fetchSteamGame, type SteamGameData } from "./steam";
+import { fetchSteamGame, searchAppIdByTitle, type SteamGameData } from "./steam";
 import { suggestGames, type SuggestGamesResult } from "./suggest";
 import { supabase } from "./supabase/server";
 import { Suggestion } from "./supabase/types";
@@ -168,30 +168,107 @@ export async function findMissingGameIds(appIds: number[]): Promise<number[]> {
   return appIds.filter((id) => !existingSet.has(id));
 }
 
+// Track games currently being auto-ingested to prevent duplicate concurrent attempts
+const autoIngestingGames = new Set<number>();
+
 /**
  * Auto-ingest games that don't exist in the database.
  * Fetches Steam data only (no suggestions) to avoid cascade.
  * Runs sequentially to respect rate limits.
+ * When ingestion fails with "not found", tries to correct the suggestion using title search.
  */
 export async function autoIngestMissingGames(appIds: number[]): Promise<void> {
   const missingIds = await findMissingGameIds(appIds);
-  if (!missingIds.length) {
-    console.log("[AUTO-INGEST] All games already exist");
-    return;
-  }
+  if (!missingIds.length) return;
 
-  console.log(`[AUTO-INGEST] Ingesting ${missingIds.length} missing games...`);
+  // Filter out games already being ingested
+  const toIngest = missingIds.filter((id) => !autoIngestingGames.has(id));
+  if (!toIngest.length) return;
 
-  for (const appId of missingIds) {
+  // Mark as ingesting
+  toIngest.forEach((id) => autoIngestingGames.add(id));
+
+  console.log(`[AUTO-INGEST] Ingesting ${toIngest.length} missing games...`);
+
+  for (const appId of toIngest) {
     try {
       await ingest(`https://store.steampowered.com/app/${appId}/`, true);
       console.log(`[AUTO-INGEST] Success: ${appId}`);
     } catch (err) {
-      console.error(`[AUTO-INGEST] Failed: ${appId}`, err instanceof Error ? err.message : err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[AUTO-INGEST] Failed: ${appId}`, message);
+
+      // If game doesn't exist on Steam, try to correct using title search
+      if (message.includes("not found") || message.includes("unavailable")) {
+        await correctOrRemoveInvalidSuggestion(appId);
+      }
+    } finally {
+      autoIngestingGames.delete(appId);
     }
   }
 
-  console.log(`[AUTO-INGEST] Completed ${missingIds.length} games`);
+  console.log(`[AUTO-INGEST] Completed ${toIngest.length} games`);
+}
+
+/**
+ * Try to correct an invalid suggestion using title search.
+ * If correction succeeds, updates the suggestion with the correct app ID.
+ * If correction fails, removes the suggestion entirely.
+ */
+async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<void> {
+  try {
+    // Find all games that have this invalid suggestion
+    const { data: gamesWithSuggestion } = await supabase
+      .from("games_new")
+      .select("appid, suggested_game_appids")
+      .not("suggested_game_appids", "is", null);
+
+    if (!gamesWithSuggestion) return;
+
+    for (const game of gamesWithSuggestion) {
+      const suggestions: Suggestion[] = game.suggested_game_appids || [];
+      const invalidSuggestion = suggestions.find((s) => s.appId === invalidAppId);
+
+      if (!invalidSuggestion) continue;
+
+      // Try to find the correct app ID using the title
+      let correctedId: number | null = null;
+      if (invalidSuggestion.title) {
+        console.log(`[AUTO-INGEST] Searching for "${invalidSuggestion.title}" to correct ${invalidAppId}`);
+        correctedId = await searchAppIdByTitle(invalidSuggestion.title);
+      }
+
+      if (correctedId && correctedId !== invalidAppId) {
+        // Correction succeeded - update the suggestion
+        console.log(`[AUTO-INGEST] Corrected ${invalidAppId} → ${correctedId} for game ${game.appid}`);
+        const corrected = suggestions.map((s) =>
+          s.appId === invalidAppId ? { ...s, appId: correctedId! } : s
+        );
+        await supabase
+          .from("games_new")
+          .update({ suggested_game_appids: corrected, updated_at: new Date().toISOString() })
+          .eq("appid", game.appid);
+
+        // Try to ingest the corrected game
+        try {
+          await ingest(`https://store.steampowered.com/app/${correctedId}/`, true);
+          console.log(`[AUTO-INGEST] Ingested corrected game ${correctedId}`);
+        } catch {
+          console.log(`[AUTO-INGEST] Failed to ingest corrected game ${correctedId}`);
+        }
+      } else {
+        // Correction failed - remove the suggestion
+        console.log(`[AUTO-INGEST] No correction found, removing ${invalidAppId} from game ${game.appid}`);
+        const filtered = suggestions.filter((s) => s.appId !== invalidAppId);
+        await supabase
+          .from("games_new")
+          .update({ suggested_game_appids: filtered, updated_at: new Date().toISOString() })
+          .eq("appid", game.appid);
+      }
+    }
+  } catch (err) {
+    console.error(`[AUTO-INGEST] Failed to correct/remove suggestion ${invalidAppId}:`, err);
+  }
 }
 
 // ============================================================================
@@ -234,6 +311,15 @@ async function saveSuggestions(appId: number, suggestions: Suggestion[]): Promis
 }
 
 async function createBidirectionalLinks(sourceAppId: number, suggestions: Suggestion[]): Promise<void> {
+  // Get source game title for the bidirectional link
+  const { data: sourceGame } = await supabase
+    .from("games_new")
+    .select("title")
+    .eq("appid", sourceAppId)
+    .single();
+
+  const sourceTitle = sourceGame?.title || "";
+
   for (const suggestion of suggestions) {
     const { data: targetGame } = await supabase
       .from("games_new")
@@ -251,7 +337,7 @@ async function createBidirectionalLinks(sourceAppId: number, suggestions: Sugges
           .update({
             suggested_game_appids: [
               ...theirSuggestions,
-              { appId: sourceAppId, explanation: "Suggested by similar game" },
+              { appId: sourceAppId, title: sourceTitle, explanation: "Suggested by similar game" },
             ],
             updated_at: new Date().toISOString(),
           })

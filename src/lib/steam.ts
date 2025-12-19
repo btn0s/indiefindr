@@ -205,3 +205,66 @@ export async function fetchSteamGame(steamUrl: string): Promise<SteamGameData> {
     }
   );
 }
+
+// ============================================================================
+// Validation & Search
+// ============================================================================
+
+/**
+ * Validate an app ID by trying to fetch it from Steam.
+ * Returns false for DLCs, mods, demos, or non-existent games.
+ * Only returns true (assume valid) for rate limit errors to avoid skipping valid games.
+ */
+export async function validateAppId(appId: number): Promise<boolean> {
+  try {
+    const game = await fetchSteamGame(appId.toString());
+    // Only reject DLCs, demos, mods, etc. - not actual games
+    if (game.type !== "game") {
+      console.log(`[STEAM] Rejected ${appId}: type is "${game.type}"`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Rate limit errors: assume valid (don't skip valid games due to rate limiting)
+    if (errorMessage.includes("429") || errorMessage.includes("rate limit")) {
+      console.log(`[STEAM] Rate limited for ${appId}, assuming valid`);
+      return true;
+    }
+
+    // "Not found" errors: game doesn't exist, trigger fallback search
+    if (errorMessage.includes("not found") || errorMessage.includes("unavailable")) {
+      console.log(`[STEAM] App ${appId} not found, will try title search`);
+      return false;
+    }
+
+    // Other errors (network, timeout): assume valid to avoid false rejections
+    console.log(`[STEAM] Validation error for ${appId}, assuming valid:`, errorMessage);
+    return true;
+  }
+}
+
+/**
+ * Search for app ID by game title using Steam search API.
+ */
+export async function searchAppIdByTitle(title: string): Promise<number | null> {
+  try {
+    const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(title)}&cc=US&l=en`;
+    const searchResponse = await fetch(searchUrl);
+
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json();
+      if (searchData.items && searchData.items.length > 0) {
+        const appId = searchData.items[0].id;
+        console.log(`[STEAM] Found "${title}" → ${appId}`);
+        return appId;
+      }
+    }
+  } catch (error) {
+    console.warn(`[STEAM] Search failed for "${title}":`, error);
+  }
+
+  console.log(`[STEAM] No match found for "${title}"`);
+  return null;
+}

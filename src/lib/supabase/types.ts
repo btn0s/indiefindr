@@ -1,5 +1,6 @@
 export type Suggestion = {
   appId: number;
+  title: string; // Original title from Perplexity (for fallback lookup if appId fails)
   explanation: string;
 };
 
