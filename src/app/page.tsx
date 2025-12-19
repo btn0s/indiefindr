@@ -9,7 +9,7 @@ async function getGames(): Promise<GameNew[]> {
     .select(
       "appid, title, header_image, videos, screenshots, short_description, long_description, raw, created_at, updated_at, suggested_game_appids"
     )
-    .limit(100);
+    .limit(1000);
 
   if (error) {
     console.error("Error loading games:", error);
@@ -18,13 +18,17 @@ async function getGames(): Promise<GameNew[]> {
 
   // Sort by number of suggestions (most first), then by created_at as tiebreaker
   const sorted = (games || []).sort((a, b) => {
-    const aCount = Array.isArray(a.suggested_game_appids) ? a.suggested_game_appids.length : 0;
-    const bCount = Array.isArray(b.suggested_game_appids) ? b.suggested_game_appids.length : 0;
-    
+    const aCount = Array.isArray(a.suggested_game_appids)
+      ? a.suggested_game_appids.length
+      : 0;
+    const bCount = Array.isArray(b.suggested_game_appids)
+      ? b.suggested_game_appids.length
+      : 0;
+
     if (bCount !== aCount) {
       return bCount - aCount; // Most suggestions first
     }
-    
+
     // Tiebreaker: most recently created first
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
@@ -47,7 +51,8 @@ export default async function Home() {
           {games.length === 0 ? (
             <div className="container mx-auto max-w-7xl w-full">
               <p className="text-muted-foreground">
-                No games ingested yet. Click "Add Game" in the navbar to get started.
+                No games ingested yet. Click &quot;Add Game&quot; in the navbar
+                to get started.
               </p>
             </div>
           ) : (
