@@ -5,13 +5,7 @@ import { fetchSteamGame } from "./steam";
 const SONAR_MODEL = "perplexity/sonar-pro";
 
 export type SuggestGamesResult = {
-  result: string; // Original text from Perplexity (for reference)
   validatedAppIds: number[]; // Validated and corrected app IDs
-  usage?: {
-    inputTokens: number;
-    outputTokens: number;
-    totalTokens: number;
-  };
 };
 
 export type ParsedSuggestion = {
@@ -100,9 +94,8 @@ Each line must have: game title (comma), Steam app ID number (comma), brief expl
     }
   );
 
-  console.log("[SUGGEST] Response received:");
+  console.log("[SUGGEST] Response received");
   console.log("[SUGGEST] Raw text:", result.text);
-  console.log("[SUGGEST] Usage:", JSON.stringify(result.usage, null, 2));
 
   // Parse and validate app IDs
   const parsed = parseSuggestions(result.text);
@@ -110,26 +103,7 @@ Each line must have: game title (comma), Steam app ID number (comma), brief expl
 
   console.log("[SUGGEST] Validated app IDs:", validatedAppIds);
 
-  return {
-    result: result.text,
-    validatedAppIds,
-    usage: result.usage
-      ? {
-          inputTokens:
-            (result.usage as any).promptTokens ??
-            (result.usage as any).inputTokens ??
-            0,
-          outputTokens:
-            (result.usage as any).completionTokens ??
-            (result.usage as any).outputTokens ??
-            0,
-          totalTokens:
-            (result.usage as any).totalTokens ??
-            ((result.usage as any).promptTokens ?? 0) +
-              ((result.usage as any).completionTokens ?? 0),
-        }
-      : undefined,
-  };
+  return { validatedAppIds };
 }
 
 /**

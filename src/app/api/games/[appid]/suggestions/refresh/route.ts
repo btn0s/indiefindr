@@ -53,9 +53,7 @@ export async function POST(
     const { error: saveError } = await supabase
       .from("games_new")
       .update({
-        suggestions_result_text: suggestions.result,
         suggested_game_appids: suggestions.validatedAppIds,
-        suggestions_usage_stats: suggestions.usage || null,
         updated_at: new Date().toISOString(),
       })
       .eq("appid", appId);
@@ -66,7 +64,6 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      suggestions: suggestions.result,
       validatedAppIds: suggestions.validatedAppIds,
     });
   } catch (error) {
