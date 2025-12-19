@@ -1,17 +1,14 @@
-import Link from "next/link";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import GameCard from "@/components/GameCard";
 import { supabase } from "@/lib/supabase/server";
 import { GameNew, ParsedSuggestionItem } from "@/lib/supabase/types";
 import { suggestGames } from "@/lib/suggest";
-import { fetchSteamGame, type SteamGameData } from "@/lib/steam";
+import { fetchSteamGame } from "@/lib/steam";
 
 interface SuggestionsListProps {
   appid: number;
@@ -312,45 +309,17 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     games = (gamesData || []) as GameNew[];
   }
 
-  // Also try to find games by title for suggestions without app IDs
-  const suggestionsWithoutAppIds = suggestions.filter((s) => !s.appId && s.title);
-  if (suggestionsWithoutAppIds.length > 0) {
-    const titleSearchPromises = suggestionsWithoutAppIds.map(async (suggestion) => {
-      const { data } = await supabase
-        .from("games_new")
-        .select("*")
-        .ilike("title", `%${suggestion.title}%`)
-        .limit(1)
-        .maybeSingle();
-
-      return data;
-    });
-
-    const titleMatches = (await Promise.all(titleSearchPromises)).filter(
-      (game): game is GameNew => game !== null
-    );
-    games = [...games, ...titleMatches];
-  }
-
   // Create a map of games by appid for quick lookup
   const gamesMap = new Map<number, GameNew>();
-  // Also create a map by title (case-insensitive) for fallback matching
-  const gamesByTitleMap = new Map<string, GameNew>();
   for (const game of games) {
     gamesMap.set(game.appid, game);
-    if (game.title) {
-      gamesByTitleMap.set(game.title.toLowerCase(), game);
-    }
   }
 
   return (
     <div className="grid grid-cols-3 gap-6">
       {suggestions.map((item, index) => {
-        // Try to find game by app ID first, then by title
-        let gameData = item.appId ? gamesMap.get(item.appId) : null;
-        if (!gameData && item.title) {
-          gameData = gamesByTitleMap.get(item.title.toLowerCase()) || null;
-        }
+        // Find game by app ID
+        const gameData = item.appId ? gamesMap.get(item.appId) : null;
 
         return (
           <div key={index} className="flex flex-col">
