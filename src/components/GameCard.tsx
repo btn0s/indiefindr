@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef, memo } from "react";
+import { track } from "@vercel/analytics";
 import Hls from "hls.js";
 import type { GameNew } from "@/lib/supabase/types";
 
@@ -106,8 +107,19 @@ function GameCard({
     }
   }, [shouldLoadVideo, hasVideo, videoUrl, isHls]);
 
+  const handleCardClick = () => {
+    track("game_card_click", {
+      appid: appid.toString(),
+      title,
+    });
+  };
+
   return (
-    <Link href={`/games/${appid}`} className="block">
+    <Link
+      href={`/games/${appid}`}
+      className="block"
+      onClick={handleCardClick}
+    >
       <div ref={cardRef}>
         <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
           {/* Always render image as base layer */}

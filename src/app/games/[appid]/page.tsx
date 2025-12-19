@@ -2,12 +2,11 @@ import { notFound } from "next/navigation";
 import { Suspense, cache } from "react";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/Navbar";
-import { Button } from "@/components/ui/button";
 import { GameVideo } from "@/components/GameVideo";
 import { SuggestionsList } from "@/components/SuggestionsList";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { RefreshSuggestionsButton } from "@/components/RefreshSuggestionsButton";
-import { ArrowUpRight } from "lucide-react";
+import { SteamButton } from "@/components/SteamButton";
 import { supabase } from "@/lib/supabase/server";
 
 type GameData = {
@@ -203,18 +202,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
             </p>
           )}
 
-          <Button className="w-fit mt-1 sm:mt-0" size="sm">
-            <a
-              href={`https://store.steampowered.com/app/${appid}/`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1"
-            >
-              <span className="hidden sm:inline">View on Steam</span>
-              <span className="sm:hidden">Steam</span>
-              <ArrowUpRight className="size-3" />
-            </a>
-          </Button>
+          <SteamButton appid={appid} title={gameData.title} />
         </div>
       </div>
 
