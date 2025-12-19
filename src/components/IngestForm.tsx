@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DialogClose } from "@/components/ui/dialog";
+import { IngestingDialog } from "@/components/IngestingDialog";
 
 interface IngestFormProps {
   onSuccess?: () => void;
@@ -47,6 +48,10 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
   const [steamUrl, setSteamUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ingestingGame, setIngestingGame] = useState<{
+    title?: string;
+    image?: string | null;
+  } | null>(null);
 
   const handleIngest = async () => {
     if (!steamUrl.trim()) {
@@ -72,6 +77,9 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
       }
 
       // Game doesn't exist, proceed with ingestion
+      // Show loading dialog
+      setIngestingGame({ title: "Loading game info...", image: null });
+
       const response = await fetch("/api/games/submit", {
         method: "POST",
         headers: {
@@ -83,8 +91,15 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        setIngestingGame(null);
         throw new Error(data.error || "Failed to ingest game");
       }
+
+      // Update dialog with actual game info
+      setIngestingGame({
+        title: data.title || "Game",
+        image: data.steamData?.header_image || null,
+      });
 
       setSteamUrl("");
       onSuccess?.();
@@ -99,12 +114,19 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
       setLoading(false);
+      setIngestingGame(null);
     }
     // Note: Don't set loading to false here if navigating, as the component will unmount
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+      <IngestingDialog
+        open={!!ingestingGame}
+        gameTitle={ingestingGame?.title}
+        gameImage={ingestingGame?.image}
+      />
+      <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Input
           type="text"
@@ -132,5 +154,6 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
         </Button>
       </div>
     </div>
+    </>
   );
 }

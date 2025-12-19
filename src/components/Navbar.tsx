@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { IngestForm } from "@/components/IngestForm";
+import { IngestingDialog } from "@/components/IngestingDialog";
 
 interface SearchResult {
   appid: number;
@@ -31,6 +32,10 @@ export function Navbar() {
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [ingestingAppId, setIngestingAppId] = useState<number | null>(null);
+  const [ingestingGame, setIngestingGame] = useState<{
+    title?: string;
+    image?: string | null;
+  } | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +109,11 @@ export function Navbar() {
     } else {
       // Game doesn't exist, ingest it first
       setIngestingAppId(result.appid);
+      setIngestingGame({
+        title: result.title,
+        image: result.header_image,
+      });
+
       try {
         const steamUrl = `https://store.steampowered.com/app/${result.appid}/`;
         const response = await fetch("/api/games/submit", {
@@ -117,14 +127,21 @@ export function Navbar() {
         const data = await response.json();
 
         if (response.ok && data.success) {
+          // Update with actual game data if available
+          setIngestingGame({
+            title: data.title || result.title,
+            image: data.steamData?.header_image || result.header_image,
+          });
           router.push(`/games/${result.appid}`);
         } else {
           console.error("Failed to ingest game:", data.error);
+          setIngestingGame(null);
           // Still navigate - the game might exist now or we'll show an error page
           router.push(`/games/${result.appid}`);
         }
       } catch (error) {
         console.error("Error ingesting game:", error);
+        setIngestingGame(null);
         // Still navigate - the game might exist now or we'll show an error page
         router.push(`/games/${result.appid}`);
       } finally {
@@ -134,7 +151,13 @@ export function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+    <>
+      <IngestingDialog
+        open={!!ingestingGame}
+        gameTitle={ingestingGame?.title}
+        gameImage={ingestingGame?.image}
+      />
+      <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="container mx-auto max-w-4xl flex h-14 items-center gap-4 px-4 w-full">
         {/* Logo/Brand */}
         <Link href="/" className="flex items-center gap-2 font-bold text-lg">
@@ -257,5 +280,6 @@ export function Navbar() {
         </Dialog>
       </div>
     </nav>
+    </>
   );
 }
