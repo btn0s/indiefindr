@@ -62,61 +62,55 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
     setLoading(true);
     setError(null);
 
+    // Parse the appId first
+    const appId = parseSteamUrl(steamUrl.trim());
+    
+    if (!appId) {
+      setError("Invalid Steam URL");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // First, check if the game already exists
-      const appId = parseSteamUrl(steamUrl.trim());
-      if (appId) {
-        const checkResponse = await fetch(`/api/games/${appId}`);
-        if (checkResponse.ok) {
-          // Game exists, redirect immediately
-          setSteamUrl("");
-          onSuccess?.();
-          router.push(`/games/${appId}`);
-          return;
-        }
+      // Check if the game already exists
+      const checkResponse = await fetch(`/api/games/${appId}`);
+      if (checkResponse.ok) {
+        // Game exists, redirect immediately
+        setSteamUrl("");
+        onSuccess?.();
+        router.push(`/games/${appId}`);
+        return;
       }
 
-      // Game doesn't exist, proceed with ingestion
-      // Show loading dialog
+      // Game doesn't exist, show loading dialog and navigate immediately
       setIngestingGame({ title: "Loading game info...", image: null });
 
-      const response = await fetch("/api/games/submit", {
+      // Start ingestion in background (don't await full response)
+      fetch("/api/games/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ steamUrl: steamUrl.trim() }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        setIngestingGame(null);
-        throw new Error(data.error || "Failed to ingest game");
-      }
-
-      // Update dialog with actual game info
-      setIngestingGame({
-        title: data.title || "Game",
-        image: data.steamData?.header_image || null,
-      });
+      })
+        .then((response) => response.json())
+        .catch((error) => {
+          console.error("Error ingesting game:", error);
+        })
+        .finally(() => {
+          setIngestingGame(null);
+        });
 
       setSteamUrl("");
       onSuccess?.();
 
-      // Navigate immediately to the game detail page
-      if (data.appid) {
-        router.push(`/games/${data.appid}`);
-      } else {
-        // Fallback: refresh the page to show updated games list
-        router.refresh();
-      }
+      // Navigate immediately - game page will fetch from Steam API if not in DB yet
+      router.push(`/games/${appId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
       setLoading(false);
       setIngestingGame(null);
     }
-    // Note: Don't set loading to false here if navigating, as the component will unmount
   };
 
   return (

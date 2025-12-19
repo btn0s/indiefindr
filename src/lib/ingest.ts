@@ -20,7 +20,7 @@ export type IngestResult = {
  *
  * @param steamUrl - Steam store URL or app ID
  * @param skipSuggestions - If true, only fetch Steam data (no Perplexity call)
- * @returns Promise resolving to Steam data and suggestions
+ * @returns Promise resolving to Steam data and suggestions (suggestions may be empty if generated in background)
  */
 export async function ingest(
   steamUrl: string,
@@ -50,17 +50,29 @@ export async function ingest(
     console.log("[INGEST] Saving to database:", steamData.appid);
     await saveSteamData(steamData);
 
-    // Step 2: Generate suggestions (if not skipped)
-    if (skipSuggestions) {
-      console.log("[INGEST] Skipping suggestions for:", steamData.title);
-      return { steamData, suggestions: { suggestions: [] } };
+    // Step 2: Generate suggestions in background (if not skipped)
+    if (!skipSuggestions && steamData.screenshots?.length) {
+      // Run suggestions generation in background - don't await
+      generateSuggestionsInBackground(steamData).catch((err) => {
+        console.error("[INGEST] Background suggestions error:", err);
+      });
     }
 
-    if (!steamData.screenshots?.length) {
-      throw new Error(`No screenshots available for game ${steamData.appid}`);
-    }
+    // Return immediately with Steam data (suggestions will be generated in background)
+    return { steamData, suggestions: { suggestions: [] } };
+  } finally {
+    if (appId) ingestingGames.delete(appId);
+  }
+}
 
-    console.log("[INGEST] Generating suggestions for:", steamData.title);
+/**
+ * Generate suggestions for a game in the background.
+ * This is called after steam data is saved so the user can navigate immediately.
+ */
+async function generateSuggestionsInBackground(steamData: SteamGameData): Promise<void> {
+  console.log("[INGEST] Generating suggestions in background for:", steamData.title);
+  
+  try {
     const textContext = buildTextContext(
       steamData.title,
       steamData.short_description,
@@ -71,15 +83,38 @@ export async function ingest(
     console.log("[INGEST] Saving suggestions for:", steamData.appid);
     await saveSuggestions(steamData.appid, suggestions.suggestions);
 
-    // Step 3: Auto-ingest missing suggested games (background)
+    // Auto-ingest missing suggested games (also in background)
     const suggestedAppIds = suggestions.suggestions.map((s) => s.appId);
     autoIngestMissingGames(suggestedAppIds).catch((err) => {
       console.error("[INGEST] Background auto-ingest error:", err);
     });
 
-    return { steamData, suggestions };
-  } finally {
-    if (appId) ingestingGames.delete(appId);
+    console.log("[INGEST] Background suggestions complete for:", steamData.appid);
+  } catch (err) {
+    console.error("[INGEST] Failed to generate suggestions for:", steamData.appid, err);
+  }
+}
+
+// ============================================================================
+// CORE: Clear suggestions for a game (dev-only force regeneration)
+// ============================================================================
+
+/**
+ * Clear all suggestions for a game. Used for force-regenerating suggestions.
+ *
+ * @param appId - The game's Steam app ID
+ */
+export async function clearSuggestions(appId: number): Promise<void> {
+  const { error } = await supabase
+    .from("games_new")
+    .update({
+      suggested_game_appids: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("appid", appId);
+
+  if (error) {
+    throw new Error(`Failed to clear suggestions: ${error.message}`);
   }
 }
 
@@ -89,7 +124,7 @@ export async function ingest(
 
 /**
  * Generate new suggestions for an existing game and merge with existing ones.
- * Also auto-ingests missing suggested games and creates bidirectional links.
+ * Also auto-ingests missing suggested games.
  *
  * @param appId - The game's Steam app ID
  * @returns Promise resolving to merged suggestions

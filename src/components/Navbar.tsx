@@ -107,46 +107,35 @@ export function Navbar() {
       // Game exists in database, navigate directly
       router.push(`/games/${result.appid}`);
     } else {
-      // Game doesn't exist, ingest it first
+      // Game doesn't exist, start ingestion and navigate immediately
+      // We already have the appId from search, so we can navigate right away
       setIngestingAppId(result.appid);
       setIngestingGame({
         title: result.title,
         image: result.header_image,
       });
 
-      try {
-        const steamUrl = `https://store.steampowered.com/app/${result.appid}/`;
-        const response = await fetch("/api/games/submit", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ steamUrl }),
+      // Start ingestion in background (don't await)
+      const steamUrl = `https://store.steampowered.com/app/${result.appid}/`;
+      fetch("/api/games/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ steamUrl }),
+      })
+        .then((response) => response.json())
+        .catch((error) => {
+          console.error("Error ingesting game:", error);
+        })
+        .finally(() => {
+          setIngestingAppId(null);
+          setIngestingGame(null);
         });
 
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-          // Update with actual game data if available
-          setIngestingGame({
-            title: data.title || result.title,
-            image: data.steamData?.header_image || result.header_image,
-          });
-          router.push(`/games/${result.appid}`);
-        } else {
-          console.error("Failed to ingest game:", data.error);
-          setIngestingGame(null);
-          // Still navigate - the game might exist now or we'll show an error page
-          router.push(`/games/${result.appid}`);
-        }
-      } catch (error) {
-        console.error("Error ingesting game:", error);
-        setIngestingGame(null);
-        // Still navigate - the game might exist now or we'll show an error page
-        router.push(`/games/${result.appid}`);
-      } finally {
-        setIngestingAppId(null);
-      }
+      // Navigate immediately - the game page will show loading state
+      // and poll for data as it becomes available
+      router.push(`/games/${result.appid}`);
     }
   };
 

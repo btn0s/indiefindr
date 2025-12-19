@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RotateCcw } from "lucide-react";
+
+const IS_DEV = process.env.NODE_ENV === "development";
 
 interface RefreshSuggestionsButtonProps {
   appid: string;
@@ -16,12 +18,16 @@ export function RefreshSuggestionsButton({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleRefresh = async () => {
+  const handleRefresh = async (force = false) => {
     setRefreshing(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/games/${appid}/suggestions/refresh`, {
+      const url = force
+        ? `/api/games/${appid}/suggestions/refresh?force=true`
+        : `/api/games/${appid}/suggestions/refresh`;
+
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,21 +62,37 @@ export function RefreshSuggestionsButton({
   };
 
   return (
-    <>
+    <div className="flex items-center gap-2">
       <Button
-        onClick={handleRefresh}
+        onClick={() => handleRefresh(false)}
         disabled={refreshing}
         variant="outline"
         size="sm"
       >
-        {refreshing ? "Loading..." : "Load more"}
-        <Plus className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
+        {refreshing ? "Refreshing..." : "Refresh"}
+        <RotateCcw
+          className={`size-3 text-muted-foreground ${
+            refreshing ? "animate-spin" : ""
+          }`}
+        />
       </Button>
+      {IS_DEV && (
+        <Button
+          onClick={() => handleRefresh(true)}
+          disabled={refreshing}
+          variant="destructive"
+          size="sm"
+          title="Force regenerate (clears existing suggestions)"
+        >
+          Force refresh
+          <RotateCcw className={`size-3 ${refreshing ? "animate-spin" : ""}`} />
+        </Button>
+      )}
       {error && (
-        <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+        <div className="p-2 bg-destructive/10 border border-destructive/20 rounded-md">
           <p className="text-destructive text-sm">{error}</p>
         </div>
       )}
-    </>
+    </div>
   );
 }
