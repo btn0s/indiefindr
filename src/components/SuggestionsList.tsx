@@ -7,7 +7,7 @@ import {
 import GameCard from "@/components/GameCard";
 import { supabase } from "@/lib/supabase/server";
 import { GameNew, Suggestion } from "@/lib/supabase/types";
-import { autoIngestMissingGames } from "@/lib/ingest";
+import { autoIngestMissingGames, refreshSuggestions } from "@/lib/ingest";
 
 interface SuggestionsListProps {
   appid: number;
@@ -21,21 +21,27 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     .eq("appid", appid)
     .maybeSingle();
 
-  const suggestions: Suggestion[] = gameData?.suggested_game_appids || [];
+  let suggestions: Suggestion[] = gameData?.suggested_game_appids || [];
   const gameTitle = gameData?.title || "";
 
-  // No suggestions? Show empty state with prompt to load
+  // No suggestions? Generate them now (Suspense streams this in)
   if (!suggestions || suggestions.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Similar Games</CardTitle>
-          <CardDescription>
-            Click &quot;Load more&quot; to discover similar games.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
+    try {
+      const result = await refreshSuggestions(appid);
+      suggestions = result.suggestions;
+    } catch (err) {
+      console.error("[SUGGESTIONS LIST] Failed to generate suggestions:", err);
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Similar Games</CardTitle>
+            <CardDescription>
+              Couldn&apos;t generate suggestions. Try the &quot;Load more&quot; button.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      );
+    }
   }
 
   // Extract app IDs for fetching

@@ -1,15 +1,26 @@
+import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function SuggestionsSkeleton() {
   return (
-    <div className="grid grid-cols-3 gap-6">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="flex flex-col">
-          <Skeleton className="w-full aspect-video mb-2" />
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-3 w-full mt-2" />
-        </div>
-      ))}
+    <div className="flex flex-col gap-4">
+      <Alert>
+        <Loader2 className="size-4 animate-spin" />
+        <AlertTitle>Finding similar games</AlertTitle>
+        <AlertDescription>
+          We&apos;re analyzing this game to find recommendations. This may take a minute.
+        </AlertDescription>
+      </Alert>
+      <div className="grid grid-cols-3 gap-6">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="flex flex-col">
+            <Skeleton className="w-full aspect-video mb-2" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-full mt-2" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
