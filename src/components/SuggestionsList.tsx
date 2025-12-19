@@ -11,7 +11,6 @@ import { supabase } from "@/lib/supabase/server";
 import { GameNew } from "@/lib/supabase/types";
 import { suggestGames } from "@/lib/suggest";
 import { fetchSteamGame } from "@/lib/steam";
-import { SortableSuggestionsGrid } from "@/components/SortableSuggestionsGrid";
 
 interface SuggestionsListProps {
   appid: number;
@@ -92,10 +91,18 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
         );
         const suggestions = await suggestGames(firstScreenshot, textContext);
 
-        // Merge new suggestions with existing ones (new ones go to front, deduplicated)
+        // Find games that already suggest this game (bidirectional linking)
+        const { data: reverseLinks } = await supabase
+          .from("games_new")
+          .select("appid")
+          .contains("suggested_game_appids", [appid]);
+
+        const reverseLinkAppIds = (reverseLinks || []).map((g) => g.appid);
+
+        // Merge: new suggestions + reverse links + existing (deduplicated)
         const existingAppIds: number[] = gameData.suggested_game_appids || [];
         const newAppIds = suggestions.validatedAppIds;
-        const mergedAppIds = [...new Set([...newAppIds, ...existingAppIds])];
+        const mergedAppIds = [...new Set([...newAppIds, ...reverseLinkAppIds, ...existingAppIds])];
 
         // Save validated app IDs to DB cache
         await supabase
@@ -105,6 +112,28 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
             updated_at: new Date().toISOString(),
           })
           .eq("appid", appid);
+
+        // Add this game to each suggested game's list (make it bidirectional)
+        for (const suggestedAppId of newAppIds) {
+          const { data: suggestedGame } = await supabase
+            .from("games_new")
+            .select("suggested_game_appids")
+            .eq("appid", suggestedAppId)
+            .maybeSingle();
+
+          if (suggestedGame) {
+            const theirSuggestions: number[] = suggestedGame.suggested_game_appids || [];
+            if (!theirSuggestions.includes(appid)) {
+              await supabase
+                .from("games_new")
+                .update({
+                  suggested_game_appids: [...theirSuggestions, appid],
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("appid", suggestedAppId);
+            }
+          }
+        }
 
         suggestedAppIds = mergedAppIds;
       }
@@ -176,27 +205,19 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     );
   }
 
-  // Separate cached games (sortable) from missing games (streamed)
-  const missingAppIds = renderItems
-    .filter((item) => item.type === "missing")
-    .map((item) => (item as { type: "missing"; appId: number }).appId);
-
-  // Render: sortable grid for cached games, then stream missing ones
+  // Render all games in suggested order, streaming missing ones
   return (
-    <div className="space-y-6">
-      <SortableSuggestionsGrid
-        games={cachedGames}
-        suggestedOrder={suggestedAppIds}
-      />
-      {missingAppIds.length > 0 && (
-        <div className="grid grid-cols-3 gap-6">
-          {missingAppIds.map((appId) => (
-            <Suspense key={appId} fallback={<GameCardSkeleton />}>
-              <StreamingGameCard appId={appId} />
-            </Suspense>
-          ))}
-        </div>
-      )}
+    <div className="grid grid-cols-3 gap-6">
+      {renderItems.map((item) => {
+        if (item.type === "cached") {
+          return <GameCard key={item.game.appid} {...item.game} />;
+        }
+        return (
+          <Suspense key={item.appId} fallback={<GameCardSkeleton />}>
+            <StreamingGameCard appId={item.appId} />
+          </Suspense>
+        );
+      })}
     </div>
   );
 }

@@ -49,10 +49,18 @@ export async function POST(
     console.log("[REFRESH SUGGESTIONS] Generating suggestions for:", gameData.title);
     const suggestions = await suggestGames(firstScreenshot, textContext);
 
-    // Merge new suggestions with existing ones (new ones go to front, deduplicated)
+    // Find games that already suggest this game (bidirectional linking)
+    const { data: reverseLinks } = await supabase
+      .from("games_new")
+      .select("appid")
+      .contains("suggested_game_appids", [appId]);
+
+    const reverseLinkAppIds = (reverseLinks || []).map((g) => g.appid);
+
+    // Merge: new suggestions + reverse links + existing (deduplicated)
     const existingAppIds: number[] = gameData.suggested_game_appids || [];
     const newAppIds = suggestions.validatedAppIds;
-    const mergedAppIds = [...new Set([...newAppIds, ...existingAppIds])];
+    const mergedAppIds = [...new Set([...newAppIds, ...reverseLinkAppIds, ...existingAppIds])];
 
     // Save to DB
     const { error: saveError } = await supabase
@@ -67,11 +75,34 @@ export async function POST(
       throw new Error(`Failed to save suggestions: ${saveError.message}`);
     }
 
+    // Add this game to each suggested game's list (make it bidirectional)
+    for (const suggestedAppId of newAppIds) {
+      const { data: suggestedGame } = await supabase
+        .from("games_new")
+        .select("suggested_game_appids")
+        .eq("appid", suggestedAppId)
+        .maybeSingle();
+
+      if (suggestedGame) {
+        const theirSuggestions: number[] = suggestedGame.suggested_game_appids || [];
+        if (!theirSuggestions.includes(appId)) {
+          await supabase
+            .from("games_new")
+            .update({
+              suggested_game_appids: [...theirSuggestions, appId],
+              updated_at: new Date().toISOString(),
+            })
+            .eq("appid", suggestedAppId);
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       validatedAppIds: mergedAppIds,
       newCount: newAppIds.length,
       totalCount: mergedAppIds.length,
+      reverseLinkCount: reverseLinkAppIds.length,
     });
   } catch (error) {
     console.error("[REFRESH SUGGESTIONS] Error:", error);
