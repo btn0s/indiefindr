@@ -1,15 +1,23 @@
 import { generateText } from "ai";
 import { retry } from "./utils/retry";
+import { fetchSteamGame } from "./steam";
 
 const SONAR_MODEL = "perplexity/sonar-pro";
 
 export type SuggestGamesResult = {
-  result: string;
+  result: string; // Original text from Perplexity (for reference)
+  validatedAppIds: number[]; // Validated and corrected app IDs
   usage?: {
     inputTokens: number;
     outputTokens: number;
     totalTokens: number;
   };
+};
+
+export type ParsedSuggestion = {
+  title: string;
+  appId: number | null;
+  explanation: string;
 };
 
 /**
@@ -95,10 +103,16 @@ Each line must have: game title (comma), Steam app ID number (comma), brief expl
   console.log("[SUGGEST] Response received:");
   console.log("[SUGGEST] Raw text:", result.text);
   console.log("[SUGGEST] Usage:", JSON.stringify(result.usage, null, 2));
-  console.log("[SUGGEST] Full response:", JSON.stringify(result, null, 2));
+
+  // Parse and validate app IDs
+  const parsed = parseSuggestions(result.text);
+  const validatedAppIds = await validateAndCorrectAppIds(parsed);
+
+  console.log("[SUGGEST] Validated app IDs:", validatedAppIds);
 
   return {
     result: result.text,
+    validatedAppIds,
     usage: result.usage
       ? {
           inputTokens:
@@ -116,4 +130,124 @@ Each line must have: game title (comma), Steam app ID number (comma), brief expl
         }
       : undefined,
   };
+}
+
+/**
+ * Parse suggestions text from Perplexity - expects format: title, steam_appid, explanation
+ */
+function parseSuggestions(text: string): ParsedSuggestion[] {
+  const items: ParsedSuggestion[] = [];
+
+  // Split by newlines
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.match(/^(title|example|format)/i)); // Skip header lines
+
+  for (const line of lines) {
+    // Parse format: title, steam_appid, explanation
+    // Handle commas that might be in the title or explanation by splitting carefully
+    const parts = line.split(",").map((p) => p.trim());
+    
+    if (parts.length >= 2) {
+      // Title is everything before the last 2 parts
+      const title = parts.slice(0, -2).join(", ").trim();
+      const appIdStr = parts[parts.length - 2];
+      const explanation = parts[parts.length - 1];
+      
+      const appId = parseInt(appIdStr, 10);
+      if (!isNaN(appId) && appId > 0 && title) {
+        items.push({
+          title,
+          appId,
+          explanation: explanation || "",
+        });
+      } else if (title) {
+        // Title but no valid app ID
+        items.push({
+          title,
+          appId: null,
+          explanation: explanation || "",
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Validate and correct app IDs from parsed suggestions.
+ * Tests each app ID, and if invalid, tries to find the correct one by searching.
+ */
+async function validateAndCorrectAppIds(
+  suggestions: ParsedSuggestion[]
+): Promise<number[]> {
+  const validatedAppIds: number[] = [];
+
+  for (const suggestion of suggestions) {
+    let appId = suggestion.appId;
+
+    // If no app ID, try searching by title
+    if (!appId && suggestion.title) {
+      appId = await searchAppIdByTitle(suggestion.title);
+    }
+
+    // If we have an app ID, validate it
+    if (appId) {
+      const isValid = await validateAppId(appId);
+      if (isValid) {
+        validatedAppIds.push(appId);
+      } else {
+        // Try to find correct app ID by title
+        console.log(
+          `[SUGGEST] App ID ${appId} invalid, searching for "${suggestion.title}"`
+        );
+        const correctedId = await searchAppIdByTitle(suggestion.title);
+        if (correctedId) {
+          validatedAppIds.push(correctedId);
+        }
+      }
+    }
+  }
+
+  return validatedAppIds;
+}
+
+/**
+ * Validate an app ID by trying to fetch it from Steam
+ */
+async function validateAppId(appId: number): Promise<boolean> {
+  try {
+    await fetchSteamGame(appId.toString());
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Search for app ID by game title using Steam search API
+ */
+async function searchAppIdByTitle(title: string): Promise<number | null> {
+  try {
+    const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(title)}&cc=US&l=en`;
+    const searchResponse = await fetch(searchUrl);
+    
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json();
+      if (searchData.items && searchData.items.length > 0) {
+        const appId = searchData.items[0].id;
+        // Validate the found app ID
+        const isValid = await validateAppId(appId);
+        if (isValid) {
+          return appId;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(`[SUGGEST] Steam search failed for "${title}":`, error);
+  }
+  
+  return null;
 }
