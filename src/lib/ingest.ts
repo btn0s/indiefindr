@@ -130,9 +130,6 @@ export async function refreshSuggestions(appId: number): Promise<{
   // Save merged suggestions
   await saveSuggestions(appId, merged);
 
-  // Create bidirectional links
-  await createBidirectionalLinks(appId, result.suggestions);
-
   // Auto-ingest missing games (background)
   const missingAppIds = await findMissingGameIds(merged.map((s) => s.appId));
   if (missingAppIds.length > 0) {
@@ -307,43 +304,6 @@ async function saveSuggestions(appId: number, suggestions: Suggestion[]): Promis
 
   if (error) {
     throw new Error(`Failed to save suggestions: ${error.message}`);
-  }
-}
-
-async function createBidirectionalLinks(sourceAppId: number, suggestions: Suggestion[]): Promise<void> {
-  // Get source game title for the bidirectional link
-  const { data: sourceGame } = await supabase
-    .from("games_new")
-    .select("title")
-    .eq("appid", sourceAppId)
-    .single();
-
-  const sourceTitle = sourceGame?.title || "";
-
-  for (const suggestion of suggestions) {
-    const { data: targetGame } = await supabase
-      .from("games_new")
-      .select("suggested_game_appids")
-      .eq("appid", suggestion.appId)
-      .maybeSingle();
-
-    if (targetGame) {
-      const theirSuggestions: Suggestion[] = targetGame.suggested_game_appids || [];
-      const alreadyLinked = theirSuggestions.some((s) => s.appId === sourceAppId);
-
-      if (!alreadyLinked) {
-        await supabase
-          .from("games_new")
-          .update({
-            suggested_game_appids: [
-              ...theirSuggestions,
-              { appId: sourceAppId, title: sourceTitle, explanation: "Suggested by similar game" },
-            ],
-            updated_at: new Date().toISOString(),
-          })
-          .eq("appid", suggestion.appId);
-      }
-    }
   }
 }
 
