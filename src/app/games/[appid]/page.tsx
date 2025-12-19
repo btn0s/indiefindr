@@ -181,7 +181,7 @@ export default async function GameDetailPage({
         {/* Game Header */}
         <div className="flex gap-4 items-center">
           {gameData.header_image && (
-            <div className="w-1/3 aspect-video">
+            <div className="w-1/3 aspect-[460/215]">
               <Image
                 src={gameData.header_image}
                 alt={gameData.title}
@@ -197,7 +197,7 @@ export default async function GameDetailPage({
 
             {description && (
               <p className="text-muted-foreground line-clamp-4 text-sm mb-2">
-                {description.replace(/<[^>]*>/g, "").substring(0, 300)}
+                {description.replace(/<[^>]*>/g, "").substring(0, 200)}
                 {description.length > 300 ? "..." : ""}
               </p>
             )}

@@ -46,11 +46,21 @@ Return 8-12 similar Steam games in this EXACT format (one game per line):
 
 title, steam_appid, explanation
 
-IMPORTANT: Each explanation MUST explain WHY you chose this game - what makes it relate to the image/context. Examples:
-Counter-Strike 2, 730, Similar competitive FPS gameplay with tactical team-based combat
-Team Fortress 2, 440, Shares the same team-based shooter mechanics and class-based gameplay
-Dota 2, 570, Features similar MOBA gameplay and visual style with strategic depth
-Half-Life 2, 220, Because it offers the same immersive single-player FPS experience
+IMPORTANT: Each explanation MUST explain WHY you chose this game - what makes it relate to the image/context.
+
+TONE & TENSE: Write explanations in a friendly, conversational way. Always use present tense verbs (shares, features, matches, offers, brings, captures). Be consistent—every explanation should follow the same structure.
+
+Good examples (consistent present tense):
+Counter-Strike 2, 730, Shares the same competitive FPS gameplay with tactical team-based combat
+Team Fortress 2, 440, Features team-based shooter mechanics and class-based gameplay
+Dota 2, 570, Offers similar strategic depth with MOBA gameplay and a matching visual style
+Half-Life 2, 220, Delivers the same immersive single-player FPS experience
+
+Bad examples (inconsistent tense - DO NOT USE):
+- "Similar competitive FPS gameplay..." (missing verb)
+- "Sharing the same mechanics..." (gerund instead of present tense)
+- "Because it offers..." (don't start with "because")
+- "closely matching the tone..." (gerund)
 
 Each line must have: game title (comma), Steam app ID number (comma), explanation that explains WHY this game relates to the image/context. Use commas to separate the three fields.`;
 

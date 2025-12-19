@@ -142,7 +142,7 @@ function GameCard({
         </div>
         <div className="font-medium text-sm">{title}</div>
         {explanation && (
-          <div className="text-xs text-muted-foreground capitalize">
+          <div className="text-xs text-muted-foreground first-letter:uppercase">
             {explanation}
           </div>
         )}
