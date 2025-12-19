@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  ingestSteamGame,
-  quickIngestSteamGame,
-} from "@/lib/ingest/ingestSteamGame";
+import { ingest } from "@/lib/ingest";
 
 /**
  * @deprecated This endpoint is deprecated. Use /api/submit instead.
@@ -17,28 +14,18 @@ export async function POST(request: NextRequest) {
   const headers = new Headers();
   headers.set("X-Deprecated", "true");
   headers.set("X-Deprecated-Message", "Use /api/submit instead");
+  
   try {
     const body = await request.json();
     const { steamUrl, steamUrls } = body;
 
     // Single ingest (backward compatible)
     if (steamUrl && typeof steamUrl === "string") {
-      // Use quick ingest for immediate response, then continue processing in background
-      const quickResult = await quickIngestSteamGame(steamUrl);
-      if ("error" in quickResult) {
-        return NextResponse.json({ error: quickResult.error }, { status: 500 });
-      }
-
-      // Start full ingestion in background (don't await)
-      ingestSteamGame(steamUrl).catch((err) => {
-        console.error(
-          `Background ingestion failed for ${quickResult.gameId}:`,
-          err
-        );
-      });
-
-      // Return immediately with gameId for navigation
-      return NextResponse.json({ gameId: quickResult.gameId });
+      const result = await ingest(steamUrl);
+      return NextResponse.json(
+        { gameId: result.steamData.appid },
+        { headers }
+      );
     }
 
     // Batch ingest
@@ -54,22 +41,22 @@ export async function POST(request: NextRequest) {
       if (uniqueUrls.length === 0) {
         return NextResponse.json(
           { error: "steamUrls must contain at least one valid URL" },
-          { status: 400 }
+          { status: 400, headers }
         );
       }
 
       const settled = await Promise.allSettled(
-        uniqueUrls.map((url) => ingestSteamGame(url))
+        uniqueUrls.map((url) => ingest(url))
       );
 
       const results = settled.map((entry, index) => {
         const url = uniqueUrls[index];
         if (entry.status === "fulfilled") {
-          const value = entry.value;
-          if ("error" in value) {
-            return { url, success: false, error: value.error, jobId: value.jobId };
-          }
-          return { url, success: true, jobId: value.jobId, gameId: value.gameId };
+          return {
+            url,
+            success: true,
+            gameId: entry.value.steamData.appid,
+          };
         }
         return {
           url,
@@ -84,21 +71,27 @@ export async function POST(request: NextRequest) {
       const successCount = results.filter((r) => r.success).length;
       const failureCount = results.length - successCount;
 
-      return NextResponse.json({
-        message: `Processed ${results.length} urls`,
-        successCount,
-        failureCount,
-        results,
-      });
+      return NextResponse.json(
+        {
+          message: `Processed ${results.length} urls`,
+          successCount,
+          failureCount,
+          results,
+        },
+        { headers }
+      );
     }
 
     return NextResponse.json(
       { error: "steamUrl (string) or steamUrls (array) is required" },
-      { status: 400 }
+      { status: 400, headers }
     );
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: 500, headers }
+    );
   }
 }

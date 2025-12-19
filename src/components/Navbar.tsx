@@ -24,7 +24,7 @@ export function Navbar() {
   >([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // Handle search input with debounce
@@ -156,7 +156,7 @@ export function Navbar() {
 
         {/* Add Game Button */}
         <Dialog>
-          <DialogTrigger asChild>
+          <DialogTrigger>
             <Button size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Game
