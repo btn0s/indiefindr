@@ -46,12 +46,13 @@ Return 8-12 similar Steam games in this EXACT format (one game per line):
 
 title, steam_appid, explanation
 
-Example:
-Counter-Strike 2, 730, Similar competitive FPS gameplay
-Team Fortress 2, 440, Same team-based shooter mechanics
-Dota 2, 570, Similar MOBA gameplay and visual style
+IMPORTANT: Each explanation MUST explain WHY you chose this game - what makes it relate to the image/context. Examples:
+Counter-Strike 2, 730, Similar competitive FPS gameplay with tactical team-based combat
+Team Fortress 2, 440, Shares the same team-based shooter mechanics and class-based gameplay
+Dota 2, 570, Features similar MOBA gameplay and visual style with strategic depth
+Half-Life 2, 220, Because it offers the same immersive single-player FPS experience
 
-Each line must have: game title (comma), Steam app ID number (comma), brief explanation of similarities. Use commas to separate the three fields.`;
+Each line must have: game title (comma), Steam app ID number (comma), explanation that explains WHY this game relates to the image/context. Use commas to separate the three fields.`;
 
   // Prepare the message content with image
   // Handle both base64 and URLs
