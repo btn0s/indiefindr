@@ -5,6 +5,27 @@ import { Button } from "@/components/ui/button";
 import { GameVideo } from "@/components/GameVideo";
 import { ArrowLeftIcon, ArrowUpRight } from "lucide-react";
 import { fetchSteamGame } from "@/lib/steam";
+import { supabase } from "@/lib/supabase/server";
+import type { Suggestion } from "@/lib/supabase/types";
+
+async function getSuggestion(appid: number): Promise<Suggestion | null> {
+  const { data, error } = await supabase
+    .from("suggestions")
+    .select("*")
+    .eq("steam_appid", appid)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      // No rows returned
+      return null;
+    }
+    console.error("Error fetching suggestion:", error);
+    return null;
+  }
+
+  return data as Suggestion;
+}
 
 export default async function GameDetailPage({
   params,
@@ -28,6 +49,9 @@ export default async function GameDetailPage({
 
   const description =
     gameData.long_description || gameData.short_description || null;
+
+  // Fetch suggestions for this game
+  const suggestion = await getSuggestion(appId);
 
   return (
     <div className="min-h-screen">
@@ -91,6 +115,18 @@ export default async function GameDetailPage({
             </Button>
           </div>
         </div>
+
+        {/* Suggestions Section */}
+        {suggestion && (
+          <div className="flex flex-col gap-4 mt-8">
+            <h2 className="text-xl font-semibold">Similar Games</h2>
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <div className="whitespace-pre-wrap text-muted-foreground">
+                {suggestion.result_text}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
