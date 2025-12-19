@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { RelatedGamesSection } from "@/components/RelatedGamesSection";
 import { RerunButton } from "@/components/RerunButton";
 import { ManualSimilarEditor } from "@/components/ManualSimilarEditor";
+import { GameVideo } from "@/components/GameVideo";
 import { supabase } from "@/lib/supabase/server";
 import type { Game } from "@/lib/supabase/types";
 import { ArrowLeftIcon } from "lucide-react";
@@ -115,17 +116,29 @@ export default async function GameDetailPage({
 
         <h1 className="text-2xl font-semibold">Games like {game.name}</h1>
 
+        {/* Trailer Video - Full Width */}
+        <div className="w-full aspect-video">
+          <GameVideo
+            videos={game.videos}
+            headerImage={game.header_image}
+            alt={game.name}
+            className="w-full h-full"
+          />
+        </div>
+
         {/* Game Header */}
         <div className="flex gap-4">
           {game.header_image && (
-            <Image
-              src={game.header_image}
-              alt={game.name}
-              width={460}
-              height={215}
-              className="aspect-video w-1/3 object-cover rounded-lg"
-              unoptimized
-            />
+            <div className="w-1/3 aspect-video">
+              <Image
+                src={game.header_image}
+                alt={game.name}
+                width={460}
+                height={215}
+                className="w-full h-full object-cover rounded-lg"
+                unoptimized
+              />
+            </div>
           )}
           <div className="flex-1 flex flex-col gap-2">
             <div className="flex flex-col gap-1">
