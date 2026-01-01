@@ -3,18 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Plus } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { IngestForm } from "@/components/IngestForm";
 import { IngestingDialog } from "@/components/IngestingDialog";
 
 interface SearchResult {
@@ -90,7 +81,7 @@ export function Navbar() {
 
   // Close results when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handlePointerDownOutside = (event: PointerEvent) => {
       if (
         resultsRef.current &&
         !resultsRef.current.contains(event.target as Node)
@@ -99,9 +90,9 @@ export function Navbar() {
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("pointerdown", handlePointerDownOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
     };
   }, []);
 
@@ -153,16 +144,19 @@ export function Navbar() {
         gameImage={ingestingGame?.image}
       />
       <nav className="sticky top-0 z-50 w-full border-b bg-background">
-        <div className="container mx-auto max-w-4xl flex h-14 items-center gap-4 px-4 w-full">
+        <div className="container mx-auto max-w-4xl flex h-14 items-center gap-3 px-4 w-full">
           {/* Logo/Brand */}
-          <Link href="/" className="flex items-center gap-2 font-bold text-lg">
+          <Link
+            href="/"
+            className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg"
+          >
             IndieFindr
           </Link>
 
           {/* Search */}
           <div className="relative flex-1" ref={resultsRef}>
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search games..."
@@ -173,13 +167,30 @@ export function Navbar() {
                     setShowResults(true);
                   }
                 }}
-                className="pl-8"
+                className="h-10 pr-10 pl-9 sm:h-8"
               />
+              {searchQuery.trim().length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setDbResults([]);
+                    setSteamResults([]);
+                    setShowResults(false);
+                  }}
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
 
             {/* Search Results Dropdown */}
             {showResults && (
-              <div className="absolute top-full left-0 right-0 mt-1 max-h-96 overflow-y-auto rounded-md border bg-background shadow-lg">
+              <div className="fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b bg-background shadow-lg sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96 sm:rounded-md sm:border">
                 {isSearching ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     Searching...
@@ -193,7 +204,7 @@ export function Navbar() {
                           <button
                             key={`db-${game.appid}`}
                             onClick={() => handleResultClick(game)}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors sm:py-2"
                           >
                             {game.header_image && (
                               <img
@@ -222,7 +233,7 @@ export function Navbar() {
                         key={`steam-${game.appid}`}
                         onClick={() => handleResultClick(game)}
                         disabled={ingestingAppId === game.appid}
-                        className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait sm:py-2"
                       >
                         {game.header_image && (
                           <img
@@ -254,20 +265,6 @@ export function Navbar() {
               </div>
             )}
           </div>
-
-          {/* Add Game Button */}
-          <Dialog>
-            <DialogTrigger render={<Button>Add Game</Button>} />
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add a Game</DialogTitle>
-                <DialogDescription>
-                  Paste a Steam link to ingest game data and find similar games.
-                </DialogDescription>
-              </DialogHeader>
-              <IngestForm />
-            </DialogContent>
-          </Dialog>
         </div>
       </nav>
     </>

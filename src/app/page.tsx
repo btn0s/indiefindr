@@ -53,8 +53,8 @@ export default async function Home() {
           {games.length === 0 ? (
             <div className="container mx-auto max-w-7xl w-full">
               <p className="text-muted-foreground">
-                No games ingested yet. Click &quot;Add Game&quot; in the navbar
-                to get started.
+                No games ingested yet. Search for a game above to add your first
+                one.
               </p>
             </div>
           ) : (
