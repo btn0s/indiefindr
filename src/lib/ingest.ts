@@ -1,6 +1,6 @@
 import { fetchSteamGame, searchAppIdByTitle, type SteamGameData } from "./steam";
 import { suggestGames, type SuggestGamesResult } from "./suggest";
-import { supabase } from "./supabase/server";
+import { getSupabaseServerClient } from "./supabase/server";
 import { Suggestion } from "./supabase/types";
 
 // Track games currently being ingested to prevent duplicate concurrent ingestion
@@ -99,6 +99,7 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
  * @param appId - The game's Steam app ID
  */
 export async function clearSuggestions(appId: number): Promise<void> {
+  const supabase = getSupabaseServerClient();
   const { error } = await supabase
     .from("games_new")
     .update({
@@ -129,6 +130,7 @@ export async function refreshSuggestions(appId: number): Promise<{
   missingAppIds: number[];
   missingCount: number;
 }> {
+  const supabase = getSupabaseServerClient();
   // Fetch game data
   const { data: gameData, error } = await supabase
     .from("games_new")
@@ -179,6 +181,7 @@ export async function refreshSuggestions(appId: number): Promise<{
  * Find which app IDs don't exist in the database.
  */
 export async function findMissingGameIds(appIds: number[]): Promise<number[]> {
+  const supabase = getSupabaseServerClient();
   if (!appIds.length) return [];
 
   const { data: existing } = await supabase
@@ -238,6 +241,7 @@ export async function autoIngestMissingGames(appIds: number[]): Promise<void> {
  * If correction fails, removes the suggestion entirely.
  */
 async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<void> {
+  const supabase = getSupabaseServerClient();
   try {
     // Find all games that have this invalid suggestion
     const { data: gamesWithSuggestion } = await supabase
@@ -298,6 +302,7 @@ async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<v
 // ============================================================================
 
 async function saveSteamData(steamData: SteamGameData): Promise<void> {
+  const supabase = getSupabaseServerClient();
   const { error } = await supabase.from("games_new").upsert(
     {
       appid: steamData.appid,
@@ -319,6 +324,7 @@ async function saveSteamData(steamData: SteamGameData): Promise<void> {
 }
 
 async function saveSuggestions(appId: number, suggestions: Suggestion[]): Promise<void> {
+  const supabase = getSupabaseServerClient();
   const { error } = await supabase
     .from("games_new")
     .update({
@@ -357,6 +363,7 @@ function mergeSuggestions(existing: Suggestion[], incoming: Suggestion[]): Sugge
 }
 
 async function getExistingGame(appId: number): Promise<IngestResult | null> {
+  const supabase = getSupabaseServerClient();
   const { data: existing } = await supabase
     .from("games_new")
     .select("*")

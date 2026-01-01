@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { Suspense } from "react";
 import { ScrollToTopOnNavigation } from "@/components/ScrollToTopOnNavigation";
 import "./globals.css";
 
@@ -53,7 +54,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ScrollToTopOnNavigation />
+        <Suspense fallback={null}>
+          <ScrollToTopOnNavigation />
+        </Suspense>
         {children}
         <Analytics />
       </body>
