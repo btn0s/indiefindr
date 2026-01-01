@@ -146,8 +146,10 @@ export async function generateMetadata({
     };
   }
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://indiefindr.gg";
   const title = `Games like ${gameData.title} | IndieFindr`;
   const canonicalPath = `/games/${appid}`;
+  const canonicalUrl = `${siteUrl}${canonicalPath}`;
   const shortDesc = gameData.short_description ? stripHtml(gameData.short_description) : "";
   const cleanDescription = truncate(
     shortDesc
@@ -169,18 +171,27 @@ export async function generateMetadata({
     openGraph: {
       title,
       description: cleanDescription,
-      url: canonicalPath,
+      url: canonicalUrl,
       siteName: "IndieFindr",
       locale: "en_US",
       type: "website",
+      images: [
+        {
+          url: `${canonicalUrl}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: `Games like ${gameData.title}`,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: cleanDescription,
+      images: [`${canonicalUrl}/twitter-image`],
     },
     alternates: {
-      canonical: canonicalPath,
+      canonical: canonicalUrl,
     },
   };
 }
