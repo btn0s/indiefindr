@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import { ScrollToTopOnNavigation } from "@/components/ScrollToTopOnNavigation";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -52,6 +53,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ScrollToTopOnNavigation />
         {children}
         <Analytics />
       </body>
