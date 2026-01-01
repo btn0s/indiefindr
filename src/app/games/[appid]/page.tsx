@@ -3,7 +3,7 @@ import { Suspense, cache } from "react";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/Navbar";
 import { GameVideo } from "@/components/GameVideo";
-import { SuggestionsListClient } from "@/components/SuggestionsListClient";
+import { SuggestionsList } from "@/components/SuggestionsList";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { SteamButton } from "@/components/SteamButton";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -88,6 +88,39 @@ const getGameDataFromDb = cache(async (appId: number): Promise<GameData | null> 
   return waitForGameInDb(appId);
 });
 
+function stripHtml(input: string): string {
+  return input.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+}
+
+function truncate(input: string, maxLen: number): string {
+  if (input.length <= maxLen) return input;
+  return input.slice(0, Math.max(0, maxLen - 1)).trimEnd() + "…";
+}
+
+/**
+ * Fast DB fetch for metadata generation (never waits for background ingest).
+ */
+async function getGameDataFromDbFast(appId: number): Promise<GameData | null> {
+  const supabase = getSupabaseServerClient();
+  const { data: dbGame } = await supabase
+    .from("games_new")
+    .select("appid, title, header_image, short_description, long_description, screenshots, videos")
+    .eq("appid", appId)
+    .maybeSingle();
+
+  if (!dbGame || !dbGame.title) return null;
+
+  return {
+    appid: dbGame.appid,
+    title: dbGame.title,
+    header_image: dbGame.header_image,
+    short_description: dbGame.short_description,
+    long_description: dbGame.long_description,
+    screenshots: dbGame.screenshots || [],
+    videos: dbGame.videos || [],
+  };
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -102,42 +135,52 @@ export async function generateMetadata({
     };
   }
 
-  // Use cached DB fetch (deduped with page component)
-  // We don't want metadata to wait 15s though, so maybe a shorter check here?
-  // But for now let's keep it consistent.
-  const gameData = await getGameDataFromDb(appId);
+  // Keep metadata fast: never block on background ingest retries.
+  const gameData = await getGameDataFromDbFast(appId);
 
   if (!gameData || !gameData.title) {
     return {
       title: "Game Not Found",
       description: "Discover similar indie games with matching gameplay, style, and themes.",
+      robots: { index: false, follow: false },
     };
   }
 
-  const cleanDescription = `Looking for games like ${gameData.title}? Discover similar indie games with matching gameplay, style, and themes.`;
-  const title = `Games like ${gameData.title}`;
-  const url = `/games/${appid}`;
+  const title = `Games like ${gameData.title} | IndieFindr`;
+  const canonicalPath = `/games/${appid}`;
+  const shortDesc = gameData.short_description ? stripHtml(gameData.short_description) : "";
+  const cleanDescription = truncate(
+    shortDesc
+      ? `Discover games like ${gameData.title}. ${shortDesc}`
+      : `Discover games like ${gameData.title} — similar indie games with matching gameplay, style, and themes.`,
+    160
+  );
 
   return {
     title,
     description: cleanDescription,
+    keywords: [
+      gameData.title,
+      `games like ${gameData.title}`,
+      `games similar to ${gameData.title}`,
+      "indie games",
+      "game recommendations",
+    ],
     openGraph: {
       title,
       description: cleanDescription,
-      url,
+      url: canonicalPath,
       siteName: "IndieFindr",
       locale: "en_US",
       type: "website",
-      images: gameData.header_image ? [gameData.header_image] : undefined,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: cleanDescription,
-      images: gameData.header_image ? [gameData.header_image] : undefined,
     },
     alternates: {
-      canonical: url,
+      canonical: canonicalPath,
     },
   };
 }
@@ -152,17 +195,19 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
   }
 
   const description = gameData.short_description || null;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://indiefindr.gg";
+  const canonicalUrl = `${siteUrl}/games/${appid}`;
+  const steamUrl = `https://store.steampowered.com/app/${appid}/`;
 
   // Structured data for SEO
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "VideoGame",
     name: gameData.title,
-    description: description
-      ? description.replace(/<[^>]*>/g, "").substring(0, 500)
-      : undefined,
+    description: description ? truncate(stripHtml(description), 500) : undefined,
     image: gameData.header_image || undefined,
-    url: `https://store.steampowered.com/app/${appid}/`,
+    url: canonicalUrl,
+    sameAs: steamUrl,
     gamePlatform: "Steam",
     applicationCategory: "Game",
   };
@@ -202,8 +247,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
 
           {description && (
             <p className="text-muted-foreground line-clamp-4 text-sm mb-2">
-              {description.replace(/<[^>]*>/g, "").substring(0, 200)}
-              {description.length > 300 ? "..." : ""}
+              {truncate(stripHtml(description), 220)}
             </p>
           )}
 
@@ -221,7 +265,9 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
             Games similar to {gameData.title}
           </h2>
         </div>
-        <SuggestionsListClient appid={appId} />
+        <Suspense fallback={<SuggestionsSkeleton showNotice={false} />}>
+          <SuggestionsList appid={appId} />
+        </Suspense>
       </div>
     </>
   );
