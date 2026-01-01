@@ -44,7 +44,8 @@ export async function POST(
       suggestions: result.suggestions,
       newCount: result.newCount,
       totalCount: result.suggestions.length,
-      queuedForIngestion: result.queuedForIngestion,
+      missingCount: result.missingCount,
+      missingAppIds: result.missingAppIds,
       forced: force,
     });
   } catch (error) {

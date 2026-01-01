@@ -3,11 +3,11 @@ import { Suspense, cache } from "react";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/Navbar";
 import { GameVideo } from "@/components/GameVideo";
-import { SuggestionsList } from "@/components/SuggestionsList";
+import { SuggestionsListClient } from "@/components/SuggestionsListClient";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
-import { RefreshSuggestionsButton } from "@/components/RefreshSuggestionsButton";
 import { SteamButton } from "@/components/SteamButton";
 import { supabase } from "@/lib/supabase/server";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type GameData = {
   appid: number;
@@ -212,11 +212,8 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
           <h2 className="leading-none font-semibold">
             Games similar to {gameData.title}
           </h2>
-          <RefreshSuggestionsButton appid={appid} />
         </div>
-        <Suspense fallback={<SuggestionsSkeleton />}>
-          <SuggestionsList appid={appId} />
-        </Suspense>
+        <SuggestionsListClient appid={appId} />
       </div>
     </>
   );
@@ -242,23 +239,23 @@ export default async function GameDetailPage({
           fallback={
             <>
               {/* Main content skeleton */}
-              <div className="h-8 w-64 bg-muted animate-pulse rounded" />
-              <div className="w-full aspect-video bg-muted animate-pulse rounded" />
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="w-full aspect-video" />
               <div className="flex gap-3 sm:gap-4 items-center mb-4">
                 <div className="flex-1 flex flex-col min-w-0 gap-2">
-                  <div className="h-6 w-3/4 bg-muted animate-pulse rounded" />
-                  <div className="h-4 w-full bg-muted animate-pulse rounded" />
-                  <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
-                  <div className="h-8 w-32 mt-2 bg-muted animate-pulse rounded" />
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-8 w-32 mt-2" />
                 </div>
               </div>
               {/* Suggestions section skeleton */}
               <div className="flex flex-col gap-2">
                 <div className="flex sm:items-center justify-between gap-2">
-                  <div className="h-6 w-48 bg-muted animate-pulse rounded" />
-                  <div className="h-9 w-32 bg-muted animate-pulse rounded" />
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-9 w-32" />
                 </div>
-                <SuggestionsSkeleton />
+                <SuggestionsSkeleton showNotice={false} />
               </div>
             </>
           }

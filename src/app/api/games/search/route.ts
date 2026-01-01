@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 
+type SteamStoreSearchItem = {
+  id: number;
+  name: string;
+  type?: string;
+  tiny_image?: string | null;
+  small_image?: string | null;
+};
+
+type SteamStoreSearchResponse = {
+  items?: SteamStoreSearchItem[];
+};
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -45,22 +57,22 @@ export async function GET(request: NextRequest) {
       });
 
       if (steamResponse.ok) {
-        const steamData = await steamResponse.json();
-        const steamResults =
-          steamData.items
-            ?.filter(
-              (item: any) =>
-                item.type !== "dlc" &&
-                !item.type?.toLowerCase().includes("dlc") &&
-                !item.name?.toLowerCase().includes("dlc")
-            )
-            .slice(0, 10)
-            .map((item: any) => ({
-              appid: item.id,
-              title: item.name,
-              header_image: item.tiny_image || item.small_image || null,
-              inDatabase: false,
-            })) || [];
+        const steamData = (await steamResponse.json()) as SteamStoreSearchResponse;
+        const items = Array.isArray(steamData.items) ? steamData.items : [];
+
+        const steamResults = items
+          .filter((item) => {
+            const type = item.type?.toLowerCase() || "";
+            const name = item.name?.toLowerCase() || "";
+            return type !== "dlc" && !type.includes("dlc") && !name.includes("dlc");
+          })
+          .slice(0, 10)
+          .map((item) => ({
+            appid: item.id,
+            title: item.name,
+            header_image: item.tiny_image || item.small_image || null,
+            inDatabase: false,
+          }));
 
         return NextResponse.json({ db: [], steam: steamResults });
       }

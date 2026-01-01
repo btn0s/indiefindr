@@ -83,12 +83,6 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
     console.log("[INGEST] Saving suggestions for:", steamData.appid);
     await saveSuggestions(steamData.appid, suggestions.suggestions);
 
-    // Auto-ingest missing suggested games (also in background)
-    const suggestedAppIds = suggestions.suggestions.map((s) => s.appId);
-    autoIngestMissingGames(suggestedAppIds).catch((err) => {
-      console.error("[INGEST] Background auto-ingest error:", err);
-    });
-
     console.log("[INGEST] Background suggestions complete for:", steamData.appid);
   } catch (err) {
     console.error("[INGEST] Failed to generate suggestions for:", steamData.appid, err);
@@ -132,7 +126,8 @@ export async function clearSuggestions(appId: number): Promise<void> {
 export async function refreshSuggestions(appId: number): Promise<{
   suggestions: Suggestion[];
   newCount: number;
-  queuedForIngestion: number;
+  missingAppIds: number[];
+  missingCount: number;
 }> {
   // Fetch game data
   const { data: gameData, error } = await supabase
@@ -165,19 +160,14 @@ export async function refreshSuggestions(appId: number): Promise<{
   // Save merged suggestions
   await saveSuggestions(appId, merged);
 
-  // Auto-ingest missing games (background)
+  // Surface missing app IDs so the UI can hydrate incrementally (avoids large cascades).
   const missingAppIds = await findMissingGameIds(merged.map((s) => s.appId));
-  if (missingAppIds.length > 0) {
-    console.log(`[REFRESH] Queueing ${missingAppIds.length} missing games for ingestion`);
-    autoIngestMissingGames(missingAppIds).catch((err) => {
-      console.error("[REFRESH] Background auto-ingest error:", err);
-    });
-  }
 
   return {
     suggestions: merged,
     newCount: result.suggestions.length,
-    queuedForIngestion: missingAppIds.length,
+    missingAppIds,
+    missingCount: missingAppIds.length,
   };
 }
 

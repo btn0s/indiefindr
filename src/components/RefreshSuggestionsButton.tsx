@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Plus, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -11,6 +11,13 @@ interface RefreshSuggestionsButtonProps {
   appid: string;
 }
 
+/**
+ * @deprecated This UX is being phased out.
+ *
+ * This was originally intended to be a "load more" control (append/mix in more
+ * recommendations) and will be reintroduced at the *bottom* of the suggestions
+ * list once that flow is designed. For now, suggestions auto-generate/stream.
+ */
 export function RefreshSuggestionsButton({
   appid,
 }: RefreshSuggestionsButtonProps) {
