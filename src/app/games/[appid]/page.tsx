@@ -6,7 +6,7 @@ import { GameVideo } from "@/components/GameVideo";
 import { SuggestionsListClient } from "@/components/SuggestionsListClient";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { SteamButton } from "@/components/SteamButton";
-import { supabase } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type GameData = {
@@ -28,6 +28,7 @@ async function waitForGameInDb(
   maxAttempts = 15, // Increased attempts for longer wait if needed
   delayMs = 1000   // 1s delay
 ): Promise<GameData | null> {
+  const supabase = getSupabaseServerClient();
   for (let i = 0; i < maxAttempts; i++) {
     const { data: dbGame } = await supabase
       .from("games_new")
@@ -61,6 +62,7 @@ async function waitForGameInDb(
  * Uses cache() to dedupe requests within the same render.
  */
 const getGameDataFromDb = cache(async (appId: number): Promise<GameData | null> => {
+  const supabase = getSupabaseServerClient();
   const { data: dbGame } = await supabase
     .from("games_new")
     .select(

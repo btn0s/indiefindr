@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ appid: string }> }
 ) {
   try {
+    const supabase = getSupabaseServerClient();
     const { appid } = await params;
     const appId = parseInt(appid, 10);
 

@@ -1,11 +1,12 @@
 "use server";
 
-import { supabase } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { GameNew } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 24;
 
 export async function loadMoreGames(offset: number): Promise<GameNew[]> {
+  const supabase = getSupabaseServerClient();
   const { data: games, error } = await supabase
     .from("games_new")
     .select(

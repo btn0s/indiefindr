@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { supabase } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Suggestion, GameNew } from "@/lib/supabase/types";
 
 export const alt = "Game suggestions grid";
@@ -14,6 +14,7 @@ export default async function Image({
 }: {
   params: Promise<{ appid: string }>;
 }) {
+  const supabase = getSupabaseServerClient();
   const { appid } = await params;
   const appId = parseInt(appid, 10);
 

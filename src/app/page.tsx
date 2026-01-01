@@ -1,11 +1,14 @@
-import { supabase } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/Navbar";
 import { GamesGrid } from "@/components/GamesGrid";
 import { GameNew } from "@/lib/supabase/types";
 
+export const dynamic = "force-dynamic";
+
 const PAGE_SIZE = 24;
 
 async function getGames(): Promise<GameNew[]> {
+  const supabase = getSupabaseServerClient();
   const { data: games, error } = await supabase
     .from("games_new")
     .select(

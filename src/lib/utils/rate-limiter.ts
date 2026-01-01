@@ -3,7 +3,7 @@
  * Ensures minimum delay between requests to external APIs.
  */
 
-import { supabase } from "../supabase/server";
+import { getSupabaseServerClient } from "../supabase/server";
 
 const DEFAULT_DELAY_MS = 2000; // 2 seconds between requests
 
@@ -21,6 +21,7 @@ export async function acquireRateLimit(
   key: string = "steam_api",
   minDelayMs: number = DEFAULT_DELAY_MS
 ): Promise<void> {
+  const supabase = getSupabaseServerClient();
   const maxRetries = 30; // Max wait time = 30 * 100ms = 3 seconds of polling
   const pollIntervalMs = 100;
 

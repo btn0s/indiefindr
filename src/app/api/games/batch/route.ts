@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 type Body = {
   appids?: unknown;
@@ -7,6 +7,7 @@ type Body = {
 
 export async function POST(request: Request) {
   try {
+    const supabase = getSupabaseServerClient();
     const body = (await request.json()) as Body;
     const appids = body.appids;
 

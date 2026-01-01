@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 type SteamStoreSearchItem = {
   id: number;
@@ -15,6 +15,7 @@ type SteamStoreSearchResponse = {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseServerClient();
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q");
 

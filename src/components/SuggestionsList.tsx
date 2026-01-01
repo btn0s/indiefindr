@@ -5,7 +5,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import GameCard from "@/components/GameCard";
-import { supabase } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameNew, Suggestion } from "@/lib/supabase/types";
 import { autoIngestMissingGames, refreshSuggestions } from "@/lib/ingest";
 
@@ -21,6 +21,7 @@ async function waitForGameInDb(
   maxAttempts = 15,
   delayMs = 1000
 ): Promise<{ title: string | null; suggested_game_appids: Suggestion[] | null } | null> {
+  const supabase = getSupabaseServerClient();
   for (let i = 0; i < maxAttempts; i++) {
     const { data: gameData } = await supabase
       .from("games_new")
@@ -40,6 +41,7 @@ async function waitForGameInDb(
 }
 
 export async function SuggestionsList({ appid }: SuggestionsListProps) {
+  const supabase = getSupabaseServerClient();
   // Fetch suggestions from cache, waiting for game to exist if needed
   // (handles race condition where ingest is still running in background)
   let gameData = await supabase
