@@ -2,7 +2,13 @@ import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export function SuggestionsSkeleton({ showNotice = false }: { showNotice?: boolean }) {
+export function SuggestionsSkeleton({
+  showNotice = false,
+  count = 6,
+}: {
+  showNotice?: boolean;
+  count?: number;
+}) {
   return (
     <div className="flex flex-col gap-4">
       {showNotice && (
@@ -18,7 +24,7 @@ export function SuggestionsSkeleton({ showNotice = false }: { showNotice?: boole
         </Alert>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-        {Array.from({ length: 6 }).map((_, index) => (
+        {Array.from({ length: count }).map((_, index) => (
           <div key={index} className="flex flex-col">
             <Skeleton className="w-full aspect-steam mb-2" />
             <Skeleton className="h-4 w-3/4" />
