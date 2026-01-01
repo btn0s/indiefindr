@@ -5,7 +5,6 @@ import { Navbar } from "@/components/Navbar";
 import { GameVideo } from "@/components/GameVideo";
 import { SuggestionsListClient } from "@/components/SuggestionsListClient";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
-import { RefreshSuggestionsButton } from "@/components/RefreshSuggestionsButton";
 import { SteamButton } from "@/components/SteamButton";
 import { supabase } from "@/lib/supabase/server";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -213,7 +212,6 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
           <h2 className="leading-none font-semibold">
             Games similar to {gameData.title}
           </h2>
-          <RefreshSuggestionsButton appid={appid} />
         </div>
         <SuggestionsListClient appid={appId} />
       </div>
