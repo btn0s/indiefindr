@@ -16,12 +16,14 @@ type SuggestionsResponse = {
 
 const POLL_MS = 2000;
 const MAX_AUTO_INGEST = 6;
+const SLOW_NOTICE_MS = 3500;
 
 export function SuggestionsListClient({ appid }: { appid: number }) {
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [gamesById, setGamesById] = useState<Record<number, GameNew>>({});
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSlowNotice, setShowSlowNotice] = useState(false);
 
   const requestedSuggestRef = useRef(false);
   const requestedIngestRef = useRef<Set<number>>(new Set());
@@ -119,6 +121,23 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     generatingRef.current = generating;
   }, [generating]);
 
+  // Only show the "this may take a minute" notice if we're still loading after a few seconds.
+  useEffect(() => {
+    const isLoading =
+      suggestions === null ||
+      (suggestions.length === 0 && generating) ||
+      missingAppIds.length > 0;
+
+    if (!isLoading) {
+      setShowSlowNotice(false);
+      return;
+    }
+
+    setShowSlowNotice(false);
+    const t = setTimeout(() => setShowSlowNotice(true), SLOW_NOTICE_MS);
+    return () => clearTimeout(t);
+  }, [suggestions, generating, missingAppIds.length]);
+
   // Poll suggestions + hydrate games (fast, incremental, avoids server-render blocking).
   useEffect(() => {
     let cancelled = false;
@@ -196,7 +215,7 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
 
   // Initial loading
   if (suggestions === null) {
-    return <SuggestionsSkeleton />;
+    return <SuggestionsSkeleton showNotice={showSlowNotice} />;
   }
 
   // No suggestions yet (still generating / waiting)
@@ -227,7 +246,7 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
 
   // Suggestions exist, but we might still be hydrating details.
   if (missingAppIds.length > 0) {
-    return <SuggestionsSkeleton />;
+    return <SuggestionsSkeleton showNotice={showSlowNotice} />;
   }
 
   return (
