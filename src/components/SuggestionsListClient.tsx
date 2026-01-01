@@ -5,7 +5,6 @@ import GameCard from "@/components/GameCard";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { GameNew, Suggestion } from "@/lib/supabase/types";
 
 type SuggestionsResponse = {
@@ -19,7 +18,6 @@ const POLL_MS = 2000;
 const MAX_AUTO_INGEST = 6;
 
 export function SuggestionsListClient({ appid }: { appid: number }) {
-  const [gameTitle, setGameTitle] = useState<string>("");
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [gamesById, setGamesById] = useState<Record<number, GameNew>>({});
   const [generating, setGenerating] = useState(false);
@@ -130,8 +128,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
         const s = await fetchSuggestions();
         if (cancelled) return;
 
-        setGameTitle(s.title || "");
-
         const updatedAtChanged =
           lastUpdatedAtRef.current === null || lastUpdatedAtRef.current !== s.updatedAt;
         lastUpdatedAtRef.current = s.updatedAt;
@@ -230,40 +226,20 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   }
 
   // Suggestions exist, but we might still be hydrating details.
+  if (missingAppIds.length > 0) {
+    return <SuggestionsSkeleton />;
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      {missingAppIds.length > 0 && (
-        <div className="text-sm text-muted-foreground">
-          Loading details for {missingAppIds.length} of {suggestions.length}…
-        </div>
-      )}
-
       {displayGames.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {displayGames.map((game) => (
             <GameCard key={game.appid} {...game} />
           ))}
-
-          {/* Render lightweight placeholders for missing items to keep layout stable */}
-          {missingAppIds.slice(0, 6).map((id) => (
-            <div key={id} className="flex flex-col">
-              <Skeleton className="w-full aspect-steam mb-2" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-full mt-2" />
-            </div>
-          ))}
         </div>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Similar Games</CardTitle>
-            <CardDescription>
-              {gameTitle
-                ? `${suggestions.length} suggestions found for ${gameTitle}, loading details…`
-                : `${suggestions.length} suggestions found, loading details…`}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <SuggestionsSkeleton />
       )}
 
       {error && (
