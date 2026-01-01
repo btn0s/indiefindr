@@ -83,7 +83,8 @@ export function GameVideo({
         video.src = videoUrl;
         video.addEventListener('loadedmetadata', setStartTime, { once: true });
       } else {
-        setVideoError(true);
+        // Defer state update to avoid cascading renders in effect
+        setTimeout(() => setVideoError(true), 0);
       }
     } else {
       // Regular video format

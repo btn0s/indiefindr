@@ -7,7 +7,7 @@ export interface RetryOptions {
   initialDelayMs?: number;
   maxDelayMs?: number;
   backoffMultiplier?: number;
-  retryable?: (error: any) => boolean;
+  retryable?: (error: unknown) => boolean;
 }
 
 const DEFAULT_OPTIONS: Required<RetryOptions> = {
@@ -15,27 +15,32 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
   initialDelayMs: 1000,
   maxDelayMs: 10000,
   backoffMultiplier: 2,
-  retryable: (error: any) => {
+  retryable: (error: unknown) => {
+    const err = error as {
+      message?: string;
+      status?: number;
+      response?: { status?: number };
+    };
     // Retry on network errors, 5xx errors, and rate limits
-    if (error instanceof TypeError && error.message.includes('fetch')) {
+    if (error instanceof TypeError && error.message.includes("fetch")) {
       return true; // Network error
     }
-    if (error?.response?.status) {
-      const status = error.response.status;
+    if (err?.response?.status) {
+      const status = err.response.status;
       return status >= 500 || status === 429; // Server error or rate limit
     }
-    if (error?.status) {
-      return error.status >= 500 || error.status === 429;
+    if (err?.status) {
+      return err.status >= 500 || err.status === 429;
     }
     // Retry on common error messages
-    const errorMessage = error?.message?.toLowerCase() || '';
+    const errorMessage = err?.message?.toLowerCase() || "";
     return (
-      errorMessage.includes('timeout') ||
-      errorMessage.includes('network') ||
-      errorMessage.includes('econnreset') ||
-      errorMessage.includes('etimedout') ||
-      errorMessage.includes('rate limit') ||
-      errorMessage.includes('too many requests')
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("network") ||
+      errorMessage.includes("econnreset") ||
+      errorMessage.includes("etimedout") ||
+      errorMessage.includes("rate limit") ||
+      errorMessage.includes("too many requests")
     );
   },
 };
@@ -55,7 +60,7 @@ export async function retry<T>(
   options: RetryOptions = {}
 ): Promise<T> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
-  let lastError: any;
+  let lastError: unknown;
   let delay = opts.initialDelayMs;
 
   for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {

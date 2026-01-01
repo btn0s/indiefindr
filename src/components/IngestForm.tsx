@@ -77,6 +77,7 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
       if (checkResponse.ok) {
         // Game exists, redirect immediately
         setSteamUrl("");
+        setLoading(false);
         onSuccess?.();
         router.push(`/games/${appId}`);
         return;
@@ -91,7 +92,8 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ steamUrl: steamUrl.trim() }),
+        // Only ingest Steam data here; generate suggestions on the game page.
+        body: JSON.stringify({ steamUrl: steamUrl.trim(), skipSuggestions: true }),
       });
 
       const result = await response.json();
@@ -114,6 +116,7 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
       setSteamUrl("");
       setIngestingGame(null);
       onSuccess?.();
+      setLoading(false);
 
       // Navigate after ingest is complete
       router.push(`/games/${appId}`);

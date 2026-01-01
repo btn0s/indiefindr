@@ -3,7 +3,7 @@ import { Suspense, cache } from "react";
 import type { Metadata } from "next";
 import { Navbar } from "@/components/Navbar";
 import { GameVideo } from "@/components/GameVideo";
-import { SuggestionsList } from "@/components/SuggestionsList";
+import { SuggestionsListClient } from "@/components/SuggestionsListClient";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { RefreshSuggestionsButton } from "@/components/RefreshSuggestionsButton";
 import { SteamButton } from "@/components/SteamButton";
@@ -214,9 +214,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
           </h2>
           <RefreshSuggestionsButton appid={appid} />
         </div>
-        <Suspense fallback={<SuggestionsSkeleton />}>
-          <SuggestionsList appid={appId} />
-        </Suspense>
+        <SuggestionsListClient appid={appId} />
       </div>
     </>
   );
