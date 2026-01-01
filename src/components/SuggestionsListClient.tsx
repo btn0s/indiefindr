@@ -220,6 +220,11 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
 
   // No suggestions yet (still generating / waiting)
   if (suggestions.length === 0) {
+    if (generating) {
+      // Show a few skeleton cards while generation runs (and only show the notice after a short delay).
+      return <SuggestionsSkeleton showNotice={showSlowNotice} count={4} />;
+    }
+
     return (
       <Card>
         <CardHeader>
