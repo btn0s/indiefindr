@@ -21,6 +21,7 @@ export function Navbar() {
   const [dbResults, setDbResults] = useState<SearchResult[]>([]);
   const [steamResults, setSteamResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [ingestingAppId, setIngestingAppId] = useState<number | null>(null);
   const [ingestingGame, setIngestingGame] = useState<{
@@ -28,6 +29,8 @@ export function Navbar() {
     image?: string | null;
   } | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // Handle search input with debounce
@@ -36,23 +39,52 @@ export function Navbar() {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (searchQuery.trim().length === 0) {
+    // Cancel any in-flight request when the query changes
+    abortRef.current?.abort();
+    abortRef.current = null;
+    requestIdRef.current += 1;
+
+    const trimmedQuery = searchQuery.trim();
+
+    if (trimmedQuery.length === 0) {
       setDbResults([]);
       setSteamResults([]);
       setShowResults(false);
+      setIsSearching(false);
+      setHasSearched(false);
       return;
     }
 
-    if (searchQuery.trim().length < 2) {
+    // Show dropdown immediately as user types (snappier UX)
+    setShowResults(true);
+
+    if (trimmedQuery.length < 2) {
+      setDbResults([]);
+      setSteamResults([]);
+      setIsSearching(false);
+      setHasSearched(false);
       return;
     }
+
+    // Show loading immediately (even during debounce)
+    setIsSearching(true);
+    setHasSearched(false);
+
+    const requestIdAtSchedule = requestIdRef.current;
 
     searchTimeoutRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setIsSearching(true);
       try {
         const response = await fetch(
-          `/api/games/search?q=${encodeURIComponent(searchQuery.trim())}`
+          `/api/games/search?q=${encodeURIComponent(trimmedQuery)}`,
+          { signal: controller.signal }
         );
+        if (requestIdAtSchedule !== requestIdRef.current) {
+          return;
+        }
         if (response.ok) {
           const data = await response.json();
           setDbResults(data.db || []);
@@ -66,9 +98,14 @@ export function Navbar() {
           });
         }
       } catch (error) {
+        if (controller.signal.aborted) return;
         console.error("Search error:", error);
       } finally {
+        if (requestIdAtSchedule !== requestIdRef.current) {
+          return;
+        }
         setIsSearching(false);
+        setHasSearched(true);
       }
     }, 300);
 
@@ -163,7 +200,7 @@ export function Navbar() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => {
-                  if (dbResults.length > 0 || steamResults.length > 0) {
+                  if (searchQuery.trim().length > 0) {
                     setShowResults(true);
                   }
                 }}
@@ -191,7 +228,11 @@ export function Navbar() {
             {/* Search Results Dropdown */}
             {showResults && (
               <div className="fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b bg-background shadow-lg sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96 sm:rounded-md sm:border">
-                {isSearching ? (
+                {searchQuery.trim().length < 2 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Keep typing to search…
+                  </div>
+                ) : isSearching ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     Searching...
                   </div>
@@ -257,9 +298,13 @@ export function Navbar() {
                       </button>
                     ))}
                   </div>
-                ) : (
+                ) : hasSearched ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     No games found
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Searching...
                   </div>
                 )}
               </div>
