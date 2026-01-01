@@ -239,7 +239,7 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
       )}
 
       {displayGames.length > 0 ? (
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {displayGames.map((game) => (
             <GameCard key={game.appid} {...game} />
           ))}
@@ -247,7 +247,7 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
           {/* Render lightweight placeholders for missing items to keep layout stable */}
           {missingAppIds.slice(0, 6).map((id) => (
             <div key={id} className="flex flex-col">
-              <Skeleton className="w-full aspect-video mb-2" />
+              <Skeleton className="w-full aspect-steam mb-2" />
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-full mt-2" />
             </div>
