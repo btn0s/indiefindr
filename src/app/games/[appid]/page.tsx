@@ -172,7 +172,10 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <h1 className="text-xl sm:text-2xl font-semibold">
+      <h1
+        className="text-xl sm:text-2xl font-semibold leading-snug text-balance line-clamp-2"
+        title={`Games like ${gameData.title}`}
+      >
         Games like {gameData.title}
       </h1>
 
@@ -189,7 +192,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
       )}
 
       {/* Game Header */}
-      <div className="flex gap-3 sm:gap-4 items-center mb-4">
+      <div className="flex gap-3 sm:gap-4 items-center">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="text-sm sm:text-lg font-semibold truncate sm:whitespace-normal">
             {gameData.title}
@@ -207,9 +210,12 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
       </div>
 
       {/* Suggestions Section - Nested Suspense */}
-      <div className="flex flex-col gap-2">
-        <div className="flex sm:items-center justify-between gap-2">
-          <h2 className="leading-none font-semibold">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start sm:items-center justify-between gap-3">
+          <h2
+            className="flex-1 min-w-0 text-base sm:text-lg font-semibold leading-snug text-balance line-clamp-2"
+            title={`Games similar to ${gameData.title}`}
+          >
             Games similar to {gameData.title}
           </h2>
         </div>
@@ -250,10 +256,9 @@ export default async function GameDetailPage({
                 </div>
               </div>
               {/* Suggestions section skeleton */}
-              <div className="flex flex-col gap-2">
-                <div className="flex sm:items-center justify-between gap-2">
-                  <Skeleton className="h-6 w-48" />
-                  <Skeleton className="h-9 w-32" />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start sm:items-center justify-between gap-3">
+                  <Skeleton className="h-6 w-64 max-w-full" />
                 </div>
                 <SuggestionsSkeleton showNotice={false} />
               </div>
