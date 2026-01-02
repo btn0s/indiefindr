@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/Navbar";
 import { GamesGrid } from "@/components/GamesGrid";
@@ -6,6 +7,53 @@ import { GameNew } from "@/lib/supabase/types";
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 24;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
+  const canonicalUrl = `${siteUrl}/`;
+  const title = "Find Games Like Your Favorites — IndieFindr";
+  const description =
+    "Discover similar indie games on Steam. Search games, get AI-powered recommendations, and find your next favorite.";
+
+  return {
+    title,
+    description,
+    keywords: [
+      "games like",
+      "find games like",
+      "similar games",
+      "game recommendations",
+      "indie game recommendations",
+      "steam game recommendations",
+      "discover indie games",
+      "IndieFindr",
+    ],
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: "IndieFindr",
+      locale: "en_US",
+      type: "website",
+      images: [
+        {
+          url: `${siteUrl}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: "IndieFindr game discovery",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [`${siteUrl}/twitter-image`],
+    },
+  };
+}
 
 async function getGames(): Promise<GameNew[]> {
   const supabase = getSupabaseServerClient();

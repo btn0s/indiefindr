@@ -154,8 +154,8 @@ export async function generateMetadata({
   const shortDesc = gameData.short_description ? stripHtml(gameData.short_description) : "";
   const cleanDescription = truncate(
     shortDesc
-      ? `Discover games like ${gameData.title}. ${shortDesc}`
-      : `Discover games like ${gameData.title} — similar indie games with matching gameplay, style, and themes.`,
+      ? `Find games like ${gameData.title} on Steam. ${shortDesc}`
+      : `Find games like ${gameData.title} on Steam — similar indie games with matching gameplay, style, and themes.`,
     160
   );
 
@@ -166,8 +166,12 @@ export async function generateMetadata({
       gameData.title,
       `games like ${gameData.title}`,
       `games similar to ${gameData.title}`,
+      `games like ${gameData.title} on Steam`,
+      "similar games on Steam",
       "indie games",
       "game recommendations",
+      "indie game recommendations",
+      "discover indie games",
     ],
     openGraph: {
       title,

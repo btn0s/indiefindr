@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description:
-    "Find indie games similar to your favorites. Discover your next favorite game based on gameplay, style, and features.",
+    "Find games like your favorites. Discover similar indie games on Steam with AI-powered recommendations and explanations.",
   openGraph: {
     siteName: "IndieFindr",
     locale: "en_US",
