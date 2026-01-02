@@ -38,7 +38,23 @@ async function fetchImageAsDataUrl(url: string, timeoutMs = 1500): Promise<strin
   }
 }
 
-function fallbackImage(title = "IndieFindr", subtitle = "Discover similar games") {
+function placeholderGridImage() {
+  const tile = (key: string) => (
+    <div
+      key={key}
+      style={{
+        width: 350,
+        height: 200,
+        display: "flex",
+        borderRadius: 18,
+        overflow: "hidden",
+        backgroundColor: "#151515",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
+        border: "1px solid rgba(255,255,255,0.06)",
+      }}
+    />
+  );
+
   return new ImageResponse(
     (
       <div
@@ -46,28 +62,29 @@ function fallbackImage(title = "IndieFindr", subtitle = "Discover similar games"
           height: "100%",
           width: "100%",
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
           justifyContent: "center",
+          alignItems: "center",
           backgroundColor: "#0a0a0a",
-          color: "white",
-          padding: 64,
+          backgroundImage:
+            "radial-gradient(1200px 630px at 20% 0%, rgba(255,255,255,0.08), rgba(0,0,0,0)), radial-gradient(900px 500px at 100% 40%, rgba(124,58,237,0.16), rgba(0,0,0,0))",
+          padding: "52px 56px",
         }}
       >
         <div
           style={{
             display: "flex",
-            fontSize: 56,
-            fontWeight: 800,
-            letterSpacing: -1.2,
-            lineHeight: 1.05,
-            textAlign: "center",
+            flexWrap: "wrap",
+            gap: 16,
+            width: 3 * 350 + 2 * 16,
+            justifyContent: "center",
           }}
         >
-          {title}
-        </div>
-        <div style={{ display: "flex", fontSize: 24, color: "#bdbdbd", marginTop: 16, textAlign: "center" }}>
-          {subtitle}
+          {tile("1")}
+          {tile("2")}
+          {tile("3")}
+          {tile("4")}
+          {tile("5")}
+          {tile("6")}
         </div>
       </div>
     ),
@@ -86,7 +103,7 @@ export default async function Image({
     const appId = parseInt(appid, 10);
 
     if (isNaN(appId)) {
-      return fallbackImage("IndieFindr", "Discover similar games");
+      return placeholderGridImage();
     }
 
     // Fetch the main game and its suggestions
@@ -97,14 +114,14 @@ export default async function Image({
       .maybeSingle();
 
     if (!gameData?.title) {
-      return fallbackImage("IndieFindr", "Discover similar games");
+      return placeholderGridImage();
     }
 
     const suggestions: Suggestion[] = gameData.suggested_game_appids || [];
     const suggestedAppIds = suggestions.slice(0, 6).map((s) => s.appId);
 
     if (!suggestedAppIds.length) {
-      return fallbackImage(`Games like ${gameData.title}`, "Discover similar games on IndieFindr");
+      return placeholderGridImage();
     }
 
     // Resolve up to 6 cover images to data URLs, but fail fast (Discord/Slack scrapers time out easily).
@@ -116,7 +133,6 @@ export default async function Image({
       })
     );
 
-    const title = `Games like ${gameData.title}`;
     const tiles = coverDataUrls.map((src, i) => (
       <div
         key={`${suggestedAppIds[i] ?? i}`}
@@ -144,19 +160,7 @@ export default async function Image({
             }}
           />
         ) : (
-          <div
-            style={{
-              display: "flex",
-              width: "100%",
-              height: "100%",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#6b6b6b",
-              fontSize: 18,
-            }}
-          >
-            IndieFindr
-          </div>
+          <div style={{ display: "flex", width: "100%", height: "100%" }} />
         )}
       </div>
     ));
@@ -180,35 +184,6 @@ export default async function Image({
           <div
             style={{
               display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              marginBottom: 28,
-              width: 3 * 350 + 2 * 16,
-            }}
-          >
-            <div style={{ display: "flex", fontSize: 20, color: "#bdbdbd", letterSpacing: -0.2 }}>
-              IndieFindr
-            </div>
-            <div
-              style={{
-                display: "flex",
-                fontSize: 52,
-                fontWeight: 800,
-                color: "white",
-                letterSpacing: -1.2,
-                lineHeight: 1.05,
-              }}
-            >
-              {title}
-            </div>
-            <div style={{ display: "flex", fontSize: 22, color: "#bdbdbd" }}>
-              6 related games
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
               flexWrap: "wrap",
               gap: 16,
               width: 3 * 350 + 2 * 16,
@@ -222,6 +197,6 @@ export default async function Image({
       { ...size }
     );
   } catch {
-    return fallbackImage("IndieFindr", "Discover similar games");
+    return placeholderGridImage();
   }
 }
