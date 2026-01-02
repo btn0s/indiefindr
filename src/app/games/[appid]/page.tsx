@@ -148,7 +148,7 @@ export async function generateMetadata({
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
-  const title = `Games like ${gameData.title} | IndieFindr`;
+  const title = `Games like ${gameData.title} — IndieFindr`;
   const canonicalPath = `/games/${appid}`;
   const canonicalUrl = `${siteUrl}${canonicalPath}`;
   const shortDesc = gameData.short_description ? stripHtml(gameData.short_description) : "";
