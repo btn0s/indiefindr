@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { track } from "@vercel/analytics";
-import Hls from "hls.js";
 import type { GameNew } from "@/lib/supabase/types";
 
 type GameCardProps = GameNew & {
@@ -13,17 +12,12 @@ type GameCardProps = GameNew & {
 
 function GameCard({
   appid,
-  screenshots,
   videos,
   title,
   header_image,
-  short_description,
-  long_description,
-  raw,
   explanation,
 }: GameCardProps) {
   const [videoError, setVideoError] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -40,7 +34,6 @@ function GameCard({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setIsVisible(true);
             // Delay video loading slightly to prioritize images
             setTimeout(() => setShouldLoadVideo(true), 100);
             observer.disconnect();
@@ -65,46 +58,55 @@ function GameCard({
     if (!shouldLoadVideo || !hasVideo || !videoUrl || !videoRef.current) return;
 
     const video = videoRef.current;
+    let hls: import("hls.js").default | null = null;
+    let cancelled = false;
 
     // Handle HLS videos
     if (isHls) {
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: false,
-        });
-        hls.loadSource(videoUrl);
-        hls.attachMedia(video);
+      void (async () => {
+        const { default: Hls } = await import("hls.js");
+        if (cancelled) return;
 
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
+        if (Hls.isSupported()) {
+          hls = new Hls({
+            enableWorker: false,
+          });
+          hls.loadSource(videoUrl);
+          hls.attachMedia(video);
+
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            if (!data.fatal) return;
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                hls.startLoad();
+                hls?.startLoad();
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
-                hls.recoverMediaError();
+                hls?.recoverMediaError();
                 break;
               default:
-                hls.destroy();
+                hls?.destroy();
+                hls = null;
                 setVideoError(true);
                 break;
             }
-          }
-        });
-
-        return () => {
-          hls.destroy();
-        };
-      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        // Native HLS support (Safari)
-        video.src = videoUrl;
-      } else {
-        setTimeout(() => setVideoError(true), 0);
-      }
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          // Native HLS support (Safari)
+          video.src = videoUrl;
+        } else {
+          setTimeout(() => setVideoError(true), 0);
+        }
+      })();
     } else {
       // Regular video format
       video.src = videoUrl;
     }
+
+    return () => {
+      cancelled = true;
+      hls?.destroy();
+      hls = null;
+    };
   }, [shouldLoadVideo, hasVideo, videoUrl, isHls]);
 
   const handleCardClick = () => {
@@ -127,13 +129,11 @@ function GameCard({
             <Image
               src={header_image}
               alt={title}
-              width={400}
-              height={128}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
                 videoReady ? "opacity-0" : "opacity-100"
               }`}
-              loading="lazy"
-              unoptimized
             />
           )}
           {/* Video overlays image, fades in when ready */}

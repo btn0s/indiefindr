@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
-import Hls from "hls.js";
 
 interface GameVideoProps {
   videos: string[] | null;
@@ -38,6 +37,8 @@ export function GameVideo({
     }
 
     const video = videoRef.current;
+    let hls: import("hls.js").default | null = null;
+    let cancelled = false;
 
     const setStartTime = () => {
       if (startTime > 0 && video.duration > startTime) {
@@ -47,50 +48,59 @@ export function GameVideo({
 
     // Handle HLS videos
     if (isHls) {
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: false,
-        });
-        hls.loadSource(videoUrl);
-        hls.attachMedia(video);
+      void (async () => {
+        const { default: Hls } = await import("hls.js");
+        if (cancelled) return;
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.addEventListener('loadedmetadata', setStartTime, { once: true });
-        });
+        if (Hls.isSupported()) {
+          hls = new Hls({
+            enableWorker: false,
+          });
+          hls.loadSource(videoUrl);
+          hls.attachMedia(video);
 
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.addEventListener("loadedmetadata", setStartTime, {
+              once: true,
+            });
+          });
+
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            if (!data.fatal) return;
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                hls.startLoad();
+                hls?.startLoad();
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
-                hls.recoverMediaError();
+                hls?.recoverMediaError();
                 break;
               default:
-                hls.destroy();
+                hls?.destroy();
+                hls = null;
                 setVideoError(true);
                 break;
             }
-          }
-        });
-
-        return () => {
-          hls.destroy();
-        };
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS support (Safari)
-        video.src = videoUrl;
-        video.addEventListener('loadedmetadata', setStartTime, { once: true });
-      } else {
-        // Defer state update to avoid cascading renders in effect
-        setTimeout(() => setVideoError(true), 0);
-      }
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          // Native HLS support (Safari)
+          video.src = videoUrl;
+          video.addEventListener("loadedmetadata", setStartTime, { once: true });
+        } else {
+          // Defer state update to avoid cascading renders in effect
+          setTimeout(() => setVideoError(true), 0);
+        }
+      })();
     } else {
       // Regular video format
       video.src = videoUrl;
       video.addEventListener('loadedmetadata', setStartTime, { once: true });
     }
+
+    return () => {
+      cancelled = true;
+      hls?.destroy();
+      hls = null;
+    };
   }, [hasVideo, videoUrl, isHls, startTime]);
 
   return (
@@ -113,7 +123,7 @@ export function GameVideo({
           alt={alt}
           fill
           className="object-cover"
-          unoptimized
+          sizes="100vw"
         />
       ) : (
         <div className="w-full h-full bg-muted flex items-center justify-center">

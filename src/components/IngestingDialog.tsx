@@ -34,7 +34,7 @@ export function IngestingDialog({
                 alt={gameTitle || "Game"}
                 fill
                 className="object-cover"
-                unoptimized
+                sizes="128px"
               />
             </div>
           )}

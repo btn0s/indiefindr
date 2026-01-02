@@ -97,106 +97,102 @@ export default async function Image({
 }: {
   params: Promise<{ appid: string }>;
 }) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { appid } = await params;
-    const appId = parseInt(appid, 10);
+  const supabase = getSupabaseServerClient();
+  const { appid } = await params;
+  const appId = parseInt(appid, 10);
 
-    if (isNaN(appId)) {
-      return placeholderGridImage();
-    }
-
-    // Fetch the main game and its suggestions
-    const { data: gameData } = await supabase
-      .from("games_new")
-      .select("title, suggested_game_appids")
-      .eq("appid", appId)
-      .maybeSingle();
-
-    if (!gameData?.title) {
-      return placeholderGridImage();
-    }
-
-    const suggestions: Suggestion[] = gameData.suggested_game_appids || [];
-    const suggestedAppIds = suggestions.slice(0, 6).map((s) => s.appId);
-
-    if (!suggestedAppIds.length) {
-      return placeholderGridImage();
-    }
-
-    // Resolve up to 6 cover images to data URLs, but fail fast (Discord/Slack scrapers time out easily).
-    const coverDataUrls = await Promise.all(
-      suggestedAppIds.map(async (id) => {
-        const capsule = await fetchImageAsDataUrl(steamCapsuleUrl(id), 1200);
-        if (capsule) return capsule;
-        return fetchImageAsDataUrl(steamHeaderUrl(id), 1200);
-      })
-    );
-
-    const tiles = coverDataUrls.map((src, i) => (
-      <div
-        key={`${suggestedAppIds[i] ?? i}`}
-        style={{
-          width: 350,
-          height: 200,
-          display: "flex",
-          borderRadius: 0,
-          overflow: "hidden",
-          backgroundColor: "#151515",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
-        }}
-      >
-        {src ? (
-          <img
-            src={src}
-            alt=""
-            width={350}
-            height={200}
-            style={{
-              objectFit: "cover",
-              width: "100%",
-              height: "100%",
-              display: "flex",
-            }}
-          />
-        ) : (
-          <div style={{ display: "flex", width: "100%", height: "100%" }} />
-        )}
-      </div>
-    ));
-
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            height: "100%",
-            width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "#0a0a0a",
-            backgroundImage:
-              "radial-gradient(1200px 630px at 20% 0%, rgba(255,255,255,0.08), rgba(0,0,0,0)), radial-gradient(900px 500px at 100% 40%, rgba(124,58,237,0.16), rgba(0,0,0,0))",
-            padding: "52px 56px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 16,
-              width: 3 * 350 + 2 * 16,
-              justifyContent: "center",
-            }}
-          >
-            {tiles}
-          </div>
-        </div>
-      ),
-      { ...size }
-    );
-  } catch {
+  if (isNaN(appId)) {
     return placeholderGridImage();
   }
+
+  // Fetch the main game and its suggestions
+  const { data: gameData } = await supabase
+    .from("games_new")
+    .select("title, suggested_game_appids")
+    .eq("appid", appId)
+    .maybeSingle();
+
+  if (!gameData?.title) {
+    return placeholderGridImage();
+  }
+
+  const suggestions: Suggestion[] = gameData.suggested_game_appids || [];
+  const suggestedAppIds = suggestions.slice(0, 6).map((s) => s.appId);
+
+  if (!suggestedAppIds.length) {
+    return placeholderGridImage();
+  }
+
+  // Resolve up to 6 cover images to data URLs, but fail fast (Discord/Slack scrapers time out easily).
+  const coverDataUrls = await Promise.all(
+    suggestedAppIds.map(async (id) => {
+      const capsule = await fetchImageAsDataUrl(steamCapsuleUrl(id), 1200);
+      if (capsule) return capsule;
+      return fetchImageAsDataUrl(steamHeaderUrl(id), 1200);
+    })
+  );
+
+  const tiles = coverDataUrls.map((src, i) => (
+    <div
+      key={`${suggestedAppIds[i] ?? i}`}
+      style={{
+        width: 350,
+        height: 200,
+        display: "flex",
+        borderRadius: 0,
+        overflow: "hidden",
+        backgroundColor: "#151515",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
+      }}
+    >
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          width={350}
+          height={200}
+          style={{
+            objectFit: "cover",
+            width: "100%",
+            height: "100%",
+            display: "flex",
+          }}
+        />
+      ) : (
+        <div style={{ display: "flex", width: "100%", height: "100%" }} />
+      )}
+    </div>
+  ));
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#0a0a0a",
+          backgroundImage:
+            "radial-gradient(1200px 630px at 20% 0%, rgba(255,255,255,0.08), rgba(0,0,0,0)), radial-gradient(900px 500px at 100% 40%, rgba(124,58,237,0.16), rgba(0,0,0,0))",
+          padding: "52px 56px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 16,
+            width: 3 * 350 + 2 * 16,
+            justifyContent: "center",
+          }}
+        >
+          {tiles}
+        </div>
+      </div>
+    ),
+    { ...size }
+  );
 }

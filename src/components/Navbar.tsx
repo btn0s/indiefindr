@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -252,9 +253,12 @@ export function Navbar() {
                             className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors sm:py-2"
                           >
                             {game.header_image && (
-                              <img
+                              <Image
                                 src={game.header_image}
                                 alt={game.title}
+                                width={80}
+                                height={48}
+                                sizes="80px"
                                 className="h-12 w-20 object-cover rounded"
                               />
                             )}
@@ -281,9 +285,12 @@ export function Navbar() {
                         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait sm:py-2"
                       >
                         {game.header_image && (
-                          <img
+                          <Image
                             src={game.header_image}
                             alt={game.title}
+                            width={80}
+                            height={48}
+                            sizes="80px"
                             className="h-12 w-20 object-cover rounded"
                           />
                         )}
