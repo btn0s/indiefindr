@@ -160,7 +160,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
       item: {
         "@type": "VideoGame",
         name: game.title,
-        url: `https://indiefindr.gg/games/${game.appid}`,
+        url: `https://www.indiefindr.gg/games/${game.appid}`,
       },
     })),
   };

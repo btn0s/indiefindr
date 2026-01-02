@@ -53,18 +53,16 @@ export default async function Home() {
           <div className="container mx-auto max-w-7xl w-full flex items-center justify-between">
             <h2 className="font-semibold text-xl">All Games</h2>
           </div>
-          {games.length === 0 ? (
-            <div className="container mx-auto max-w-7xl w-full">
+          <div className="container mx-auto max-w-7xl w-full">
+            {games.length === 0 ? (
               <p className="text-muted-foreground">
                 No games ingested yet. Search for a game above to add your first
                 one.
               </p>
-            </div>
-          ) : (
-            <div className="container mx-auto max-w-7xl w-full">
+            ) : (
               <GamesGrid initialGames={games} />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </main>
     </div>
