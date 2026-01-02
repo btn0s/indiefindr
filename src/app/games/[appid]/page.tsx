@@ -146,7 +146,8 @@ export async function generateMetadata({
     };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://indiefindr.gg";
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const title = `Games like ${gameData.title} | IndieFindr`;
   const canonicalPath = `/games/${appid}`;
   const canonicalUrl = `${siteUrl}${canonicalPath}`;
@@ -206,7 +207,8 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
   }
 
   const description = gameData.short_description || null;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://indiefindr.gg";
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const canonicalUrl = `${siteUrl}/games/${appid}`;
   const steamUrl = `https://store.steampowered.com/app/${appid}/`;
 

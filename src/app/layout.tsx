@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://indiefindr.gg"
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg"
   ),
   title: {
     default: "IndieFindr - Discover Games Like Your Favorites",
