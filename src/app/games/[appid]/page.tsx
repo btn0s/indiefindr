@@ -25,7 +25,7 @@ type GameData = {
 async function waitForGameInDb(
   appId: number,
   maxAttempts = 15, // Increased attempts for longer wait if needed
-  delayMs = 1000   // 1s delay
+  delayMs = 1000 // 1s delay
 ): Promise<GameData | null> {
   const supabase = getSupabaseServerClient();
   for (let i = 0; i < maxAttempts; i++) {
@@ -60,35 +60,40 @@ async function waitForGameInDb(
  * Fetch game data from database only (never calls Steam API).
  * Uses cache() to dedupe requests within the same render.
  */
-const getGameDataFromDb = cache(async (appId: number): Promise<GameData | null> => {
-  const supabase = getSupabaseServerClient();
-  const { data: dbGame } = await supabase
-    .from("games_new")
-    .select(
-      "appid, title, header_image, short_description, long_description, screenshots, videos"
-    )
-    .eq("appid", appId)
-    .maybeSingle();
+const getGameDataFromDb = cache(
+  async (appId: number): Promise<GameData | null> => {
+    const supabase = getSupabaseServerClient();
+    const { data: dbGame } = await supabase
+      .from("games_new")
+      .select(
+        "appid, title, header_image, short_description, long_description, screenshots, videos"
+      )
+      .eq("appid", appId)
+      .maybeSingle();
 
-  if (dbGame && dbGame.title) {
-    return {
-      appid: dbGame.appid,
-      title: dbGame.title,
-      header_image: dbGame.header_image,
-      short_description: dbGame.short_description,
-      long_description: dbGame.long_description,
-      screenshots: dbGame.screenshots || [],
-      videos: dbGame.videos || [],
-    };
+    if (dbGame && dbGame.title) {
+      return {
+        appid: dbGame.appid,
+        title: dbGame.title,
+        header_image: dbGame.header_image,
+        short_description: dbGame.short_description,
+        long_description: dbGame.long_description,
+        screenshots: dbGame.screenshots || [],
+        videos: dbGame.videos || [],
+      };
+    }
+
+    // Game not in DB yet - wait for background ingest
+    // This will block the server response and let Next.js stream the UI once it resolves
+    return waitForGameInDb(appId);
   }
-
-  // Game not in DB yet - wait for background ingest
-  // This will block the server response and let Next.js stream the UI once it resolves
-  return waitForGameInDb(appId);
-});
+);
 
 function stripHtml(input: string): string {
-  return input.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  return input
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function truncate(input: string, maxLen: number): string {
@@ -103,7 +108,9 @@ async function getGameDataFromDbFast(appId: number): Promise<GameData | null> {
   const supabase = getSupabaseServerClient();
   const { data: dbGame } = await supabase
     .from("games_new")
-    .select("appid, title, header_image, short_description, long_description, screenshots, videos")
+    .select(
+      "appid, title, header_image, short_description, long_description, screenshots, videos"
+    )
     .eq("appid", appId)
     .maybeSingle();
 
@@ -140,7 +147,8 @@ export async function generateMetadata({
   if (!gameData || !gameData.title) {
     return {
       title: "Game Not Found",
-      description: "Discover similar indie games with matching gameplay, style, and themes.",
+      description:
+        "Discover similar indie games with matching gameplay, style, and themes.",
       robots: { index: false, follow: false },
     };
   }
@@ -150,7 +158,9 @@ export async function generateMetadata({
   const title = `Games like ${gameData.title} — IndieFindr`;
   const canonicalPath = `/games/${appid}`;
   const canonicalUrl = `${siteUrl}${canonicalPath}`;
-  const shortDesc = gameData.short_description ? stripHtml(gameData.short_description) : "";
+  const shortDesc = gameData.short_description
+    ? stripHtml(gameData.short_description)
+    : "";
   const cleanDescription = truncate(
     shortDesc
       ? `Find games like ${gameData.title} on Steam. ${shortDesc}`
@@ -220,7 +230,9 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
     "@context": "https://schema.org",
     "@type": "VideoGame",
     name: gameData.title,
-    description: description ? truncate(stripHtml(description), 500) : undefined,
+    description: description
+      ? truncate(stripHtml(description), 500)
+      : undefined,
     image: gameData.header_image || undefined,
     url: canonicalUrl,
     sameAs: steamUrl,
