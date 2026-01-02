@@ -46,7 +46,7 @@ export function GamesGrid({ initialGames }: GamesGridProps) {
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-w-7xl">
         {games.map((game) => (
           <GameCard key={game.appid} {...game} />
         ))}
