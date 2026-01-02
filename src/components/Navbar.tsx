@@ -7,6 +7,7 @@ import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { IngestingDialog } from "@/components/IngestingDialog";
+import Logo from "@/components/logo";
 
 interface SearchResult {
   appid: number;
@@ -28,7 +29,9 @@ export function Navbar() {
     title?: string;
     image?: string | null;
   } | null>(null);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
   const abortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -187,6 +190,7 @@ export function Navbar() {
             href="/"
             className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg"
           >
+            <Logo />
             IndieFindr
           </Link>
 
