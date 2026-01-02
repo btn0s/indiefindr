@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Suspense } from "react";
+import { Navbar } from "@/components/Navbar";
 import { ScrollToTopOnNavigation } from "@/components/ScrollToTopOnNavigation";
 import "./globals.css";
 
@@ -57,7 +58,10 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <ScrollToTopOnNavigation />
         </Suspense>
-        {children}
+        <div className="min-h-screen bg-zinc-50 dark:bg-black">
+          <Navbar />
+          {children}
+        </div>
         <Analytics />
       </body>
     </html>

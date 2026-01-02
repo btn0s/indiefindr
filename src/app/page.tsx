@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { Navbar } from "@/components/Navbar";
 import { GamesGrid } from "@/components/GamesGrid";
 import { GameNew } from "@/lib/supabase/types";
 
@@ -93,26 +92,23 @@ export default async function Home() {
   const games = await getGames();
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black">
-      <Navbar />
-      <main className="flex flex-col gap-8 pt-8">
-        {/* Full-width grid section */}
-        <div className="flex flex-col gap-4 w-full px-4 pb-8">
-          <div className="container mx-auto max-w-7xl w-full flex items-center justify-between">
-            <h2 className="font-semibold text-xl">All Games</h2>
-          </div>
-          <div className="container mx-auto max-w-7xl w-full">
-            {games.length === 0 ? (
-              <p className="text-muted-foreground">
-                No games ingested yet. Search for a game above to add your first
-                one.
-              </p>
-            ) : (
-              <GamesGrid initialGames={games} />
-            )}
-          </div>
+    <main className="flex flex-col gap-8 pt-8">
+      {/* Full-width grid section */}
+      <div className="flex flex-col gap-4 w-full px-4 pb-8">
+        <div className="container mx-auto max-w-7xl w-full flex items-center justify-between">
+          <h2 className="font-semibold text-xl">All Games</h2>
         </div>
-      </main>
-    </div>
+        <div className="container mx-auto max-w-7xl w-full">
+          {games.length === 0 ? (
+            <p className="text-muted-foreground">
+              No games ingested yet. Search for a game above to add your first
+              one.
+            </p>
+          ) : (
+            <GamesGrid initialGames={games} />
+          )}
+        </div>
+      </div>
+    </main>
   );
 }
