@@ -61,7 +61,7 @@ export default async function Home() {
               </p>
             </div>
           ) : (
-            <div className="container mx-auto w-full">
+            <div className="container mx-auto max-w-7xl w-full">
               <GamesGrid initialGames={games} />
             </div>
           )}
