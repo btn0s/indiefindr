@@ -1,41 +1,39 @@
 # Games Graph MVP
 
-A Next.js application that ingests Steam games, extracts three facets (Aesthetics, Gameplay, Narrative/Mood) using AI vision models, generates embeddings, and provides similarity-based game recommendations.
+A Next.js application that ingests Steam games and uses AI vision models to generate similarity-based game recommendations.
 
 ## Features
 
-- **Steam Game Ingestion**: Paste a Steam URL to ingest game data, screenshots, and metadata
-- **AI-Powered Facet Extraction**: Uses vision models to extract three distinct facets from game screenshots
-- **Vector Similarity Search**: Stores embeddings in pgvector and finds similar games by each facet
-- **Interactive UI**: Home page with game list and detail pages showing facet-based recommendations
+- **Steam Game Ingestion**: Paste a Steam URL to ingest game data, screenshots, videos, and metadata
+- **AI-Powered Recommendations**: Uses Perplexity Sonar Pro vision model to analyze game screenshots and generate similar game suggestions
+- **Game Discovery**: Browse all games and explore AI-generated recommendations for each game
+- **Interactive UI**: Home page with game grid and detail pages showing recommendations with explanations
 
 ## Architecture
 
-### Database (Supabase + pgvector)
-- `games` table with three embedding columns (aesthetic, gameplay, narrative)
-- `ingest_jobs` table for tracking ingestion status
-- Vector indexes for efficient similarity search
-- RPC function `get_related_games` for similarity queries
+### Database (Supabase)
+- `games_new` table stores Steam game data (screenshots, videos, descriptions, metadata)
+- `suggested_game_appids` JSONB column stores AI-generated game suggestions with explanations
+- Simple schema focused on Steam data and recommendations
 
 ### AI Integration
-- AI Gateway client (configured via environment variables)
-- Vision model: `openai/gpt-4o-mini` for facet extraction
-- Embedding model: `openai/text-embedding-3-small` (1536 dimensions)
-- Model ID format: `provider/model` (e.g., `openai/gpt-4o-mini`)
+- **Perplexity Sonar Pro**: Vision model for analyzing game screenshots and generating recommendations
+- **AI SDK**: Uses Vercel AI SDK for model interactions
+- Suggestions include explanations for why each game is similar
 
 ### Ingestion Pipeline
 1. Parse Steam URL → Extract AppID
-2. Fetch Steam data (store, reviews, tags)
-3. Extract facets using vision model
-4. Generate embeddings for each facet
-5. Upsert into database
+2. Fetch Steam data (store page, screenshots, videos, descriptions)
+3. Save to `games_new` table
+4. Generate suggestions in background using Perplexity vision model
+5. Store suggestions in `suggested_game_appids` column
 
 ## Setup
 
 ### Prerequisites
 - Node.js 18+ and pnpm
-- Supabase project with pgvector extension
-- AI Gateway configured and accessible
+- Supabase project
+- AI Gateway configured (for Perplexity API access)
 
 ### Environment Variables
 
@@ -47,29 +45,31 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
-# AI Gateway Configuration
+# AI Gateway Configuration (for Perplexity)
 AI_GATEWAY_BASE_URL=https://your-ai-gateway-url.com
 AI_GATEWAY_API_KEY=your_ai_gateway_api_key
+
+# Site URL (for SEO)
+NEXT_PUBLIC_SITE_URL=https://your-site-url.com
 ```
 
 ### Database Setup
 
-1. **Apply Migrations**: Run the Supabase migration to create tables and indexes:
+1. **Apply Migrations**: Run the Supabase migrations to create tables:
 
 ```bash
 # Using Supabase CLI
 supabase db push
 
-# Or manually apply the migration file:
-# supabase/migrations/20250101000000_initial_schema.sql
+# Or manually apply migration files in order:
+# supabase/migrations/
 ```
 
-The migration includes:
-- pgvector extension
-- `games` table with 3 embedding columns
-- `ingest_jobs` table
-- Vector indexes (IVFFlat with cosine distance)
-- RPC function for similarity queries
+Key migrations:
+- `20250101000000_initial_schema.sql` - Initial games table (legacy)
+- `20250106000000_create_games_new_table.sql` - Main games_new table
+- `20250107000000_move_suggestions_to_games_new.sql` - Suggestions storage
+- `20250111000000_add_suggestion_explanations.sql` - Explanation fields
 
 ### Install Dependencies
 
@@ -88,11 +88,9 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 ## Usage
 
 1. **Ingest a Game**: Paste a Steam URL (e.g., `https://store.steampowered.com/app/123456/GameName/`) on the home page
-2. **View Games**: See a list of all ingested games
-3. **Explore Similar Games**: Click on a game to see similar games by:
-   - Aesthetics (visual style, art direction)
-   - Gameplay (mechanics, player perspective)
-   - Narrative/Mood (theme, atmosphere)
+2. **View Games**: See a grid of all ingested games sorted by number of suggestions
+3. **Explore Recommendations**: Click on a game to see AI-generated similar games with explanations
+4. **Refresh Suggestions**: Use the refresh button to regenerate suggestions for a game
 
 ## Project Structure
 
@@ -101,33 +99,39 @@ src/
 ├── app/
 │   ├── api/
 │   │   └── games/
-│   │       ├── submit/route.ts          # POST /api/games/submit
-│   │       ├── search/route.ts          # GET /api/games/search
-│   │       ├── [appid]/route.ts         # GET /api/games/[appid]
-│   │       └── [appid]/related/route.ts # GET /api/games/[appid]/related
+│   │       ├── submit/route.ts              # POST /api/games/submit
+│   │       ├── search/route.ts              # GET /api/games/search
+│   │       ├── batch/route.ts               # POST /api/games/batch
+│   │       └── [appid]/
+│   │           ├── route.ts                 # GET /api/games/[appid]
+│   │           └── suggestions/
+│   │               ├── route.ts              # GET /api/games/[appid]/suggestions
+│   │               └── refresh/route.ts      # POST /api/games/[appid]/suggestions/refresh
 │   ├── games/
-│   │   └── [appid]/page.tsx             # Game detail page
-│   └── page.tsx                          # Home page
+│   │   └── [appid]/
+│   │       ├── page.tsx                     # Game detail page
+│   │       ├── opengraph-image.tsx          # OG image generation
+│   │       └── twitter-image.tsx             # Twitter card image
+│   └── page.tsx                              # Home page
 ├── lib/
-│   ├── ai/
-│   │   ├── gateway.ts                   # AI Gateway client
-│   │   └── facet-extractor.ts           # Vision facet extraction
-│   ├── ingest/
-│   │   └── pipeline.ts                   # Main ingestion pipeline
-│   ├── steam/
-│   │   ├── parser.ts                     # Steam URL parser
-│   │   └── providers.ts                  # Steam API providers
+│   ├── ingest.ts                             # Game ingestion pipeline
+│   ├── suggest.ts                            # Perplexity AI suggestions
+│   ├── steam.ts                              # Steam API integration
 │   └── supabase/
-│       ├── client.ts                     # Supabase clients
-│       └── types.ts                       # TypeScript types
+│       ├── client.ts                         # Supabase clients
+│       ├── server.ts                         # Server-side Supabase
+│       └── types.ts                          # TypeScript types
 └── components/
-    └── ui/                                # UI components (shadcn)
+    ├── GameCard.tsx                          # Game card component
+    ├── GamesGrid.tsx                         # Infinite scroll grid
+    ├── SuggestionsList.tsx                   # Recommendations list
+    └── ui/                                   # UI components (shadcn)
 ```
 
 ## API Routes
 
 ### POST `/api/games/submit`
-Submit a Steam URL for ingestion and suggestion generation.
+Submit a Steam URL for ingestion.
 
 **Request:**
 ```json
@@ -141,9 +145,7 @@ Submit a Steam URL for ingestion and suggestion generation.
 {
   "success": true,
   "appid": 123456,
-  "title": "Game Name",
-  "steamData": { ... },
-  "suggestions": { ... }
+  "title": "Game Name"
 }
 ```
 
@@ -168,25 +170,37 @@ Search for games in the database and Steam Store.
 ### GET `/api/games/[appid]`
 Get game details by AppID.
 
-### GET `/api/games/[appid]/related?facet=all&limit=10&threshold=0.7`
-Get similar games by facet(s).
+### GET `/api/games/[appid]/suggestions`
+Get AI-generated game suggestions for a game.
 
-**Query Parameters:**
-- `facet`: `aesthetic` | `gameplay` | `narrative` | `all` (default: `all`)
-- `limit`: Number of results (default: `10`)
-- `threshold`: Minimum similarity score 0-1 (default: `0.7`)
+**Response:**
+```json
+{
+  "suggestions": [
+    {
+      "appId": 789012,
+      "title": "Similar Game",
+      "explanation": "Shares the same visual style and gameplay mechanics"
+    }
+  ]
+}
+```
+
+### POST `/api/games/[appid]/suggestions/refresh`
+Force regenerate suggestions for a game.
 
 ## Notes
 
-- The AI Gateway must support the `provider/model` format for model routing
-- Embedding dimension is fixed at 1536 (text-embedding-3-small)
-- Vector indexes use IVFFlat with cosine distance
-- Similarity scores are calculated as `1 - cosine_distance`
+- Suggestions are generated asynchronously in the background after initial ingestion
+- The AI model analyzes game screenshots to find similar games
+- Suggestions include explanations for why each game is recommended
+- Games are sorted by number of suggestions on the home page
+- SEO optimized with OpenGraph and Twitter card images
 
 ## Next Steps
 
-- Add graph-building capabilities
-- Support additional aggregation providers (SteamSpy, etc.)
-- Implement global similarity view (average of three facets)
-- Add pagination and filtering
-- Enhance UI with more game metadata
+- Add graph visualization of game relationships
+- Implement user preferences and personalized recommendations
+- Add filtering and sorting options
+- Enhance UI with more game metadata and screenshots
+- Add batch ingestion capabilities
