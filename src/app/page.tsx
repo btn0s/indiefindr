@@ -111,6 +111,10 @@ export default async function Home() {
               AI-powered recommendations with explanations.
             </p>
           </div>
+          <div className="retro-statusbar">
+            <span>Ready</span>
+            <span className="opacity-80">1024×768 friendly</span>
+          </div>
         </section>
 
         <section className="retro-window">
@@ -129,6 +133,10 @@ export default async function Home() {
             ) : (
               <GamesGrid initialGames={games} />
             )}
+          </div>
+          <div className="retro-statusbar">
+            <span>Tip: Click a game to open</span>
+            <span className="opacity-80">Scroll to load more</span>
           </div>
         </section>
       </div>

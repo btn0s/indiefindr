@@ -179,6 +179,7 @@
 @layer components {
   /* Desktop backdrop: subtle pattern + gentle vignette */
   .retro-desktop {
+    position: relative;
     background:
       radial-gradient(1200px 700px at 30% 0%, rgba(255, 255, 255, 0.65), transparent 60%),
       radial-gradient(900px 600px at 100% 40%, rgba(255, 255, 255, 0.35), transparent 55%),
@@ -192,15 +193,63 @@
       linear-gradient(to bottom, #d2deea, #b7c4d3 40%, #b2c0d0);
   }
 
+  /* CRT overlay (scanlines + faint noise/flicker) */
+  .retro-crt {
+    position: relative;
+  }
+
+  .retro-crt::before {
+    content: "";
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.06) 0px,
+        rgba(0, 0, 0, 0.06) 1px,
+        transparent 2px,
+        transparent 4px
+      ),
+      radial-gradient(1000px 500px at 50% 0%, rgba(255, 255, 255, 0.10), transparent 70%);
+    mix-blend-mode: multiply;
+    opacity: 0.35;
+  }
+
+  .retro-crt::after {
+    content: "";
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(2px 2px at 10% 20%, rgba(255, 255, 255, 0.14), transparent 60%),
+      radial-gradient(2px 2px at 40% 60%, rgba(0, 0, 0, 0.10), transparent 60%),
+      radial-gradient(2px 2px at 75% 35%, rgba(255, 255, 255, 0.10), transparent 60%),
+      radial-gradient(2px 2px at 90% 80%, rgba(0, 0, 0, 0.10), transparent 60%);
+    opacity: 0.22;
+    animation: retro-flicker 7s infinite linear;
+  }
+
+  @keyframes retro-flicker {
+    0%, 100% { opacity: 0.20; }
+    48% { opacity: 0.26; }
+    50% { opacity: 0.18; }
+    52% { opacity: 0.28; }
+  }
+
   /* Window/panel framing */
   .retro-window {
     background: linear-gradient(to bottom, var(--retro-surface), var(--retro-surface-2));
-    border: 1px solid color-mix(in srgb, var(--border) 75%, white 25%);
+    border: 2px solid color-mix(in srgb, var(--border) 72%, white 28%);
     border-radius: calc(var(--radius) + 2px);
     box-shadow:
       0 16px 45px var(--retro-shadow),
+      0 0 0 1px rgba(255, 255, 255, 0.45),
       inset 1px 1px 0 var(--retro-bevel-hi),
-      inset -1px -1px 0 var(--retro-bevel-lo);
+      inset -1px -1px 0 var(--retro-bevel-lo),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.10);
     overflow: hidden;
   }
 
@@ -221,10 +270,59 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
-    background: linear-gradient(to bottom, var(--retro-titlebar-top), var(--retro-titlebar-bottom));
+    position: relative;
+    background:
+      repeating-linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0.10) 0px,
+        rgba(255, 255, 255, 0.10) 8px,
+        rgba(0, 0, 0, 0.06) 8px,
+        rgba(0, 0, 0, 0.06) 16px
+      ),
+      linear-gradient(to bottom, var(--retro-titlebar-top), var(--retro-titlebar-bottom));
     color: var(--retro-titlebar-text);
     border-bottom: 1px solid rgba(0, 0, 0, 0.25);
     text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  }
+
+  .retro-titlebar::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.55),
+      rgba(255, 255, 255, 0.12) 40%,
+      rgba(255, 255, 255, 0) 75%
+    );
+    opacity: 0.65;
+  }
+
+  .retro-titlebar::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      120deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.38) 45%,
+      transparent 65%
+    );
+    opacity: 0.0;
+    animation: retro-glint 9s infinite ease-in-out;
+  }
+
+  @keyframes retro-glint {
+    0%, 22% { opacity: 0; transform: translateX(-40%); }
+    26% { opacity: 0.35; }
+    34% { opacity: 0.0; transform: translateX(40%); }
+    100% { opacity: 0; transform: translateX(40%); }
+  }
+
+  .retro-titlebar--compact {
+    padding: 0.35rem 0.6rem;
   }
 
   .retro-titlebar-title {
@@ -245,7 +343,16 @@
 
   .retro-window-body {
     padding: 1rem;
-    background: var(--card);
+    background:
+      radial-gradient(600px 200px at 20% 0%, rgba(255, 255, 255, 0.55), transparent 60%),
+      repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.02) 0px,
+        rgba(0, 0, 0, 0.02) 1px,
+        transparent 1px,
+        transparent 6px
+      ),
+      var(--card);
   }
 
   .retro-menubar {
@@ -256,6 +363,124 @@
     box-shadow:
       0 14px 35px rgba(15, 23, 42, 0.22),
       inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  .retro-window-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding-left: 0.25rem;
+  }
+
+  .retro-dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 999px;
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.65),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.25),
+      0 1px 0 rgba(0, 0, 0, 0.25);
+  }
+
+  .retro-dot--close { background: linear-gradient(to bottom, #ff7a7a, #d62424); }
+  .retro-dot--min { background: linear-gradient(to bottom, #ffe08a, #d8a616); }
+  .retro-dot--max { background: linear-gradient(to bottom, #9bff9b, #12a33a); }
+
+  .retro-statusbar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    color: rgba(15, 23, 42, 0.85);
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(219, 230, 242, 0.95));
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+
+  .retro-statusbar::after {
+    content: "";
+    width: 22px;
+    height: 12px;
+    opacity: 0.55;
+    background:
+      repeating-linear-gradient(
+        135deg,
+        rgba(0, 0, 0, 0.25) 0px,
+        rgba(0, 0, 0, 0.25) 1px,
+        transparent 1px,
+        transparent 4px
+      );
+    border-left: 1px solid rgba(0, 0, 0, 0.10);
+    padding-left: 0.5rem;
+  }
+
+  .retro-eq {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.18);
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.20),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.30);
+  }
+
+  .retro-eq > span {
+    width: 3px;
+    height: 6px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #b8ff66, #4ed60a);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+    animation: retro-eq 900ms infinite ease-in-out;
+  }
+
+  .retro-eq > span:nth-child(2) { animation-duration: 760ms; height: 9px; }
+  .retro-eq > span:nth-child(3) { animation-duration: 640ms; height: 12px; }
+  .retro-eq > span:nth-child(4) { animation-duration: 820ms; height: 8px; }
+  .retro-eq > span:nth-child(5) { animation-duration: 700ms; height: 10px; }
+
+  @keyframes retro-eq {
+    0%, 100% { transform: scaleY(0.55); filter: brightness(0.95); }
+    50% { transform: scaleY(1.15); filter: brightness(1.1); }
+  }
+
+  .retro-listitem {
+    position: relative;
+  }
+
+  .retro-listitem:hover {
+    background:
+      linear-gradient(to bottom, rgba(120, 180, 255, 0.55), rgba(45, 101, 242, 0.25));
+  }
+
+  /* Scrollbars (best-effort, WebKit + Firefox) */
+  * {
+    scrollbar-color: rgba(45, 101, 242, 0.75) rgba(0, 0, 0, 0.10);
+    scrollbar-width: thin;
+  }
+
+  *::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.55), rgba(0, 0, 0, 0.06));
+    border-left: 1px solid rgba(0, 0, 0, 0.12);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #7db5ff, #2d65f2);
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    border-radius: 999px;
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.55),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.18);
   }
 
   /* Controls */

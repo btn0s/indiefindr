@@ -196,6 +196,17 @@ export function Navbar() {
             <span className="text-[10px] font-semibold opacity-90">.exe</span>
           </Link>
 
+          {/* Faux menu (purely vibes) */}
+          <div
+            className="hidden md:flex items-center gap-1 text-xs font-semibold tracking-wide opacity-95"
+            aria-hidden="true"
+          >
+            <span className="px-2 py-1 rounded-md hover:bg-white/10">File</span>
+            <span className="px-2 py-1 rounded-md hover:bg-white/10">Edit</span>
+            <span className="px-2 py-1 rounded-md hover:bg-white/10">View</span>
+            <span className="px-2 py-1 rounded-md hover:bg-white/10">Help</span>
+          </div>
+
           {/* Search */}
           <div className="relative flex-1" ref={resultsRef}>
             <div className="relative">
@@ -233,17 +244,27 @@ export function Navbar() {
 
             {/* Search Results Dropdown */}
             {showResults && (
-              <div className="retro-panel fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96">
+              <div className="retro-window fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96">
+                <div className="retro-titlebar retro-titlebar--compact">
+                  <div className="retro-titlebar-title text-xs">
+                    Search Results
+                  </div>
+                  <div className="retro-window-controls" aria-hidden="true">
+                    <span className="retro-dot retro-dot--min" />
+                    <span className="retro-dot retro-dot--max" />
+                    <span className="retro-dot retro-dot--close" />
+                  </div>
+                </div>
                 {searchQuery.trim().length < 2 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-sm text-muted-foreground bg-card">
                     Keep typing to search…
                   </div>
                 ) : isSearching ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-sm text-muted-foreground bg-card">
                     Searching...
                   </div>
                 ) : dbResults.length > 0 || steamResults.length > 0 ? (
-                  <div className="py-1">
+                  <div className="py-1 bg-card">
                     {/* Database Results */}
                     {dbResults.length > 0 && (
                       <>
@@ -251,7 +272,7 @@ export function Navbar() {
                           <button
                             key={`db-${game.appid}`}
                             onClick={() => handleResultClick(game)}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors sm:py-2"
+                            className="retro-listitem w-full flex items-center gap-3 px-4 py-3 text-left transition-colors sm:py-2"
                           >
                             {game.header_image && (
                               <Image
@@ -283,7 +304,7 @@ export function Navbar() {
                         key={`steam-${game.appid}`}
                         onClick={() => handleResultClick(game)}
                         disabled={ingestingAppId === game.appid}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait sm:py-2"
+                        className="retro-listitem w-full flex items-center gap-3 px-4 py-3 text-left transition-colors disabled:opacity-50 disabled:cursor-wait sm:py-2"
                       >
                         {game.header_image && (
                           <Image
@@ -311,16 +332,32 @@ export function Navbar() {
                     ))}
                   </div>
                 ) : hasSearched ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-sm text-muted-foreground bg-card">
                     No games found
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-sm text-muted-foreground bg-card">
                     Searching...
                   </div>
                 )}
               </div>
             )}
+          </div>
+
+          {/* Winamp vibes: tiny EQ + window controls */}
+          <div className="hidden sm:flex items-center gap-3 ml-auto" aria-hidden="true">
+            <div className="retro-eq">
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="retro-window-controls">
+              <span className="retro-dot retro-dot--min" />
+              <span className="retro-dot retro-dot--max" />
+              <span className="retro-dot retro-dot--close" />
+            </div>
           </div>
         </div>
       </nav>

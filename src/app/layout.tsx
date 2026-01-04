@@ -61,7 +61,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <ScrollToTopOnNavigation />
         </Suspense>
-        <div className="min-h-screen retro-desktop">
+        <div className="min-h-screen retro-desktop retro-crt">
           <Navbar />
           {children}
         </div>

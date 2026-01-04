@@ -126,6 +126,16 @@ function GameCard({
         ref={cardRef}
         className="retro-panel transition-[filter,transform] hover:brightness-[1.03]"
       >
+        <div className="retro-titlebar retro-titlebar--compact">
+          <div className="retro-titlebar-title text-[11px] tracking-wide">
+            GAME_PREVIEW.EXE
+          </div>
+          <div className="retro-window-controls" aria-hidden="true">
+            <span className="retro-dot retro-dot--min" />
+            <span className="retro-dot retro-dot--max" />
+            <span className="retro-dot retro-dot--close" />
+          </div>
+        </div>
         <div className="p-3 pb-2">
           <div className="relative w-full overflow-hidden bg-muted aspect-steam retro-frame">
           {/* Always render image as base layer */}

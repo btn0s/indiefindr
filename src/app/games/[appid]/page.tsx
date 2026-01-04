@@ -349,6 +349,10 @@ export default async function GameDetailPage({
               <GameContent appId={appId} appid={appid} />
             </Suspense>
           </div>
+          <div className="retro-statusbar">
+            <span>Status: Streaming</span>
+            <span className="opacity-80">Powered by Steam + AI</span>
+          </div>
         </section>
       </div>
     </main>
