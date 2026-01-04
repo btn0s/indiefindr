@@ -94,6 +94,14 @@ export default async function Home() {
 
   return (
     <main className="flex flex-col gap-8 pt-8">
+      <div className="w-full px-4">
+        <div className="container mx-auto max-w-7xl w-full">
+          <h1 className="font-semibold tracking-tight text-3xl sm:text-4xl">
+            Search any PC game and find similar games you&apos;ll love
+          </h1>
+        </div>
+      </div>
+
       {/* Full-width grid section */}
       <div className="flex flex-col gap-4 w-full px-4 pb-8">
         <div className="container mx-auto max-w-7xl w-full flex items-center justify-between">
