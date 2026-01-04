@@ -181,6 +181,7 @@ export async function generateMetadata({
       "game recommendations",
       "indie game recommendations",
       "discover indie games",
+      "IndieFindr",
     ],
     openGraph: {
       title,
@@ -247,16 +248,19 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <h1
-        className="text-xl sm:text-2xl font-semibold leading-snug text-balance line-clamp-2"
-        title={`Games like ${gameData.title}`}
-      >
-        Games like {gameData.title}
-      </h1>
+      
+      <div className="border-b-2 border-[#333] mb-6 pb-2">
+        <h1
+          className="text-xl sm:text-2xl font-display font-bold uppercase tracking-widest text-[#00ffcc]"
+          title={`Games like ${gameData.title}`}
+        >
+          Games like <span className="text-white">{gameData.title}</span>
+        </h1>
+      </div>
 
-      {/* Trailer Video - Full Width */}
+      {/* Trailer Video - Full Width with bezel */}
       {gameData.videos && gameData.videos.length > 0 && (
-        <div className="w-full aspect-video">
+        <div className="w-full aspect-video border-2 border-[#333] bevel-down p-1 bg-black mb-6">
           <GameVideo
             videos={gameData.videos}
             headerImage={gameData.header_image}
@@ -266,31 +270,33 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
         </div>
       )}
 
-      {/* Game Header */}
-      <div className="flex gap-3 sm:gap-4 items-center">
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="text-sm sm:text-lg font-semibold truncate sm:whitespace-normal">
-            {gameData.title}
+      {/* Game Header Box */}
+      <div className="bg-[#111] border border-[#333] p-4 mb-8">
+        <div className="flex gap-4 items-start">
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="text-lg font-bold uppercase tracking-wide mb-2 text-[#00ffcc]">
+              {gameData.title}
+            </div>
+
+            {description && (
+              <p className="text-[#aaa] font-sans text-sm mb-4 leading-relaxed">
+                {truncate(stripHtml(description), 220)}
+              </p>
+            )}
+
+            <SteamButton appid={appid} title={gameData.title} />
           </div>
-
-          {description && (
-            <p className="text-muted-foreground line-clamp-4 text-sm mb-2">
-              {truncate(stripHtml(description), 220)}
-            </p>
-          )}
-
-          <SteamButton appid={appid} title={gameData.title} />
         </div>
       </div>
 
       {/* Suggestions Section - Nested Suspense */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-start sm:items-center justify-between gap-3">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between border-l-4 border-[#00ffcc] pl-4 bg-[#111] py-2">
           <h2
-            className="flex-1 min-w-0 text-base sm:text-lg font-semibold leading-snug text-balance line-clamp-2"
+            className="text-lg font-bold uppercase tracking-wide text-white"
             title={`Games similar to ${gameData.title}`}
           >
-            Games similar to {gameData.title}
+            Recommended Titles
           </h2>
         </div>
         <Suspense fallback={<SuggestionsSkeleton showNotice={false} />}>
@@ -314,26 +320,22 @@ export default async function GameDetailPage({
   }
 
   return (
-    <main className="container mx-auto max-w-4xl px-4 py-6 sm:py-8 flex flex-col gap-3 sm:gap-4">
+    <main className="container mx-auto max-w-4xl px-4 py-6 sm:py-8 flex flex-col">
       <Suspense
         fallback={
           <>
             {/* Main content skeleton */}
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="w-full aspect-video" />
-            <div className="flex gap-3 sm:gap-4 items-center mb-4">
-              <div className="flex-1 flex flex-col min-w-0 gap-2">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-8 w-32 mt-2" />
-              </div>
+            <Skeleton className="h-8 w-64 mb-6" />
+            <Skeleton className="w-full aspect-video mb-6" />
+            <div className="bg-[#111] border border-[#333] p-4 mb-8">
+              <Skeleton className="h-6 w-1/3 mb-4" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3 mb-4" />
+              <Skeleton className="h-8 w-32" />
             </div>
             {/* Suggestions section skeleton */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-start sm:items-center justify-between gap-3">
-                <Skeleton className="h-6 w-64 max-w-full" />
-              </div>
+            <div className="flex flex-col gap-4">
+              <Skeleton className="h-10 w-full" />
               <SuggestionsSkeleton showNotice={false} />
             </div>
           </>

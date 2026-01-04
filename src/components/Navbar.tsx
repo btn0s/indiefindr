@@ -146,7 +146,6 @@ export function Navbar() {
       router.push(`/games/${result.appid}`);
     } else {
       // Game doesn't exist, start ingestion and navigate immediately
-      // We already have the appId from search, so we can navigate right away
       setIngestingAppId(result.appid);
       setIngestingGame({
         title: result.title,
@@ -171,8 +170,6 @@ export function Navbar() {
           setIngestingGame(null);
         });
 
-      // Navigate immediately - the game page will show loading state
-      // and poll for data as it becomes available
       router.push(`/games/${result.appid}`);
     }
   };
@@ -184,24 +181,27 @@ export function Navbar() {
         gameTitle={ingestingGame?.title}
         gameImage={ingestingGame?.image}
       />
-      <nav className="sticky top-0 z-50 w-full border-b bg-background">
-        <div className="container mx-auto max-w-4xl flex h-14 items-center gap-3 px-4 w-full">
+      <nav className="sticky top-0 z-50 w-full border-b-2 border-[#333] bg-[#0a0a0a] bevel-up">
+        <div className="container mx-auto max-w-5xl flex h-16 items-center gap-4 px-4 w-full">
           {/* Logo/Brand */}
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg"
+            className="flex shrink-0 items-center gap-2 font-display text-xl uppercase tracking-widest text-[#00ffcc] hover:text-white transition-colors"
           >
             <Logo />
             IndieFindr
+            <span className="text-[10px] bg-[#333] px-1 text-white hidden sm:inline-block">BETA</span>
           </Link>
 
           {/* Search */}
           <div className="relative flex-1" ref={resultsRef}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative flex items-center">
+              <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center pl-2 pointer-events-none">
+                 <Search className="h-4 w-4 text-muted-foreground" />
+              </div>
               <Input
                 type="text"
-                placeholder="Search games..."
+                placeholder="SEARCH_GAMES..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => {
@@ -209,14 +209,14 @@ export function Navbar() {
                     setShowResults(true);
                   }
                 }}
-                className="h-10 pr-10 pl-9 sm:h-8"
+                className="pl-8"
               />
               {searchQuery.trim().length > 0 && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                  className="absolute right-1 h-6 w-6"
                   onClick={() => {
                     setSearchQuery("");
                     setDbResults([]);
@@ -225,32 +225,35 @@ export function Navbar() {
                   }}
                   aria-label="Clear search"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </Button>
               )}
             </div>
 
             {/* Search Results Dropdown */}
             {showResults && (
-              <div className="fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b bg-background shadow-lg sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96 sm:rounded-md sm:border">
+              <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[#0a0a0a] bevel-up border border-[#333] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]">
                 {searchQuery.trim().length < 2 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    Keep typing to search…
+                  <div className="p-4 text-center text-xs text-muted-foreground font-mono">
+                    AWAITING INPUT...
                   </div>
                 ) : isSearching ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    Searching...
+                  <div className="p-4 text-center text-xs text-[#00ffcc] font-mono animate-pulse">
+                    SEARCHING_DATABASE...
                   </div>
                 ) : dbResults.length > 0 || steamResults.length > 0 ? (
                   <div className="py-1">
                     {/* Database Results */}
                     {dbResults.length > 0 && (
                       <>
+                        <div className="px-2 py-1 text-[10px] text-[#888] uppercase tracking-widest border-b border-[#222]">
+                          In Database
+                        </div>
                         {dbResults.map((game) => (
                           <button
                             key={`db-${game.appid}`}
                             onClick={() => handleResultClick(game)}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors sm:py-2"
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[#222] transition-colors group"
                           >
                             {game.header_image && (
                               <Image
@@ -259,63 +262,64 @@ export function Navbar() {
                                 width={80}
                                 height={48}
                                 sizes="80px"
-                                className="h-12 w-20 object-cover rounded"
+                                className="h-8 w-14 object-cover border border-[#333] group-hover:border-[#00ffcc]"
                               />
                             )}
-                            <span className="flex-1 text-sm font-medium">
+                            <span className="flex-1 text-xs font-bold text-[#e0e0e0] group-hover:text-[#00ffcc] font-sans">
                               {game.title}
                             </span>
                           </button>
                         ))}
-                        {steamResults.length > 0 && (
-                          <div className="border-t my-1">
-                            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">
-                              Steam Store
-                            </div>
-                          </div>
-                        )}
                       </>
                     )}
+                    
                     {/* Steam Results */}
-                    {steamResults.map((game) => (
-                      <button
-                        key={`steam-${game.appid}`}
-                        onClick={() => handleResultClick(game)}
-                        disabled={ingestingAppId === game.appid}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait sm:py-2"
-                      >
-                        {game.header_image && (
-                          <Image
-                            src={game.header_image}
-                            alt={game.title}
-                            width={80}
-                            height={48}
-                            sizes="80px"
-                            className="h-12 w-20 object-cover rounded"
-                          />
-                        )}
-                        <span className="flex-1 text-sm font-medium">
-                          {game.title}
-                        </span>
-                        {ingestingAppId === game.appid ? (
-                          <span className="text-xs text-muted-foreground">
-                            Ingesting...
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            Add to database
-                          </span>
-                        )}
-                      </button>
-                    ))}
+                    {steamResults.length > 0 && (
+                      <>
+                         <div className="px-2 py-1 text-[10px] text-[#888] uppercase tracking-widest border-b border-[#222] border-t mt-1">
+                          Steam Store
+                        </div>
+                        {steamResults.map((game) => (
+                          <button
+                            key={`steam-${game.appid}`}
+                            onClick={() => handleResultClick(game)}
+                            disabled={ingestingAppId === game.appid}
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[#222] transition-colors disabled:opacity-50 disabled:cursor-wait group"
+                          >
+                            {game.header_image && (
+                              <Image
+                                src={game.header_image}
+                                alt={game.title}
+                                width={80}
+                                height={48}
+                                sizes="80px"
+                                className="h-8 w-14 object-cover border border-[#333] group-hover:border-[#ff00ff]"
+                              />
+                            )}
+                            <span className="flex-1 text-xs font-bold text-[#aaa] group-hover:text-[#ff00ff] font-sans">
+                              {game.title}
+                            </span>
+                            {ingestingAppId === game.appid ? (
+                              <span className="text-[10px] text-[#00ffcc] font-mono animate-pulse">
+                                [INGESTING]
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-[#666] group-hover:text-[#ff00ff] font-mono">
+                                [ADD]
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </>
+                    )}
                   </div>
                 ) : hasSearched ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    No games found
+                  <div className="p-4 text-center text-xs text-[#ff3333] font-mono">
+                    NO_DATA_FOUND
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    Searching...
+                  <div className="p-4 text-center text-xs text-[#00ffcc] font-mono animate-pulse">
+                    SEARCHING...
                   </div>
                 )}
               </div>

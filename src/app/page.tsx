@@ -95,24 +95,31 @@ export default async function Home() {
   return (
     <main className="flex flex-col gap-8 pt-8">
       <div className="w-full px-4">
-        <div className="container mx-auto max-w-7xl w-full">
-          <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">
-            Find your next favorite indie game
+        <div className="container mx-auto max-w-7xl w-full border-b-2 border-[#333] pb-4 mb-4">
+          <h1 className="font-display text-4xl sm:text-5xl text-[#00ffcc] uppercase tracking-widest drop-shadow-[2px_2px_0px_#000]">
+            Find Your Next Favorite Indie Game
           </h1>
+          <p className="text-[#888] font-mono mt-2 text-sm uppercase tracking-wide">
+             :: System Ready :: Awaiting Input ::
+          </p>
         </div>
       </div>
 
       {/* Full-width grid section */}
       <div className="flex flex-col gap-4 w-full px-4 pb-8">
-        <div className="container mx-auto max-w-7xl w-full flex items-center justify-between">
-          <h2 className="font-semibold text-xl">All Games</h2>
+        <div className="container mx-auto max-w-7xl w-full flex items-center justify-between border-l-4 border-[#00ffcc] pl-4 bg-[#111] py-2">
+          <h2 className="font-display text-2xl uppercase tracking-wider text-white">
+            Latest Database Entries
+          </h2>
         </div>
         <div className="container mx-auto max-w-7xl w-full">
           {games.length === 0 ? (
-            <p className="text-muted-foreground">
-              No games ingested yet. Search for a game above to add your first
-              one.
-            </p>
+            <div className="p-8 border border-dashed border-[#333] text-center">
+              <p className="text-muted-foreground font-mono">
+                No games ingested yet. Search for a game above to add your first
+                one.
+              </p>
+            </div>
           ) : (
             <GamesGrid initialGames={games} />
           )}

@@ -7,8 +7,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: Verdana, Geneva, Tahoma, sans-serif;
+  --font-mono: 'Courier New', Courier, monospace;
+  --font-display: var(--font-vt323);
+  
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -38,82 +40,68 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  
+  --radius-sm: 0px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 8px;
+  --radius-2xl: 12px;
+  --radius-3xl: 16px;
+  --radius-4xl: 20px;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.58 0.22 27);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 0;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Early 2000s "Creative Web" Palette - Dark Mode Default */
+  --background: #0a0a0a;
+  --foreground: #e0e0e0;
+  
+  --card: #111111;
+  --card-foreground: #e0e0e0;
+  
+  --popover: #1a1a1a;
+  --popover-foreground: #e0e0e0;
+  
+  --primary: #00ffcc; /* Cyber Teal */
+  --primary-foreground: #000000;
+  
+  --secondary: #333333;
+  --secondary-foreground: #ffffff;
+  
+  --muted: #222222;
+  --muted-foreground: #888888;
+  
+  --accent: #ff00ff; /* Magenta Accent */
+  --accent-foreground: #ffffff;
+  
+  --destructive: #ff3333;
+  --destructive-foreground: #ffffff;
+  
+  --border: #333333;
+  --input: #1a1a1a;
+  --ring: #00ffcc;
+  
+  --radius: 0; /* Sharp edges */
+  
+  --chart-1: #00ffcc;
+  --chart-2: #ff00ff;
+  --chart-3: #ffff00;
+  --chart-4: #0088ff;
+  --chart-5: #ff3333;
+  
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: #00ffcc;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #222222;
+  --sidebar-accent-foreground: #e0e0e0;
+  --sidebar-border: #333333;
+  --sidebar-ring: #00ffcc;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.87 0.00 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.371 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Inherits from root since we are going for a unified dark theme */
+  --background: #0a0a0a;
+  --foreground: #e0e0e0;
 }
 
 @layer base {
@@ -122,7 +110,70 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 13px; /* Smaller base font size typical of the era */
+    letter-spacing: 0.01em;
   }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display), monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+}
+
+@layer utilities {
+  .retro-bg {
+    background-image: 
+      linear-gradient(rgba(10, 10, 10, 0.9), rgba(10, 10, 10, 0.9)),
+      repeating-linear-gradient(0deg, transparent, transparent 1px, #1a1a1a 1px, #1a1a1a 2px),
+      repeating-linear-gradient(90deg, transparent, transparent 1px, #1a1a1a 1px, #1a1a1a 2px);
+    background-size: 100% 100%, 20px 20px, 20px 20px;
+  }
+
+  .bevel-up {
+    box-shadow: 
+      inset 1px 1px 0px rgba(255, 255, 255, 0.2),
+      inset -1px -1px 0px rgba(0, 0, 0, 0.5);
+    border: 1px solid #333;
+  }
+
+  .bevel-down {
+    box-shadow: 
+      inset 1px 1px 0px rgba(0, 0, 0, 0.5),
+      inset -1px -1px 0px rgba(255, 255, 255, 0.1);
+    border: 1px solid #333;
+    background-color: #050505;
+  }
+  
+  .pixel-border {
+    box-shadow: 
+      -2px 0 0 0 #333,
+      2px 0 0 0 #333,
+      0 -2px 0 0 #333,
+      0 2px 0 0 #333;
+    margin: 2px;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+  border-left: 1px solid #333;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border: 1px solid #555;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
 }
 
 .aspect-steam {

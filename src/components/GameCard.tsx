@@ -119,11 +119,11 @@ function GameCard({
   return (
     <Link
       href={`/games/${appid}`}
-      className="block"
+      className="block group"
       onClick={handleCardClick}
     >
-      <div ref={cardRef}>
-        <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
+      <div ref={cardRef} className="bg-[#111] bevel-up p-1 hover:bg-[#222] transition-colors h-full flex flex-col">
+        <div className="relative w-full mb-2 overflow-hidden aspect-steam border border-[#333]">
           {/* Always render image as base layer */}
           {header_image && (
             <Image
@@ -152,12 +152,14 @@ function GameCard({
             />
           )}
         </div>
-        <div className="font-medium text-sm">{title}</div>
-        {explanation && (
-          <div className="text-xs text-muted-foreground first-letter:uppercase">
-            {explanation}
-          </div>
-        )}
+        <div className="px-1 pb-1 flex-1 flex flex-col">
+          <div className="font-bold text-xs uppercase tracking-wide text-[#e0e0e0] group-hover:text-[#00ffcc] mb-1 truncate">{title}</div>
+          {explanation && (
+            <div className="text-[10px] text-[#888] font-mono leading-tight line-clamp-2">
+              {explanation}
+            </div>
+          )}
+        </div>
       </div>
     </Link>
   );

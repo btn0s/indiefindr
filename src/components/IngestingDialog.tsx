@@ -24,11 +24,11 @@ export function IngestingDialog({
     <Dialog open={open}>
       <DialogContent showCloseButton={false} className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Adding to database</DialogTitle>
+          <DialogTitle>Processing Data Request</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 py-4">
           {gameImage && (
-            <div className="relative w-32 h-16 rounded-lg overflow-hidden">
+            <div className="relative w-32 h-16 border border-[#333]">
               <Image
                 src={gameImage}
                 alt={gameTitle || "Game"}
@@ -39,11 +39,11 @@ export function IngestingDialog({
             </div>
           )}
           {gameTitle && (
-            <p className="text-lg font-medium text-center">{gameTitle}</p>
+            <p className="text-lg font-bold uppercase tracking-wide text-center text-[#e0e0e0]">{gameTitle}</p>
           )}
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="flex items-center gap-2 text-[#00ffcc]">
             <Spinner className="size-4" />
-            <p className="text-sm">Please wait...</p>
+            <p className="text-sm font-mono uppercase">Initializing...</p>
           </div>
         </div>
       </DialogContent>
