@@ -104,7 +104,7 @@ export function GameVideo({
   }, [hasVideo, videoUrl, isHls, startTime]);
 
   return (
-    <div className={`relative overflow-hidden rounded-xl bg-muted shadow-inner ${className}`}>
+    <div className={`relative overflow-hidden bg-muted ${className}`} style={{ borderRadius: '6px', border: '1px solid', borderTopColor: 'rgba(0, 0, 0, 0.1)', borderLeftColor: 'rgba(0, 0, 0, 0.1)', borderBottomColor: 'rgba(255, 255, 255, 0.05)', borderRightColor: 'rgba(255, 255, 255, 0.05)' }}>
       {hasVideo && videoUrl ? (
         <video
           ref={videoRef}
@@ -113,6 +113,7 @@ export function GameVideo({
           loop={loop}
           playsInline
           className="w-full h-full object-cover"
+          style={{ borderRadius: '4px' }}
           onError={() => {
             setVideoError(true);
           }}
@@ -123,13 +124,15 @@ export function GameVideo({
           alt={alt}
           fill
           className="object-cover"
+          style={{ borderRadius: '4px' }}
           sizes="100vw"
         />
       ) : (
-        <div className="w-full h-full bg-muted flex items-center justify-center">
+        <div className="w-full h-full bg-muted flex items-center justify-center" style={{ borderRadius: '4px' }}>
           <span className="text-muted-foreground text-sm">No preview available</span>
         </div>
       )}
+      <div className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: '4px', boxShadow: 'inset 0 4px 12px rgba(0, 0, 0, 0.4)' }} />
     </div>
   );
 }

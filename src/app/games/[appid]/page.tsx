@@ -377,54 +377,59 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
       </h1>
 
       {/* Game Header */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col">
         {/* Trailer Video */}
         {gameData.videos && gameData.videos.length > 0 && (
-          <div className="cartridge-screen">
-            <div className="cartridge-screen-bezel">
-              <GameVideo
-                videos={gameData.videos}
-                headerImage={gameData.header_image}
-                alt={gameData.title}
-                className="w-full h-full"
-              />
-              <div className="cartridge-screen-reflection" />
+          <div className="mb-6">
+            <div className="cartridge-screen">
+              <div className="cartridge-screen-bezel">
+                <GameVideo
+                  videos={gameData.videos}
+                  headerImage={gameData.header_image}
+                  alt={gameData.title}
+                  className="w-full h-full"
+                />
+              </div>
             </div>
           </div>
         )}
-        {/* Title and Description */}
-        <div className="flex flex-col gap-1">
-          <div className="text-base sm:text-lg font-semibold leading-tight text-[#000000]">
-            {gameData.title}
-          </div>
-          {description && (
-            <p className="text-xs text-[#404040] leading-relaxed">
-              {truncate(stripHtml(description), 220)}
-            </p>
-          )}
-        </div>
+        <div className="px-2 flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            {/* Title and Description */}
+            <div className="flex flex-col gap-1">
+              <div className="text-base sm:text-lg font-semibold leading-tight text-[#000000]">
+                {gameData.title}
+              </div>
+              {description && (
+                <p className="text-xs text-[#404040] leading-relaxed">
+                  {truncate(stripHtml(description), 220)}
+                </p>
+              )}
+            </div>
 
-        {/* Inline Metadata - Release, Developers */}
-        {(gameData.release_date || gameData.developers.length > 0) && (
-          <div className="cartridge-metadata flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-            {gameData.release_date && (
-              <div className="flex items-center gap-1">
-                <span className="text-[#404040] font-semibold">RELEASE:</span>
-                <span className="text-[#000000]">{gameData.release_date}</span>
+            {/* Inline Metadata - Release, Developers */}
+            {(gameData.release_date || gameData.developers.length > 0) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                {gameData.release_date && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[#404040] font-semibold">RELEASE:</span>
+                    <span className="text-[#000000]">{gameData.release_date}</span>
+                  </div>
+                )}
+                {gameData.developers.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[#404040] font-semibold">DEV{gameData.developers.length > 1 ? "S" : ""}:</span>
+                    <span className="text-[#000000]">{gameData.developers.join(", ")}</span>
+                  </div>
+                )}
               </div>
             )}
-            {gameData.developers.length > 0 && (
-              <div className="flex items-center gap-1">
-                <span className="text-[#404040] font-semibold">DEV{gameData.developers.length > 1 ? "S" : ""}:</span>
-                <span className="text-[#000000]">{gameData.developers.join(", ")}</span>
-              </div>
-            )}
           </div>
-        )}
 
-        {/* Steam Button */}
-        <div>
-          <SteamButton appid={appid} title={gameData.title} />
+          {/* Steam Button */}
+          <div>
+            <SteamButton appid={appid} title={gameData.title} />
+          </div>
         </div>
       </div>
 
@@ -465,7 +470,7 @@ export default async function GameDetailPage({
   }
 
   return (
-    <main className="container mx-auto max-w-4xl py-6 sm:py-8 flex flex-col gap-3 sm:gap-4">
+    <main className="container mx-auto max-w-4xl pb-6 sm:pb-8 flex flex-col gap-3 sm:gap-4">
       <Suspense
         fallback={
           <GameDetailSkeleton />

@@ -87,7 +87,7 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex flex-col gap-8 pt-8">
+    <main className="flex flex-col gap-8">
       <h1 className="text-balance font-semibold text-2xl sm:text-3xl text-[#000000]">
         Find your next favorite indie game
       </h1>
