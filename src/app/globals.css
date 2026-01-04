@@ -395,8 +395,12 @@
 }
 
 .cartridge-screen {
-  background: #e5e5e5;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: linear-gradient(to bottom, 
+    #dadada 0%, 
+    #d2d2d2 50%,
+    #cacaca 100%
+  );
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   box-shadow: 
     0 2px 8px rgba(0, 0, 0, 0.04),
