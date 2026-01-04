@@ -96,7 +96,7 @@ export default async function Home() {
     <main className="flex flex-col gap-8 pt-8">
       <div className="w-full px-4">
         <div className="container mx-auto max-w-7xl w-full">
-          <h1 className="font-semibold tracking-tight text-3xl sm:text-4xl">
+          <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">
             Find your next favorite indie gems
           </h1>
         </div>
