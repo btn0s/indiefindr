@@ -205,12 +205,10 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
           />
         </>
       )}
-      <div className="flex flex-col gap-4">
-        <div className="grid md:grid-cols-3 gap-6">
-          {sortedGames.map((game) => (
-            <GameCard key={game.appid} {...game} />
-          ))}
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {sortedGames.map((game) => (
+          <GameCard key={game.appid} {...game} />
+        ))}
       </div>
     </>
   );

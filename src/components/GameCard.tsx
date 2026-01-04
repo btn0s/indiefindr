@@ -129,7 +129,7 @@ function GameCard({
             {title}
           </CardTitle>
         </CardHeader>
-        <CardContent className={!explanation ? "pb-2" : "pb-3"}>
+        <CardContent className={explanation ? "pb-0" : ""}>
           <div className="relative w-full win95-inset aspect-steam overflow-hidden">
             {/* Always render image as base layer */}
             {header_image && (

@@ -253,6 +253,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
         Games like {gameData.title}
       </h1>
 
+      {/* Main Game Container */}
       <Card className="w-full">
         <CardContent className="flex flex-col gap-4 p-4">
           {/* Trailer Video - Full Width */}
@@ -285,23 +286,23 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
               </div>
             </div>
           </div>
-
-          {/* Suggestions Section - Nested Suspense */}
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 w-full">
-              <div className="h-[3px] flex-1 win95-inset opacity-50" />
-              <h2 className="px-3 text-[10px] font-black uppercase tracking-[0.3em] text-black shrink-0">
-                Similar Discoveries
-              </h2>
-              <div className="h-[3px] flex-1 win95-inset opacity-50" />
-            </div>
-            <Suspense fallback={<SuggestionsSkeleton showNotice={false} />}>
-              <SuggestionsList appid={appId} />
-            </Suspense>
-          </div>
         </CardContent>
       </Card>
-    </>
+
+      {/* Suggestions Section - Separate Container */}
+      <div className="flex flex-col gap-4 w-full">
+        <div className="flex items-center gap-2 w-full">
+          <div className="h-[3px] flex-1 win95-inset opacity-50" />
+          <h2 className="px-3 text-[10px] font-black uppercase tracking-[0.3em] text-white drop-shadow-[1px_1px_0_rgba(0,0,0,1)] shrink-0">
+            Similar Discoveries
+          </h2>
+          <div className="h-[3px] flex-1 win95-inset opacity-50" />
+        </div>
+        <Suspense fallback={<SuggestionsSkeleton showNotice={false} />}>
+          <SuggestionsList appid={appId} />
+        </Suspense>
+      </div>
+    </div>
   );
 }
 

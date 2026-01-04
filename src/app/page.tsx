@@ -94,7 +94,7 @@ export default async function Home() {
 
   return (
     <main className="flex flex-col gap-8 py-4 sm:py-6">
-      <h1 className="text-3xl sm:text-5xl font-black text-white drop-shadow-[3px_3px_0_rgba(0,0,0,1)] tracking-tighter uppercase italic">
+      <h1 className="text-3xl sm:text-5xl font-black text-white drop-shadow-[2px_2px_0_rgba(0,0,0,1)] tracking-tighter uppercase italic">
         Find your next favorite indie game
       </h1>
 
