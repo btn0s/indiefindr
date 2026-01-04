@@ -58,9 +58,11 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <ScrollToTopOnNavigation />
         </Suspense>
-        <div className="min-h-screen bg-zinc-50 dark:bg-black px-4">
+        <div className="min-h-screen bg-zinc-50 dark:bg-black">
           <Navbar />
-          {children}
+          <div className="px-4">
+            {children}
+          </div>
         </div>
         <Analytics />
       </body>
