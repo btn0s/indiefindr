@@ -16,7 +16,7 @@ export function CollectionsSection({
   }
 
   return (
-    <div className="flex flex-col gap-8 w-full pb-8">
+    <div className="flex flex-col gap-8 w-full">
       {collections.map((collection) => (
         <div key={collection.id} className="flex flex-col gap-4 w-full">
           <div className="container mx-auto max-w-4xl w-full flex items-center justify-between">
