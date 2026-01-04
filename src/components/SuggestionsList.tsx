@@ -8,6 +8,7 @@ import GameCard from "@/components/GameCard";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameNew, Suggestion } from "@/lib/supabase/types";
 import { autoIngestMissingGames, refreshSuggestions } from "@/lib/ingest";
+import { sortSuggestionsByIndiePriority } from "@/lib/utils/indie-detection";
 
 interface SuggestionsListProps {
   appid: number;
@@ -124,8 +125,8 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     return rawType === "game" || !rawType;
   });
 
-  // Only show games that exist in DB
-  const sortedGames = suggestions
+  // Map suggestions to games
+  const gamesWithExplanations = suggestions
     .map((suggestion) => {
       const game = cachedGames.find((g) => g.appid === suggestion.appId);
       return game
@@ -133,6 +134,25 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
         : undefined;
     })
     .filter((g): g is GameNew & { explanation: string } => g !== undefined);
+
+  // Create gamesById map for sorting (without explanation, since GameNew doesn't have it)
+  const gamesById: Record<number, GameNew> = {};
+  for (const game of gamesWithExplanations) {
+    const { explanation, ...gameWithoutExplanation } = game;
+    gamesById[game.appid] = gameWithoutExplanation;
+  }
+
+  // Sort to prioritize indie games (recent indie first, then other indie, then non-indie)
+  // Map to suggestions format, sort, then map back to games with explanations
+  const sortedSuggestions = sortSuggestionsByIndiePriority(
+    gamesWithExplanations.map((g) => ({ appId: g.appid, explanation: g.explanation })),
+    gamesById
+  );
+
+  const sortedGames = sortedSuggestions.map((s) => {
+    const game = gamesWithExplanations.find((g) => g.appid === s.appId);
+    return game!;
+  });
 
   // Few or no displayable games? Show what we have + message
   if (sortedGames.length === 0) {

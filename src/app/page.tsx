@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GamesGrid } from "@/components/GamesGrid";
 import { GameNew } from "@/lib/supabase/types";
+import { isLikelyIndie, isRecent } from "@/lib/utils/indie-detection";
 
 export const dynamic = "force-dynamic";
 
@@ -57,20 +58,41 @@ export async function generateMetadata(): Promise<Metadata> {
 
 async function getGames(): Promise<GameNew[]> {
   const supabase = getSupabaseServerClient();
+  // Fetch more games than needed to ensure we can filter for indie games
+  // This helps ensure indie games appear at the top even if AAA games are in the first rows
+  const FETCH_SIZE = PAGE_SIZE * 3; // Fetch 3x to have enough indie games to choose from
   const { data: games, error } = await supabase
     .from("games_new")
     .select(
       "appid, title, header_image, videos, screenshots, short_description, long_description, raw, created_at, updated_at, suggested_game_appids"
     )
-    .range(0, PAGE_SIZE - 1);
+    .range(0, FETCH_SIZE - 1);
 
   if (error) {
     console.error("Error loading games:", error);
     return [];
   }
 
-  // Sort by number of suggestions (most first), then by created_at as tiebreaker
+  // Sort to prioritize indie games:
+  // 1. Recent indie games (last 6 months) - highest priority
+  // 2. Other indie games
+  // 3. Non-indie games - lowest priority
+  // Within each group, sort by number of suggestions, then by created_at
   const sorted = (games || []).sort((a, b) => {
+    const indieA = isLikelyIndie(a);
+    const indieB = isLikelyIndie(b);
+    const recentA = isRecent(a, 6);
+    const recentB = isRecent(b, 6);
+
+    // Priority 1: Recent indie games
+    if (recentA && indieA && !(recentB && indieB)) return -1;
+    if (recentB && indieB && !(recentA && indieA)) return 1;
+
+    // Priority 2: Other indie games
+    if (indieA && !indieB) return -1;
+    if (indieB && !indieA) return 1;
+
+    // Within same priority group, sort by number of suggestions
     const aCount = Array.isArray(a.suggested_game_appids)
       ? a.suggested_game_appids.length
       : 0;
@@ -86,7 +108,8 @@ async function getGames(): Promise<GameNew[]> {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  return sorted as GameNew[];
+  // Return only the top PAGE_SIZE games (prioritized indie games)
+  return (sorted as GameNew[]).slice(0, PAGE_SIZE);
 }
 
 export default async function Home() {
