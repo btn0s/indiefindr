@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "tsx scripts/generate-home-og.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -45,6 +46,7 @@
     "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.0",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"
