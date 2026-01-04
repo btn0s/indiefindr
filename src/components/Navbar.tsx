@@ -184,7 +184,7 @@ export function Navbar() {
         gameTitle={ingestingGame?.title}
         gameImage={ingestingGame?.image}
       />
-      <nav className="sticky top-0 z-50 w-full border-b bg-background">
+      <nav className="y2k-navbar sticky top-0 z-50 w-full border-b bg-background">
         <div className="container mx-auto max-w-4xl flex h-14 items-center gap-3 px-4 w-full">
           {/* Logo/Brand */}
           <Link
@@ -232,7 +232,7 @@ export function Navbar() {
 
             {/* Search Results Dropdown */}
             {showResults && (
-              <div className="fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b bg-background shadow-lg sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96 sm:rounded-md sm:border">
+              <div className="y2k-panel fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96 sm:rounded-md">
                 {searchQuery.trim().length < 2 ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     Keep typing to search…

@@ -119,11 +119,11 @@ function GameCard({
   return (
     <Link
       href={`/games/${appid}`}
-      className="block"
+      className="block rounded-md border border-border bg-card p-3 shadow-sm hover:shadow-md transition-shadow"
       onClick={handleCardClick}
     >
       <div ref={cardRef}>
-        <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
+        <div className="relative w-full mb-2 overflow-hidden rounded-sm border border-border bg-muted/60 aspect-steam">
           {/* Always render image as base layer */}
           {header_image && (
             <Image
