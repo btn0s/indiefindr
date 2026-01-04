@@ -60,8 +60,8 @@ export default function RootLayout({
           <ScrollToTopOnNavigation />
         </Suspense>
         <div className="min-h-screen cartridge-console-bg dark:bg-black">
-          <div className="console-screen">
-            <Navbar />
+          <Navbar />
+          <div className="console-screen pt-16">
             <div className="container mx-auto max-w-4xl px-4 pb-8">
               {children}
             </div>

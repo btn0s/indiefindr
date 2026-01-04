@@ -244,7 +244,6 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
   border-bottom: 2px solid;
   border-bottom-color: rgba(128, 128, 128, 0.85);
-  position: relative;
 }
 
 
@@ -348,18 +347,18 @@
     #d0d0d0 50%,
     #c8c8c8 100%
   );
-  border: 2px solid;
+  border: 1px solid;
   border-top-color: rgba(255, 255, 255, 0.85);
   border-left-color: rgba(255, 255, 255, 0.85);
   border-bottom-color: rgba(128, 128, 128, 0.85);
   border-right-color: rgba(128, 128, 128, 0.85);
   border-radius: 6px;
   box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.25),
-    0 2px 6px rgba(0, 0, 0, 0.2),
-    inset 0 2px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.3);
-  padding: 3px;
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 1px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  padding: 2px;
 }
 
 .cartridge-tray::before {
@@ -835,10 +834,10 @@
 }
 
 .win95-input:focus {
-  border-top-color: rgba(0, 0, 128, 0.9);
-  border-left-color: rgba(0, 0, 128, 0.9);
-  border-bottom-color: rgba(0, 0, 128, 0.7);
-  border-right-color: rgba(0, 0, 128, 0.7);
+  border-top-color: rgba(128, 128, 128, 0.85);
+  border-left-color: rgba(128, 128, 128, 0.85);
+  border-bottom-color: rgba(255, 255, 255, 0.85);
+  border-right-color: rgba(255, 255, 255, 0.85);
   background: linear-gradient(to bottom, 
     #f0f0f0 0%,
     #e8e8e8 50%,

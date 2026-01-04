@@ -167,7 +167,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="cartridge-console sticky top-0 z-50 w-full">
+    <nav className="cartridge-console fixed top-0 left-0 right-0 z-50 w-full">
       <div className="container mx-auto max-w-4xl px-4">
         <div className="flex h-16 items-center gap-4 w-full">
           {/* Logo/Brand */}
@@ -183,10 +183,10 @@ export function Navbar() {
           <div className="relative flex-1" ref={resultsRef}>
             <div className="cartridge-slot relative">
               <div className="cartridge-slot-inset">
-                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#606060] pointer-events-none z-10 transition-colors duration-200" />
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#606060] pointer-events-none z-10 transition-colors duration-200" />
                 <input
                   type="text"
-                  placeholder="Insert cartridge..."
+                  placeholder="Search games..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => {
@@ -194,12 +194,12 @@ export function Navbar() {
                       setShowResults(true);
                     }
                   }}
-                  className="win95-input h-10 pr-9 pl-10 sm:h-9 w-full text-sm text-[#000000] placeholder:text-[#808080]"
+                  className="win95-input h-10 pr-9 pl-9 sm:h-9 w-full text-sm text-[#000000] placeholder:text-[#808080]"
                 />
                 {searchQuery.trim().length > 0 && (
                   <button
                     type="button"
-                    className="cartridge-eject-button absolute right-1.5 top-1/2 h-7 w-7 -translate-y-1/2 flex items-center justify-center rounded-sm"
+                    className="cartridge-eject-button absolute right-2.5 top-1/2 h-5 w-5 -translate-y-1/2 flex items-center justify-center rounded-sm"
                     onClick={() => {
                       setSearchQuery("");
                       setDbResults([]);
@@ -208,7 +208,7 @@ export function Navbar() {
                     }}
                     aria-label="Clear search"
                   >
-                    <X className="h-3.5 w-3.5 text-[#000000]" />
+                    <X className="h-3 w-3 text-[#000000]" />
                   </button>
                 )}
               </div>
@@ -218,15 +218,15 @@ export function Navbar() {
             {showResults && (
               <div className="cartridge-tray fixed left-0 right-0 top-16 z-50 mt-2 max-h-[calc(100vh-4rem)] overflow-y-auto sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-2 sm:max-h-96">
                 {searchQuery.trim().length < 2 ? (
-                  <div className="p-4 text-center text-xs text-[#404040]">
+                  <div className="px-2 py-1.5 text-center text-xs text-[#404040]">
                     Keep typing to search…
                   </div>
                 ) : isSearching ? (
-                  <div className="p-4 text-center text-xs text-[#404040]">
+                  <div className="px-2 py-1.5 text-center text-xs text-[#404040]">
                     Searching...
                   </div>
                 ) : dbResults.length > 0 || steamResults.length > 0 ? (
-                  <div className="py-1">
+                  <div className="py-1 px-1">
                     {/* Database Results */}
                     {dbResults.length > 0 && (
                       <>
@@ -234,7 +234,7 @@ export function Navbar() {
                           <button
                             key={`db-${game.appid}`}
                             onClick={() => handleResultClick(game)}
-                            className="cartridge-result-item w-full flex items-center gap-3 px-4 py-3 text-left sm:py-2"
+                            className="cartridge-result-item w-full flex items-center gap-2 px-2 py-1.5 text-left"
                           >
                             {game.header_image && (
                               <Image
@@ -252,8 +252,8 @@ export function Navbar() {
                           </button>
                         ))}
                         {steamResults.length > 0 && (
-                          <div className="cartridge-divider my-2">
-                            <div className="px-4 py-2 text-xs font-semibold text-[#404040] uppercase">
+                          <div className="cartridge-divider my-1">
+                            <div className="px-2 py-1.5 text-xs font-semibold text-[#404040] uppercase">
                               Steam Store
                             </div>
                           </div>
@@ -266,7 +266,7 @@ export function Navbar() {
                         key={`steam-${game.appid}`}
                         onClick={() => handleResultClick(game)}
                         disabled={ingestingAppId === game.appid}
-                        className="cartridge-result-item w-full flex items-center gap-3 px-4 py-3 text-left disabled:opacity-50 disabled:cursor-wait sm:py-2"
+                        className="cartridge-result-item w-full flex items-center gap-2 px-2 py-1.5 text-left disabled:opacity-50 disabled:cursor-wait"
                       >
                         {game.header_image && (
                           <Image
@@ -294,11 +294,11 @@ export function Navbar() {
                     ))}
                   </div>
                 ) : hasSearched ? (
-                  <div className="p-4 text-center text-xs text-[#404040]">
+                  <div className="px-2 py-1.5 text-center text-xs text-[#404040]">
                     No games found
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-xs text-[#404040]">
+                  <div className="px-2 py-1.5 text-center text-xs text-[#404040]">
                     Searching...
                   </div>
                 )}
