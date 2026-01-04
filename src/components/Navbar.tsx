@@ -185,7 +185,7 @@ export function Navbar() {
         gameImage={ingestingGame?.image}
       />
       <nav className="sticky top-0 z-50 w-full border-b bg-background">
-        <div className="container mx-auto max-w-4xl flex h-14 items-center gap-3 px-4 w-full">
+        <div className="container mx-auto max-w-4xl flex h-14 items-center gap-3 w-full">
           {/* Logo/Brand */}
           <Link
             href="/"
