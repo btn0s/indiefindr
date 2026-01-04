@@ -93,30 +93,44 @@ export default async function Home() {
   const games = await getGames();
 
   return (
-    <main className="flex flex-col gap-8 pt-8">
-      <div className="w-full px-4">
-        <div className="container mx-auto max-w-7xl w-full">
-          <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">
-            Find your next favorite indie game
-          </h1>
-        </div>
-      </div>
-
-      {/* Full-width grid section */}
-      <div className="flex flex-col gap-4 w-full px-4 pb-8">
-        <div className="container mx-auto max-w-7xl w-full flex items-center justify-between">
-          <h2 className="font-semibold text-xl">All Games</h2>
-        </div>
-        <div className="container mx-auto max-w-7xl w-full">
-          {games.length === 0 ? (
-            <p className="text-muted-foreground">
-              No games ingested yet. Search for a game above to add your first
-              one.
+    <main className="px-4 py-6 sm:py-8">
+      <div className="container mx-auto max-w-6xl w-full flex flex-col gap-6">
+        <section className="retro-window">
+          <div className="retro-titlebar">
+            <div className="retro-titlebar-title">IndieFindr</div>
+            <div className="retro-titlebar-meta hidden sm:block">
+              Search above to add games to the database
+            </div>
+          </div>
+          <div className="retro-window-body">
+            <h1 className="text-balance font-extrabold tracking-tight text-3xl sm:text-4xl">
+              Find your next favorite indie game
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground max-w-prose">
+              Search any Steam game, instantly jump to its page, and get
+              AI-powered recommendations with explanations.
             </p>
-          ) : (
-            <GamesGrid initialGames={games} />
-          )}
-        </div>
+          </div>
+        </section>
+
+        <section className="retro-window">
+          <div className="retro-titlebar">
+            <div className="retro-titlebar-title">All Games</div>
+            <div className="retro-titlebar-meta">
+              {games.length} in database
+            </div>
+          </div>
+          <div className="retro-window-body">
+            {games.length === 0 ? (
+              <p className="text-muted-foreground">
+                No games ingested yet. Search for a game above to add your first
+                one.
+              </p>
+            ) : (
+              <GamesGrid initialGames={games} />
+            )}
+          </div>
+        </section>
       </div>
     </main>
   );

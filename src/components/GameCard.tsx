@@ -119,11 +119,15 @@ function GameCard({
   return (
     <Link
       href={`/games/${appid}`}
-      className="block"
+      className="block group"
       onClick={handleCardClick}
     >
-      <div ref={cardRef}>
-        <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
+      <div
+        ref={cardRef}
+        className="retro-panel transition-[filter,transform] hover:brightness-[1.03]"
+      >
+        <div className="p-3 pb-2">
+          <div className="relative w-full overflow-hidden bg-muted aspect-steam retro-frame">
           {/* Always render image as base layer */}
           {header_image && (
             <Image
@@ -151,13 +155,21 @@ function GameCard({
               onError={() => setVideoError(true)}
             />
           )}
+          {/* Gloss overlay */}
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,.55),rgba(255,255,255,0)_55%)] opacity-60" />
         </div>
-        <div className="font-medium text-sm">{title}</div>
+        </div>
+
+        <div className="px-3 pb-3">
+          <div className="font-bold text-sm leading-snug line-clamp-2">
+            {title}
+          </div>
         {explanation && (
-          <div className="text-xs text-muted-foreground first-letter:uppercase">
+          <div className="mt-1 text-xs text-muted-foreground first-letter:uppercase line-clamp-3">
             {explanation}
           </div>
         )}
+        </div>
       </div>
     </Link>
   );

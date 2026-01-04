@@ -184,21 +184,22 @@ export function Navbar() {
         gameTitle={ingestingGame?.title}
         gameImage={ingestingGame?.image}
       />
-      <nav className="sticky top-0 z-50 w-full border-b bg-background">
-        <div className="container mx-auto max-w-4xl flex h-14 items-center gap-3 px-4 w-full">
+      <nav className="sticky top-0 z-50 w-full retro-menubar">
+        <div className="container mx-auto max-w-6xl flex h-14 items-center gap-3 px-4 w-full">
           {/* Logo/Brand */}
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg"
+            className="flex shrink-0 items-center gap-2 text-base sm:text-lg retro-titlebar-title"
           >
             <Logo />
-            IndieFindr
+            <span>IndieFindr</span>
+            <span className="text-[10px] font-semibold opacity-90">.exe</span>
           </Link>
 
           {/* Search */}
           <div className="relative flex-1" ref={resultsRef}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <Input
                 type="text"
                 placeholder="Search games..."
@@ -216,7 +217,7 @@ export function Navbar() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-slate-700"
                   onClick={() => {
                     setSearchQuery("");
                     setDbResults([]);
@@ -232,7 +233,7 @@ export function Navbar() {
 
             {/* Search Results Dropdown */}
             {showResults && (
-              <div className="fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b bg-background shadow-lg sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96 sm:rounded-md sm:border">
+              <div className="retro-panel fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96">
                 {searchQuery.trim().length < 2 ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     Keep typing to search…
@@ -259,7 +260,7 @@ export function Navbar() {
                                 width={80}
                                 height={48}
                                 sizes="80px"
-                                className="h-12 w-20 object-cover rounded"
+                                className="h-12 w-20 object-cover retro-frame"
                               />
                             )}
                             <span className="flex-1 text-sm font-medium">
@@ -291,7 +292,7 @@ export function Navbar() {
                             width={80}
                             height={48}
                             sizes="80px"
-                            className="h-12 w-20 object-cover rounded"
+                            className="h-12 w-20 object-cover retro-frame"
                           />
                         )}
                         <span className="flex-1 text-sm font-medium">

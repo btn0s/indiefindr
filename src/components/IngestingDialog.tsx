@@ -28,7 +28,7 @@ export function IngestingDialog({
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 py-4">
           {gameImage && (
-            <div className="relative w-32 h-16 rounded-lg overflow-hidden">
+            <div className="relative w-32 h-16 retro-frame">
               <Image
                 src={gameImage}
                 alt={gameTitle || "Game"}

@@ -48,30 +48,40 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.58 0.22 27);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Early-2000s "desktop" palette (Aqua/XP-ish) */
+  --background: #bfcbd8;
+  --foreground: #0f172a;
+
+  --card: #f6f8fb;
+  --card-foreground: #0f172a;
+
+  --popover: #f6f8fb;
+  --popover-foreground: #0f172a;
+
+  --primary: #2d65f2;
+  --primary-foreground: #ffffff;
+
+  --secondary: #dbe4ee;
+  --secondary-foreground: #0f172a;
+
+  --muted: #e7edf4;
+  --muted-foreground: #334155;
+
+  --accent: #ffd24a;
+  --accent-foreground: #1f2937;
+
+  --destructive: #b42318;
+  --border: #6b7c8f;
+  --input: #ffffff;
+  --ring: #2d65f2;
+
+  /* Charts (keep existing defaults, slightly "web 1.0" saturated) */
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 0;
+  --radius: 10px;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -80,27 +90,43 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Retro UI primitives */
+  --retro-surface: #f6f8fb;
+  --retro-surface-2: #e6edf6;
+  --retro-titlebar-top: #6aa6ff;
+  --retro-titlebar-bottom: #1f4ed6;
+  --retro-titlebar-text: #ffffff;
+  --retro-bevel-hi: rgba(255, 255, 255, 0.9);
+  --retro-bevel-lo: rgba(15, 23, 42, 0.25);
+  --retro-shadow: rgba(15, 23, 42, 0.25);
+  --retro-gloss: rgba(255, 255, 255, 0.45);
+
+  --font-sans: Tahoma, "Trebuchet MS", Verdana, "Lucida Grande",
+    var(--font-inter), var(--font-geist-sans), ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Arial, sans-serif;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.87 0.00 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.371 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* Winamp-ish dark skin (kept for future theme toggle) */
+  --background: #0b1020;
+  --foreground: #e6f0ff;
+  --card: #0f1730;
+  --card-foreground: #e6f0ff;
+  --popover: #0f1730;
+  --popover-foreground: #e6f0ff;
+  --primary: #59d7ff;
+  --primary-foreground: #051018;
+  --secondary: #17244a;
+  --secondary-foreground: #e6f0ff;
+  --muted: #131c3c;
+  --muted-foreground: #b6c6e6;
+  --accent: #a3ff5a;
+  --accent-foreground: #07110a;
+  --destructive: #ff5a7a;
+  --border: rgba(230, 240, 255, 0.14);
+  --input: rgba(230, 240, 255, 0.10);
+  --ring: #59d7ff;
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
@@ -114,17 +140,197 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  --retro-surface: #0f1730;
+  --retro-surface-2: #131c3c;
+  --retro-titlebar-top: #1d9cff;
+  --retro-titlebar-bottom: #0a3ea8;
+  --retro-titlebar-text: #e6f0ff;
+  --retro-bevel-hi: rgba(230, 240, 255, 0.20);
+  --retro-bevel-lo: rgba(0, 0, 0, 0.55);
+  --retro-shadow: rgba(0, 0, 0, 0.6);
+  --retro-gloss: rgba(255, 255, 255, 0.14);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    text-rendering: optimizeLegibility;
+  }
+
+  a {
+    @apply underline-offset-4;
   }
 }
 
 .aspect-steam {
   aspect-ratio: 460 / 215;
+}
+
+@layer components {
+  /* Desktop backdrop: subtle pattern + gentle vignette */
+  .retro-desktop {
+    background:
+      radial-gradient(1200px 700px at 30% 0%, rgba(255, 255, 255, 0.65), transparent 60%),
+      radial-gradient(900px 600px at 100% 40%, rgba(255, 255, 255, 0.35), transparent 55%),
+      repeating-linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.08) 0px,
+        rgba(255, 255, 255, 0.08) 6px,
+        rgba(0, 0, 0, 0.03) 6px,
+        rgba(0, 0, 0, 0.03) 12px
+      ),
+      linear-gradient(to bottom, #d2deea, #b7c4d3 40%, #b2c0d0);
+  }
+
+  /* Window/panel framing */
+  .retro-window {
+    background: linear-gradient(to bottom, var(--retro-surface), var(--retro-surface-2));
+    border: 1px solid color-mix(in srgb, var(--border) 75%, white 25%);
+    border-radius: calc(var(--radius) + 2px);
+    box-shadow:
+      0 16px 45px var(--retro-shadow),
+      inset 1px 1px 0 var(--retro-bevel-hi),
+      inset -1px -1px 0 var(--retro-bevel-lo);
+    overflow: hidden;
+  }
+
+  .retro-panel {
+    background: var(--card);
+    border: 1px solid color-mix(in srgb, var(--border) 75%, white 25%);
+    border-radius: calc(var(--radius) + 2px);
+    box-shadow:
+      0 10px 22px rgba(15, 23, 42, 0.12),
+      inset 1px 1px 0 rgba(255, 255, 255, 0.75),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.10);
+    overflow: hidden;
+  }
+
+  .retro-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: linear-gradient(to bottom, var(--retro-titlebar-top), var(--retro-titlebar-bottom));
+    color: var(--retro-titlebar-text);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  }
+
+  .retro-titlebar-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    user-select: none;
+  }
+
+  .retro-titlebar-meta {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .retro-window-body {
+    padding: 1rem;
+    background: var(--card);
+  }
+
+  .retro-menubar {
+    background: linear-gradient(to bottom, var(--retro-titlebar-top), var(--retro-titlebar-bottom));
+    color: var(--retro-titlebar-text);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.28);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+    box-shadow:
+      0 14px 35px rgba(15, 23, 42, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  /* Controls */
+  .retro-input {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.3)) , var(--input);
+    border: 1px solid color-mix(in srgb, var(--border) 75%, white 25%);
+    border-radius: var(--radius);
+    box-shadow:
+      inset 2px 2px 0 rgba(0, 0, 0, 0.08),
+      inset -2px -2px 0 rgba(255, 255, 255, 0.75);
+  }
+
+  .retro-button {
+    border: 1px solid color-mix(in srgb, var(--border) 75%, white 25%);
+    border-radius: var(--radius);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.65),
+      inset 1px 1px 0 rgba(255, 255, 255, 0.7),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.15);
+  }
+
+  .retro-button:active {
+    box-shadow:
+      inset 2px 2px 0 rgba(0, 0, 0, 0.18),
+      inset -2px -2px 0 rgba(255, 255, 255, 0.55);
+    transform: translateY(1px);
+  }
+
+  .retro-button-primary {
+    background: linear-gradient(to bottom, #74b0ff, #2d65f2 55%, #1f4ed6);
+    color: var(--primary-foreground);
+    border-color: color-mix(in srgb, #1f4ed6 70%, black 30%);
+  }
+
+  .retro-button-secondary {
+    background: linear-gradient(to bottom, #ffffff, #dfe7f0 60%, #cfd9e4);
+    color: var(--foreground);
+  }
+
+  .retro-button-ghost {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .retro-button-ghost:hover {
+    background: rgba(15, 23, 42, 0.06);
+    border-color: rgba(15, 23, 42, 0.12);
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.7),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.08);
+  }
+
+  /* Skeletons: subtle "loading bar" stripes */
+  .retro-skeleton {
+    background:
+      repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.35) 0px,
+        rgba(255, 255, 255, 0.35) 10px,
+        rgba(0, 0, 0, 0.05) 10px,
+        rgba(0, 0, 0, 0.05) 20px
+      ),
+      var(--muted);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: var(--radius);
+  }
+
+  /* Media frames */
+  .retro-frame {
+    border: 1px solid color-mix(in srgb, var(--border) 75%, white 25%);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow:
+      inset 1px 1px 0 rgba(255, 255, 255, 0.75),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.14);
+    overflow: hidden;
+  }
 }

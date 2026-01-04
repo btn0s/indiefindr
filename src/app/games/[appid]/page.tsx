@@ -314,33 +314,43 @@ export default async function GameDetailPage({
   }
 
   return (
-    <main className="container mx-auto max-w-4xl px-4 py-6 sm:py-8 flex flex-col gap-3 sm:gap-4">
-      <Suspense
-        fallback={
-          <>
-            {/* Main content skeleton */}
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="w-full aspect-video" />
-            <div className="flex gap-3 sm:gap-4 items-center mb-4">
-              <div className="flex-1 flex flex-col min-w-0 gap-2">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-8 w-32 mt-2" />
-              </div>
-            </div>
-            {/* Suggestions section skeleton */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-start sm:items-center justify-between gap-3">
-                <Skeleton className="h-6 w-64 max-w-full" />
-              </div>
-              <SuggestionsSkeleton showNotice={false} />
-            </div>
-          </>
-        }
-      >
-        <GameContent appId={appId} appid={appid} />
-      </Suspense>
+    <main className="px-4 py-6 sm:py-8">
+      <div className="container mx-auto max-w-6xl w-full">
+        <section className="retro-window">
+          <div className="retro-titlebar">
+            <div className="retro-titlebar-title">IndieFindr Recommendations</div>
+            <div className="retro-titlebar-meta">AppID: {appid}</div>
+          </div>
+          <div className="retro-window-body flex flex-col gap-3 sm:gap-4">
+            <Suspense
+              fallback={
+                <>
+                  {/* Main content skeleton */}
+                  <Skeleton className="h-8 w-64" />
+                  <Skeleton className="w-full aspect-video" />
+                  <div className="flex gap-3 sm:gap-4 items-center mb-4">
+                    <div className="flex-1 flex flex-col min-w-0 gap-2">
+                      <Skeleton className="h-6 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-8 w-32 mt-2" />
+                    </div>
+                  </div>
+                  {/* Suggestions section skeleton */}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start sm:items-center justify-between gap-3">
+                      <Skeleton className="h-6 w-64 max-w-full" />
+                    </div>
+                    <SuggestionsSkeleton showNotice={false} />
+                  </div>
+                </>
+              }
+            >
+              <GameContent appId={appId} appid={appid} />
+            </Suspense>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

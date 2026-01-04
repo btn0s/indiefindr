@@ -104,7 +104,7 @@ export function GameVideo({
   }, [hasVideo, videoUrl, isHls, startTime]);
 
   return (
-    <div className={`relative overflow-hidden rounded-lg bg-muted ${className}`}>
+    <div className={`relative bg-muted retro-frame ${className}`}>
       {hasVideo && videoUrl ? (
         <video
           ref={videoRef}
