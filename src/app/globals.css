@@ -120,9 +120,21 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    background: linear-gradient(to bottom,
+      #1a1a1a 0%,
+      #222222 50%,
+      #1c1c1c 100%
+    );
+  }
   body {
     @apply bg-background text-foreground;
     font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(to bottom,
+      #1a1a1a 0%,
+      #222222 50%,
+      #1c1c1c 100%
+    );
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: Arial, Helvetica, sans-serif;
