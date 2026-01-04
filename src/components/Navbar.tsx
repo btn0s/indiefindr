@@ -189,9 +189,11 @@ export function Navbar() {
           {/* Logo/Brand */}
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg"
+            className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg drop-shadow-[0_1px_0_rgba(255,255,255,0.35)]"
           >
-            <Logo />
+            <span className="drop-shadow-[0_0_10px_rgba(120,170,255,0.35)]">
+              <Logo />
+            </span>
             IndieFindr
           </Link>
 
@@ -209,14 +211,14 @@ export function Navbar() {
                     setShowResults(true);
                   }
                 }}
-                className="h-10 pr-10 pl-9 sm:h-8"
+                className="h-10 pr-10 pl-9 sm:h-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]"
               />
               {searchQuery.trim().length > 0 && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 hover:bg-transparent"
                   onClick={() => {
                     setSearchQuery("");
                     setDbResults([]);
@@ -259,7 +261,7 @@ export function Navbar() {
                                 width={80}
                                 height={48}
                                 sizes="80px"
-                                className="h-12 w-20 object-cover rounded"
+                                className="h-12 w-20 object-cover rounded-sm border border-border"
                               />
                             )}
                             <span className="flex-1 text-sm font-medium">
@@ -291,7 +293,7 @@ export function Navbar() {
                             width={80}
                             height={48}
                             sizes="80px"
-                            className="h-12 w-20 object-cover rounded"
+                            className="h-12 w-20 object-cover rounded-sm border border-border"
                           />
                         )}
                         <span className="flex-1 text-sm font-medium">

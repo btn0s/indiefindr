@@ -314,33 +314,51 @@ export default async function GameDetailPage({
   }
 
   return (
-    <main className="container mx-auto max-w-4xl px-4 py-6 sm:py-8 flex flex-col gap-3 sm:gap-4">
-      <Suspense
-        fallback={
-          <>
-            {/* Main content skeleton */}
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="w-full aspect-video" />
-            <div className="flex gap-3 sm:gap-4 items-center mb-4">
-              <div className="flex-1 flex flex-col min-w-0 gap-2">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-8 w-32 mt-2" />
-              </div>
-            </div>
-            {/* Suggestions section skeleton */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-start sm:items-center justify-between gap-3">
-                <Skeleton className="h-6 w-64 max-w-full" />
-              </div>
-              <SuggestionsSkeleton showNotice={false} />
-            </div>
-          </>
-        }
-      >
-        <GameContent appId={appId} appid={appid} />
-      </Suspense>
+    <main className="container mx-auto max-w-4xl px-4 py-6 sm:py-8">
+      <section className="y2k-window">
+        <div className="y2k-titlebar">
+          <div className="y2k-titlebar__left">
+            <span className="y2k-titlebar__dots" aria-hidden="true">
+              <span className="y2k-titlebar__dot y2k-titlebar__dot--close" />
+              <span className="y2k-titlebar__dot y2k-titlebar__dot--min" />
+              <span className="y2k-titlebar__dot y2k-titlebar__dot--max" />
+            </span>
+            <span className="y2k-titlebar__title">IndieFindr / Game</span>
+          </div>
+          <div className="y2k-titlebar__right" aria-hidden="true">
+            <span>app:{appid}</span>
+          </div>
+        </div>
+
+        <div className="y2k-window__body flex flex-col gap-3 sm:gap-4">
+          <Suspense
+            fallback={
+              <>
+                {/* Main content skeleton */}
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="w-full aspect-video" />
+                <div className="flex gap-3 sm:gap-4 items-center mb-4">
+                  <div className="flex-1 flex flex-col min-w-0 gap-2">
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-8 w-32 mt-2" />
+                  </div>
+                </div>
+                {/* Suggestions section skeleton */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-start sm:items-center justify-between gap-3">
+                    <Skeleton className="h-6 w-64 max-w-full" />
+                  </div>
+                  <SuggestionsSkeleton showNotice={false} />
+                </div>
+              </>
+            }
+          >
+            <GameContent appId={appId} appid={appid} />
+          </Suspense>
+        </div>
+      </section>
     </main>
   );
 }

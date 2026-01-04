@@ -93,22 +93,40 @@ export default async function Home() {
   const games = await getGames();
 
   return (
-    <main className="flex flex-col gap-8 pt-8">
-      {/* Full-width grid section */}
-      <div className="flex flex-col gap-4 w-full px-4 pb-8">
-        <div className="container mx-auto max-w-7xl w-full flex items-center justify-between">
-          <h2 className="font-semibold text-xl">All Games</h2>
-        </div>
-        <div className="container mx-auto max-w-7xl w-full">
-          {games.length === 0 ? (
-            <p className="text-muted-foreground">
-              No games ingested yet. Search for a game above to add your first
-              one.
-            </p>
-          ) : (
-            <GamesGrid initialGames={games} />
-          )}
-        </div>
+    <main className="flex flex-col gap-8 pt-8 pb-10">
+      <div className="container mx-auto max-w-7xl w-full px-4">
+        <section className="y2k-window">
+          <div className="y2k-titlebar">
+            <div className="y2k-titlebar__left">
+              <span className="y2k-titlebar__dots" aria-hidden="true">
+                <span className="y2k-titlebar__dot y2k-titlebar__dot--close" />
+                <span className="y2k-titlebar__dot y2k-titlebar__dot--min" />
+                <span className="y2k-titlebar__dot y2k-titlebar__dot--max" />
+              </span>
+              <span className="y2k-titlebar__title">IndieFindr Explorer</span>
+            </div>
+            <div className="y2k-titlebar__right" aria-hidden="true">
+              <span>dir:/games</span>
+            </div>
+          </div>
+
+          <div className="y2k-window__body flex flex-col gap-4">
+            <div className="w-full flex items-center justify-between">
+              <h2 className="font-semibold text-xl">All Games</h2>
+            </div>
+
+            <div className="w-full">
+              {games.length === 0 ? (
+                <p className="text-muted-foreground">
+                  No games ingested yet. Search for a game above to add your
+                  first one.
+                </p>
+              ) : (
+                <GamesGrid initialGames={games} />
+              )}
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );

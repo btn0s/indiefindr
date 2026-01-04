@@ -119,7 +119,7 @@ function GameCard({
   return (
     <Link
       href={`/games/${appid}`}
-      className="block rounded-md border border-border bg-card p-3 shadow-sm hover:shadow-md transition-shadow"
+      className="y2k-tile block rounded-md p-3 transition-shadow"
       onClick={handleCardClick}
     >
       <div ref={cardRef}>

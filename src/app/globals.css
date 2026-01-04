@@ -87,6 +87,10 @@
   --y2k-bevel-lo: color-mix(in oklab, black, var(--foreground) 82%);
   --y2k-shadow: color-mix(in oklab, black, var(--foreground) 85%);
   --y2k-link: var(--primary);
+  --y2k-lime: oklch(0.9 0.2 135);
+  --y2k-magenta: oklch(0.72 0.25 330);
+  --y2k-cyan: oklch(0.86 0.15 210);
+  --y2k-glow: color-mix(in oklab, var(--primary), white 15%);
 }
 
 .dark {
@@ -127,6 +131,10 @@
   --y2k-bevel-lo: color-mix(in oklab, black, var(--card) 55%);
   --y2k-shadow: color-mix(in oklab, black, var(--card) 35%);
   --y2k-link: var(--primary);
+  --y2k-lime: oklch(0.86 0.2 135);
+  --y2k-magenta: oklch(0.7 0.24 330);
+  --y2k-cyan: oklch(0.82 0.14 210);
+  --y2k-glow: color-mix(in oklab, var(--primary), white 10%);
 }
 
 @layer base {
@@ -136,8 +144,29 @@
   body {
     @apply bg-background text-foreground;
     font-family: Tahoma, Verdana, Arial, system-ui, sans-serif;
-    /* Subtle “tile” vibe without getting noisy */
+    /* Avant‑garde Y2K: “desktop wallpaper” layering */
     background-image:
+      radial-gradient(
+        900px 480px at 15% -10%,
+        color-mix(in oklab, var(--y2k-cyan), transparent 55%),
+        transparent 60%
+      ),
+      radial-gradient(
+        800px 520px at 110% 0%,
+        color-mix(in oklab, var(--y2k-magenta), transparent 60%),
+        transparent 62%
+      ),
+      radial-gradient(
+        650px 520px at 60% 110%,
+        color-mix(in oklab, var(--y2k-lime), transparent 72%),
+        transparent 65%
+      ),
+      repeating-linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--foreground), transparent 96%) 0px,
+        transparent 2px,
+        transparent 10px
+      ),
       radial-gradient(
         1px 1px at 12px 12px,
         color-mix(in oklab, var(--foreground), transparent 92%),
@@ -148,8 +177,53 @@
         color-mix(in oklab, white, transparent 78%),
         transparent 35%
       );
-    background-size: 24px 24px, 100% 100%;
+    background-size: auto, auto, auto, auto, 24px 24px, 100% 100%;
     background-attachment: fixed;
+  }
+  body::before {
+    /* Scanlines + shimmer overlay (subtle, but unmistakably “2000s”) */
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.55;
+    background-image:
+      repeating-linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--foreground), transparent 96%) 0px,
+        transparent 2px,
+        transparent 6px
+      ),
+      linear-gradient(
+        100deg,
+        transparent 0%,
+        color-mix(in oklab, var(--y2k-glow), transparent 80%) 45%,
+        transparent 60%
+      );
+    background-size: 100% 8px, 220% 100%;
+    background-position: 0 0, -120% 0;
+    mix-blend-mode: multiply;
+    animation: y2k-shine 7s linear infinite;
+  }
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body::before {
+      animation: none;
+    }
+  }
+
+  @keyframes y2k-shine {
+    0% {
+      background-position: 0 0, -120% 0;
+    }
+    100% {
+      background-position: 0 0, 120% 0;
+    }
   }
 
   a {
@@ -166,10 +240,16 @@
     background: color-mix(in oklab, var(--primary), white 25%);
     color: var(--primary-foreground);
   }
+
+  :focus-visible {
+    outline: 2px dashed color-mix(in oklab, var(--ring), white 15%);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
   .y2k-navbar {
+    position: relative;
     background-image: linear-gradient(
       to bottom,
       color-mix(in oklab, var(--card), white 35%),
@@ -177,10 +257,27 @@
     );
     box-shadow:
       inset 0 1px 0 var(--y2k-bevel-hi),
-      0 2px 0 color-mix(in oklab, var(--y2k-shadow), transparent 92%);
+      inset 0 -1px 0 color-mix(in oklab, var(--y2k-bevel-lo), transparent 35%),
+      0 2px 0 color-mix(in oklab, var(--y2k-shadow), transparent 92%),
+      0 10px 24px color-mix(in oklab, var(--y2k-shadow), transparent 92%);
+  }
+  .y2k-navbar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: radial-gradient(
+      2px 2px at 12px 12px,
+      color-mix(in oklab, var(--foreground), transparent 92%),
+      transparent 40%
+    );
+    background-size: 24px 24px;
+    mix-blend-mode: multiply;
   }
 
   .y2k-panel {
+    position: relative;
     border: 1px solid var(--border);
     background-image: linear-gradient(
       to bottom,
@@ -191,6 +288,94 @@
       inset 0 1px 0 var(--y2k-bevel-hi),
       inset 0 -1px 0 var(--y2k-bevel-lo),
       0 10px 20px color-mix(in oklab, var(--y2k-shadow), transparent 78%);
+  }
+  .y2k-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.18;
+    background-image: linear-gradient(
+      120deg,
+      transparent 0%,
+      color-mix(in oklab, var(--y2k-glow), transparent 70%) 40%,
+      transparent 55%
+    );
+    mix-blend-mode: screen;
+  }
+
+  .y2k-window {
+    border: 1px solid color-mix(in oklab, var(--border), black 10%);
+    background: var(--card);
+    box-shadow:
+      inset 0 1px 0 var(--y2k-bevel-hi),
+      inset 0 -1px 0 var(--y2k-bevel-lo),
+      0 10px 0 color-mix(in oklab, var(--y2k-shadow), transparent 92%),
+      0 26px 50px color-mix(in oklab, var(--y2k-shadow), transparent 86%);
+  }
+
+  .y2k-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--primary), white 25%),
+      color-mix(in oklab, var(--primary), black 5%)
+    );
+    color: var(--primary-foreground);
+    text-shadow: 0 1px 0 color-mix(in oklab, black, transparent 65%);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+
+  .y2k-titlebar__left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .y2k-titlebar__dots {
+    display: inline-flex;
+    gap: 4px;
+  }
+  .y2k-titlebar__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, black, transparent 40%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white, transparent 30%),
+      0 1px 0 color-mix(in oklab, black, transparent 80%);
+  }
+  .y2k-titlebar__dot--close {
+    background: linear-gradient(to bottom, var(--y2k-magenta), oklch(0.55 0.22 330));
+  }
+  .y2k-titlebar__dot--min {
+    background: linear-gradient(to bottom, var(--y2k-lime), oklch(0.65 0.18 135));
+  }
+  .y2k-titlebar__dot--max {
+    background: linear-gradient(to bottom, var(--y2k-cyan), oklch(0.68 0.12 210));
+  }
+  .y2k-titlebar__title {
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .y2k-titlebar__right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.9;
+    font-family: var(--font-mono);
+  }
+
+  .y2k-window__body {
+    padding: 14px;
   }
 
   [data-slot="card"] {
@@ -219,11 +404,38 @@
   }
 
   [data-slot="button"] {
+    position: relative;
+    overflow: hidden;
     border-color: var(--border);
     box-shadow:
       inset 0 1px 0 var(--y2k-bevel-hi),
       inset 0 -1px 0 var(--y2k-bevel-lo),
       0 1px 0 color-mix(in oklab, var(--y2k-shadow), transparent 90%);
+  }
+  [data-slot="button"] > * {
+    position: relative;
+    z-index: 1;
+  }
+  [data-slot="button"]::before {
+    /* glossy highlight strip */
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.55;
+    z-index: 0;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, white, transparent 40%),
+      transparent 55%
+    );
+  }
+  [data-slot="button"]:hover {
+    box-shadow:
+      inset 0 1px 0 var(--y2k-bevel-hi),
+      inset 0 -1px 0 var(--y2k-bevel-lo),
+      0 0 0 1px color-mix(in oklab, var(--y2k-glow), transparent 35%),
+      0 10px 18px color-mix(in oklab, var(--y2k-shadow), transparent 86%);
   }
 
   [data-slot="button"][data-variant="default"] {
@@ -251,6 +463,68 @@
   [data-slot="button"][data-variant="link"] {
     box-shadow: none;
     background-image: none;
+  }
+  [data-slot="button"][data-variant="ghost"]::before,
+  [data-slot="button"][data-variant="link"]::before {
+    content: none;
+  }
+
+  .y2k-tile {
+    position: relative;
+    border: 1px solid var(--border);
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--card), white 35%),
+      var(--card)
+    );
+    box-shadow:
+      inset 0 1px 0 var(--y2k-bevel-hi),
+      inset 0 -1px 0 var(--y2k-bevel-lo),
+      0 1px 0 color-mix(in oklab, var(--y2k-shadow), transparent 92%),
+      0 14px 26px color-mix(in oklab, var(--y2k-shadow), transparent 90%);
+  }
+  .y2k-tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    background-image: radial-gradient(
+      240px 120px at 20% 0%,
+      color-mix(in oklab, var(--y2k-glow), transparent 45%),
+      transparent 62%
+    );
+    transition: opacity 160ms ease;
+  }
+  .y2k-tile:hover::after {
+    opacity: 1;
+  }
+
+  [data-slot="skeleton"] {
+    border: 1px solid color-mix(in oklab, var(--border), transparent 35%);
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--muted), white 18%) 0%,
+      color-mix(in oklab, var(--muted), white 35%) 40%,
+      color-mix(in oklab, var(--muted), white 18%) 80%
+    );
+    background-size: 220% 100%;
+    animation: y2k-skeleton 1.2s ease-in-out infinite;
+  }
+  @keyframes y2k-skeleton {
+    0% {
+      background-position: 0% 0;
+    }
+    100% {
+      background-position: 100% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot="skeleton"] {
+      animation: none;
+      background-size: 100% 100%;
+    }
   }
 }
 
