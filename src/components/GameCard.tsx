@@ -150,9 +150,13 @@ function GameCard({
   };
 
   return (
-    <Link href={`/games/${appid}`} className="block h-full" onClick={handleCardClick}>
-      <div 
-        ref={cardRef} 
+    <Link
+      href={`/games/${appid}`}
+      className="block h-full"
+      onClick={handleCardClick}
+    >
+      <div
+        ref={cardRef}
         className={cn(
           "cartridge h-full flex flex-col group transition-all duration-150 ease-out",
           isPressed && "cartridge-button-pressed translate-y-0.5"
@@ -162,7 +166,7 @@ function GameCard({
         onMouseLeave={() => setIsPressed(false)}
       >
         {/* Label area */}
-        <div className="cartridge-label relative overflow-hidden">
+        <div className="cartridge-label relative overflow-hidden mb-2">
           {/* Always render image as base layer */}
           {header_image && (
             <Image
@@ -192,29 +196,38 @@ function GameCard({
               onError={() => setVideoError(true)}
             />
           )}
-          {/* Simple glossy overlay */}
-          <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
+          {/* Inset shadow overlay */}
+          <div
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{
+              boxShadow: "inset 0 4px 12px rgba(0, 0, 0, 0.4)",
+            }}
+          />
+          {/* Inner bevel */}
+          <div
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{
+              border: "1px solid",
+              borderTopColor: "rgba(0, 0, 0, 0.1)",
+              borderLeftColor: "rgba(0, 0, 0, 0.1)",
+              borderBottomColor: "rgba(255, 255, 255, 0.05)",
+              borderRightColor: "rgba(255, 255, 255, 0.05)",
+            }}
+          />
         </div>
-        
+
         {/* Divider */}
         <div className="cartridge-divider-line" />
-        
-        {/* Cartridge body with text */}
-        <div className="cartridge-body flex-1 flex flex-col justify-start">
-          <div className="px-3 py-2">
-            <div className="font-medium text-xs text-[#000000] mb-0.5 leading-tight">{title}</div>
-            {explanation && (
-              <div className="text-[10px] text-[#404040] first-letter:uppercase leading-tight">
-                {explanation}
-              </div>
-            )}
+
+        <div className="cartridge-body flex-1 flex flex-col justify-start w-full px-1 pt-1.5 pb-1">
+          <div className="font-bold text-xs text-[#000000] mb-1 leading-tight">
+            {title}
           </div>
-          
-          {/* Bottom connector pins */}
-          <div className="cartridge-pins mt-auto">
-            <div className="cartridge-pin-row" />
-            <div className="cartridge-pin-row" />
-          </div>
+          {explanation && (
+            <div className="text-[10px] text-[#404040] first-letter:uppercase leading-tight">
+              {explanation}
+            </div>
+          )}
         </div>
       </div>
     </Link>

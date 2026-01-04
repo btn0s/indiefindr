@@ -170,38 +170,35 @@
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.12),
-    0 1px 2px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   overflow: hidden;
   position: relative;
+  padding: 6px;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
 }
 
 .cartridge:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.12),
-    0 2px 4px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .cartridge:active {
   transform: translateY(0);
   box-shadow: 
-    0 1px 2px rgba(0, 0, 0, 0.1),
-    inset 0 1px 2px rgba(0, 0, 0, 0.05);
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .cartridge-label {
   aspect-ratio: 460 / 215;
-  background: #0a0a0a;
+  background: #000;
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  margin: 6px;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 
 .cartridge-divider-line {
@@ -209,11 +206,11 @@
   background: linear-gradient(to right,
     transparent 0%,
     rgba(0, 0, 0, 0.08) 20%,
-    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.12) 50%,
     rgba(0, 0, 0, 0.08) 80%,
     transparent 100%
   );
-  margin: 1px 0;
+  margin: 0;
 }
 
 .cartridge-body {
@@ -222,25 +219,25 @@
 }
 
 .cartridge-pins {
-  height: 4px;
+  height: 3px;
   background: linear-gradient(to bottom, 
-    #606060 0%,
-    #404040 100%
+    #707070 0%,
+    #505050 100%
   );
   position: relative;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   margin-top: auto;
 }
 
 .cartridge-pin-row {
-  height: 1.5px;
+  height: 1px;
   background: repeating-linear-gradient(
     to right,
-    rgba(0, 0, 0, 0.2) 0px,
-    rgba(0, 0, 0, 0.2) 3px,
-    rgba(0, 0, 0, 0.1) 3px,
-    rgba(0, 0, 0, 0.1) 6px
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 3px,
+    rgba(0, 0, 0, 0.08) 3px,
+    rgba(0, 0, 0, 0.08) 6px
   );
   margin: 0.5px 6px;
 }
