@@ -28,7 +28,7 @@ export function IngestingDialog({
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 py-4">
           {gameImage && (
-            <div className="relative w-32 h-16 rounded-lg overflow-hidden">
+            <div className="relative w-32 h-16 win95-inset overflow-hidden">
               <Image
                 src={gameImage}
                 alt={gameTitle || "Game"}
@@ -39,11 +39,11 @@ export function IngestingDialog({
             </div>
           )}
           {gameTitle && (
-            <p className="text-lg font-medium text-center">{gameTitle}</p>
+            <p className="text-sm font-bold text-center px-4">{gameTitle}</p>
           )}
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Spinner className="size-4" />
-            <p className="text-sm">Please wait...</p>
+          <div className="flex items-center gap-2 text-black">
+            <Spinner className="size-3" />
+            <p className="text-xs">Processing data...</p>
           </div>
         </div>
       </DialogContent>

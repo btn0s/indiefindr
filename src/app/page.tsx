@@ -93,23 +93,23 @@ export default async function Home() {
   const games = await getGames();
 
   return (
-    <main className="flex flex-col gap-8 pt-8">
-      <div className="w-full">
-        <div className="container mx-auto max-w-4xl w-full">
-          <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">
-            Find your next favorite indie game
-          </h1>
-        </div>
-      </div>
+    <main className="flex flex-col gap-8 py-4 sm:py-6">
+      <h1 className="text-3xl sm:text-5xl font-black text-white drop-shadow-[3px_3px_0_rgba(0,0,0,1)] tracking-tighter uppercase italic">
+        Find your next favorite indie game
+      </h1>
 
       {/* Full-width grid section */}
       <div className="flex flex-col gap-4 w-full pb-8">
-        <div className="container mx-auto max-w-4xl w-full flex items-center justify-between">
-          <h2 className="font-semibold text-xl">All Games</h2>
-        </div>
-        <div className="container mx-auto max-w-4xl w-full">
+        <div className="container mx-auto max-w-4xl w-full flex flex-col gap-4">
+          <div className="flex items-center gap-2 w-full">
+            <div className="h-[3px] flex-1 win95-inset opacity-50" />
+            <h2 className="px-3 text-[10px] font-black uppercase tracking-[0.3em] text-white drop-shadow-[1px_1px_0_rgba(0,0,0,1)] shrink-0">
+              Explore Games
+            </h2>
+            <div className="h-[3px] flex-1 win95-inset opacity-50" />
+          </div>
           {games.length === 0 ? (
-            <p className="text-muted-foreground">
+            <p className="text-black/60 text-xs italic">
               No games ingested yet. Search for a game above to add your first
               one.
             </p>

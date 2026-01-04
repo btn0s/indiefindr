@@ -18,7 +18,7 @@ export function SteamButton({ appid, title }: SteamButtonProps) {
   };
 
   return (
-    <Button className="w-fit mt-1 sm:mt-0" size="sm">
+    <Button className="w-fit mt-1 sm:mt-0" size="sm" variant="retro">
       <a
         href={`https://store.steampowered.com/app/${appid}/`}
         target="_blank"

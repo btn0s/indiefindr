@@ -50,7 +50,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 ring-foreground/10 grid max-w-[calc(100%-2rem)] gap-4 rounded-xl p-4 text-xs/relaxed ring-1 duration-100 sm:max-w-sm fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2 outline-none",
+          "win95-outset bg-[#c0c0c0] p-1 gap-0 fixed top-1/2 left-1/2 z-50 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 outline-none duration-100 sm:max-w-sm flex flex-col",
           className
         )}
         {...props}
@@ -61,14 +61,13 @@ function DialogContent({
             data-slot="dialog-close"
             render={
               <Button
-                variant="ghost"
-                className="absolute top-2 right-2"
-                size="icon-sm"
+                variant="retro"
+                className="absolute top-1 right-1 h-5 w-5 p-0 text-xs"
+                size="icon"
               />
             }
           >
-            <XIcon
-            />
+            ×
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
@@ -81,7 +80,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("gap-1 flex flex-col", className)}
+      className={cn("text-black px-2 py-1 mb-2 font-bold text-xs uppercase tracking-wider border-b border-win95-grey", className)}
       {...props}
     />
   )
@@ -118,7 +117,7 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-sm font-medium", className)}
+      className={cn("text-xs font-bold", className)}
       {...props}
     />
   )

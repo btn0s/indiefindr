@@ -58,10 +58,12 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <ScrollToTopOnNavigation />
         </Suspense>
-        <div className="min-h-screen bg-zinc-50 dark:bg-black">
-          <Navbar />
-          <div className="px-4">
-            {children}
+        <div className="min-h-screen bg-[#008080] py-4">
+          <div className="mx-auto max-w-4xl px-4">
+            <Navbar />
+            <main className="mt-4">
+              {children}
+            </main>
           </div>
         </div>
         <Analytics />

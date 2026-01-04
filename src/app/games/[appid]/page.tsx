@@ -7,6 +7,7 @@ import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { SteamButton } from "@/components/SteamButton";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type GameData = {
   appid: number;
@@ -241,62 +242,65 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
   };
 
   return (
-    <>
+    <div className="flex flex-col gap-8">
       <script
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <h1
-        className="text-xl sm:text-2xl font-semibold leading-snug text-balance line-clamp-2"
-        title={`Games like ${gameData.title}`}
-      >
+      
+      <h1 className="text-2xl sm:text-4xl font-black text-white drop-shadow-[2px_2px_0_rgba(0,0,0,1)] tracking-tighter uppercase italic">
         Games like {gameData.title}
       </h1>
 
-      {/* Trailer Video - Full Width */}
-      {gameData.videos && gameData.videos.length > 0 && (
-        <div className="w-full aspect-video">
-          <GameVideo
-            videos={gameData.videos}
-            headerImage={gameData.header_image}
-            alt={gameData.title}
-            className="w-full h-full"
-          />
-        </div>
-      )}
-
-      {/* Game Header */}
-      <div className="flex gap-3 sm:gap-4 items-center">
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="text-sm sm:text-lg font-semibold truncate sm:whitespace-normal">
-            {gameData.title}
-          </div>
-
-          {description && (
-            <p className="text-muted-foreground line-clamp-4 text-sm mb-2">
-              {truncate(stripHtml(description), 220)}
-            </p>
+      <Card className="w-full">
+        <CardContent className="flex flex-col gap-4 p-4">
+          {/* Trailer Video - Full Width */}
+          {gameData.videos && gameData.videos.length > 0 && (
+            <div className="w-full aspect-video win95-inset overflow-hidden">
+              <GameVideo
+                videos={gameData.videos}
+                headerImage={gameData.header_image}
+                alt={gameData.title}
+                className="w-full h-full"
+              />
+            </div>
           )}
 
-          <SteamButton appid={appid} title={gameData.title} />
-        </div>
-      </div>
+          {/* Game Header */}
+          <div className="flex gap-4 items-start bg-white/50 p-3 win95-inset">
+            <div className="flex-1 flex flex-col min-w-0 gap-1">
+              <div className="text-base sm:text-lg font-bold text-black">
+                {gameData.title}
+              </div>
 
-      {/* Suggestions Section - Nested Suspense */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-start sm:items-center justify-between gap-3">
-          <h2
-            className="flex-1 min-w-0 text-base sm:text-lg font-semibold leading-snug text-balance line-clamp-2"
-            title={`Games similar to ${gameData.title}`}
-          >
-            Games similar to {gameData.title}
-          </h2>
-        </div>
-        <Suspense fallback={<SuggestionsSkeleton showNotice={false} />}>
-          <SuggestionsList appid={appId} />
-        </Suspense>
-      </div>
+              {description && (
+                <p className="text-black line-clamp-4 text-xs sm:text-sm font-normal leading-relaxed">
+                  {truncate(stripHtml(description), 300)}
+                </p>
+              )}
+
+              <div className="pt-2">
+                <SteamButton appid={appid} title={gameData.title} />
+              </div>
+            </div>
+          </div>
+
+          {/* Suggestions Section - Nested Suspense */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 w-full">
+              <div className="h-[3px] flex-1 win95-inset opacity-50" />
+              <h2 className="px-3 text-[10px] font-black uppercase tracking-[0.3em] text-black shrink-0">
+                Similar Discoveries
+              </h2>
+              <div className="h-[3px] flex-1 win95-inset opacity-50" />
+            </div>
+            <Suspense fallback={<SuggestionsSkeleton showNotice={false} />}>
+              <SuggestionsList appid={appId} />
+            </Suspense>
+          </div>
+        </CardContent>
+      </Card>
     </>
   );
 }
@@ -314,29 +318,23 @@ export default async function GameDetailPage({
   }
 
   return (
-    <main className="container mx-auto max-w-4xl py-6 sm:py-8 flex flex-col gap-3 sm:gap-4">
+    <main className="flex flex-col gap-8 py-4 sm:py-6">
       <Suspense
         fallback={
-          <>
+          <div className="flex flex-col gap-8">
             {/* Main content skeleton */}
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="w-full aspect-video" />
-            <div className="flex gap-3 sm:gap-4 items-center mb-4">
-              <div className="flex-1 flex flex-col min-w-0 gap-2">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-8 w-32 mt-2" />
-              </div>
-            </div>
-            {/* Suggestions section skeleton */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-start sm:items-center justify-between gap-3">
-                <Skeleton className="h-6 w-64 max-w-full" />
-              </div>
-              <SuggestionsSkeleton showNotice={false} />
-            </div>
-          </>
+            <div className="h-10 w-3/4 bg-white/20 animate-pulse drop-shadow-[2px_2px_0_rgba(0,0,0,0.5)]" />
+            <Card className="w-full">
+              <CardContent className="p-4 flex flex-col gap-4">
+                <div className="w-full aspect-video win95-inset bg-black/5 animate-pulse" />
+                <div className="flex flex-col gap-2">
+                  <div className="h-6 w-1/2 bg-black/5 animate-pulse" />
+                  <div className="h-4 w-full bg-black/5 animate-pulse" />
+                  <div className="h-4 w-2/3 bg-black/5 animate-pulse" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         }
       >
         <GameContent appId={appId} appid={appid} />

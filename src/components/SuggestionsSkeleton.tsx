@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function SuggestionsSkeleton({
   showNotice = false,
@@ -13,23 +14,32 @@ export function SuggestionsSkeleton({
     <div className="flex flex-col gap-4">
       {showNotice && (
         <Alert>
-          <Loader2 className="size-4 animate-spin" />
-          <AlertTitle className="text-sm font-semibold leading-tight">
-            Finding similar games
-          </AlertTitle>
-          <AlertDescription className="leading-snug">
+          <div className="flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" />
+            <AlertTitle className="text-xs font-bold leading-tight m-0">
+              Finding similar games
+            </AlertTitle>
+          </div>
+          <AlertDescription className="text-xs mt-1">
             We&apos;re analyzing this game to find recommendations. This may
             take a minute.
           </AlertDescription>
         </Alert>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {Array.from({ length: count }).map((_, index) => (
-          <div key={index} className="flex flex-col">
-            <Skeleton className="w-full aspect-steam mb-2" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-full mt-2" />
-          </div>
+          <Card key={index} className="h-full opacity-60">
+            <CardHeader>
+              <CardTitle className="h-3 w-24 bg-black/5 animate-pulse" />
+            </CardHeader>
+            <CardContent>
+              <div className="w-full aspect-steam win95-inset bg-black/5 animate-pulse" />
+              <div className="flex flex-col gap-1">
+                <div className="h-3 w-3/4 bg-black/10 animate-pulse" />
+                <div className="h-3 w-full bg-black/10 animate-pulse" />
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { track } from "@vercel/analytics";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { GameNew } from "@/lib/supabase/types";
 
 type GameCardProps = GameNew & {
@@ -119,46 +120,52 @@ function GameCard({
   return (
     <Link
       href={`/games/${appid}`}
-      className="block"
+      className="block group"
       onClick={handleCardClick}
     >
-      <div ref={cardRef}>
-        <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
-          {/* Always render image as base layer */}
-          {header_image && (
-            <Image
-              src={header_image}
-              alt={title}
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                videoReady ? "opacity-0" : "opacity-100"
-              }`}
-            />
-          )}
-          {/* Video overlays image, fades in when ready */}
-          {shouldLoadVideo && hasVideo && videoUrl && (
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              loop
-              playsInline
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                videoReady ? "opacity-100" : "opacity-0"
-              }`}
-              onCanPlay={() => setVideoReady(true)}
-              onError={() => setVideoError(true)}
-            />
-          )}
-        </div>
-        <div className="font-medium text-sm">{title}</div>
-        {explanation && (
-          <div className="text-xs text-muted-foreground first-letter:uppercase">
-            {explanation}
+      <Card className="h-full" ref={cardRef}>
+        <CardHeader className="group-hover:bg-black/5 transition-none">
+          <CardTitle className="flex items-center gap-1">
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={!explanation ? "pb-2" : "pb-3"}>
+          <div className="relative w-full win95-inset aspect-steam overflow-hidden">
+            {/* Always render image as base layer */}
+            {header_image && (
+              <Image
+                src={header_image}
+                alt={title}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                  videoReady ? "opacity-0" : "opacity-100"
+                }`}
+              />
+            )}
+            {/* Video overlays image, fades in when ready */}
+            {shouldLoadVideo && hasVideo && videoUrl && (
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                  videoReady ? "opacity-100" : "opacity-0"
+                }`}
+                onCanPlay={() => setVideoReady(true)}
+                onError={() => setVideoError(true)}
+              />
+            )}
           </div>
-        )}
-      </div>
+          {explanation && (
+            <div className="text-[10px] text-black leading-tight first-letter:uppercase h-12 overflow-hidden">
+              {explanation}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </Link>
   );
 }

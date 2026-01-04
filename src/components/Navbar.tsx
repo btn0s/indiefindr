@@ -184,21 +184,20 @@ export function Navbar() {
         gameTitle={ingestingGame?.title}
         gameImage={ingestingGame?.image}
       />
-      <nav className="sticky top-0 z-50 w-full border-b bg-background px-4">
-        <div className="container mx-auto max-w-4xl flex h-14 items-center gap-3 w-full">
+      <nav className="sticky top-0 z-50 w-full border-b bg-[#c0c0c0] px-2 py-1 win95-outset mb-4">
+        <div className="flex h-10 items-center gap-4 w-full">
           {/* Logo/Brand */}
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg"
+            className="flex shrink-0 items-center gap-1.5 font-bold text-sm px-2 py-1 win95-button bg-[#c0c0c0]"
           >
             <Logo />
-            IndieFindr
+            <span>IndieFindr</span>
           </Link>
 
           {/* Search */}
-          <div className="relative flex-1" ref={resultsRef}>
+          <div className="relative flex-1 max-w-xs ml-auto" ref={resultsRef}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search games..."
@@ -209,14 +208,14 @@ export function Navbar() {
                     setShowResults(true);
                   }
                 }}
-                className="h-10 pr-10 pl-9 sm:h-8"
+                className="h-7 pr-8"
               />
               {searchQuery.trim().length > 0 && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                  className="absolute right-0 top-1/2 h-6 w-6 -translate-y-1/2 hover:bg-transparent"
                   onClick={() => {
                     setSearchQuery("");
                     setDbResults([]);
@@ -225,56 +224,39 @@ export function Navbar() {
                   }}
                   aria-label="Clear search"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </Button>
               )}
             </div>
 
             {/* Search Results Dropdown */}
             {showResults && (
-              <div className="fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b bg-background shadow-lg sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96 sm:rounded-md sm:border">
+              <div className="fixed left-0 right-0 top-12 z-50 mt-0 max-h-[calc(100vh-3rem)] overflow-y-auto bg-[#c0c0c0] win95-outset sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96">
                 {searchQuery.trim().length < 2 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-xs">
                     Keep typing to search…
                   </div>
                 ) : isSearching ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-xs">
                     Searching...
                   </div>
                 ) : dbResults.length > 0 || steamResults.length > 0 ? (
                   <div className="py-1">
                     {/* Database Results */}
                     {dbResults.length > 0 && (
-                      <>
+                      <div className="border-b border-win95-grey mx-1 mb-1 pb-1">
                         {dbResults.map((game) => (
                           <button
                             key={`db-${game.appid}`}
                             onClick={() => handleResultClick(game)}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors sm:py-2"
+                            className="w-full flex items-center gap-3 px-2 py-1 text-left hover:bg-win95-blue hover:text-white transition-none text-xs"
                           >
-                            {game.header_image && (
-                              <Image
-                                src={game.header_image}
-                                alt={game.title}
-                                width={80}
-                                height={48}
-                                sizes="80px"
-                                className="h-12 w-20 object-cover rounded"
-                              />
-                            )}
-                            <span className="flex-1 text-sm font-medium">
+                            <span className="flex-1 truncate">
                               {game.title}
                             </span>
                           </button>
                         ))}
-                        {steamResults.length > 0 && (
-                          <div className="border-t my-1">
-                            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">
-                              Steam Store
-                            </div>
-                          </div>
-                        )}
-                      </>
+                      </div>
                     )}
                     {/* Steam Results */}
                     {steamResults.map((game) => (
@@ -282,39 +264,29 @@ export function Navbar() {
                         key={`steam-${game.appid}`}
                         onClick={() => handleResultClick(game)}
                         disabled={ingestingAppId === game.appid}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait sm:py-2"
+                        className="w-full flex items-center gap-3 px-2 py-1 text-left hover:bg-win95-blue hover:text-white transition-none disabled:opacity-50 disabled:cursor-wait text-xs"
                       >
-                        {game.header_image && (
-                          <Image
-                            src={game.header_image}
-                            alt={game.title}
-                            width={80}
-                            height={48}
-                            sizes="80px"
-                            className="h-12 w-20 object-cover rounded"
-                          />
-                        )}
-                        <span className="flex-1 text-sm font-medium">
+                        <span className="flex-1 truncate">
                           {game.title}
                         </span>
                         {ingestingAppId === game.appid ? (
-                          <span className="text-xs text-muted-foreground">
-                            Ingesting...
+                          <span className="text-[10px] opacity-70">
+                            ...
                           </span>
                         ) : (
-                          <span className="text-xs text-muted-foreground">
-                            Add to database
+                          <span className="text-[10px] opacity-70 italic">
+                            (Steam)
                           </span>
                         )}
                       </button>
                     ))}
                   </div>
                 ) : hasSearched ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-xs">
                     No games found
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-xs">
                     Searching...
                   </div>
                 )}
