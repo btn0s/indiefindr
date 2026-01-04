@@ -60,7 +60,8 @@ export async function ingest(
 
     console.log("[INGEST] Saving to database:", steamData.appid);
     await saveSteamData(steamData);
-    await refreshHomeView();
+    // Home view refresh is expensive and not needed for the ingest to succeed; do it async
+    void refreshHomeView();
 
     // Step 2: Generate suggestions in background (if not skipped)
     if (!skipSuggestions && steamData.screenshots?.length) {
@@ -94,7 +95,8 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
 
     console.log("[INGEST] Saving suggestions for:", steamData.appid);
     await saveSuggestions(steamData.appid, suggestions.suggestions);
-    await refreshHomeView();
+    // Home view refresh is expensive and not needed for suggestions to be saved; do it async
+    void refreshHomeView();
 
     console.log("[INGEST] Background suggestions complete for:", steamData.appid);
   } catch (err) {

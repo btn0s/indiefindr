@@ -9,7 +9,7 @@ const DEFAULT_DELAY_MS = 2000; // 2 seconds between requests
 
 /**
  * Acquire a rate limit slot for the given key.
- * This will wait until it's safe to make a request, ensuring the minimum delay.
+ * First call is immediate; subsequent calls wait to ensure minimum spacing.
  * 
  * Uses atomic database operations to coordinate across multiple processes.
  * 
@@ -27,57 +27,68 @@ export async function acquireRateLimit(
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      // Try to acquire the slot using an atomic update
-      // Only update if enough time has passed since last request
       const now = new Date();
-      const minTime = new Date(now.getTime() - minDelayMs);
-
-      const { data, error } = await supabase
+      
+      // First, check if a record exists and when it was last used
+      const { data: current, error: fetchError } = await supabase
         .from("rate_limits")
-        .update({ last_request_at: now.toISOString() })
+        .select("last_request_at")
         .eq("key", key)
-        .lt("last_request_at", minTime.toISOString())
-        .select()
         .maybeSingle();
 
-      if (error) {
-        console.error("[RATE LIMITER] Database error:", error.message);
-        // On DB error, wait and retry
+      if (fetchError) {
+        console.error("[RATE LIMITER] Database error:", fetchError.message);
         await sleep(pollIntervalMs);
         continue;
       }
 
-      if (data) {
-        // Successfully acquired the slot
-        return;
-      }
-
-      // Slot not available yet, check how long to wait
-      const { data: current } = await supabase
-        .from("rate_limits")
-        .select("last_request_at")
-        .eq("key", key)
-        .single();
-
-      if (current) {
-        const lastRequest = new Date(current.last_request_at).getTime();
-        const elapsed = now.getTime() - lastRequest;
-        const remainingWait = Math.max(0, minDelayMs - elapsed);
-
-        if (remainingWait > 0) {
-          // Wait for the remaining time plus a small buffer
-          await sleep(Math.min(remainingWait + 50, minDelayMs));
-        } else {
-          // Race condition - another process just took the slot, try again quickly
-          await sleep(pollIntervalMs);
-        }
-      } else {
-        // No record found, create one
-        await supabase
+      // No record exists = first call ever, proceed immediately
+      if (!current) {
+        const { error: upsertError } = await supabase
           .from("rate_limits")
-          .upsert({ key, last_request_at: now.toISOString() });
-        return;
+          .upsert({ key, last_request_at: now.toISOString() }, { onConflict: "key" });
+        
+        if (!upsertError) {
+          return; // First call, proceed immediately
+        }
+        // Race condition: another process created it, continue to check timing
+        await sleep(pollIntervalMs);
+        continue;
       }
+
+      // Record exists - check if enough time has passed
+      const lastRequest = new Date(current.last_request_at).getTime();
+      const elapsed = now.getTime() - lastRequest;
+
+      if (elapsed >= minDelayMs) {
+        // Enough time has passed, try to atomically update
+        const minTime = new Date(now.getTime() - minDelayMs);
+        const { data, error: updateError } = await supabase
+          .from("rate_limits")
+          .update({ last_request_at: now.toISOString() })
+          .eq("key", key)
+          .lt("last_request_at", minTime.toISOString())
+          .select()
+          .maybeSingle();
+
+        if (updateError) {
+          console.error("[RATE LIMITER] Update error:", updateError.message);
+          await sleep(pollIntervalMs);
+          continue;
+        }
+
+        if (data) {
+          // Successfully acquired the slot
+          return;
+        }
+        // Race condition - another process took the slot, check again
+        await sleep(pollIntervalMs);
+        continue;
+      }
+
+      // Not enough time has passed, wait for the remainder
+      const remainingWait = minDelayMs - elapsed;
+      await sleep(Math.min(remainingWait + 50, minDelayMs));
     } catch (err) {
       console.error("[RATE LIMITER] Error acquiring rate limit:", err);
       await sleep(pollIntervalMs);
