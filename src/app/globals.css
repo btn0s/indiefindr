@@ -141,6 +141,13 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* Helps form controls and scrollbars match the scheme */
+    color-scheme: light;
+  }
+  .dark html {
+    color-scheme: dark;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: Tahoma, Verdana, Arial, system-ui, sans-serif;
@@ -179,6 +186,7 @@
       );
     background-size: auto, auto, auto, auto, 24px 24px, 100% 100%;
     background-attachment: fixed;
+    filter: saturate(1.07) contrast(1.03);
   }
   body::before {
     /* Scanlines + shimmer overlay (subtle, but unmistakably “2000s”) */
@@ -205,6 +213,28 @@
     background-position: 0 0, -120% 0;
     mix-blend-mode: multiply;
     animation: y2k-shine 7s linear infinite;
+  }
+  body::after {
+    /* Grain + vignette (static, very low contrast) */
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.22;
+    background-image:
+      radial-gradient(
+        1200px 680px at 50% 10%,
+        transparent 55%,
+        color-mix(in oklab, var(--foreground), transparent 92%) 100%
+      ),
+      repeating-radial-gradient(
+        circle at 10% 15%,
+        color-mix(in oklab, var(--foreground), transparent 97%) 0 1px,
+        transparent 1px 4px
+      );
+    background-size: auto, 180px 180px;
+    mix-blend-mode: multiply;
   }
   body > * {
     position: relative;
@@ -244,6 +274,66 @@
   :focus-visible {
     outline: 2px dashed color-mix(in oklab, var(--ring), white 15%);
     outline-offset: 2px;
+  }
+
+  @media (pointer: fine) {
+    body {
+      cursor: default;
+    }
+    a,
+    button,
+    [role="button"],
+    input,
+    select,
+    textarea {
+      cursor: pointer;
+    }
+    input,
+    select,
+    textarea {
+      cursor: text;
+    }
+  }
+
+  /* Scrollbar: “WinXP-ish” */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--primary), white 40%)
+      color-mix(in oklab, var(--background), var(--card) 30%);
+  }
+  *::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  *::-webkit-scrollbar-track {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--background), white 15%),
+      color-mix(in oklab, var(--background), var(--card) 35%)
+    );
+    border-left: 1px solid var(--border);
+  }
+  *::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    border: 2px solid color-mix(in oklab, var(--background), var(--card) 35%);
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--primary), white 35%),
+      color-mix(in oklab, var(--primary), black 8%)
+    );
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white, transparent 35%),
+      inset 0 -1px 0 color-mix(in oklab, black, transparent 70%);
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--primary), white 45%),
+      color-mix(in oklab, var(--primary), black 2%)
+    );
+  }
+  *::-webkit-scrollbar-corner {
+    background: color-mix(in oklab, var(--background), var(--card) 30%);
   }
 }
 
@@ -303,15 +393,75 @@
     );
     mix-blend-mode: screen;
   }
+  @supports ((-webkit-backdrop-filter: blur(8px)) or (backdrop-filter: blur(8px))) {
+    .y2k-panel {
+      background-color: color-mix(in oklab, var(--card), transparent 10%);
+      -webkit-backdrop-filter: blur(10px) saturate(1.1);
+      backdrop-filter: blur(10px) saturate(1.1);
+    }
+  }
 
   .y2k-window {
+    position: relative;
     border: 1px solid color-mix(in oklab, var(--border), black 10%);
-    background: var(--card);
+    background: color-mix(in oklab, var(--card), transparent 6%);
     box-shadow:
       inset 0 1px 0 var(--y2k-bevel-hi),
       inset 0 -1px 0 var(--y2k-bevel-lo),
       0 10px 0 color-mix(in oklab, var(--y2k-shadow), transparent 92%),
       0 26px 50px color-mix(in oklab, var(--y2k-shadow), transparent 86%);
+  }
+  .y2k-window::before {
+    /* chrome border stack */
+    content: "";
+    position: absolute;
+    inset: -2px;
+    pointer-events: none;
+    border-radius: 4px;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--y2k-cyan), transparent 35%),
+        transparent 40%,
+        color-mix(in oklab, var(--y2k-magenta), transparent 38%)
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, white, transparent 55%),
+        transparent 45%,
+        color-mix(in oklab, black, transparent 82%)
+      );
+    opacity: 0.55;
+    filter: blur(0.2px);
+    mix-blend-mode: screen;
+  }
+  .y2k-window::after {
+    /* corner notches + subtle dot texture */
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.25;
+    background-image:
+      radial-gradient(
+        1px 1px at 10px 10px,
+        color-mix(in oklab, var(--foreground), transparent 92%),
+        transparent 35%
+      ),
+      linear-gradient(to right, transparent 10px, var(--border) 10px, var(--border) 12px, transparent 12px),
+      linear-gradient(to bottom, transparent 10px, var(--border) 10px, var(--border) 12px, transparent 12px),
+      linear-gradient(to left, transparent 10px, var(--border) 10px, var(--border) 12px, transparent 12px),
+      linear-gradient(to top, transparent 10px, var(--border) 10px, var(--border) 12px, transparent 12px);
+    background-size: 18px 18px, 14px 14px, 14px 14px, 14px 14px, 14px 14px;
+    background-position: 0 0, 0 0, 100% 0, 0 100%, 100% 100%;
+    background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+    mix-blend-mode: multiply;
+  }
+  @supports ((-webkit-backdrop-filter: blur(8px)) or (backdrop-filter: blur(8px))) {
+    .y2k-window {
+      -webkit-backdrop-filter: blur(12px) saturate(1.18);
+      backdrop-filter: blur(12px) saturate(1.18);
+    }
   }
 
   .y2k-titlebar {
@@ -330,6 +480,18 @@
     text-shadow: 0 1px 0 color-mix(in oklab, black, transparent 65%);
     font-size: 11px;
     letter-spacing: 0.02em;
+  }
+  .y2k-titlebar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.25;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, white, transparent 45%),
+      transparent 55%
+    );
   }
 
   .y2k-titlebar__left {
@@ -376,6 +538,84 @@
 
   .y2k-window__body {
     padding: 14px;
+  }
+
+  .y2k-statusbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 10px;
+    border-top: 1px solid var(--border);
+    background-image:
+      repeating-linear-gradient(
+        90deg,
+        color-mix(in oklab, var(--background), var(--card) 55%) 0 10px,
+        color-mix(in oklab, var(--background), var(--card) 35%) 10px 20px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--card), white 20%),
+        color-mix(in oklab, var(--card), var(--background) 15%)
+      );
+    font-size: 11px;
+    color: color-mix(in oklab, var(--foreground), transparent 20%);
+  }
+  .y2k-statusbar__left,
+  .y2k-statusbar__right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .y2k-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border: 1px solid color-mix(in oklab, var(--border), black 6%);
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--secondary), white 35%),
+      var(--secondary)
+    );
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white, transparent 35%),
+      inset 0 -1px 0 color-mix(in oklab, black, transparent 75%);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: color-mix(in oklab, var(--foreground), transparent 10%);
+    white-space: nowrap;
+  }
+
+  .y2k-mini-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--card), white 35%),
+      color-mix(in oklab, var(--card), var(--background) 25%)
+    );
+    font-size: 11px;
+    color: color-mix(in oklab, var(--foreground), transparent 10%);
+  }
+  .y2k-mini-titlebar__title {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .y2k-mini-titlebar__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    opacity: 0.9;
   }
 
   [data-slot="card"] {
@@ -498,6 +738,26 @@
   }
   .y2k-tile:hover::after {
     opacity: 1;
+  }
+
+  /* Base UI ScrollArea knobs: make them feel like chrome rails */
+  [data-slot="scroll-area-scrollbar"] {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--background), white 12%),
+      color-mix(in oklab, var(--background), var(--card) 35%)
+    );
+    border-color: var(--border) !important;
+  }
+  [data-slot="scroll-area-thumb"] {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--primary), white 35%),
+      color-mix(in oklab, var(--primary), black 8%)
+    ) !important;
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white, transparent 35%),
+      inset 0 -1px 0 color-mix(in oklab, black, transparent 70%);
   }
 
   [data-slot="skeleton"] {

@@ -107,6 +107,7 @@ export default async function Home() {
             </div>
             <div className="y2k-titlebar__right" aria-hidden="true">
               <span>dir:/games</span>
+              <span>items:{games.length}</span>
             </div>
           </div>
 
@@ -124,6 +125,16 @@ export default async function Home() {
               ) : (
                 <GamesGrid initialGames={games} />
               )}
+            </div>
+          </div>
+
+          <div className="y2k-statusbar">
+            <div className="y2k-statusbar__left">
+              <span className="y2k-pill">ready</span>
+              <span className="y2k-pill">grid:3col</span>
+            </div>
+            <div className="y2k-statusbar__right">
+              <span className="y2k-pill">showing:{games.length}</span>
             </div>
           </div>
         </section>

@@ -358,6 +358,16 @@ export default async function GameDetailPage({
             <GameContent appId={appId} appid={appid} />
           </Suspense>
         </div>
+
+        <div className="y2k-statusbar">
+          <div className="y2k-statusbar__left">
+            <span className="y2k-pill">ai:suggestions</span>
+            <span className="y2k-pill">streaming:on</span>
+          </div>
+          <div className="y2k-statusbar__right">
+            <span className="y2k-pill">appid:{appid}</span>
+          </div>
+        </div>
       </section>
     </main>
   );

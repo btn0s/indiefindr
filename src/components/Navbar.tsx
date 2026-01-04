@@ -235,6 +235,14 @@ export function Navbar() {
             {/* Search Results Dropdown */}
             {showResults && (
               <div className="y2k-panel fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96 sm:rounded-md">
+                <div className="y2k-mini-titlebar">
+                  <div className="y2k-mini-titlebar__title">Search</div>
+                  <div className="y2k-mini-titlebar__meta" aria-hidden="true">
+                    <span>db:{dbResults.length}</span>
+                    <span>steam:{steamResults.length}</span>
+                    <span>{isSearching ? "…" : "ok"}</span>
+                  </div>
+                </div>
                 {searchQuery.trim().length < 2 ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
                     Keep typing to search…

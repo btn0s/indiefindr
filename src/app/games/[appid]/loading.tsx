@@ -45,6 +45,16 @@ export default function GamePageLoading() {
             <SuggestionsSkeleton showNotice={false} />
           </div>
         </div>
+
+        <div className="y2k-statusbar">
+          <div className="y2k-statusbar__left">
+            <span className="y2k-pill">loading</span>
+            <span className="y2k-pill">hydrate:db</span>
+          </div>
+          <div className="y2k-statusbar__right">
+            <span className="y2k-pill">please_wait</span>
+          </div>
+        </div>
       </section>
     </main>
   );
