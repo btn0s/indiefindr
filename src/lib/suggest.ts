@@ -37,15 +37,29 @@ Return 8-12 similar Steam games in this EXACT format (one game per line):
 
 title, steam_appid, explanation
 
+CRITICAL REQUIREMENTS - INDIE-FIRST APPROACH:
+- STRICTLY prioritize indie games (independent developers, smaller studios, lesser-known titles)
+- Target ALL indie games; allow at most 1-2 non-indie games ONLY if absolutely unavoidable for relevance
+- AVOID AAA tentpoles and major franchise titles (EA, Ubisoft, Activision, Take-Two, etc.) even if they seem similar
+- If the source game is AAA, still surface indie games that match on mechanics, vibe, art direction, camera perspective, combat loop, pacing, or tone
+- Prefer smaller, lesser-known Steam games over obvious household-name matches
+
+RECENCY MIX:
+- Include 2-3 indie picks that are released or announced in the last 6 months (must have a Steam store page)
+- These can be newly launched, recently announced, or fresh early access titles
+- They should still match the image/context, but can be more "under-the-radar" discoveries
+- For recency picks, optionally mention in the explanation why it's timely (e.g., "recently launched", "newly announced", "fresh early access")
+
 IMPORTANT: Each explanation MUST explain WHY you chose this game - what makes it relate to the image/context.
 
 TONE & TENSE: Write explanations in a friendly, conversational way. Always use present tense verbs (shares, features, matches, offers, brings, captures). Be consistent—every explanation should follow the same structure.
 
-Good examples (consistent present tense):
-Counter-Strike 2, 730, Shares the same competitive FPS gameplay with tactical team-based combat
-Team Fortress 2, 440, Features team-based shooter mechanics and class-based gameplay
-Dota 2, 570, Offers similar strategic depth with MOBA gameplay and a matching visual style
-Half-Life 2, 220, Delivers the same immersive single-player FPS experience
+Good examples (consistent present tense, indie-focused):
+Hades, 1145360, Features fast-paced roguelike combat with Greek mythology themes and stunning hand-drawn visuals
+Celeste, 504230, Delivers challenging platforming mechanics with a heartfelt narrative and pixel art style
+Dead Cells, 588650, Offers similar roguelike-metroidvania gameplay with fluid combat and procedurally generated levels
+Cuphead, 268910, Captures the same hand-drawn animation aesthetic with challenging boss-focused gameplay
+Hollow Knight, 367520, Shares the same atmospheric metroidvania exploration with beautiful hand-drawn art
 
 Bad examples (inconsistent tense - DO NOT USE):
 - "Similar competitive FPS gameplay..." (missing verb)
