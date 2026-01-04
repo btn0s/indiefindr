@@ -4,12 +4,12 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import GameCard from "@/components/GameCard";
 import { Spinner } from "@/components/ui/spinner";
 import { loadMoreGames } from "@/app/actions";
-import type { GameNew } from "@/lib/supabase/types";
+import type { GameCardGame } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 24;
 
 interface GamesGridProps {
-  initialGames: GameNew[];
+  initialGames: GameCardGame[];
 }
 
 export function GamesGrid({ initialGames }: GamesGridProps) {
@@ -18,7 +18,7 @@ export function GamesGrid({ initialGames }: GamesGridProps) {
   const [hasMore, setHasMore] = useState(initialGames.length === PAGE_SIZE);
   const [isPending, startTransition] = useTransition();
   const loaderRef = useRef<HTMLDivElement>(null);
-  const gamesRef = useRef<GameNew[]>(initialGames);
+  const gamesRef = useRef<GameCardGame[]>(initialGames);
 
   useEffect(() => {
     gamesRef.current = games;

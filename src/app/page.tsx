@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GamesGrid } from "@/components/GamesGrid";
+import type { GameCardGame } from "@/lib/supabase/types";
 import { getPinnedHomeCollections } from "@/lib/collections";
 import { CollectionsSection } from "@/components/CollectionsSection";
 
@@ -58,28 +59,32 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
   const supabase = getSupabaseServerClient();
-  const [games, pinnedCollections] = await Promise.all([
-    (async () => {
-      const { data, error } = await supabase
-        .from("games_new_home")
-        .select(
-          "appid, title, header_image, videos, screenshots, short_description, long_description, raw, created_at, updated_at, suggested_game_appids"
-        )
-        .order("home_bucket", { ascending: true })
-        .order("suggestions_count", { ascending: false })
-        .order("created_at", { ascending: false })
-        .order("appid", { ascending: true })
-        .range(0, PAGE_SIZE - 1);
-
-      if (error) {
-        console.error("Error loading games:", error);
-        return [];
-      }
-
-      return (data || []);
-    })(),
+  const [{ data, error }, pinnedCollections] = await Promise.all([
+    supabase
+      .from("games_new_home")
+      .select(
+        "appid, title, header_image, videos, home_bucket, suggestions_count, created_at"
+      )
+      .order("home_bucket", { ascending: true })
+      .order("suggestions_count", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("appid", { ascending: true })
+      .range(0, PAGE_SIZE - 1),
     getPinnedHomeCollections(),
   ]);
+
+  const games: GameCardGame[] = error
+    ? []
+    : ((data || []).map((g) => ({
+        appid: g.appid,
+        title: g.title,
+        header_image: g.header_image,
+        videos: g.videos,
+      })) satisfies GameCardGame[]);
+
+  if (error) {
+    console.error("Error loading games:", error);
+  }
 
   return (
     <main className="flex flex-col gap-8 pt-8">

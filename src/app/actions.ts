@@ -1,16 +1,16 @@
 "use server";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { GameNew } from "@/lib/supabase/types";
+import type { GameCardGame } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 24;
 
-export async function loadMoreGames(offset: number): Promise<GameNew[]> {
+export async function loadMoreGames(offset: number): Promise<GameCardGame[]> {
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from("games_new_home")
     .select(
-      "appid, title, header_image, videos, screenshots, short_description, long_description, raw, created_at, updated_at, suggested_game_appids"
+      "appid, title, header_image, videos, home_bucket, suggestions_count, created_at"
     )
     .order("home_bucket", { ascending: true })
     .order("suggestions_count", { ascending: false })
@@ -19,5 +19,11 @@ export async function loadMoreGames(offset: number): Promise<GameNew[]> {
     .range(offset, offset + PAGE_SIZE - 1);
 
   if (error) return [];
-  return (data || []) as GameNew[];
+
+  return (data || []).map((g) => ({
+    appid: g.appid,
+    title: g.title,
+    header_image: g.header_image,
+    videos: g.videos,
+  })) satisfies GameCardGame[];
 }

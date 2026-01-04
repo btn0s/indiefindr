@@ -4,9 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { track } from "@vercel/analytics";
-import type { GameNew } from "@/lib/supabase/types";
+import type { GameCardGame } from "@/lib/supabase/types";
 
-type GameCardProps = GameNew & {
+type GameCardProps = GameCardGame & {
   explanation?: string;
 };
 

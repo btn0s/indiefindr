@@ -2,8 +2,8 @@ import { getSupabaseServerClient } from "./supabase/server";
 import type {
   Collection,
   CollectionWithPreview,
+  GameCardGame,
   GameNew,
-  CollectionPin,
 } from "./supabase/types";
 
 /**
@@ -43,44 +43,56 @@ export async function getPinnedHomeCollections(): Promise<
   const collectionMap = new Map<string, Collection>();
   collections.forEach((c) => collectionMap.set(c.id, c));
 
-  // Fetch all games for each collection (ordered by position)
-  const results: CollectionWithPreview[] = [];
+  // Fetch all collection games for pinned collections in one go, then take top 4 per collection.
+  const { data: collectionGames, error: gamesError } = await supabase
+    .from("collection_games")
+    .select("collection_id, appid, position")
+    .in("collection_id", collectionIds)
+    .order("collection_id", { ascending: true })
+    .order("position", { ascending: true });
 
+  const appIdsByCollection = new Map<string, number[]>();
+  if (!gamesError && collectionGames) {
+    for (const row of collectionGames) {
+      const list = appIdsByCollection.get(row.collection_id) ?? [];
+      if (list.length < 4) {
+        list.push(row.appid);
+        appIdsByCollection.set(row.collection_id, list);
+      }
+    }
+  }
+
+  const allPreviewAppIds = Array.from(appIdsByCollection.values()).flat();
+  const uniquePreviewAppIds = Array.from(new Set(allPreviewAppIds));
+
+  const gamesByAppId = new Map<number, GameCardGame>();
+  if (uniquePreviewAppIds.length > 0) {
+    const { data: games, error: gamesDataError } = await supabase
+      .from("games_new")
+      .select("appid, title, header_image, videos")
+      .in("appid", uniquePreviewAppIds);
+
+    if (!gamesDataError && games) {
+      for (const g of games) {
+        gamesByAppId.set(g.appid, {
+          appid: g.appid,
+          title: g.title,
+          header_image: g.header_image,
+          videos: g.videos,
+        });
+      }
+    }
+  }
+
+  // Build results in pin order.
+  const results: CollectionWithPreview[] = [];
   for (const pin of pins) {
     const collection = collectionMap.get(pin.collection_id);
     if (!collection) continue;
-
-    // Fetch top 4 games for the collection
-    const { data: collectionGames, error: gamesError } = await supabase
-      .from("collection_games")
-      .select("appid")
-      .eq("collection_id", collection.id)
-      .order("position", { ascending: true })
-      .limit(4);
-
-    if (gamesError || !collectionGames || collectionGames.length === 0) {
-      results.push({ ...collection, preview_games: [] });
-      continue;
-    }
-
-    const appIds = collectionGames.map((cg) => cg.appid);
-
-    // Fetch game data
-    const { data: games, error: gamesDataError } = await supabase
-      .from("games_new")
-      .select("*")
-      .in("appid", appIds);
-
-    if (gamesDataError || !games) {
-      results.push({ ...collection, preview_games: [] });
-      continue;
-    }
-
-    // Preserve order from collection_games
+    const appIds = appIdsByCollection.get(collection.id) ?? [];
     const orderedGames = appIds
-      .map((appid) => games.find((g) => g.appid === appid))
-      .filter((g): g is GameNew => g !== undefined);
-
+      .map((appid) => gamesByAppId.get(appid))
+      .filter((g): g is GameCardGame => g !== undefined);
     results.push({ ...collection, preview_games: orderedGames });
   }
 
@@ -125,44 +137,54 @@ export async function getPinnedCollectionsForGame(
   const collectionMap = new Map<string, Collection>();
   collections.forEach((c) => collectionMap.set(c.id, c));
 
-  // Fetch all games for each collection (ordered by position)
-  const results: CollectionWithPreview[] = [];
+  const { data: collectionGames, error: gamesError } = await supabase
+    .from("collection_games")
+    .select("collection_id, appid, position")
+    .in("collection_id", collectionIds)
+    .order("collection_id", { ascending: true })
+    .order("position", { ascending: true });
 
+  const appIdsByCollection = new Map<string, number[]>();
+  if (!gamesError && collectionGames) {
+    for (const row of collectionGames) {
+      const list = appIdsByCollection.get(row.collection_id) ?? [];
+      if (list.length < 4) {
+        list.push(row.appid);
+        appIdsByCollection.set(row.collection_id, list);
+      }
+    }
+  }
+
+  const allPreviewAppIds = Array.from(appIdsByCollection.values()).flat();
+  const uniquePreviewAppIds = Array.from(new Set(allPreviewAppIds));
+
+  const gamesByAppId = new Map<number, GameCardGame>();
+  if (uniquePreviewAppIds.length > 0) {
+    const { data: games, error: gamesDataError } = await supabase
+      .from("games_new")
+      .select("appid, title, header_image, videos")
+      .in("appid", uniquePreviewAppIds);
+
+    if (!gamesDataError && games) {
+      for (const g of games) {
+        gamesByAppId.set(g.appid, {
+          appid: g.appid,
+          title: g.title,
+          header_image: g.header_image,
+          videos: g.videos,
+        });
+      }
+    }
+  }
+
+  const results: CollectionWithPreview[] = [];
   for (const pin of pins) {
     const collection = collectionMap.get(pin.collection_id);
     if (!collection) continue;
-
-    // Fetch top 4 games for the collection
-    const { data: collectionGames, error: gamesError } = await supabase
-      .from("collection_games")
-      .select("appid")
-      .eq("collection_id", collection.id)
-      .order("position", { ascending: true })
-      .limit(4);
-
-    if (gamesError || !collectionGames || collectionGames.length === 0) {
-      results.push({ ...collection, preview_games: [] });
-      continue;
-    }
-
-    const appIds = collectionGames.map((cg) => cg.appid);
-
-    // Fetch game data
-    const { data: games, error: gamesDataError } = await supabase
-      .from("games_new")
-      .select("*")
-      .in("appid", appIds);
-
-    if (gamesDataError || !games) {
-      results.push({ ...collection, preview_games: [] });
-      continue;
-    }
-
-    // Preserve order from collection_games
+    const appIds = appIdsByCollection.get(collection.id) ?? [];
     const orderedGames = appIds
-      .map((appid) => games.find((g) => g.appid === appid))
-      .filter((g): g is GameNew => g !== undefined);
-
+      .map((id) => gamesByAppId.get(id))
+      .filter((g): g is GameCardGame => g !== undefined);
     results.push({ ...collection, preview_games: orderedGames });
   }
 
