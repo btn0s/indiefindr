@@ -20,6 +20,13 @@ type GameData = {
   long_description: string | null;
   screenshots: string[];
   videos: string[];
+  release_date: string | null;
+  developers: string[];
+  publishers: string[];
+  genres: Array<{ id: number; description: string }>;
+  price: string | null;
+  platforms: { windows?: boolean; mac?: boolean; linux?: boolean } | null;
+  metacritic_score: number | null;
 };
 
 /**
@@ -36,12 +43,13 @@ async function waitForGameInDb(
     const { data: dbGame } = await supabase
       .from("games_new")
       .select(
-        "appid, title, header_image, short_description, long_description, screenshots, videos"
+        "appid, title, header_image, short_description, long_description, screenshots, videos, raw"
       )
       .eq("appid", appId)
       .maybeSingle();
 
     if (dbGame && dbGame.title) {
+      const metadata = extractMetadata(dbGame.raw);
       return {
         appid: dbGame.appid,
         title: dbGame.title,
@@ -50,6 +58,7 @@ async function waitForGameInDb(
         long_description: dbGame.long_description,
         screenshots: dbGame.screenshots || [],
         videos: dbGame.videos || [],
+        ...metadata,
       };
     }
 
@@ -70,12 +79,13 @@ const getGameDataFromDb = cache(
     const { data: dbGame } = await supabase
       .from("games_new")
       .select(
-        "appid, title, header_image, short_description, long_description, screenshots, videos"
+        "appid, title, header_image, short_description, long_description, screenshots, videos, raw"
       )
       .eq("appid", appId)
       .maybeSingle();
 
     if (dbGame && dbGame.title) {
+      const metadata = extractMetadata(dbGame.raw);
       return {
         appid: dbGame.appid,
         title: dbGame.title,
@@ -84,6 +94,7 @@ const getGameDataFromDb = cache(
         long_description: dbGame.long_description,
         screenshots: dbGame.screenshots || [],
         videos: dbGame.videos || [],
+        ...metadata,
       };
     }
 
@@ -106,6 +117,107 @@ function truncate(input: string, maxLen: number): string {
 }
 
 /**
+ * Extract metadata from Steam raw JSONB data
+ */
+function extractMetadata(raw: unknown): {
+  release_date: string | null;
+  developers: string[];
+  publishers: string[];
+  genres: Array<{ id: number; description: string }>;
+  price: string | null;
+  platforms: { windows?: boolean; mac?: boolean; linux?: boolean } | null;
+  metacritic_score: number | null;
+} {
+  if (!raw || typeof raw !== "object") {
+    return {
+      release_date: null,
+      developers: [],
+      publishers: [],
+      genres: [],
+      price: null,
+      platforms: null,
+      metacritic_score: null,
+    };
+  }
+
+  const data = raw as Record<string, unknown>;
+
+  // Extract release date
+  const releaseDate =
+    data.release_date && typeof data.release_date === "object"
+      ? (data.release_date as { date?: string }).date || null
+      : null;
+
+  // Extract developers
+  const developers =
+    Array.isArray(data.developers)
+      ? (data.developers as string[]).filter((d) => typeof d === "string")
+      : [];
+
+  // Extract publishers
+  const publishers =
+    Array.isArray(data.publishers)
+      ? (data.publishers as string[]).filter((p) => typeof p === "string")
+      : [];
+
+  // Extract genres
+  const genres =
+    Array.isArray(data.genres)
+      ? (data.genres as Array<{ id?: number; description?: string }>)
+          .filter((g) => g.id && g.description)
+          .map((g) => ({ id: g.id!, description: g.description! }))
+      : [];
+
+  // Extract price
+  let price: string | null = null;
+  if (
+    data.price_overview &&
+    typeof data.price_overview === "object" &&
+    data.price_overview !== null
+  ) {
+    const priceOverview = data.price_overview as {
+      final_formatted?: string;
+      final?: number;
+      currency?: string;
+    };
+    price = priceOverview.final_formatted || null;
+    if (!price && priceOverview.final !== undefined && priceOverview.currency) {
+      // Format price manually if needed
+      const amount = (priceOverview.final / 100).toFixed(2);
+      price = `${priceOverview.currency}${amount}`;
+    }
+  }
+
+  // Extract platforms
+  let platforms: { windows?: boolean; mac?: boolean; linux?: boolean } | null =
+    null;
+  if (data.platforms && typeof data.platforms === "object") {
+    const platformData = data.platforms as Record<string, unknown>;
+    platforms = {
+      windows: Boolean(platformData.windows),
+      mac: Boolean(platformData.mac),
+      linux: Boolean(platformData.linux),
+    };
+  }
+
+  // Extract Metacritic score
+  const metacritic_score =
+    data.metacritic && typeof data.metacritic === "object" && data.metacritic !== null
+      ? (data.metacritic as { score?: number }).score || null
+      : null;
+
+  return {
+    release_date: releaseDate,
+    developers,
+    publishers,
+    genres,
+    price,
+    platforms,
+    metacritic_score,
+  };
+}
+
+/**
  * Fast DB fetch for metadata generation (never waits for background ingest).
  */
 async function getGameDataFromDbFast(appId: number): Promise<GameData | null> {
@@ -113,13 +225,14 @@ async function getGameDataFromDbFast(appId: number): Promise<GameData | null> {
   const { data: dbGame } = await supabase
     .from("games_new")
     .select(
-      "appid, title, header_image, short_description, long_description, screenshots, videos"
+      "appid, title, header_image, short_description, long_description, screenshots, videos, raw"
     )
     .eq("appid", appId)
     .maybeSingle();
 
   if (!dbGame || !dbGame.title) return null;
 
+  const metadata = extractMetadata(dbGame.raw);
   return {
     appid: dbGame.appid,
     title: dbGame.title,
@@ -128,6 +241,7 @@ async function getGameDataFromDbFast(appId: number): Promise<GameData | null> {
     long_description: dbGame.long_description,
     screenshots: dbGame.screenshots || [],
     videos: dbGame.videos || [],
+    ...metadata,
   };
 }
 
@@ -275,18 +389,39 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
       )}
 
       {/* Game Header */}
-      <div className="flex gap-3 sm:gap-4 items-center">
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="text-sm sm:text-lg font-semibold truncate sm:whitespace-normal">
+      <div className="flex flex-col gap-4">
+        {/* Title and Description */}
+        <div className="flex flex-col gap-1.5">
+          <div className="text-base sm:text-lg font-semibold leading-tight">
             {gameData.title}
           </div>
-
           {description && (
-            <p className="text-muted-foreground line-clamp-4 text-sm mb-2">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               {truncate(stripHtml(description), 220)}
             </p>
           )}
+        </div>
 
+        {/* Inline Metadata - Release, Developers */}
+        {(gameData.release_date || gameData.developers.length > 0) && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+            {gameData.release_date && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Release:</span>
+                <span className="text-foreground">{gameData.release_date}</span>
+              </div>
+            )}
+            {gameData.developers.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Developer{gameData.developers.length > 1 ? "s" : ""}:</span>
+                <span className="text-foreground">{gameData.developers.join(", ")}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Steam Button */}
+        <div className="pt-1">
           <SteamButton appid={appid} title={gameData.title} />
         </div>
       </div>
