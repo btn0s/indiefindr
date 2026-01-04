@@ -5,8 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import Logo from "@/components/logo";
 
 interface SearchResult {
@@ -169,61 +167,62 @@ export function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background px-4">
-        <div className="container mx-auto max-w-4xl flex h-14 items-center gap-3 w-full">
+    <nav className="cartridge-console sticky top-0 z-50 w-full">
+      <div className="container mx-auto max-w-4xl px-4">
+        <div className="flex h-16 items-center gap-4 w-full">
           {/* Logo/Brand */}
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg"
+            className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg text-[#000000] drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)]"
           >
             <Logo />
             IndieFindr
           </Link>
 
-          {/* Search */}
+          {/* Search - Cartridge Slot */}
           <div className="relative flex-1" ref={resultsRef}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search games..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => {
-                  if (searchQuery.trim().length > 0) {
-                    setShowResults(true);
-                  }
-                }}
-                className="h-10 pr-10 pl-9 sm:h-8"
-              />
-              {searchQuery.trim().length > 0 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setDbResults([]);
-                    setSteamResults([]);
-                    setShowResults(false);
+            <div className="cartridge-slot relative">
+              <div className="cartridge-slot-inset">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#606060] pointer-events-none z-10 transition-colors duration-200" />
+                <input
+                  type="text"
+                  placeholder="Insert cartridge..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => {
+                    if (searchQuery.trim().length > 0) {
+                      setShowResults(true);
+                    }
                   }}
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+                  className="win95-input h-10 pr-9 pl-10 sm:h-9 w-full text-sm text-[#000000] placeholder:text-[#808080]"
+                />
+                {searchQuery.trim().length > 0 && (
+                  <button
+                    type="button"
+                    className="cartridge-eject-button absolute right-1.5 top-1/2 h-7 w-7 -translate-y-1/2 flex items-center justify-center rounded-sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setDbResults([]);
+                      setSteamResults([]);
+                      setShowResults(false);
+                    }}
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5 text-[#000000]" />
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Search Results Dropdown */}
+            {/* Search Results Dropdown - Cartridge Tray */}
             {showResults && (
-              <div className="fixed left-0 right-0 top-14 z-50 mt-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b bg-background shadow-lg sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1 sm:max-h-96 sm:rounded-md sm:border">
+              <div className="cartridge-tray fixed left-0 right-0 top-16 z-50 mt-2 max-h-[calc(100vh-4rem)] overflow-y-auto sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-2 sm:max-h-96">
                 {searchQuery.trim().length < 2 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-xs text-[#404040]">
                     Keep typing to search…
                   </div>
                 ) : isSearching ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-xs text-[#404040]">
                     Searching...
                   </div>
                 ) : dbResults.length > 0 || steamResults.length > 0 ? (
@@ -235,7 +234,7 @@ export function Navbar() {
                           <button
                             key={`db-${game.appid}`}
                             onClick={() => handleResultClick(game)}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors sm:py-2"
+                            className="cartridge-result-item w-full flex items-center gap-3 px-4 py-3 text-left sm:py-2"
                           >
                             {game.header_image && (
                               <Image
@@ -244,17 +243,17 @@ export function Navbar() {
                                 width={80}
                                 height={48}
                                 sizes="80px"
-                                className="h-12 w-20 object-cover rounded"
+                                className="h-12 w-20 object-cover rounded-sm"
                               />
                             )}
-                            <span className="flex-1 text-sm font-medium">
+                            <span className="flex-1 text-xs font-medium text-[#000000]">
                               {game.title}
                             </span>
                           </button>
                         ))}
                         {steamResults.length > 0 && (
-                          <div className="border-t my-1">
-                            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase">
+                          <div className="cartridge-divider my-2">
+                            <div className="px-4 py-2 text-xs font-semibold text-[#404040] uppercase">
                               Steam Store
                             </div>
                           </div>
@@ -267,7 +266,7 @@ export function Navbar() {
                         key={`steam-${game.appid}`}
                         onClick={() => handleResultClick(game)}
                         disabled={ingestingAppId === game.appid}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait sm:py-2"
+                        className="cartridge-result-item w-full flex items-center gap-3 px-4 py-3 text-left disabled:opacity-50 disabled:cursor-wait sm:py-2"
                       >
                         {game.header_image && (
                           <Image
@@ -276,18 +275,18 @@ export function Navbar() {
                             width={80}
                             height={48}
                             sizes="80px"
-                            className="h-12 w-20 object-cover rounded"
+                            className="h-12 w-20 object-cover rounded-sm"
                           />
                         )}
-                        <span className="flex-1 text-sm font-medium">
+                        <span className="flex-1 text-xs font-medium text-[#000000]">
                           {game.title}
                         </span>
                         {ingestingAppId === game.appid ? (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-[#404040]">
                             Ingesting...
                           </span>
                         ) : (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-[#404040]">
                             Add to database
                           </span>
                         )}
@@ -295,11 +294,11 @@ export function Navbar() {
                     ))}
                   </div>
                 ) : hasSearched ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-xs text-[#404040]">
                     No games found
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
+                  <div className="p-4 text-center text-xs text-[#404040]">
                     Searching...
                   </div>
                 )}
@@ -307,6 +306,7 @@ export function Navbar() {
             )}
           </div>
         </div>
-      </nav>
+      </div>
+    </nav>
   );
 }

@@ -376,27 +376,29 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
         Games like {gameData.title}
       </h1>
 
-      {/* Trailer Video - Full Width */}
-      {gameData.videos && gameData.videos.length > 0 && (
-        <div className="w-full aspect-video">
-          <GameVideo
-            videos={gameData.videos}
-            headerImage={gameData.header_image}
-            alt={gameData.title}
-            className="w-full h-full"
-          />
-        </div>
-      )}
-
       {/* Game Header */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
+        {/* Trailer Video */}
+        {gameData.videos && gameData.videos.length > 0 && (
+          <div className="cartridge-screen">
+            <div className="cartridge-screen-bezel">
+              <GameVideo
+                videos={gameData.videos}
+                headerImage={gameData.header_image}
+                alt={gameData.title}
+                className="w-full h-full"
+              />
+              <div className="cartridge-screen-reflection" />
+            </div>
+          </div>
+        )}
         {/* Title and Description */}
-        <div className="flex flex-col gap-1.5">
-          <div className="text-base sm:text-lg font-semibold leading-tight">
+        <div className="flex flex-col gap-1">
+          <div className="text-base sm:text-lg font-semibold leading-tight text-[#000000]">
             {gameData.title}
           </div>
           {description && (
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-xs text-[#404040] leading-relaxed">
               {truncate(stripHtml(description), 220)}
             </p>
           )}
@@ -404,38 +406,36 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
 
         {/* Inline Metadata - Release, Developers */}
         {(gameData.release_date || gameData.developers.length > 0) && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+          <div className="cartridge-metadata flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
             {gameData.release_date && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground">Release:</span>
-                <span className="text-foreground">{gameData.release_date}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[#404040] font-semibold">RELEASE:</span>
+                <span className="text-[#000000]">{gameData.release_date}</span>
               </div>
             )}
             {gameData.developers.length > 0 && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground">Developer{gameData.developers.length > 1 ? "s" : ""}:</span>
-                <span className="text-foreground">{gameData.developers.join(", ")}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[#404040] font-semibold">DEV{gameData.developers.length > 1 ? "S" : ""}:</span>
+                <span className="text-[#000000]">{gameData.developers.join(", ")}</span>
               </div>
             )}
           </div>
         )}
 
         {/* Steam Button */}
-        <div className="pt-1">
+        <div>
           <SteamButton appid={appid} title={gameData.title} />
         </div>
       </div>
 
-      {/* Suggestions Section - Nested Suspense */}
+      {/* Suggestions Section */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-start sm:items-center justify-between gap-3">
-          <h2
-            className="flex-1 min-w-0 text-base sm:text-lg font-semibold leading-snug text-balance line-clamp-2"
-            title={`Games similar to ${gameData.title}`}
-          >
-            Games similar to {gameData.title}
-          </h2>
-        </div>
+        <h2
+          className="flex-1 min-w-0 text-base sm:text-lg font-semibold leading-tight text-balance line-clamp-2 text-[#000000]"
+          title={`Games similar to ${gameData.title}`}
+        >
+          Games similar to {gameData.title}
+        </h2>
         <SuggestionsListClient appid={appId} />
       </div>
 
