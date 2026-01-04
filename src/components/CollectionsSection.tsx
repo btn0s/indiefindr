@@ -33,7 +33,7 @@ export function CollectionsSection({
                 </p>
               )}
             </div>
-            {collection.preview_games.length > 4 && (
+            {(collection.total_games_count ?? collection.preview_games.length) > 4 && (
               <Link
                 href={`/collections/${collection.slug}`}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
@@ -48,7 +48,7 @@ export function CollectionsSection({
                 This collection doesn&apos;t have any games yet.
               </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {collection.preview_games.map((game) => (
                   <GameCard key={game.appid} {...game} />
                 ))}

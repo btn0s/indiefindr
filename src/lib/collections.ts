@@ -52,8 +52,14 @@ export async function getPinnedHomeCollections(): Promise<
     .order("position", { ascending: true });
 
   const appIdsByCollection = new Map<string, number[]>();
+  const totalCountsByCollection = new Map<string, number>();
   if (!gamesError && collectionGames) {
     for (const row of collectionGames) {
+      // Track total count
+      const totalCount = totalCountsByCollection.get(row.collection_id) ?? 0;
+      totalCountsByCollection.set(row.collection_id, totalCount + 1);
+      
+      // Only add to preview if less than 4
       const list = appIdsByCollection.get(row.collection_id) ?? [];
       if (list.length < 4) {
         list.push(row.appid);
@@ -93,7 +99,8 @@ export async function getPinnedHomeCollections(): Promise<
     const orderedGames = appIds
       .map((appid) => gamesByAppId.get(appid))
       .filter((g): g is GameCardGame => g !== undefined);
-    results.push({ ...collection, preview_games: orderedGames });
+    const totalCount = totalCountsByCollection.get(collection.id) ?? 0;
+    results.push({ ...collection, preview_games: orderedGames, total_games_count: totalCount });
   }
 
   return results;

@@ -49,4 +49,5 @@ export type CollectionPin = {
 
 export type CollectionWithPreview = Collection & {
   preview_games: GameCardGame[];
+  total_games_count?: number;
 };
