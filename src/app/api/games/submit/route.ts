@@ -10,12 +10,13 @@ import { ingest } from "@/lib/ingest";
  * {
  *   steamUrl: string       // Required: Steam store URL or app ID
  *   skipSuggestions?: bool // Optional: If true, only fetch Steam data (no suggestions)
+ *   force?: bool           // Optional: If true, force re-ingestion even if game exists
  * }
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { steamUrl, skipSuggestions } = body;
+    const { steamUrl, skipSuggestions, force } = body;
 
     if (!steamUrl || typeof steamUrl !== "string") {
       return NextResponse.json(
@@ -24,9 +25,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("[SUBMIT] Processing submission for:", steamUrl);
+    console.log("[SUBMIT] Processing submission for:", steamUrl, force ? "(force)" : "");
 
-    const result = await ingest(steamUrl, skipSuggestions === true);
+    const result = await ingest(steamUrl, skipSuggestions === true, force === true);
 
     return NextResponse.json({
       success: true,

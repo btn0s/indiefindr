@@ -20,16 +20,18 @@ export type IngestResult = {
  *
  * @param steamUrl - Steam store URL or app ID
  * @param skipSuggestions - If true, only fetch Steam data (no Perplexity call)
+ * @param force - If true, force re-ingestion even if game already exists
  * @returns Promise resolving to Steam data and suggestions (suggestions may be empty if generated in background)
  */
 export async function ingest(
   steamUrl: string,
-  skipSuggestions = false
+  skipSuggestions = false,
+  force = false
 ): Promise<IngestResult> {
   const appId = parseAppId(steamUrl);
 
-  // Return existing data if already in database
-  if (appId) {
+  // Return existing data if already in database (unless forcing)
+  if (appId && !force) {
     const existing = await getExistingGame(appId);
     if (existing) return existing;
 
@@ -39,6 +41,13 @@ export async function ingest(
       if (result) return result;
     }
 
+    ingestingGames.add(appId);
+  } else if (appId && force) {
+    // When forcing, still check if already being ingested
+    if (ingestingGames.has(appId)) {
+      const result = await waitForIngestion(appId);
+      if (result) return result;
+    }
     ingestingGames.add(appId);
   }
 

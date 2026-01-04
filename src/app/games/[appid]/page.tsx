@@ -5,6 +5,7 @@ import { GameVideo } from "@/components/GameVideo";
 import { SuggestionsList } from "@/components/SuggestionsList";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { SteamButton } from "@/components/SteamButton";
+import { DevControlBar } from "@/components/DevControlBar";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -341,6 +342,7 @@ export default async function GameDetailPage({
       >
         <GameContent appId={appId} appid={appid} />
       </Suspense>
+      <DevControlBar appid={appId} />
     </main>
   );
 }

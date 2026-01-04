@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Suspense } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ScrollToTopOnNavigation } from "@/components/ScrollToTopOnNavigation";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({
@@ -64,6 +65,7 @@ export default function RootLayout({
             {children}
           </div>
         </div>
+        <Toaster />
         <Analytics />
       </body>
     </html>
