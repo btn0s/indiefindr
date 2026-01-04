@@ -18,6 +18,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/find/:id",
+        destination: "/games/:id",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
