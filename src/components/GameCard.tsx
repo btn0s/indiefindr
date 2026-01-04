@@ -157,75 +157,57 @@ function GameCard({
         onMouseUp={() => setIsPressed(false)}
         onMouseLeave={() => setIsPressed(false)}
       >
-        {/* Top ridge detail */}
-        <div className="cartridge-ridge-top" />
-        
-        {/* Cartridge top with rounded corners */}
-        <div className="cartridge-top">
-          {/* Side grooves */}
-          <div className="cartridge-groove-left" />
-          <div className="cartridge-groove-right" />
-          
-          {/* Label area - glossy finish */}
-          <div className="cartridge-label relative overflow-hidden">
-            {/* Always render image as base layer */}
-            {header_image && (
-              <Image
-                src={header_image}
-                alt={title}
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                  videoReady ? "opacity-0" : "opacity-100"
-                }`}
-              />
-            )}
-            {/* Video overlays image, fades in when ready */}
-            {shouldLoadVideo && hasVideo && videoUrl && (
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                loop
-                playsInline
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                  videoReady ? "opacity-100" : "opacity-0"
-                }`}
-                onCanPlay={() => {
-                  setVideoReady(true);
-                }}
-                onError={() => setVideoError(true)}
-              />
-            )}
-            {/* Glossy overlay effect with multiple highlights */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/5 to-transparent pointer-events-none" />
-            <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent pointer-events-none" />
-          </div>
+        {/* Label area */}
+        <div className="cartridge-label relative overflow-hidden">
+          {/* Always render image as base layer */}
+          {header_image && (
+            <Image
+              src={header_image}
+              alt={title}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                videoReady ? "opacity-0" : "opacity-100"
+              }`}
+            />
+          )}
+          {/* Video overlays image, fades in when ready */}
+          {shouldLoadVideo && hasVideo && videoUrl && (
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                videoReady ? "opacity-100" : "opacity-0"
+              }`}
+              onCanPlay={() => {
+                setVideoReady(true);
+              }}
+              onError={() => setVideoError(true)}
+            />
+          )}
+          {/* Simple glossy overlay */}
+          <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
         </div>
         
-        {/* Middle ridge */}
-        <div className="cartridge-ridge-middle" />
+        {/* Divider */}
+        <div className="cartridge-divider-line" />
         
         {/* Cartridge body with text */}
-        <div className="cartridge-body flex-1 flex flex-col justify-start relative">
-          {/* Side texture lines */}
-          <div className="cartridge-texture-lines" />
-          
-          <div className="px-3 pt-2 pb-2.5 relative z-10">
-            <div className="font-medium text-xs text-[#000000] mb-0.5 leading-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">{title}</div>
+        <div className="cartridge-body flex-1 flex flex-col justify-start">
+          <div className="px-3 py-2">
+            <div className="font-medium text-xs text-[#000000] mb-0.5 leading-tight">{title}</div>
             {explanation && (
-              <div className="text-[10px] text-[#404040] first-letter:uppercase leading-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]">
+              <div className="text-[10px] text-[#404040] first-letter:uppercase leading-tight">
                 {explanation}
               </div>
             )}
           </div>
           
-          {/* Bottom ridge before pins */}
-          <div className="cartridge-ridge-bottom mt-auto" />
-          
-          {/* Connector pins at bottom */}
-          <div className="cartridge-pins">
+          {/* Bottom connector pins */}
+          <div className="cartridge-pins mt-auto">
             <div className="cartridge-pin-row" />
             <div className="cartridge-pin-row" />
           </div>

@@ -429,7 +429,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
       </div>
 
       {/* Suggestions Section */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 mt-8">
         <h2
           className="flex-1 min-w-0 text-base sm:text-lg font-semibold leading-tight text-balance line-clamp-2 text-[#000000]"
           title={`Games similar to ${gameData.title}`}

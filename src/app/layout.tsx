@@ -62,7 +62,7 @@ export default function RootLayout({
         <div className="min-h-screen cartridge-console-bg dark:bg-black">
           <div className="console-screen">
             <Navbar />
-            <div className="px-4 pb-8">
+            <div className="container mx-auto max-w-4xl px-4 pb-8">
               {children}
             </div>
           </div>
