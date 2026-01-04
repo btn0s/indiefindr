@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { track } from "@vercel/analytics";
+import { cn } from "@/lib/utils";
 import type { GameCardGame } from "@/lib/supabase/types";
 
 type GameCardProps = GameCardGame & {
@@ -152,7 +153,10 @@ function GameCard({
     <Link href={`/games/${appid}`} className="block h-full" onClick={handleCardClick}>
       <div 
         ref={cardRef} 
-        className="cartridge h-full flex flex-col group"
+        className={cn(
+          "cartridge h-full flex flex-col group transition-all duration-150 ease-out",
+          isPressed && "cartridge-button-pressed translate-y-0.5"
+        )}
         onMouseDown={() => setIsPressed(true)}
         onMouseUp={() => setIsPressed(false)}
         onMouseLeave={() => setIsPressed(false)}

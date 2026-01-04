@@ -12,13 +12,13 @@ export function CollectionCard({ collection }: CollectionCardProps) {
   return (
     <Link
       href={`/collections/${slug}`}
-      className="block rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+      className="win95-card block group hover:translate-y-[-2px] transition-transform duration-200"
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 p-2">
         <div>
-          <h3 className="font-semibold text-lg leading-tight">{title}</h3>
+          <h3 className="font-semibold text-base leading-tight group-hover:underline">{title}</h3>
           {description && (
-            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+            <p className="mt-1 text-[10px] text-[#404040] line-clamp-2">
               {description}
             </p>
           )}
@@ -26,11 +26,11 @@ export function CollectionCard({ collection }: CollectionCardProps) {
 
         {/* Preview games grid */}
         {preview_games.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             {preview_games.map((game) => (
               <div
                 key={game.appid}
-                className="relative aspect-steam overflow-hidden rounded-md bg-muted"
+                className="relative aspect-steam overflow-hidden rounded-sm bg-muted border border-black/5"
               >
                 {game.header_image && (
                   <Image
@@ -48,7 +48,7 @@ export function CollectionCard({ collection }: CollectionCardProps) {
               Array.from({ length: 3 - preview_games.length }).map((_, i) => (
                 <div
                   key={`empty-${i}`}
-                  className="aspect-steam rounded-md bg-muted"
+                  className="aspect-steam rounded-sm bg-muted/50 border border-black/5"
                 />
               ))}
           </div>

@@ -25,10 +25,10 @@ export function SuggestionsSkeleton({
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         {Array.from({ length: count }).map((_, index) => (
-          <div key={index} className="flex flex-col">
-            <Skeleton className="w-full aspect-steam mb-2" />
+          <div key={index} className="win95-card flex flex-col gap-2 p-3">
+            <Skeleton className="w-full aspect-steam rounded-sm" />
             <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-full mt-2" />
+            <Skeleton className="h-3 w-full" />
           </div>
         ))}
       </div>
