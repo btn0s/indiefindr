@@ -17,3 +17,33 @@ export type GameNew = {
   created_at: string;
   updated_at: string;
 };
+
+export type Collection = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CollectionGame = {
+  collection_id: string;
+  appid: number;
+  position: number;
+  created_at: string;
+};
+
+export type CollectionPin = {
+  id: string;
+  collection_id: string;
+  context: "home" | "game";
+  game_appid: number | null;
+  position: number;
+  created_at: string;
+};
+
+export type CollectionWithPreview = Collection & {
+  preview_games: GameNew[];
+};

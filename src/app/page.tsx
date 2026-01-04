@@ -3,6 +3,8 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GamesGrid } from "@/components/GamesGrid";
 import { GameNew } from "@/lib/supabase/types";
 import { isLikelyIndie, isRecent } from "@/lib/utils/indie-detection";
+import { getPinnedHomeCollections } from "@/lib/collections";
+import { CollectionsSection } from "@/components/CollectionsSection";
 
 export const dynamic = "force-dynamic";
 
@@ -113,7 +115,10 @@ async function getGames(): Promise<GameNew[]> {
 }
 
 export default async function Home() {
-  const games = await getGames();
+  const [games, pinnedCollections] = await Promise.all([
+    getGames(),
+    getPinnedHomeCollections(),
+  ]);
 
   return (
     <main className="flex flex-col gap-8 pt-8">
@@ -124,6 +129,11 @@ export default async function Home() {
           </h1>
         </div>
       </div>
+
+      {/* Pinned Collections Section */}
+      {pinnedCollections.length > 0 && (
+        <CollectionsSection collections={pinnedCollections} />
+      )}
 
       {/* Full-width grid section */}
       <div className="flex flex-col gap-4 w-full pb-8">

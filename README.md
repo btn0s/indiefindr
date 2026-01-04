@@ -73,6 +73,7 @@ Key migrations:
 - `20250106000000_create_games_new_table.sql` - Primary `games_new` table
 - `20250107000000_move_suggestions_to_games_new.sql` - Moves suggestion data onto `games_new` and drops the old `suggestions` table
 - `20250111000000_add_suggestion_explanations.sql` - Documents the JSON shape for `suggested_game_appids`
+- `20250112000000_add_collections.sql` - Adds collections, collection_games, and collection_pins tables
 
 ### Install Dependencies
 
@@ -203,6 +204,53 @@ Refresh suggestions for a game. Supports `?force=true` (dev-only) to clear exist
 ### POST `/api/games/batch`
 Fetch multiple games by appid list (from `games_new`).
 
+## Collections
+
+Collections allow you to curate groups of games and display them on the home page or on specific game pages. Collections are managed directly in the Supabase dashboard (no in-app admin UI yet).
+
+### Creating a Collection
+
+1. **Create the collection** in the `collections` table:
+   - `slug`: URL-friendly identifier (e.g., `indie-roguelikes`)
+   - `title`: Display name (e.g., "Indie Roguelikes")
+   - `description`: Optional description
+   - `published`: Set to `true` to make it visible
+
+2. **Add games to the collection** in the `collection_games` table:
+   - `collection_id`: UUID from the `collections` table
+   - `appid`: Steam AppID (must exist in `games_new`)
+   - `position`: Ordering number (lower = appears first)
+
+### Pinning Collections
+
+#### Pin to Home Page
+
+Add a row in the `collection_pins` table:
+- `collection_id`: UUID of the collection
+- `context`: Set to `'home'`
+- `game_appid`: Leave as `NULL`
+- `position`: Ordering number (lower = appears first)
+
+#### Pin to a Game Page
+
+Add a row in the `collection_pins` table:
+- `collection_id`: UUID of the collection
+- `context`: Set to `'game'`
+- `game_appid`: Steam AppID of the game (must exist in `games_new`)
+- `position`: Ordering number (lower = appears first)
+
+### Example Workflow
+
+1. Create collection: `slug='indie-roguelikes'`, `title='Indie Roguelikes'`, `published=true`
+2. Add games: Insert multiple rows in `collection_games` with `collection_id`, `appid`, and `position`
+3. Pin to home: Insert row in `collection_pins` with `context='home'`, `collection_id`, `position=0`
+4. Pin to game: Insert row in `collection_pins` with `context='game'`, `game_appid=123456`, `collection_id`, `position=0`
+
+Collections appear on:
+- Home page: Above "All Games" section (if pinned with `context='home'`)
+- Game pages: Below suggestions (if pinned with `context='game'` and matching `game_appid`)
+- Collection detail page: `/collections/[slug]` shows all games in the collection
+
 ## Notes
 
 - Suggestions are generated asynchronously after ingestion (unless `skipSuggestions=true`)
@@ -210,6 +258,7 @@ Fetch multiple games by appid list (from `games_new`).
 - Suggestions include an `explanation` string and are validated/corrected against Steam app IDs
 - The home page sorts games by number of stored suggestions (then by `created_at`)
 - Detail pages include OpenGraph/Twitter images and JSON-LD for SEO
+- Collections are read-only via the app (managed in Supabase dashboard)
 
 ## Next Steps
 

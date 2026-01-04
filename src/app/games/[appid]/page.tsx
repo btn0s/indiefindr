@@ -8,6 +8,8 @@ import { SteamButton } from "@/components/SteamButton";
 import { DevControlBar } from "@/components/DevControlBar";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPinnedCollectionsForGame } from "@/lib/collections";
+import { CollectionsSection } from "@/components/CollectionsSection";
 
 type GameData = {
   appid: number;
@@ -226,6 +228,9 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
   const canonicalUrl = `${siteUrl}/games/${appid}`;
   const steamUrl = `https://store.steampowered.com/app/${appid}/`;
 
+  // Fetch pinned collections for this game
+  const pinnedCollections = await getPinnedCollectionsForGame(appId);
+
   // Structured data for SEO
   const structuredData = {
     "@context": "https://schema.org",
@@ -298,6 +303,16 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
           <SuggestionsList appid={appId} />
         </Suspense>
       </div>
+
+      {/* Pinned Collections Section */}
+      {pinnedCollections.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <CollectionsSection
+            collections={pinnedCollections}
+            title="Featured Collections"
+          />
+        </div>
+      )}
     </>
   );
 }
