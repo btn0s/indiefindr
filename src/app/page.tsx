@@ -14,6 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = "Find Games Like Your Favorites — IndieFindr";
   const description =
     "Discover similar indie games on Steam. Search games, get AI-powered recommendations, and find your next favorite.";
+  const ogImageUrl = `${siteUrl}/og/home.png`;
 
   return {
     title,
@@ -38,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       images: [
         {
-          url: `${siteUrl}/opengraph-image`,
+          url: ogImageUrl,
           width: 1200,
           height: 630,
           alt: "IndieFindr game discovery",
@@ -49,7 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: "summary_large_image",
       title,
       description,
-      images: [`${siteUrl}/twitter-image`],
+      images: [ogImageUrl],
     },
   };
 }
