@@ -97,7 +97,7 @@ export default async function Home() {
       <div className="w-full px-4">
         <div className="container mx-auto max-w-7xl w-full">
           <h1 className="font-semibold tracking-tight text-3xl sm:text-4xl">
-            Search any PC game and find similar games you&apos;ll love
+            Search any PC game — get great recommendations
           </h1>
         </div>
       </div>
