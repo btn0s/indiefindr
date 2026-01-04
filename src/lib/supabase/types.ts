@@ -17,3 +17,19 @@ export type GameNew = {
   created_at: string;
   updated_at: string;
 };
+
+export type Collection = {
+  id: string;
+  title: string;
+  description: string | null;
+  pinned: boolean;
+  pinned_rank: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CollectionItem = {
+  collection_id: string;
+  appid: number;
+  created_at: string;
+};
