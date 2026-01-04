@@ -74,6 +74,18 @@ function GameCard({
           hls.loadSource(videoUrl);
           hls.attachMedia(video);
 
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.addEventListener(
+              "loadedmetadata",
+              () => {
+                if (video.duration > 5) {
+                  video.currentTime = 5;
+                }
+              },
+              { once: true }
+            );
+          });
+
           hls.on(Hls.Events.ERROR, (_event, data) => {
             if (!data.fatal) return;
             switch (data.type) {
@@ -93,6 +105,15 @@ function GameCard({
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           // Native HLS support (Safari)
           video.src = videoUrl;
+          video.addEventListener(
+            "loadedmetadata",
+            () => {
+              if (video.duration > 5) {
+                video.currentTime = 5;
+              }
+            },
+            { once: true }
+          );
         } else {
           setTimeout(() => setVideoError(true), 0);
         }
@@ -100,6 +121,15 @@ function GameCard({
     } else {
       // Regular video format
       video.src = videoUrl;
+      video.addEventListener(
+        "loadedmetadata",
+        () => {
+          if (video.duration > 5) {
+            video.currentTime = 5;
+          }
+        },
+        { once: true }
+      );
     }
 
     return () => {
@@ -109,6 +139,7 @@ function GameCard({
     };
   }, [shouldLoadVideo, hasVideo, videoUrl, isHls]);
 
+
   const handleCardClick = () => {
     track("game_card_click", {
       appid: appid.toString(),
@@ -117,11 +148,7 @@ function GameCard({
   };
 
   return (
-    <Link
-      href={`/games/${appid}`}
-      className="block"
-      onClick={handleCardClick}
-    >
+    <Link href={`/games/${appid}`} className="block" onClick={handleCardClick}>
       <div ref={cardRef}>
         <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
           {/* Always render image as base layer */}
@@ -147,7 +174,9 @@ function GameCard({
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
                 videoReady ? "opacity-100" : "opacity-0"
               }`}
-              onCanPlay={() => setVideoReady(true)}
+              onCanPlay={() => {
+                setVideoReady(true);
+              }}
               onError={() => setVideoError(true)}
             />
           )}
