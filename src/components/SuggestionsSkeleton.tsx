@@ -18,8 +18,8 @@ export function SuggestionsSkeleton({
             Finding similar games
           </AlertTitle>
           <AlertDescription className="leading-snug">
-            We&apos;re analyzing this game to find recommendations. This may
-            take a minute.
+            We&apos;re analyzing this game to find recommendations. This can take
+            up to 5 minutes. Check back soon.
           </AlertDescription>
         </Alert>
       )}

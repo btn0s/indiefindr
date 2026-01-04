@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Suspense, cache } from "react";
 import type { Metadata } from "next";
 import { GameVideo } from "@/components/GameVideo";
-import { SuggestionsList } from "@/components/SuggestionsList";
+import { SuggestionsListClient } from "@/components/SuggestionsListClient";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { SteamButton } from "@/components/SteamButton";
 import { DevControlBar } from "@/components/DevControlBar";
@@ -10,6 +10,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameDetailSkeleton } from "@/components/skeletons/GameDetailSkeleton";
 import { getPinnedCollectionsForGame } from "@/lib/collections";
 import { CollectionsSection } from "@/components/CollectionsSection";
+import { GameProcessingState } from "@/components/GameProcessingState";
 
 type GameData = {
   appid: number;
@@ -218,8 +219,9 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
   const gameData = await getGameDataFromDb(appId);
 
   if (!gameData || !gameData.title) {
-    // If it still hasn't loaded after waiting, show not found or fallback
-    notFound();
+    // If it still hasn't loaded after waiting, show processing state instead of 404
+    // This handles slow ingestion (rate limiting, network delays) gracefully
+    return <GameProcessingState appid={appid} />;
   }
 
   const description = gameData.short_description || null;
@@ -299,9 +301,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
             Games similar to {gameData.title}
           </h2>
         </div>
-        <Suspense fallback={<SuggestionsSkeleton showNotice={false} />}>
-          <SuggestionsList appid={appId} />
-        </Suspense>
+        <SuggestionsListClient appid={appId} />
       </div>
 
       {/* Pinned Collections Section */}

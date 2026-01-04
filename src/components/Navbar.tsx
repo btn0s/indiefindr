@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { IngestingDialog } from "@/components/IngestingDialog";
 import Logo from "@/components/logo";
 
 interface SearchResult {
@@ -26,10 +25,6 @@ export function Navbar() {
   const [hasSearched, setHasSearched] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [ingestingAppId, setIngestingAppId] = useState<number | null>(null);
-  const [ingestingGame, setIngestingGame] = useState<{
-    title?: string;
-    image?: string | null;
-  } | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   );
@@ -148,10 +143,6 @@ export function Navbar() {
       // Game doesn't exist, start ingestion and navigate immediately
       // We already have the appId from search, so we can navigate right away
       setIngestingAppId(result.appid);
-      setIngestingGame({
-        title: result.title,
-        image: result.header_image,
-      });
 
       // Start ingestion in background (don't await)
       const steamUrl = `https://store.steampowered.com/app/${result.appid}/`;
@@ -160,7 +151,8 @@ export function Navbar() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ steamUrl }),
+        body: JSON.stringify({ steamUrl, skipSuggestions: true }),
+        keepalive: true,
       })
         .then((response) => response.json())
         .catch((error) => {
@@ -168,7 +160,6 @@ export function Navbar() {
         })
         .finally(() => {
           setIngestingAppId(null);
-          setIngestingGame(null);
         });
 
       // Navigate immediately - the game page will show loading state
@@ -178,13 +169,7 @@ export function Navbar() {
   };
 
   return (
-    <>
-      <IngestingDialog
-        open={!!ingestingGame}
-        gameTitle={ingestingGame?.title}
-        gameImage={ingestingGame?.image}
-      />
-      <nav className="sticky top-0 z-50 w-full border-b bg-background px-4">
+    <nav className="sticky top-0 z-50 w-full border-b bg-background px-4">
         <div className="container mx-auto max-w-4xl flex h-14 items-center gap-3 w-full">
           {/* Logo/Brand */}
           <Link
@@ -323,6 +308,5 @@ export function Navbar() {
           </div>
         </div>
       </nav>
-    </>
   );
 }

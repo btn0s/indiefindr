@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DialogClose } from "@/components/ui/dialog";
-import { IngestingDialog } from "@/components/IngestingDialog";
 
 interface IngestFormProps {
   onSuccess?: () => void;
@@ -48,10 +47,6 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
   const [steamUrl, setSteamUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ingestingGame, setIngestingGame] = useState<{
-    title?: string;
-    image?: string | null;
-  } | null>(null);
 
   const handleIngest = async () => {
     if (!steamUrl.trim()) {
@@ -83,58 +78,34 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
         return;
       }
 
-      // Game doesn't exist, show loading dialog
-      setIngestingGame({ title: "Loading game info...", image: null });
+      // Game doesn't exist, start ingestion and navigate immediately
+      setLoading(false);
+      setSteamUrl("");
+      onSuccess?.();
 
-      // Wait for ingestion to complete before navigating
-      const response = await fetch("/api/games/submit", {
+      // Start ingestion in background (don't await)
+      fetch("/api/games/submit", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        // Only ingest Steam data here; generate suggestions on the game page.
         body: JSON.stringify({ steamUrl: steamUrl.trim(), skipSuggestions: true }),
+        keepalive: true,
+      }).catch((error) => {
+        console.error("Error ingesting game:", error);
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to ingest game");
-      }
-
-      // Update dialog with game info before navigating
-      if (result.title || result.steamData?.header_image) {
-        setIngestingGame({
-          title: result.title,
-          image: result.steamData?.header_image,
-        });
-      }
-
-      // Small delay to show the game info before navigating
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      setSteamUrl("");
-      setIngestingGame(null);
-      onSuccess?.();
-      setLoading(false);
-
-      // Navigate after ingest is complete
+      // Navigate immediately - the game page will show loading state
+      // and poll for data as it becomes available
       router.push(`/games/${appId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
       setLoading(false);
-      setIngestingGame(null);
     }
   };
 
   return (
-    <>
-      <IngestingDialog
-        open={!!ingestingGame}
-        gameTitle={ingestingGame?.title}
-        gameImage={ingestingGame?.image}
-      />
-      <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <Input
           type="text"
@@ -162,6 +133,5 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
         </Button>
       </div>
     </div>
-    </>
   );
 }
