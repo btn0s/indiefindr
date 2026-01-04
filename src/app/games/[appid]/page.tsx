@@ -17,6 +17,17 @@ type GameData = {
   long_description: string | null;
   screenshots: string[];
   videos: string[];
+  raw: unknown;
+};
+
+type GameMetadata = {
+  releaseDate?: string;
+  developers?: string[];
+  publishers?: string[];
+  genres?: string[];
+  platforms?: string[];
+  price?: string;
+  metacriticScore?: number;
 };
 
 /**
@@ -33,7 +44,7 @@ async function waitForGameInDb(
     const { data: dbGame } = await supabase
       .from("games_new")
       .select(
-        "appid, title, header_image, short_description, long_description, screenshots, videos"
+        "appid, title, header_image, short_description, long_description, screenshots, videos, raw"
       )
       .eq("appid", appId)
       .maybeSingle();
@@ -47,6 +58,7 @@ async function waitForGameInDb(
         long_description: dbGame.long_description,
         screenshots: dbGame.screenshots || [],
         videos: dbGame.videos || [],
+        raw: dbGame.raw,
       };
     }
 
@@ -67,7 +79,7 @@ const getGameDataFromDb = cache(
     const { data: dbGame } = await supabase
       .from("games_new")
       .select(
-        "appid, title, header_image, short_description, long_description, screenshots, videos"
+        "appid, title, header_image, short_description, long_description, screenshots, videos, raw"
       )
       .eq("appid", appId)
       .maybeSingle();
@@ -81,6 +93,7 @@ const getGameDataFromDb = cache(
         long_description: dbGame.long_description,
         screenshots: dbGame.screenshots || [],
         videos: dbGame.videos || [],
+        raw: dbGame.raw,
       };
     }
 
@@ -100,6 +113,64 @@ function stripHtml(input: string): string {
 function truncate(input: string, maxLen: number): string {
   if (input.length <= maxLen) return input;
   return input.slice(0, Math.max(0, maxLen - 1)).trimEnd() + "…";
+}
+
+function extractMetadata(raw: unknown): GameMetadata {
+  if (!raw || typeof raw !== "object") return {};
+  
+  const data = raw as Record<string, unknown>;
+  const metadata: GameMetadata = {};
+
+  // Release date
+  if (data.release_date && typeof data.release_date === "object") {
+    const releaseDate = data.release_date as { date?: string };
+    if (releaseDate.date && releaseDate.date !== "Coming soon") {
+      metadata.releaseDate = releaseDate.date;
+    }
+  }
+
+  // Developers
+  if (Array.isArray(data.developers)) {
+    metadata.developers = data.developers.filter((d): d is string => typeof d === "string");
+  }
+
+  // Publishers
+  if (Array.isArray(data.publishers)) {
+    metadata.publishers = data.publishers.filter((p): p is string => typeof p === "string");
+  }
+
+  // Genres
+  if (Array.isArray(data.genres)) {
+    metadata.genres = data.genres
+      .map((g) => (typeof g === "object" && g !== null && "description" in g ? (g.description as string) : null))
+      .filter((g): g is string => typeof g === "string");
+  }
+
+  // Platforms
+  const platforms: string[] = [];
+  if (data.platforms && typeof data.platforms === "object") {
+    const platformData = data.platforms as Record<string, boolean>;
+    if (platformData.windows) platforms.push("Windows");
+    if (platformData.mac) platforms.push("Mac");
+    if (platformData.linux) platforms.push("Linux");
+    metadata.platforms = platforms;
+  }
+
+  // Price
+  if (data.price_overview && typeof data.price_overview === "object") {
+    const priceData = data.price_overview as { final_formatted?: string; initial_formatted?: string };
+    metadata.price = priceData.final_formatted || priceData.initial_formatted;
+  }
+
+  // Metacritic score
+  if (data.metacritic && typeof data.metacritic === "object") {
+    const metacritic = data.metacritic as { score?: number };
+    if (typeof metacritic.score === "number") {
+      metadata.metacriticScore = metacritic.score;
+    }
+  }
+
+  return metadata;
 }
 
 /**
@@ -221,6 +292,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
   }
 
   const description = gameData.short_description || null;
+  const metadata = extractMetadata(gameData.raw);
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const canonicalUrl = `${siteUrl}/games/${appid}`;
@@ -269,19 +341,69 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
           )}
 
           {/* Game Header */}
-          <div className="flex gap-4 items-start bg-white/50 p-3 win95-inset">
-            <div className="flex-1 flex flex-col min-w-0 gap-1">
-              <div className="text-base sm:text-lg font-bold text-black">
+          <div className="group flex flex-col gap-3 bg-white/50 p-3 sm:p-4 win95-inset">
+            <div className="flex-1 flex flex-col min-w-0 gap-2.5">
+              <div className="text-base sm:text-xl font-bold text-black leading-tight tracking-tight">
                 {gameData.title}
               </div>
 
+              {/* Metadata Row */}
+              {(metadata.releaseDate || metadata.developers?.length || metadata.publishers?.length || metadata.genres?.length || metadata.platforms?.length || metadata.price || metadata.metacriticScore) && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[10px] sm:text-xs text-black/70">
+                  {metadata.releaseDate && (
+                    <span className="font-medium">{metadata.releaseDate}</span>
+                  )}
+                  {metadata.developers && metadata.developers.length > 0 && (
+                    <span className="flex items-center gap-1">
+                      <span className="opacity-60">Dev:</span>
+                      <span>{metadata.developers[0]}</span>
+                      {metadata.developers.length > 1 && (
+                        <span className="opacity-60">+{metadata.developers.length - 1}</span>
+                      )}
+                    </span>
+                  )}
+                  {metadata.publishers && metadata.publishers.length > 0 && metadata.publishers[0] !== metadata.developers?.[0] && (
+                    <span className="flex items-center gap-1">
+                      <span className="opacity-60">Pub:</span>
+                      <span>{metadata.publishers[0]}</span>
+                    </span>
+                  )}
+                  {metadata.genres && metadata.genres.length > 0 && (
+                    <span className="flex items-center gap-1">
+                      <span className="opacity-60">Genres:</span>
+                      <span>{metadata.genres.slice(0, 2).join(", ")}</span>
+                      {metadata.genres.length > 2 && (
+                        <span className="opacity-60">+{metadata.genres.length - 2}</span>
+                      )}
+                    </span>
+                  )}
+                  {metadata.platforms && metadata.platforms.length > 0 && (
+                    <span className="flex items-center gap-1">
+                      <span className="opacity-60">Platforms:</span>
+                      <span>{metadata.platforms.join(", ")}</span>
+                    </span>
+                  )}
+                  {metadata.price && (
+                    <span className="font-semibold text-black/80">{metadata.price}</span>
+                  )}
+                  {metadata.metacriticScore !== undefined && (
+                    <span className="flex items-center gap-1 font-semibold">
+                      <span className="opacity-60">MC:</span>
+                      <span className={metadata.metacriticScore >= 75 ? "text-green-700" : metadata.metacriticScore >= 50 ? "text-yellow-700" : "text-red-700"}>
+                        {metadata.metacriticScore}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
+
               {description && (
-                <p className="text-black line-clamp-4 text-xs sm:text-sm font-normal leading-relaxed">
+                <p className="text-black line-clamp-3 sm:line-clamp-4 text-xs sm:text-sm font-normal leading-relaxed opacity-90">
                   {truncate(stripHtml(description), 300)}
                 </p>
               )}
 
-              <div className="pt-2">
+              <div className="pt-1 flex items-center gap-2">
                 <SteamButton appid={appid} title={gameData.title} />
               </div>
             </div>
