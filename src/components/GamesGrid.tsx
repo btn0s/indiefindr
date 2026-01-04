@@ -18,6 +18,11 @@ export function GamesGrid({ initialGames }: GamesGridProps) {
   const [hasMore, setHasMore] = useState(initialGames.length === PAGE_SIZE);
   const [isPending, startTransition] = useTransition();
   const loaderRef = useRef<HTMLDivElement>(null);
+  const gamesRef = useRef<GameNew[]>(initialGames);
+
+  useEffect(() => {
+    gamesRef.current = games;
+  }, [games]);
 
   useEffect(() => {
     if (!loaderRef.current || !hasMore || isPending) return;
@@ -30,7 +35,15 @@ export function GamesGrid({ initialGames }: GamesGridProps) {
             if (!newGames || newGames.length === 0) {
               setHasMore(false);
             } else {
-              setGames((prev) => [...prev, ...newGames]);
+              const seen = new Set(gamesRef.current.map((g) => g.appid));
+              const uniqueNew = newGames.filter((g) => !seen.has(g.appid));
+
+              if (uniqueNew.length === 0) {
+                setHasMore(false);
+                return;
+              }
+
+              setGames((prev) => [...prev, ...uniqueNew]);
               setOffset((prev) => prev + newGames.length);
               if (newGames.length < PAGE_SIZE) setHasMore(false);
             }

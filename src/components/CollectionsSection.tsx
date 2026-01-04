@@ -33,12 +33,14 @@ export function CollectionsSection({
                 </p>
               )}
             </div>
-            <Link
-              href={`/collections/${collection.slug}`}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            >
-              View all →
-            </Link>
+            {collection.preview_games.length > 4 && (
+              <Link
+                href={`/collections/${collection.slug}`}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+              >
+                View all →
+              </Link>
+            )}
           </div>
           <div className="container mx-auto max-w-4xl w-full">
             {collection.preview_games.length === 0 ? (
