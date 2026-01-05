@@ -19,20 +19,85 @@ export function GameVideo({
   headerImage,
   alt,
   className = "",
-  autoPlay = true,
+  autoPlay = false,
   muted = true,
   loop = true,
   startTime = 2,
 }: GameVideoProps) {
   const [videoError, setVideoError] = useState(false);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+  const [shouldPlayVideo, setShouldPlayVideo] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const videoUrls = videos ?? [];
   const hasVideo = videoUrls.length > 0 && !videoError;
   const videoUrl = hasVideo ? videoUrls[0] : null;
   const isHls = videoUrl?.endsWith('.m3u8') || videoUrl?.includes('/hls_');
 
+  // Check for reduced motion preference
   useEffect(() => {
-    if (!hasVideo || !videoUrl || !videoRef.current) {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handleChange = () => setPrefersReducedMotion(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  // Load video after idle time or on user interaction (image-first for LCP)
+  // If autoPlay is true, load and play immediately
+  useEffect(() => {
+    if (!hasVideo || !videoUrl || prefersReducedMotion) return;
+
+    // If autoplay is enabled, load and play immediately
+    if (autoPlay) {
+      setShouldLoadVideo(true);
+      setShouldPlayVideo(true);
+      return;
+    }
+
+    let idleTimeout: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    // Load video after 2s of idle time (allows image to be LCP)
+    idleTimeout = setTimeout(() => {
+      if (!cancelled) {
+        setShouldLoadVideo(true);
+      }
+    }, 2000);
+
+    // Or load immediately on user interaction
+    const handleInteraction = () => {
+      if (idleTimeout) clearTimeout(idleTimeout);
+      if (!cancelled) {
+        setShouldLoadVideo(true);
+        setShouldPlayVideo(true);
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener("click", handleInteraction, { once: true });
+      container.addEventListener("mouseenter", handleInteraction, { once: true });
+      container.addEventListener("touchstart", handleInteraction, { once: true });
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleTimeout) clearTimeout(idleTimeout);
+      if (container) {
+        container.removeEventListener("click", handleInteraction);
+        container.removeEventListener("mouseenter", handleInteraction);
+        container.removeEventListener("touchstart", handleInteraction);
+      }
+    };
+  }, [hasVideo, videoUrl, prefersReducedMotion, autoPlay]);
+
+  // Initialize video when shouldLoadVideo becomes true
+  useEffect(() => {
+    if (!shouldLoadVideo || !hasVideo || !videoUrl || !videoRef.current) {
       return;
     }
 
@@ -54,7 +119,7 @@ export function GameVideo({
 
         if (Hls.isSupported()) {
           hls = new Hls({
-            enableWorker: false,
+            enableWorker: true,
           });
           hls.loadSource(videoUrl);
           hls.attachMedia(video);
@@ -84,15 +149,16 @@ export function GameVideo({
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           // Native HLS support (Safari)
           video.src = videoUrl;
+          if (headerImage) video.poster = headerImage;
           video.addEventListener("loadedmetadata", setStartTime, { once: true });
         } else {
-          // Defer state update to avoid cascading renders in effect
           setTimeout(() => setVideoError(true), 0);
         }
       })();
     } else {
       // Regular video format
       video.src = videoUrl;
+      if (headerImage) video.poster = headerImage;
       video.addEventListener('loadedmetadata', setStartTime, { once: true });
     }
 
@@ -101,35 +167,59 @@ export function GameVideo({
       hls?.destroy();
       hls = null;
     };
-  }, [hasVideo, videoUrl, isHls, startTime]);
+  }, [shouldLoadVideo, hasVideo, videoUrl, isHls, startTime, headerImage]);
+
+  // Control video playback
+  useEffect(() => {
+    if (!videoRef.current || !shouldLoadVideo) return;
+    const video = videoRef.current;
+
+    if (shouldPlayVideo || autoPlay) {
+      void video.play().catch(() => {
+        setVideoError(true);
+      });
+    }
+  }, [shouldPlayVideo, shouldLoadVideo, autoPlay]);
 
   return (
-    <div className={`relative overflow-hidden rounded-lg bg-muted ${className}`}>
-      {hasVideo && videoUrl ? (
-        <video
-          ref={videoRef}
-          autoPlay={autoPlay}
-          muted={muted}
-          loop={loop}
-          playsInline
-          className="w-full h-full object-cover"
-          onError={() => {
-            setVideoError(true);
-          }}
-        />
-      ) : headerImage ? (
+    <div ref={containerRef} className={`relative overflow-hidden rounded-lg bg-muted ${className}`}>
+      {/* Show image first (LCP-friendly) - completely hidden when autoplay is enabled */}
+      {headerImage && !autoPlay && (
         <Image
           src={headerImage}
           alt={alt}
           fill
-          className="object-cover"
+          className={`object-cover transition-opacity duration-300 ${
+            videoLoaded && shouldPlayVideo ? "opacity-0" : "opacity-100"
+          }`}
           sizes="100vw"
+          priority
         />
-      ) : (
+      )}
+      {/* Video overlays image when loaded and playing */}
+      {shouldLoadVideo && hasVideo && videoUrl && !prefersReducedMotion ? (
+        <video
+          ref={videoRef}
+          muted={muted}
+          loop={loop}
+          playsInline
+          preload={autoPlay ? "auto" : "metadata"}
+          poster={autoPlay ? undefined : (headerImage || undefined)}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+            videoLoaded && (shouldPlayVideo || autoPlay) ? "opacity-100" : "opacity-0"
+          }`}
+          onLoadedData={() => {
+            setVideoLoaded(true);
+          }}
+          onError={() => {
+            setVideoError(true);
+          }}
+        />
+      ) : !headerImage ? (
         <div className="w-full h-full bg-muted flex items-center justify-center">
           <span className="text-muted-foreground text-sm">No preview available</span>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

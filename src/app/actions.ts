@@ -9,9 +9,7 @@ export async function loadMoreGames(offset: number): Promise<GameCardGame[]> {
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from("games_new_home")
-    .select(
-      "appid, title, header_image, videos, home_bucket, suggestions_count, created_at"
-    )
+    .select("appid, title, header_image, videos")
     .order("home_bucket", { ascending: true })
     .order("suggestions_count", { ascending: false })
     .order("created_at", { ascending: false })

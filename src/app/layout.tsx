@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Suspense } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ScrollToTopOnNavigation } from "@/components/ScrollToTopOnNavigation";
@@ -67,6 +68,7 @@ export default function RootLayout({
         </div>
         <Toaster />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

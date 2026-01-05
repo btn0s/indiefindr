@@ -19,14 +19,28 @@ function GameCard({
 }: GameCardProps) {
   const [videoError, setVideoError] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+  const [shouldPlayVideo, setShouldPlayVideo] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const hasVideo = videos?.length > 0 && !videoError;
   const videoUrl = hasVideo ? videos?.[0] : null;
   const isHls = videoUrl?.endsWith(".m3u8") || videoUrl?.includes("/hls_");
 
-  // Intersection Observer for lazy loading
+  // Check for reduced motion preference and mobile
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+    setIsMobile(window.innerWidth < 768);
+
+    const handleChange = () => setPrefersReducedMotion(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  // Intersection Observer for lazy loading (only load video, don't auto-play)
   useEffect(() => {
     if (!cardRef.current) return;
 
@@ -34,14 +48,16 @@ function GameCard({
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Delay video loading slightly to prioritize images
-            setTimeout(() => setShouldLoadVideo(true), 100);
+            // Only load video if not mobile and not reduced motion
+            if (!isMobile && !prefersReducedMotion) {
+              setTimeout(() => setShouldLoadVideo(true), 100);
+            }
             observer.disconnect();
           }
         });
       },
       {
-        rootMargin: "50px", // Start loading slightly before visible
+        rootMargin: "50px",
         threshold: 0.1,
       }
     );
@@ -51,7 +67,42 @@ function GameCard({
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [isMobile, prefersReducedMotion]);
+
+  // Handle hover/focus for video playback (desktop only)
+  useEffect(() => {
+    if (!cardRef.current || isMobile || prefersReducedMotion) return;
+
+    const card = cardRef.current;
+    let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const handleEnter = () => {
+      hoverTimeout = setTimeout(() => {
+        setShouldPlayVideo(true);
+      }, 150);
+    };
+
+    const handleLeave = () => {
+      if (hoverTimeout) clearTimeout(hoverTimeout);
+      setShouldPlayVideo(false);
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+    };
+
+    card.addEventListener("mouseenter", handleEnter);
+    card.addEventListener("mouseleave", handleLeave);
+    card.addEventListener("focus", handleEnter, { capture: true });
+    card.addEventListener("blur", handleLeave, { capture: true });
+
+    return () => {
+      if (hoverTimeout) clearTimeout(hoverTimeout);
+      card.removeEventListener("mouseenter", handleEnter);
+      card.removeEventListener("mouseleave", handleLeave);
+      card.removeEventListener("focus", handleEnter, { capture: true });
+      card.removeEventListener("blur", handleLeave, { capture: true });
+    };
+  }, [isMobile, prefersReducedMotion]);
 
   // Load video only when card is visible and should load
   useEffect(() => {
@@ -69,7 +120,7 @@ function GameCard({
 
         if (Hls.isSupported()) {
           hls = new Hls({
-            enableWorker: false,
+            enableWorker: true,
           });
           hls.loadSource(videoUrl);
           hls.attachMedia(video);
@@ -105,6 +156,7 @@ function GameCard({
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           // Native HLS support (Safari)
           video.src = videoUrl;
+          if (header_image) video.poster = header_image;
           video.addEventListener(
             "loadedmetadata",
             () => {
@@ -121,6 +173,7 @@ function GameCard({
     } else {
       // Regular video format
       video.src = videoUrl;
+      if (header_image) video.poster = header_image;
       video.addEventListener(
         "loadedmetadata",
         () => {
@@ -137,7 +190,21 @@ function GameCard({
       hls?.destroy();
       hls = null;
     };
-  }, [shouldLoadVideo, hasVideo, videoUrl, isHls]);
+  }, [shouldLoadVideo, hasVideo, videoUrl, isHls, header_image]);
+
+  // Control video playback based on hover/focus state
+  useEffect(() => {
+    if (!videoRef.current || !shouldLoadVideo) return;
+    const video = videoRef.current;
+
+    if (shouldPlayVideo) {
+      void video.play().catch(() => {
+        setVideoError(true);
+      });
+    } else {
+      video.pause();
+    }
+  }, [shouldPlayVideo, shouldLoadVideo]);
 
 
   const handleCardClick = () => {
@@ -148,7 +215,7 @@ function GameCard({
   };
 
   return (
-    <Link href={`/games/${appid}`} className="block" onClick={handleCardClick}>
+    <Link href={`/games/${appid}`} className="block" prefetch={false} onClick={handleCardClick}>
       <div ref={cardRef}>
         <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
           {/* Always render image as base layer */}
@@ -159,20 +226,21 @@ function GameCard({
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                videoReady ? "opacity-0" : "opacity-100"
+                videoReady && shouldPlayVideo ? "opacity-0" : "opacity-100"
               }`}
             />
           )}
-          {/* Video overlays image, fades in when ready */}
-          {shouldLoadVideo && hasVideo && videoUrl && (
+          {/* Video overlays image, fades in when ready (desktop hover/focus only) */}
+          {shouldLoadVideo && hasVideo && videoUrl && !isMobile && !prefersReducedMotion && (
             <video
               ref={videoRef}
-              autoPlay
               muted
               loop
               playsInline
+              preload="metadata"
+              poster={header_image || undefined}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                videoReady ? "opacity-100" : "opacity-0"
+                videoReady && shouldPlayVideo ? "opacity-100" : "opacity-0"
               }`}
               onCanPlay={() => {
                 setVideoReady(true);

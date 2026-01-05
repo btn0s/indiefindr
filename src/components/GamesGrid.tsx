@@ -1,24 +1,35 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import GameCard from "@/components/GameCard";
 import { Spinner } from "@/components/ui/spinner";
 import { loadMoreGames } from "@/app/actions";
 import type { GameCardGame } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 24;
+const PREFETCH_ABOVE_FOLD_COUNT = 6; // Prefetch first 6 games (likely above fold)
 
 interface GamesGridProps {
   initialGames: GameCardGame[];
 }
 
 export function GamesGrid({ initialGames }: GamesGridProps) {
+  const router = useRouter();
   const [games, setGames] = useState(initialGames);
   const [offset, setOffset] = useState(initialGames.length);
   const [hasMore, setHasMore] = useState(initialGames.length === PAGE_SIZE);
   const [isPending, startTransition] = useTransition();
   const loaderRef = useRef<HTMLDivElement>(null);
   const gamesRef = useRef<GameCardGame[]>(initialGames);
+
+  // Prefetch above-the-fold games (high click probability)
+  useEffect(() => {
+    const aboveFoldGames = initialGames.slice(0, PREFETCH_ABOVE_FOLD_COUNT);
+    aboveFoldGames.forEach((game) => {
+      router.prefetch(`/games/${game.appid}`);
+    });
+  }, [initialGames, router]);
 
   useEffect(() => {
     gamesRef.current = games;

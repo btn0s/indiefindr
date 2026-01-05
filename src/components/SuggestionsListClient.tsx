@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import GameCard from "@/components/GameCard";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,12 @@ type SuggestionsResponse = {
 const POLL_MS = 2000;
 const MAX_AUTO_INGEST = 6;
 const SLOW_NOTICE_MS = 3500;
+const MAX_POLL_INTERVAL = 10000; // Max backoff: 10s
+const INITIAL_POLL_INTERVAL = 2000; // Start at 2s
+const PREFETCH_SUGGESTIONS_COUNT = 3; // Prefetch top 3 suggestions
 
 export function SuggestionsListClient({ appid }: { appid: number }) {
+  const router = useRouter();
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [gamesById, setGamesById] = useState<Record<number, GameNew>>({});
   const [generating, setGenerating] = useState(false);
@@ -180,15 +185,37 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   }, [suggestions, generating, missingAppIds.length]);
 
   // Poll suggestions + hydrate games (fast, incremental, avoids server-render blocking).
+  // Optimized: pauses when tab hidden, backs off once suggestions exist, defers heavy work.
   useEffect(() => {
     const shouldPoll =
       suggestions === null ||
       suggestions.length === 0 ||
       missingAppIds.length > 0;
 
+    if (!shouldPoll) return;
+
     let cancelled = false;
+    let pollInterval = INITIAL_POLL_INTERVAL;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let isVisible = !document.hidden;
+
+    // Pause polling when tab is hidden
+    const handleVisibilityChange = () => {
+      isVisible = !document.hidden;
+      if (!isVisible && intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      } else if (isVisible && !intervalId && !cancelled) {
+        void tick();
+        intervalId = setInterval(tick, pollInterval);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     async function tick() {
+      if (!isVisible || cancelled) return;
+
       try {
         const s = await fetchSuggestions();
         if (cancelled) return;
@@ -210,17 +237,45 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
           return;
         }
 
+        // Backoff: if we have suggestions and no missing games, slow down polling
+        const hasAllGames = ids.every((id) => gamesByIdRef.current[id]);
+        const currentSuggestions = suggestionsRef.current;
+        if (hasAllGames && currentSuggestions && currentSuggestions.length > 0) {
+          // Exponential backoff: double interval up to max
+          pollInterval = Math.min(pollInterval * 1.5, MAX_POLL_INTERVAL);
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = setInterval(tick, pollInterval);
+          }
+        } else {
+          // Reset to initial interval when actively fetching
+          pollInterval = INITIAL_POLL_INTERVAL;
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = setInterval(tick, pollInterval);
+          }
+        }
+
         // Only fetch details for games we don't already have.
         const toFetch = ids.filter((id) => !gamesByIdRef.current[id]);
         if (toFetch.length > 0) {
-          const games = await fetchGames(toFetch);
-          if (cancelled) return;
+          // Defer heavy work: use requestIdleCallback if available, otherwise setTimeout
+          const fetchGamesDeferred = () => {
+            void fetchGames(toFetch).then((games) => {
+              if (cancelled) return;
+              setGamesById((prev) => {
+                const next = { ...prev };
+                for (const g of games) next[g.appid] = g;
+                return next;
+              });
+            });
+          };
 
-          setGamesById((prev) => {
-            const next = { ...prev };
-            for (const g of games) next[g.appid] = g;
-            return next;
-          });
+          if (typeof requestIdleCallback !== "undefined") {
+            requestIdleCallback(fetchGamesDeferred, { timeout: 1000 });
+          } else {
+            setTimeout(fetchGamesDeferred, 0);
+          }
         }
       } catch (err) {
         if (cancelled) return;
@@ -228,13 +283,16 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
       }
     }
 
-    if (!shouldPoll) return;
+    // Start polling
+    if (isVisible) {
+      void tick();
+      intervalId = setInterval(tick, pollInterval);
+    }
 
-    void tick();
-    const id = setInterval(tick, POLL_MS);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (intervalId) clearInterval(intervalId);
     };
   }, [
     appid,
@@ -272,6 +330,17 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
       cancelled = true;
     };
   }, [suggestions, missingAppIds, ingestGame]);
+
+  // Prefetch top suggestions (high click probability when user is engaged)
+  // Must be before any conditional returns to follow Rules of Hooks
+  useEffect(() => {
+    if (displayGames.length > 0) {
+      const topSuggestions = displayGames.slice(0, PREFETCH_SUGGESTIONS_COUNT);
+      topSuggestions.forEach((game) => {
+        router.prefetch(`/games/${game.appid}`);
+      });
+    }
+  }, [displayGames, router]);
 
   // Initial loading
   if (suggestions === null) {

@@ -384,6 +384,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
             headerImage={gameData.header_image}
             alt={gameData.title}
             className="w-full h-full"
+            autoPlay={true}
           />
         </div>
       )}

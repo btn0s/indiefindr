@@ -24,6 +24,7 @@ export function CollectionsSection({
               <Link
                 href={`/collections/${collection.slug}`}
                 className="font-semibold text-xl hover:underline"
+                prefetch={true}
               >
                 {collection.title}
               </Link>
@@ -31,6 +32,7 @@ export function CollectionsSection({
                 <Link
                   href={`/collections/${collection.slug}`}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                  prefetch={true}
                 >
                   View all →
                 </Link>

@@ -5,9 +5,10 @@ import type { GameCardGame } from "@/lib/supabase/types";
 import { getPinnedHomeCollections } from "@/lib/collections";
 import { CollectionsSection } from "@/components/CollectionsSection";
 
-export const dynamic = "force-dynamic";
-
 const PAGE_SIZE = 24;
+
+// Enable ISR - revalidate every 60 seconds
+export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl =
@@ -62,9 +63,7 @@ export default async function Home() {
   const [{ data, error }, pinnedCollections] = await Promise.all([
     supabase
       .from("games_new_home")
-      .select(
-        "appid, title, header_image, videos, home_bucket, suggestions_count, created_at"
-      )
+      .select("appid, title, header_image, videos")
       .order("home_bucket", { ascending: true })
       .order("suggestions_count", { ascending: false })
       .order("created_at", { ascending: false })
