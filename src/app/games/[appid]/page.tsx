@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense, cache } from "react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { GameVideo } from "@/components/GameVideo";
 import { SuggestionsListClient } from "@/components/SuggestionsListClient";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
@@ -433,6 +434,20 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
             alt={gameData.title}
             className="w-full h-full"
             autoPlay={true}
+          />
+        </div>
+      )}
+
+      {/* Cover Art - Full Width (only when no video) */}
+      {(!gameData.videos || gameData.videos.length === 0) && gameData.header_image && (
+        <div className="relative w-full aspect-steam rounded-lg overflow-hidden bg-muted">
+          <Image
+            src={gameData.header_image}
+            alt={gameData.title}
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority
           />
         </div>
       )}
