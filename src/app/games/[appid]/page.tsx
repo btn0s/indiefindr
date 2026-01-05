@@ -3,7 +3,6 @@ import { Suspense, cache } from "react";
 import type { Metadata } from "next";
 import { GameVideo } from "@/components/GameVideo";
 import { SuggestionsListClient } from "@/components/SuggestionsListClient";
-import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { SteamButton } from "@/components/SteamButton";
 import { DevControlBar } from "@/components/DevControlBar";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -11,6 +10,10 @@ import { GameDetailSkeleton } from "@/components/skeletons/GameDetailSkeleton";
 import { getPinnedCollectionsForGame } from "@/lib/collections";
 import { CollectionsSection } from "@/components/CollectionsSection";
 import { GameProcessingState } from "@/components/GameProcessingState";
+
+// This page needs to reflect newly-ingested rows immediately.
+// Using ISR here can cache the temporary "processing" state and prevent auto-update.
+export const dynamic = "force-dynamic";
 
 type GameData = {
   appid: number;
@@ -477,6 +480,3 @@ export default async function GameDetailPage({
     </main>
   );
 }
-
-// Enable ISR - revalidate every 60 seconds
-export const revalidate = 60;
