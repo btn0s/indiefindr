@@ -111,6 +111,15 @@ export function GameVideo({
       }
     };
 
+    const tryPlay = () => {
+      if (cancelled) return;
+      if (autoPlay || shouldPlayVideo) {
+        void video.play().catch(() => {
+          setVideoError(true);
+        });
+      }
+    };
+
     // Handle HLS videos
     if (isHls) {
       void (async () => {
@@ -125,9 +134,10 @@ export function GameVideo({
           hls.attachMedia(video);
 
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            video.addEventListener("loadedmetadata", setStartTime, {
-              once: true,
-            });
+            video.addEventListener("loadedmetadata", () => {
+              setStartTime();
+              tryPlay();
+            }, { once: true });
           });
 
           hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -150,7 +160,11 @@ export function GameVideo({
           // Native HLS support (Safari)
           video.src = videoUrl;
           if (headerImage) video.poster = headerImage;
-          video.addEventListener("loadedmetadata", setStartTime, { once: true });
+          video.addEventListener("loadedmetadata", () => {
+            setStartTime();
+            tryPlay();
+          }, { once: true });
+          video.addEventListener("canplay", tryPlay, { once: true });
         } else {
           setTimeout(() => setVideoError(true), 0);
         }
@@ -159,7 +173,11 @@ export function GameVideo({
       // Regular video format
       video.src = videoUrl;
       if (headerImage) video.poster = headerImage;
-      video.addEventListener('loadedmetadata', setStartTime, { once: true });
+      video.addEventListener('loadedmetadata', () => {
+        setStartTime();
+        tryPlay();
+      }, { once: true });
+      video.addEventListener('canplay', tryPlay, { once: true });
     }
 
     return () => {
@@ -167,14 +185,15 @@ export function GameVideo({
       hls?.destroy();
       hls = null;
     };
-  }, [shouldLoadVideo, hasVideo, videoUrl, isHls, startTime, headerImage]);
+  }, [shouldLoadVideo, hasVideo, videoUrl, isHls, startTime, headerImage, autoPlay, shouldPlayVideo]);
 
-  // Control video playback
+  // Control video playback (fallback for when video is already loaded)
   useEffect(() => {
     if (!videoRef.current || !shouldLoadVideo) return;
     const video = videoRef.current;
 
-    if (shouldPlayVideo || autoPlay) {
+    // Only try to play if video is already loaded and ready
+    if ((shouldPlayVideo || autoPlay) && video.readyState >= 2) {
       void video.play().catch(() => {
         setVideoError(true);
       });
