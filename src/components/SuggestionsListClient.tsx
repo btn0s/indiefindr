@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GameCard from "@/components/GameCard";
 import { SuggestionsSkeleton } from "@/components/SuggestionsSkeleton";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { GameNew, Suggestion } from "@/lib/supabase/types";
 import { sortSuggestionsByIndiePriority } from "@/lib/utils/indie-detection";
 
@@ -35,14 +40,12 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
 
   const missingAppIds = useMemo(() => {
     if (!suggestions?.length) return [];
-    return suggestions
-      .map((s) => s.appId)
-      .filter((id) => !gamesById[id]);
+    return suggestions.map((s) => s.appId).filter((id) => !gamesById[id]);
   }, [suggestions, gamesById]);
 
   const displayGames = useMemo(() => {
     if (!suggestions?.length) return [];
-    
+
     // Map suggestions to games with explanations
     const gamesWithExplanations = suggestions
       .map((s) => {
@@ -63,7 +66,10 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
 
     // Sort to prioritize indie games (recent indie first, then other indie, then non-indie)
     const sortedSuggestions = sortSuggestionsByIndiePriority(
-      gamesWithExplanations.map((g) => ({ appId: g.appid, explanation: g.explanation })),
+      gamesWithExplanations.map((g) => ({
+        appId: g.appid,
+        explanation: g.explanation,
+      })),
       gamesByIdForSorting
     );
 
@@ -74,32 +80,40 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     });
   }, [suggestions, gamesById]);
 
-  const fetchSuggestions = useCallback(async (): Promise<SuggestionsResponse> => {
-    const res = await fetch(`/api/games/${appid}/suggestions`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-    });
-    const data = (await res.json()) as SuggestionsResponse & { error?: string };
-    if (!res.ok) {
-      throw new Error(data.error || `Failed to load suggestions (${res.status})`);
-    }
-    return data;
-  }, [appid]);
+  const fetchSuggestions =
+    useCallback(async (): Promise<SuggestionsResponse> => {
+      const res = await fetch(`/api/games/${appid}/suggestions`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      const data = (await res.json()) as SuggestionsResponse & {
+        error?: string;
+      };
+      if (!res.ok) {
+        throw new Error(
+          data.error || `Failed to load suggestions (${res.status})`
+        );
+      }
+      return data;
+    }, [appid]);
 
-  const fetchGames = useCallback(async (appIds: number[]): Promise<GameNew[]> => {
-    if (!appIds.length) return [];
-    const res = await fetch("/api/games/batch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appids: appIds }),
-    });
-    const data = (await res.json()) as { games?: GameNew[]; error?: string };
-    if (!res.ok) {
-      throw new Error(data.error || `Failed to load games (${res.status})`);
-    }
-    return data.games || [];
-  }, []);
+  const fetchGames = useCallback(
+    async (appIds: number[]): Promise<GameNew[]> => {
+      if (!appIds.length) return [];
+      const res = await fetch("/api/games/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appids: appIds }),
+      });
+      const data = (await res.json()) as { games?: GameNew[]; error?: string };
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to load games (${res.status})`);
+      }
+      return data.games || [];
+    },
+    []
+  );
 
   const triggerSuggestionGeneration = useCallback(async (): Promise<void> => {
     if (requestedSuggestRef.current) return;
@@ -168,7 +182,9 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   // Poll suggestions + hydrate games (fast, incremental, avoids server-render blocking).
   useEffect(() => {
     const shouldPoll =
-      suggestions === null || suggestions.length === 0 || missingAppIds.length > 0;
+      suggestions === null ||
+      suggestions.length === 0 ||
+      missingAppIds.length > 0;
 
     let cancelled = false;
 
@@ -178,7 +194,8 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
         if (cancelled) return;
 
         const updatedAtChanged =
-          lastUpdatedAtRef.current === null || lastUpdatedAtRef.current !== s.updatedAt;
+          lastUpdatedAtRef.current === null ||
+          lastUpdatedAtRef.current !== s.updatedAt;
         lastUpdatedAtRef.current = s.updatedAt;
 
         // Always set suggestions if we haven't yet; otherwise only if DB row changed.
@@ -285,7 +302,9 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
             </div>
           )}
           {error && (
-            <CardDescription className="text-destructive">{error}</CardDescription>
+            <CardDescription className="text-destructive">
+              {error}
+            </CardDescription>
           )}
         </CardHeader>
       </Card>
@@ -326,4 +345,3 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     </div>
   );
 }
-
