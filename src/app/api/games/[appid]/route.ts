@@ -14,22 +14,10 @@ export async function GET(
       return NextResponse.json({ error: "Invalid app ID" }, { status: 400 });
     }
 
-    // Check games_new table first (primary table)
-    const { data: gameNew, error: errorNew } = await supabase
+    const { data: game, error } = await supabase
       .from("games_new")
       .select("*")
       .eq("appid", appId)
-      .maybeSingle();
-
-    if (gameNew) {
-      return NextResponse.json(gameNew);
-    }
-
-    // Fallback to games table (legacy)
-    const { data: game, error } = await supabase
-      .from("games")
-      .select("*")
-      .eq("id", appId)
       .maybeSingle();
 
     if (error || !game) {
