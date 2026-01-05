@@ -70,6 +70,38 @@ async function waitForGameInDb(
 }
 
 /**
+ * Check if a game exists on Steam by attempting ingestion.
+ * Returns true if game exists, false if not found, null if error/unknown.
+ * This is cached to avoid duplicate checks within the same render.
+ */
+const checkGameExistsOnSteam = cache(
+  async (appId: number): Promise<boolean | null> => {
+    try {
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      const response = await fetch(`${siteUrl}/api/games/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          steamUrl: `https://store.steampowered.com/app/${appId}/`,
+          skipSuggestions: true,
+        }),
+      });
+
+      if (response.status === 404) {
+        return false; // Game doesn't exist on Steam
+      }
+      if (response.ok) {
+        return true; // Game exists
+      }
+      return null; // Error or unknown
+    } catch {
+      return null; // Network error or unknown
+    }
+  }
+);
+
+/**
  * Fetch game data from database only (never calls Steam API).
  * Uses cache() to dedupe requests within the same render.
  */
@@ -98,7 +130,14 @@ const getGameDataFromDb = cache(
       };
     }
 
-    // Game not in DB yet - wait for background ingest
+    // Game not in DB - check if it exists on Steam before waiting
+    const existsOnSteam = await checkGameExistsOnSteam(appId);
+    if (existsOnSteam === false) {
+      // Game doesn't exist on Steam - return null to trigger 404
+      return null;
+    }
+
+    // Game exists on Steam or status unknown - wait for background ingest
     // This will block the server response and let Next.js stream the UI once it resolves
     return waitForGameInDb(appId);
   }
@@ -333,6 +372,15 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
   const gameData = await getGameDataFromDb(appId);
 
   if (!gameData || !gameData.title) {
+    // getGameDataFromDb already checked if game exists on Steam
+    // If it returned null and the game doesn't exist, we should 404
+    // Otherwise, show processing state for slow ingestion
+    const existsOnSteam = await checkGameExistsOnSteam(appId);
+    if (existsOnSteam === false) {
+      // Game doesn't exist on Steam - return 404
+      notFound();
+    }
+    
     // If it still hasn't loaded after waiting, show processing state instead of 404
     // This handles slow ingestion (rate limiting, network delays) gracefully
     return <GameProcessingState appid={appid} />;

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getCollectionBySlug, getCollectionGames } from "@/lib/collections";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import GameCard from "@/components/GameCard";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export async function generateMetadata({
   if (!collection) {
     return {
       title: "Collection Not Found",
+      robots: { index: false, follow: false },
     };
   }
 
@@ -28,6 +30,16 @@ export async function generateMetadata({
     collection.description ||
     `Explore ${collection.title} - a curated collection of indie games on Steam.`;
 
+  // Check if collection has games (to avoid soft-404s for empty collections)
+  // Note: This is a lightweight check - full games list is fetched in page component
+  const { data: collectionGames } = await getSupabaseServerClient()
+    .from("collection_games")
+    .select("collection_id")
+    .eq("collection_id", collection.id)
+    .limit(1);
+
+  const hasGames = (collectionGames?.length ?? 0) > 0;
+
   return {
     title,
     description,
@@ -39,6 +51,8 @@ export async function generateMetadata({
       "Steam games",
     ],
     alternates: { canonical: canonicalUrl },
+    // Add noindex for empty collections to avoid soft-404s
+    robots: hasGames ? undefined : { index: false, follow: true },
     openGraph: {
       title,
       description,
@@ -95,9 +109,22 @@ export default async function CollectionPage({
         </div>
         <div className="container mx-auto max-w-4xl w-full">
           {games.length === 0 ? (
-            <p className="text-muted-foreground">
-              This collection doesn&apos;t have any games yet.
-            </p>
+            <div className="flex flex-col gap-4 py-8">
+              <p className="text-muted-foreground text-lg">
+                This collection doesn&apos;t have any games yet.
+              </p>
+              <p className="text-muted-foreground">
+                Check back soon, or explore other collections to discover indie games on Steam.
+              </p>
+              <div className="pt-4">
+                <a
+                  href="/"
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Browse all games →
+                </a>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {games.map((game) => (

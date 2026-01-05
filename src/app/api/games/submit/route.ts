@@ -38,9 +38,26 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[SUBMIT] Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    // Return 404 if game doesn't exist on Steam
+    if (
+      errorMessage.includes("not found") ||
+      errorMessage.includes("unavailable") ||
+      errorMessage.includes("not found or unavailable")
+    ) {
+      return NextResponse.json(
+        {
+          error: errorMessage,
+          success: false,
+        },
+        { status: 404 }
+      );
+    }
+    
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
         success: false,
       },
       { status: 500 }
