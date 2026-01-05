@@ -17,6 +17,9 @@ export function CollectionsSection({
 
   return (
     <div className="flex flex-col gap-8 w-full">
+      <div className="container mx-auto max-w-4xl w-full">
+        <h2 className="font-semibold text-xl">{title}</h2>
+      </div>
       {collections.map((collection) => (
         <div key={collection.id} className="flex flex-col gap-4 w-full">
           <div className="container mx-auto max-w-4xl w-full flex flex-col gap-1">
@@ -48,9 +51,14 @@ export function CollectionsSection({
                 This collection doesn&apos;t have any games yet.
               </p>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:overflow-visible md:pb-0">
                 {collection.preview_games.map((game) => (
-                  <GameCard key={game.appid} {...game} />
+                  <div
+                    key={game.appid}
+                    className="flex-none w-[240px] sm:w-[260px] md:w-auto"
+                  >
+                    <GameCard {...game} />
+                  </div>
                 ))}
               </div>
             )}

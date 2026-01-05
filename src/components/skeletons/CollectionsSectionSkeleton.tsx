@@ -11,9 +11,12 @@ function CollectionRowSkeleton() {
         <Skeleton className="h-4 w-20" />
       </div>
       <div className="container mx-auto max-w-4xl w-full">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:overflow-visible md:pb-0">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-2">
+            <div
+              key={i}
+              className="flex-none w-[240px] sm:w-[260px] md:w-auto flex flex-col gap-2"
+            >
               <Skeleton className="w-full aspect-steam rounded-md" />
               <Skeleton className="h-4 w-3/4" />
             </div>
