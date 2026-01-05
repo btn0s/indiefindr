@@ -30,6 +30,7 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   const requestedIngestRef = useRef<Set<number>>(new Set());
   const lastUpdatedAtRef = useRef<string | null>(null);
   const suggestionsRef = useRef<Suggestion[] | null>(null);
+  const gamesByIdRef = useRef<Record<number, GameNew>>({});
   const generatingRef = useRef(false);
 
   const missingAppIds = useMemo(() => {
@@ -140,6 +141,10 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   }, [suggestions]);
 
   useEffect(() => {
+    gamesByIdRef.current = gamesById;
+  }, [gamesById]);
+
+  useEffect(() => {
     generatingRef.current = generating;
   }, [generating]);
 
@@ -162,6 +167,9 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
 
   // Poll suggestions + hydrate games (fast, incremental, avoids server-render blocking).
   useEffect(() => {
+    const shouldPoll =
+      suggestions === null || suggestions.length === 0 || missingAppIds.length > 0;
+
     let cancelled = false;
 
     async function tick() {
@@ -185,19 +193,25 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
           return;
         }
 
-        const games = await fetchGames(ids);
-        if (cancelled) return;
+        // Only fetch details for games we don't already have.
+        const toFetch = ids.filter((id) => !gamesByIdRef.current[id]);
+        if (toFetch.length > 0) {
+          const games = await fetchGames(toFetch);
+          if (cancelled) return;
 
-        setGamesById((prev) => {
-          const next = { ...prev };
-          for (const g of games) next[g.appid] = g;
-          return next;
-        });
+          setGamesById((prev) => {
+            const next = { ...prev };
+            for (const g of games) next[g.appid] = g;
+            return next;
+          });
+        }
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Unknown error occurred");
       }
     }
+
+    if (!shouldPoll) return;
 
     void tick();
     const id = setInterval(tick, POLL_MS);
@@ -205,7 +219,14 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [appid, fetchGames, fetchSuggestions, triggerSuggestionGeneration]);
+  }, [
+    appid,
+    suggestions,
+    missingAppIds.length,
+    fetchGames,
+    fetchSuggestions,
+    triggerSuggestionGeneration,
+  ]);
 
   // Incrementally ingest a small number of missing suggested games (caps cascade).
   useEffect(() => {
