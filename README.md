@@ -12,7 +12,6 @@ IndieFindr uses multimodal AI (Perplexity Sonar Pro) to analyze game screenshots
 - **AI-Powered Recommendations**: Get 8-12 similar game suggestions with explanations using image + text analysis
 - **Indie-First Discovery**: Prioritizes indie games and lesser-known titles over AAA releases
 - **Game Collections**: Curate and display collections of games on home and detail pages
-- **Video Playback**: Watch Steam game trailers directly on detail pages
 - **Smart Search**: Search both your database and Steam store simultaneously
 - **Auto-Hydration**: Missing suggested games are automatically ingested (Steam data only) to populate UI cards
 
