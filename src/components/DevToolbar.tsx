@@ -36,7 +36,7 @@ export function DevToolbar() {
   const handleRefreshSuggestions = async () => {
     setRefreshing(true);
     try {
-      const response = await fetch(`/api/games/${appid}/suggestions/refresh`, {
+      const response = await fetch(`/api/games/${appid}/suggestions/refresh?force=true`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -49,8 +49,8 @@ export function DevToolbar() {
         throw new Error(data.error || "Failed to refresh suggestions");
       }
 
-      toast.success("Suggestions refreshed successfully", {
-        description: `Added ${data.newCount} new suggestions`,
+      toast.success("Suggestions regenerated successfully", {
+        description: `Generated ${data.totalCount} suggestions`,
       });
 
       router.refresh();
