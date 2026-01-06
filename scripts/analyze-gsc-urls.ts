@@ -7,12 +7,6 @@
 import { readFileSync } from "fs";
 import { parse } from "csv-parse/sync";
 
-interface URLPattern {
-  pattern: string;
-  count: number;
-  examples: string[];
-}
-
 function normalizeUrl(url: string): string {
   try {
     const urlObj = new URL(url);

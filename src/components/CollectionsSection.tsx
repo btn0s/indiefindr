@@ -9,7 +9,6 @@ interface CollectionsSectionProps {
 
 export function CollectionsSection({
   collections,
-  title = "Featured Collections",
 }: CollectionsSectionProps) {
   if (collections.length === 0) {
     return null;

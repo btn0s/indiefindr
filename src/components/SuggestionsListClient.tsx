@@ -20,7 +20,6 @@ type SuggestionsResponse = {
   updatedAt: string | null;
 };
 
-const POLL_MS = 2000;
 const MAX_AUTO_INGEST = 6;
 const SLOW_NOTICE_MS = 3500;
 const MAX_POLL_INTERVAL = 10000; // Max backoff: 10s
