@@ -1,10 +1,10 @@
-# Games Graph
+# IndieFindr
 
 A Next.js application that discovers Steam games through AI-powered recommendations. Ingest games from Steam, explore AI-generated "games like this" suggestions, and discover your next favorite indie game.
 
 ## Overview
 
-Games Graph uses multimodal AI (Perplexity Sonar Pro) to analyze game screenshots and generate intelligent recommendations. Each suggestion includes an explanation of why the game is similar, helping you discover games that match your preferences.
+IndieFindr uses multimodal AI (Perplexity Sonar Pro) to analyze game screenshots and generate intelligent recommendations. Each suggestion includes an explanation of why the game is similar, helping you discover games that match your preferences.
 
 ### Key Features
 
@@ -247,7 +247,7 @@ Fetch multiple games by AppID list (from `games_new`).
 ## Project Structure
 
 ```
-games-graph/
+indiefindr/
 ├── src/
 │   ├── app/
 │   │   ├── api/games/          # API routes
