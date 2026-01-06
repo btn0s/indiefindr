@@ -32,7 +32,6 @@ export async function generateMetadata({
     `Explore ${collection.title} - a curated collection of indie games on Steam.`;
 
   // Check if collection has games (to avoid soft-404s for empty collections)
-  // Note: This is a lightweight check - full games list is fetched in page component
   const { data: collectionGames } = await getSupabaseServerClient()
     .from("collection_games")
     .select("collection_id")

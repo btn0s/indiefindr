@@ -11,10 +11,6 @@ export type IngestResult = {
   suggestions: SuggestGamesResult;
 };
 
-// ============================================================================
-// CORE: Ingest a game (Steam data + optional suggestions)
-// ============================================================================
-
 /**
  * Ingest a game by fetching Steam data and optionally generating suggestions.
  *
@@ -52,15 +48,12 @@ export async function ingest(
   }
 
   try {
-    // Step 1: Fetch and save Steam data
     console.log("[INGEST] Fetching Steam data for:", steamUrl);
     const steamData = await fetchSteamGame(steamUrl);
 
     console.log("[INGEST] Saving to database:", steamData.appid);
     await saveSteamData(steamData);
-    // Home view refresh is now handled automatically by database trigger
 
-    // Step 2: Generate suggestions in background (if not skipped)
     if (!skipSuggestions && steamData.screenshots?.length) {
       // Run suggestions generation in background - don't await
       generateSuggestionsInBackground(steamData).catch((err) => {
@@ -100,10 +93,6 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
   }
 }
 
-// ============================================================================
-// CORE: Clear suggestions for a game (dev-only force regeneration)
-// ============================================================================
-
 /**
  * Clear all suggestions for a game. Used for force-regenerating suggestions.
  *
@@ -123,10 +112,6 @@ export async function clearSuggestions(appId: number): Promise<void> {
     throw new Error(`Failed to clear suggestions: ${error.message}`);
   }
 }
-
-// ============================================================================
-// CORE: Refresh suggestions for an existing game
-// ============================================================================
 
 /**
  * Generate new suggestions for an existing game and merge with existing ones.
@@ -182,10 +167,6 @@ export async function refreshSuggestions(appId: number): Promise<{
     missingCount: missingAppIds.length,
   };
 }
-
-// ============================================================================
-// SHARED: Auto-ingest missing games
-// ============================================================================
 
 /**
  * Find which app IDs don't exist in the database.
@@ -307,10 +288,6 @@ async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<v
   }
 }
 
-// ============================================================================
-// HELPERS: Database operations
-// ============================================================================
-
 async function saveSteamData(steamData: SteamGameData): Promise<void> {
   const supabase = getSupabaseServerClient();
   const { error } = await supabase.from("games_new").upsert(
@@ -347,10 +324,6 @@ async function saveSuggestions(appId: number, suggestions: Suggestion[]): Promis
     throw new Error(`Failed to save suggestions: ${error.message}`);
   }
 }
-
-// ============================================================================
-// HELPERS: Utilities
-// ============================================================================
 
 function parseAppId(steamUrl: string): number | null {
   const match = steamUrl.match(/\/(\d+)\/?$/);

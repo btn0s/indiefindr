@@ -69,14 +69,11 @@ export async function retry<T>(
     } catch (error) {
       lastError = error;
 
-      // Check if error is retryable
       if (!opts.retryable(error)) {
         throw error;
       }
 
-      // Don't sleep after last attempt
       if (attempt < opts.maxAttempts) {
-        // Calculate delay with exponential backoff
         const currentDelay = Math.min(delay, opts.maxDelayMs);
         await sleep(currentDelay);
         delay *= opts.backoffMultiplier;

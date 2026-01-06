@@ -167,7 +167,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     generatingRef.current = generating;
   }, [generating]);
 
-  // Only show the "this may take a minute" notice if we're still loading after a few seconds.
   useEffect(() => {
     const isLoading =
       suggestions === null ||
@@ -223,7 +222,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
           lastUpdatedAtRef.current !== s.updatedAt;
         lastUpdatedAtRef.current = s.updatedAt;
 
-        // Always set suggestions if we haven't yet; otherwise only if DB row changed.
         if (suggestionsRef.current === null || updatedAtChanged) {
           setSuggestions(s.suggestions || []);
         }

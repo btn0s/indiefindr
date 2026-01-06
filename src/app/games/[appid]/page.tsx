@@ -63,7 +63,6 @@ async function waitForGameInDb(
       };
     }
 
-    // Wait before retrying - this blocks the server component, keeping the Suspense fallback active
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
@@ -96,7 +95,6 @@ const checkGameExistsOnSteam = cache(
         return false; // Game doesn't exist on Steam
       }
 
-      // Verify the appid in the response matches what we requested
       const gameData = appData.data;
       if (gameData.steam_appid && gameData.steam_appid !== appId) {
         console.warn(`[CHECK] Steam API returned different appid: requested ${appId}, got ${gameData.steam_appid}`);
@@ -163,8 +161,6 @@ const getGameDataFromDb = cache(
       });
     }
 
-    // Wait for game to appear in DB (will wait for background ingestion to complete)
-    // This will block the server response and let Next.js stream the UI once it resolves
     return waitForGameInDb(appId);
   }
 );
@@ -398,12 +394,8 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
   const gameData = await getGameDataFromDb(appId);
 
   if (!gameData || !gameData.title) {
-    // getGameDataFromDb already checked if game exists on Steam
-    // If it returned null and the game doesn't exist, we should 404
-    // Otherwise, show processing state for slow ingestion
     const existsOnSteam = await checkGameExistsOnSteam(appId);
     if (existsOnSteam === false) {
-      // Game doesn't exist on Steam - return 404
       notFound();
     }
     
