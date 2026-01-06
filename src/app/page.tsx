@@ -87,14 +87,10 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex flex-col gap-8 pt-8">
-      <div className="w-full">
-        <div className="container mx-auto max-w-4xl w-full">
-          <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">
-            Find your next favorite indie game
-          </h1>
-        </div>
-      </div>
+    <main className="flex flex-col gap-8">
+      <h1 className="text-balance font-semibold text-2xl sm:text-3xl text-[#000000]">
+        Find your next favorite indie game
+      </h1>
 
       {/* Pinned Collections Section */}
       {pinnedCollections.length > 0 && (
@@ -102,20 +98,16 @@ export default async function Home() {
       )}
 
       {/* Full-width grid section */}
-      <div className="flex flex-col gap-4 w-full">
-        <div className="container mx-auto max-w-4xl w-full flex items-center justify-between">
-          <h2 className="font-semibold text-xl">All Games</h2>
-        </div>
-        <div className="container mx-auto max-w-4xl w-full">
-          {games.length === 0 ? (
-            <p className="text-muted-foreground">
-              No games ingested yet. Search for a game above to add your first
-              one.
-            </p>
-          ) : (
-            <GamesGrid initialGames={games} />
-          )}
-        </div>
+      <div className="flex flex-col gap-4">
+        <h2 className="font-semibold text-lg text-[#000000]">All Games</h2>
+        {games.length === 0 ? (
+          <p className="text-[#404040] text-sm">
+            No games ingested yet. Search for a game above to add your first
+            one.
+          </p>
+        ) : (
+          <GamesGrid initialGames={games} />
+        )}
       </div>
     </main>
   );

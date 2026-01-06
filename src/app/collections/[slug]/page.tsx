@@ -70,7 +70,7 @@ export default async function CollectionPage({
   const games = await getCollectionGames(collection.id);
 
   return (
-    <main className="flex flex-col gap-8 pt-8">
+    <main className="flex flex-col gap-8">
       <div className="w-full">
         <div className="container mx-auto max-w-4xl w-full">
           <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">

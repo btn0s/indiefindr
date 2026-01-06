@@ -18,43 +18,41 @@ export function CollectionsSection({
   return (
     <div className="flex flex-col gap-8 w-full">
       {collections.map((collection) => (
-        <div key={collection.id} className="flex flex-col gap-4 w-full">
-          <div className="container mx-auto max-w-4xl w-full flex flex-col gap-1">
+        <div key={collection.id} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-2">
               <Link
                 href={`/collections/${collection.slug}`}
-                className="font-semibold text-xl hover:underline"
+                className="font-semibold text-lg text-[#000000] hover:underline"
               >
                 {collection.title}
               </Link>
               {(collection.total_games_count ?? collection.preview_games.length) > 4 && (
                 <Link
                   href={`/collections/${collection.slug}`}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                  className="text-xs text-[#404040] hover:text-[#000000] transition-colors whitespace-nowrap"
                 >
                   View all →
                 </Link>
               )}
             </div>
             {collection.description && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-[#404040]">
                 {collection.description}
               </p>
             )}
           </div>
-          <div className="container mx-auto max-w-4xl w-full">
-            {collection.preview_games.length === 0 ? (
-              <p className="text-muted-foreground">
-                This collection doesn&apos;t have any games yet.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {collection.preview_games.map((game) => (
-                  <GameCard key={game.appid} {...game} />
-                ))}
-              </div>
-            )}
-          </div>
+          {collection.preview_games.length === 0 ? (
+            <p className="text-[#404040] text-sm">
+              This collection doesn&apos;t have any games yet.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {collection.preview_games.map((game) => (
+                <GameCard key={game.appid} {...game} />
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
