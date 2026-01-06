@@ -2,7 +2,7 @@
 
 import { track } from "@vercel/analytics";
 import { ArrowUpRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 type SteamButtonProps = {
   appid: string;
@@ -10,6 +10,8 @@ type SteamButtonProps = {
 };
 
 export function SteamButton({ appid, title }: SteamButtonProps) {
+  const [isPressed, setIsPressed] = useState(false);
+  
   const handleSteamClick = () => {
     track("steam_page_click", {
       appid,
@@ -18,18 +20,19 @@ export function SteamButton({ appid, title }: SteamButtonProps) {
   };
 
   return (
-    <Button className="w-fit mt-1 sm:mt-0" size="sm">
-      <a
-        href={`https://store.steampowered.com/app/${appid}/`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-1"
-        onClick={handleSteamClick}
-      >
-        <span className="hidden sm:inline">View on Steam</span>
-        <span className="sm:hidden">Steam</span>
-        <ArrowUpRight className="size-3" />
-      </a>
-    </Button>
+    <a
+      href={`https://store.steampowered.com/app/${appid}/`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`cartridge-action-button inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#000000] ${isPressed ? "cartridge-button-pressed" : ""}`}
+      onClick={handleSteamClick}
+      onMouseDown={() => setIsPressed(true)}
+      onMouseUp={() => setIsPressed(false)}
+      onMouseLeave={() => setIsPressed(false)}
+    >
+      <span className="hidden sm:inline">VIEW ON STEAM</span>
+      <span className="sm:hidden">STEAM</span>
+      <ArrowUpRight className="size-3.5" />
+    </a>
   );
 }
