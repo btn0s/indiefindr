@@ -24,7 +24,7 @@ export async function generateMetadata({
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
-  const title = `${collection.title} — IndieFindr`;
+  const title = `${collection.title} — indieblargenhagen`;
   const canonicalPath = `/collections/${slug}`;
   const canonicalUrl = `${siteUrl}${canonicalPath}`;
   const description =
@@ -57,7 +57,7 @@ export async function generateMetadata({
       title,
       description,
       url: canonicalUrl,
-      siteName: "IndieFindr",
+      siteName: "indieblargenhagen",
       locale: "en_US",
       type: "website",
     },

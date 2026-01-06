@@ -29,13 +29,13 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg"
   ),
   title: {
-    default: "IndieFindr - Discover Games Like Your Favorites",
+    default: "indieblargenhagen - Discover Games Like Your Favorites",
     template: "%s",
   },
   description:
     "Find games like your favorites. Discover similar indie games on Steam with AI-powered recommendations and explanations.",
   openGraph: {
-    siteName: "IndieFindr",
+    siteName: "indieblargenhagen",
     locale: "en_US",
     type: "website",
   },

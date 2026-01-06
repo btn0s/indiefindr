@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const canonicalUrl = `${siteUrl}/`;
-  const title = "Find Your Next Favorite Indie Game — IndieFindr";
+  const title = "Find Your Next Favorite Indie Game — indieblargenhagen";
   const description =
     "Discover indie games on Steam. Search any game, get AI-powered recommendations, and find your next favorite.";
   const ogImageUrl = `${siteUrl}/og/home.png`;
@@ -30,14 +30,14 @@ export async function generateMetadata(): Promise<Metadata> {
       "indie game recommendations",
       "steam game recommendations",
       "discover indie games",
-      "IndieFindr",
+      "indieblargenhagen",
     ],
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
       description,
       url: canonicalUrl,
-      siteName: "IndieFindr",
+      siteName: "indieblargenhagen",
       locale: "en_US",
       type: "website",
       images: [
@@ -45,7 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: "IndieFindr game discovery",
+          alt: "indieblargenhagen game discovery",
         },
       ],
     },

@@ -13,6 +13,8 @@ interface SuggestionsListProps {
   appid: number;
 }
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
+
 /**
  * Wait for a game to exist in the database (handles race condition with background ingest)
  */
@@ -160,7 +162,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
       item: {
         "@type": "VideoGame",
         name: game.title,
-        url: `https://www.indiefindr.gg/games/${game.appid}`,
+        url: `${SITE_URL}/games/${game.appid}`,
       },
     })),
   };
