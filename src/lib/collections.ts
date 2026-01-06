@@ -6,16 +6,9 @@ import type {
   GameNew,
 } from "./supabase/types";
 
-/**
- * Get collections pinned to the home page, ordered by position.
- * Includes all games from each collection (for display as GameCard components).
- */
-export async function getPinnedHomeCollections(): Promise<
-  CollectionWithPreview[]
-> {
+export async function getPinnedHomeCollections(): Promise<CollectionWithPreview[]> {
   const supabase = getSupabaseServerClient();
 
-  // Fetch pins for home context, ordered by position
   const { data: pins, error: pinsError } = await supabase
     .from("collection_pins")
     .select("collection_id, position")
@@ -28,38 +21,38 @@ export async function getPinnedHomeCollections(): Promise<
 
   const collectionIds = pins.map((p) => p.collection_id);
 
-  // Fetch collections
-  const { data: collections, error: collectionsError } = await supabase
-    .from("collections")
-    .select("*")
-    .in("id", collectionIds)
-    .eq("published", true);
+  const [collectionsResult, collectionGamesResult] = await Promise.all([
+    supabase
+      .from("collections")
+      .select("*")
+      .in("id", collectionIds)
+      .eq("published", true),
+    supabase
+      .from("collection_games")
+      .select("collection_id, appid, position")
+      .in("collection_id", collectionIds)
+      .order("collection_id", { ascending: true })
+      .order("position", { ascending: true }),
+  ]);
+
+  const { data: collections, error: collectionsError } = collectionsResult;
+  const { data: collectionGames, error: gamesError } = collectionGamesResult;
 
   if (collectionsError || !collections || collections.length === 0) {
     return [];
   }
 
-  // Create a map for quick lookup and preserve pin order
   const collectionMap = new Map<string, Collection>();
   collections.forEach((c) => collectionMap.set(c.id, c));
 
-  // Fetch all collection games for pinned collections in one go, then take top 4 per collection.
-  const { data: collectionGames, error: gamesError } = await supabase
-    .from("collection_games")
-    .select("collection_id, appid, position")
-    .in("collection_id", collectionIds)
-    .order("collection_id", { ascending: true })
-    .order("position", { ascending: true });
-
   const appIdsByCollection = new Map<string, number[]>();
   const totalCountsByCollection = new Map<string, number>();
+  
   if (!gamesError && collectionGames) {
     for (const row of collectionGames) {
-      // Track total count
       const totalCount = totalCountsByCollection.get(row.collection_id) ?? 0;
       totalCountsByCollection.set(row.collection_id, totalCount + 1);
       
-      // Only add to preview if less than 4
       const list = appIdsByCollection.get(row.collection_id) ?? [];
       if (list.length < 4) {
         list.push(row.appid);
@@ -68,8 +61,7 @@ export async function getPinnedHomeCollections(): Promise<
     }
   }
 
-  const allPreviewAppIds = Array.from(appIdsByCollection.values()).flat();
-  const uniquePreviewAppIds = Array.from(new Set(allPreviewAppIds));
+  const uniquePreviewAppIds = [...new Set(Array.from(appIdsByCollection.values()).flat())];
 
   const gamesByAppId = new Map<number, GameCardGame>();
   if (uniquePreviewAppIds.length > 0) {
@@ -90,7 +82,6 @@ export async function getPinnedHomeCollections(): Promise<
     }
   }
 
-  // Build results in pin order.
   const results: CollectionWithPreview[] = [];
   for (const pin of pins) {
     const collection = collectionMap.get(pin.collection_id);
@@ -106,16 +97,11 @@ export async function getPinnedHomeCollections(): Promise<
   return results;
 }
 
-/**
- * Get collections pinned to a specific game page, ordered by position.
- * Includes all games from each collection (for display as GameCard components).
- */
 export async function getPinnedCollectionsForGame(
   appid: number
 ): Promise<CollectionWithPreview[]> {
   const supabase = getSupabaseServerClient();
 
-  // Fetch pins for this game, ordered by position
   const { data: pins, error: pinsError } = await supabase
     .from("collection_pins")
     .select("collection_id, position")
@@ -129,27 +115,29 @@ export async function getPinnedCollectionsForGame(
 
   const collectionIds = pins.map((p) => p.collection_id);
 
-  // Fetch collections
-  const { data: collections, error: collectionsError } = await supabase
-    .from("collections")
-    .select("*")
-    .in("id", collectionIds)
-    .eq("published", true);
+  const [collectionsResult, collectionGamesResult] = await Promise.all([
+    supabase
+      .from("collections")
+      .select("*")
+      .in("id", collectionIds)
+      .eq("published", true),
+    supabase
+      .from("collection_games")
+      .select("collection_id, appid, position")
+      .in("collection_id", collectionIds)
+      .order("collection_id", { ascending: true })
+      .order("position", { ascending: true }),
+  ]);
+
+  const { data: collections, error: collectionsError } = collectionsResult;
+  const { data: collectionGames, error: gamesError } = collectionGamesResult;
 
   if (collectionsError || !collections || collections.length === 0) {
     return [];
   }
 
-  // Create a map for quick lookup and preserve pin order
   const collectionMap = new Map<string, Collection>();
   collections.forEach((c) => collectionMap.set(c.id, c));
-
-  const { data: collectionGames, error: gamesError } = await supabase
-    .from("collection_games")
-    .select("collection_id, appid, position")
-    .in("collection_id", collectionIds)
-    .order("collection_id", { ascending: true })
-    .order("position", { ascending: true });
 
   const appIdsByCollection = new Map<string, number[]>();
   if (!gamesError && collectionGames) {
@@ -162,8 +150,7 @@ export async function getPinnedCollectionsForGame(
     }
   }
 
-  const allPreviewAppIds = Array.from(appIdsByCollection.values()).flat();
-  const uniquePreviewAppIds = Array.from(new Set(allPreviewAppIds));
+  const uniquePreviewAppIds = [...new Set(Array.from(appIdsByCollection.values()).flat())];
 
   const gamesByAppId = new Map<number, GameCardGame>();
   if (uniquePreviewAppIds.length > 0) {
@@ -198,9 +185,6 @@ export async function getPinnedCollectionsForGame(
   return results;
 }
 
-/**
- * Get a collection by its slug.
- */
 export async function getCollectionBySlug(
   slug: string
 ): Promise<Collection | null> {
@@ -220,15 +204,11 @@ export async function getCollectionBySlug(
   return data;
 }
 
-/**
- * Get all games in a collection, ordered by position.
- */
 export async function getCollectionGames(
   collectionId: string
 ): Promise<GameNew[]> {
   const supabase = getSupabaseServerClient();
 
-  // Fetch collection games ordered by position
   const { data: collectionGames, error: gamesError } = await supabase
     .from("collection_games")
     .select("appid")
@@ -241,7 +221,6 @@ export async function getCollectionGames(
 
   const appIds = collectionGames.map((cg) => cg.appid);
 
-  // Fetch game data
   const { data: games, error: gamesDataError } = await supabase
     .from("games_new")
     .select("*")
@@ -251,8 +230,8 @@ export async function getCollectionGames(
     return [];
   }
 
-  // Preserve order from collection_games
+  const gamesMap = new Map(games.map((g) => [g.appid, g]));
   return appIds
-    .map((appid) => games.find((g) => g.appid === appid))
+    .map((appid) => gamesMap.get(appid))
     .filter((g): g is GameNew => g !== undefined);
 }

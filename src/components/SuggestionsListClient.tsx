@@ -13,17 +13,15 @@ import {
 } from "@/components/ui/card";
 import type { GameNew, Suggestion } from "@/lib/supabase/types";
 
-type SuggestionsResponse = {
-  appid: number;
-  title: string | null;
-  suggestions: Suggestion[];
-  updatedAt: string | null;
-};
-
 const MAX_AUTO_INGEST = 6;
 const SLOW_NOTICE_MS = 3500;
-const POLL_INTERVAL = 2000;
 const PREFETCH_SUGGESTIONS_COUNT = 3;
+
+type SSEMessage =
+  | { type: "suggestions"; suggestions: Suggestion[]; updatedAt: string }
+  | { type: "complete" }
+  | { type: "timeout" }
+  | { type: "error"; message: string };
 
 export function SuggestionsListClient({ appid }: { appid: number }) {
   const router = useRouter();
@@ -32,11 +30,10 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSlowNotice, setShowSlowNotice] = useState(false);
+  const [streamComplete, setStreamComplete] = useState(false);
 
   const requestedSuggestRef = useRef(false);
   const requestedIngestRef = useRef<Set<number>>(new Set());
-  const lastUpdatedAtRef = useRef<string | null>(null);
-  const suggestionsRef = useRef<Suggestion[] | null>(null);
   const gamesByIdRef = useRef<Record<number, GameNew>>({});
   const generatingRef = useRef(false);
 
@@ -48,7 +45,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   const displayGames = useMemo(() => {
     if (!suggestions?.length) return [];
 
-    // Map suggestions to games with explanations (maintain order from suggestions)
     return suggestions
       .map((s) => {
         const game = gamesById[s.appId];
@@ -59,24 +55,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
       })
       .filter((g): g is GameNew & { explanation: string } => Boolean(g));
   }, [suggestions, gamesById]);
-
-  const fetchSuggestions =
-    useCallback(async (): Promise<SuggestionsResponse> => {
-      const res = await fetch(`/api/games/${appid}/suggestions`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      const data = (await res.json()) as SuggestionsResponse & {
-        error?: string;
-      };
-      if (!res.ok) {
-        throw new Error(
-          data.error || `Failed to load suggestions (${res.status})`
-        );
-      }
-      return data;
-    }, [appid]);
 
   const fetchGames = useCallback(
     async (appIds: number[]): Promise<GameNew[]> => {
@@ -112,7 +90,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
-      // Allow retry if generation fails
       requestedSuggestRef.current = false;
     } finally {
       setGenerating(false);
@@ -129,10 +106,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
       }),
     });
   }, []);
-
-  useEffect(() => {
-    suggestionsRef.current = suggestions;
-  }, [suggestions]);
 
   useEffect(() => {
     gamesByIdRef.current = gamesById;
@@ -159,110 +132,80 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   }, [suggestions, generating, missingAppIds.length]);
 
   useEffect(() => {
-    const shouldPoll =
-      suggestions === null ||
-      suggestions.length === 0 ||
-      missingAppIds.length > 0;
+    if (streamComplete) return;
+    if (!document.hidden === false) return;
 
-    if (!shouldPoll) return;
+    const eventSource = new EventSource(`/api/games/${appid}/suggestions/stream`);
+    let closed = false;
 
-    let cancelled = false;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-    let isVisible = !document.hidden;
+    eventSource.onmessage = (event) => {
+      if (closed) return;
 
-    // Pause polling when tab is hidden
+      try {
+        const data = JSON.parse(event.data) as SSEMessage;
+
+        switch (data.type) {
+          case "suggestions":
+            setSuggestions(data.suggestions);
+            if (data.suggestions.length === 0 && !generatingRef.current) {
+              void triggerSuggestionGeneration();
+            }
+            break;
+          case "complete":
+            setStreamComplete(true);
+            eventSource.close();
+            break;
+          case "timeout":
+            setStreamComplete(true);
+            eventSource.close();
+            break;
+          case "error":
+            setError(data.message);
+            break;
+        }
+      } catch {
+        setError("Failed to parse server response");
+      }
+    };
+
+    eventSource.onerror = () => {
+      if (!closed) {
+        eventSource.close();
+        setStreamComplete(true);
+      }
+    };
+
     const handleVisibilityChange = () => {
-      isVisible = !document.hidden;
-      if (!isVisible && intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      } else if (isVisible && !intervalId && !cancelled) {
-        void tick();
-        intervalId = setInterval(tick, POLL_INTERVAL);
+      if (document.hidden) {
+        eventSource.close();
+        closed = true;
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    async function tick() {
-      if (!isVisible || cancelled) return;
-
-      try {
-        const s = await fetchSuggestions();
-        if (cancelled) return;
-
-        const updatedAtChanged =
-          lastUpdatedAtRef.current === null ||
-          lastUpdatedAtRef.current !== s.updatedAt;
-        lastUpdatedAtRef.current = s.updatedAt;
-
-        if (suggestionsRef.current === null || updatedAtChanged) {
-          setSuggestions(s.suggestions || []);
-        }
-
-        const ids = (s.suggestions || []).map((x) => x.appId);
-        if (!ids.length) {
-          // If the game exists but has no suggestions, start generation once.
-          if (!generatingRef.current) void triggerSuggestionGeneration();
-          return;
-        }
-
-        const hasAllGames = ids.every((id) => gamesByIdRef.current[id]);
-        const currentSuggestions = suggestionsRef.current;
-        if (hasAllGames && currentSuggestions && currentSuggestions.length > 0) {
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
-          cancelled = true;
-          return;
-        }
-
-        // Only fetch details for games we don't already have.
-        const toFetch = ids.filter((id) => !gamesByIdRef.current[id]);
-        if (toFetch.length > 0) {
-          // Defer heavy work: use requestIdleCallback if available, otherwise setTimeout
-          const fetchGamesDeferred = () => {
-            void fetchGames(toFetch).then((games) => {
-              if (cancelled) return;
-              setGamesById((prev) => {
-                const next = { ...prev };
-                for (const g of games) next[g.appid] = g;
-                return next;
-              });
-            });
-          };
-
-          if (typeof requestIdleCallback !== "undefined") {
-            requestIdleCallback(fetchGamesDeferred, { timeout: 1000 });
-          } else {
-            setTimeout(fetchGamesDeferred, 0);
-          }
-        }
-      } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Unknown error occurred");
-      }
-    }
-
-    if (isVisible) {
-      void tick();
-      intervalId = setInterval(tick, POLL_INTERVAL);
-    }
-
     return () => {
-      cancelled = true;
+      closed = true;
+      eventSource.close();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (intervalId) clearInterval(intervalId);
     };
-  }, [
-    appid,
-    suggestions,
-    missingAppIds.length,
-    fetchGames,
-    fetchSuggestions,
-    triggerSuggestionGeneration,
-  ]);
+  }, [appid, streamComplete, triggerSuggestionGeneration]);
+
+  useEffect(() => {
+    if (!suggestions?.length) return;
+    if (!missingAppIds.length) return;
+
+    const toFetch = missingAppIds.filter((id) => !gamesByIdRef.current[id]);
+    if (toFetch.length === 0) return;
+
+    void fetchGames(toFetch).then((games) => {
+      setGamesById((prev) => {
+        const next = { ...prev };
+        for (const g of games) next[g.appid] = g;
+        return next;
+      });
+    });
+  }, [suggestions, missingAppIds, fetchGames]);
 
   useEffect(() => {
     if (!suggestions?.length) return;
@@ -278,11 +221,7 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
       for (const id of toIngest) {
         if (cancelled) return;
         requestedIngestRef.current.add(id);
-        try {
-          await ingestGame(id);
-        } catch {
-          // Ignore; polling will keep trying to hydrate whatever eventually exists.
-        }
+        await ingestGame(id).catch(() => {});
       }
     })();
 
@@ -291,8 +230,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     };
   }, [suggestions, missingAppIds, ingestGame]);
 
-  // Prefetch top suggestions (high click probability when user is engaged)
-  // Must be before any conditional returns to follow Rules of Hooks
   useEffect(() => {
     if (displayGames.length > 0) {
       const topSuggestions = displayGames.slice(0, PREFETCH_SUGGESTIONS_COUNT);
@@ -302,12 +239,10 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     }
   }, [displayGames, router]);
 
-  // Initial loading
   if (suggestions === null) {
     return <SuggestionsSkeleton showNotice={showSlowNotice} />;
   }
 
-  // No suggestions yet (still generating / waiting)
   if (suggestions.length === 0) {
     if (generating) {
       return <SuggestionsSkeleton showNotice={showSlowNotice} count={4} />;
@@ -339,7 +274,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     );
   }
 
-  // Suggestions exist, but we might still be hydrating details.
   if (missingAppIds.length > 0) {
     return <SuggestionsSkeleton showNotice={showSlowNotice} />;
   }

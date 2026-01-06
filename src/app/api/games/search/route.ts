@@ -13,6 +13,13 @@ type SteamStoreSearchResponse = {
   items?: SteamStoreSearchItem[];
 };
 
+type DbGameResult = {
+  appid: number;
+  title: string;
+  header_image: string | null;
+  rank?: number;
+};
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = getSupabaseServerClient();
@@ -25,20 +32,33 @@ export async function GET(request: NextRequest) {
 
     const searchQuery = query.trim();
 
-    // Search in games_new table by title (case-insensitive)
-    const { data: dbGames, error } = await supabase
-      .from("games_new")
-      .select("appid, title, header_image")
-      .ilike("title", `%${searchQuery}%`)
-      .order("title", { ascending: true })
-      .limit(10);
+    // Try full-text search first, fall back to ILIKE
+    const { data: ftsGames, error: ftsError } = await supabase.rpc(
+      "search_games",
+      { search_query: searchQuery, max_results: 10 }
+    );
+
+    let dbGames = ftsGames;
+    let error = ftsError;
+
+    // Fallback to ILIKE if full-text search fails or returns no results
+    if (ftsError || !ftsGames || ftsGames.length === 0) {
+      const { data: ilikeGames, error: ilikeError } = await supabase
+        .from("games_new")
+        .select("appid, title, header_image")
+        .ilike("title", `%${searchQuery}%`)
+        .order("title", { ascending: true })
+        .limit(10);
+      dbGames = ilikeGames;
+      error = ilikeError;
+    }
 
     if (error) {
       console.error("Search error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const dbResults = (dbGames || []).map((game) => ({
+    const dbResults = (dbGames || []).map((game: DbGameResult) => ({
       ...game,
       inDatabase: true,
     }));
