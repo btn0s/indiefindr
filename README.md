@@ -1,45 +1,55 @@
-# Games Graph MVP
+# Games Graph
 
-A Next.js application that ingests Steam games and uses an AI model (configured as `perplexity/sonar-pro`) to generate “games like this” recommendations from a game’s first screenshot plus text context.
+A Next.js application that discovers Steam games through AI-powered recommendations. Ingest games from Steam, explore AI-generated "games like this" suggestions, and discover your next favorite indie game.
 
-## Features
+## Overview
 
-- **Steam Game Ingestion**: Paste a Steam URL to ingest game data, screenshots, videos, and metadata
-- **AI-Powered Recommendations**: Calls `suggestGames()` (`src/lib/suggest.ts`) to generate suggested similar games + short explanations
-- **Game Discovery**: Browse all games and explore AI-generated recommendations for each game
-- **Interactive UI**: Home page with game grid and detail pages showing recommendations with explanations
-- **Auto-hydration of missing suggestions**: Missing suggested games can be ingested (Steam data only) so cards can render without triggering more suggestion generation
+Games Graph uses multimodal AI (Perplexity Sonar Pro) to analyze game screenshots and generate intelligent recommendations. Each suggestion includes an explanation of why the game is similar, helping you discover games that match your preferences.
 
-## Architecture
+### Key Features
 
-### Database (Supabase)
-- **Primary table**: `games_new` stores Steam game data (screenshots, videos, descriptions, raw Steam payload)
-- **Suggestions storage**: `games_new.suggested_game_appids` stores an array of objects: `{ appId, title, explanation }`
-- **Legacy**: a `games` table may still exist; `GET /api/games/[appid]` falls back to it if the game isn’t found in `games_new`
+- **Steam Game Ingestion**: Submit any Steam store URL to fetch game data, screenshots, videos, and metadata
+- **AI-Powered Recommendations**: Get 8-12 similar game suggestions with explanations using image + text analysis
+- **Indie-First Discovery**: Prioritizes indie games and lesser-known titles over AAA releases
+- **Game Collections**: Curate and display collections of games on home and detail pages
+- **Video Playback**: Watch Steam game trailers directly on detail pages
+- **Smart Search**: Search both your database and Steam store simultaneously
+- **Auto-Hydration**: Missing suggested games are automatically ingested (Steam data only) to populate UI cards
 
-### AI Integration
-- **Model id**: `perplexity/sonar-pro` (see `SONAR_MODEL` in `src/lib/suggest.ts`)
-- **Prompt shape**: the app sends a multimodal message containing text + an image URL/data URL. Whether the image is actually used depends on how your AI provider/gateway handles `perplexity/sonar-pro`.
-- **Post-processing**: the raw model output is parsed as `title, steam_appid, explanation` lines and then validated/corrected against Steam (title/appid validation + title search) before saving.
+## Tech Stack
 
-### Ingestion Pipeline
-1. Parse Steam URL → Extract AppID
-2. Fetch Steam data (store page, screenshots, videos, descriptions)
-3. Save to `games_new` table
-4. Generate suggestions in the background (unless `skipSuggestions=true`)
-5. Store merged suggestions on the game row (`games_new.suggested_game_appids`)
-6. Optionally ingest missing suggested games (Steam data only) to populate UI cards without cascading suggestion generation
+- **Framework**: Next.js 16 (App Router, React Server Components)
+- **Database**: Supabase (PostgreSQL with pgvector)
+- **AI**: Perplexity Sonar Pro via AI SDK
+- **Styling**: Tailwind CSS v4 with shadcn/ui components
+- **Type Safety**: TypeScript
 
-## Setup
+## Getting Started
 
 ### Prerequisites
+
 - Node.js 18+ and pnpm
-- Supabase project
-- An AI SDK provider/gateway configured to resolve the model id `perplexity/sonar-pro`
+- A Supabase project
+- An AI SDK provider/gateway configured for `perplexity/sonar-pro`
 
-### Environment Variables
+### Installation
 
-Create a `.env.local` file with:
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/btn0s/games-graph.git
+cd games-graph
+```
+
+2. **Install dependencies**
+
+```bash
+pnpm install
+```
+
+3. **Set up environment variables**
+
+Create a `.env.local` file:
 
 ```env
 # Supabase Configuration
@@ -47,41 +57,32 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
-# AI provider configuration
-# This repo references the model id `perplexity/sonar-pro`. Configure your AI provider/gateway accordingly.
-# If you're using an AI Gateway, set its base URL/key here:
+# AI Provider Configuration
+# Configure your AI gateway/provider to resolve perplexity/sonar-pro
 AI_GATEWAY_BASE_URL=https://your-ai-gateway-url.com
 AI_GATEWAY_API_KEY=your_ai_gateway_api_key
 
-# Site URL (for SEO)
+# Site Configuration
 NEXT_PUBLIC_SITE_URL=https://your-site-url.com
 ```
 
-### Database Setup
+4. **Set up the database**
 
-1. **Apply Migrations**: Run the Supabase migrations to create tables:
+Apply migrations using the Supabase CLI:
 
 ```bash
-# Using Supabase CLI
 supabase db push
-
-# Or manually apply migration files in order:
-# supabase/migrations/
 ```
 
-Key migrations:
-- `20250106000000_create_games_new_table.sql` - Primary `games_new` table
-- `20250107000000_move_suggestions_to_games_new.sql` - Moves suggestion data onto `games_new` and drops the old `suggestions` table
-- `20250111000000_add_suggestion_explanations.sql` - Documents the JSON shape for `suggested_game_appids`
-- `20250112000000_add_collections.sql` - Adds collections, collection_games, and collection_pins tables
+Or manually apply migration files in order from `supabase/migrations/`.
 
-### Install Dependencies
+**Key migrations:**
+- `20250101000000_initial_schema.sql` - Initial games table with vector embeddings
+- `20250106000000_create_games_new_table.sql` - Primary games_new table
+- `20250112000000_add_collections.sql` - Collections feature
+- `20260104085314_add_games_new_home_view.sql` - Performance optimizations
 
-```bash
-pnpm install
-```
-
-### Run Development Server
+5. **Run the development server**
 
 ```bash
 pnpm dev
@@ -91,56 +92,100 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 
 ## Usage
 
-1. **Ingest a Game**: Paste a Steam URL (e.g., `https://store.steampowered.com/app/123456/GameName/`) on the home page
-2. **View Games**: See a grid of all ingested games sorted by number of suggestions
-3. **Explore Recommendations**: Click on a game to see AI-generated similar games with explanations
-4. **Refresh Suggestions**: Use the refresh button to regenerate suggestions for a game
+### Ingesting Games
 
-## Project Structure
+1. Navigate to the home page
+2. Paste a Steam store URL (e.g., `https://store.steampowered.com/app/123456/GameName/`)
+3. The game will be fetched from Steam and saved to the database
+4. AI suggestions will be generated automatically in the background
 
-```
-src/
-├── app/
-│   ├── api/
-│   │   └── games/
-│   │       ├── submit/route.ts              # POST /api/games/submit
-│   │       ├── search/route.ts              # GET /api/games/search
-│   │       ├── batch/route.ts               # POST /api/games/batch
-│   │       └── [appid]/
-│   │           ├── route.ts                 # GET /api/games/[appid]
-│   │           └── suggestions/
-│   │               ├── route.ts              # GET /api/games/[appid]/suggestions
-│   │               └── refresh/route.ts      # POST /api/games/[appid]/suggestions/refresh
-│   ├── games/
-│   │   └── [appid]/
-│   │       ├── page.tsx                     # Game detail page
-│   │       ├── opengraph-image.tsx          # OG image generation
-│   │       └── twitter-image.tsx             # Twitter card image
-│   └── page.tsx                              # Home page
-├── lib/
-│   ├── ingest.ts                             # Game ingestion pipeline
-│   ├── suggest.ts                            # Perplexity AI suggestions
-│   ├── steam.ts                              # Steam API integration
-│   └── supabase/
-│       ├── client.ts                         # Supabase clients
-│       ├── server.ts                         # Server-side Supabase
-│       └── types.ts                          # TypeScript types
-└── components/
-    ├── GameCard.tsx                          # Game card component
-    ├── GamesGrid.tsx                         # Infinite scroll grid
-    ├── SuggestionsList.tsx                   # Recommendations list
-    └── ui/                                   # UI components (shadcn)
-```
+### Exploring Recommendations
 
-## API Routes
+1. Click on any game card to view its detail page
+2. Scroll down to see AI-generated similar games
+3. Each suggestion includes an explanation of why it's similar
+4. Click "Refresh Suggestions" to regenerate recommendations
 
-### POST `/api/games/submit`
+### Managing Collections
+
+Collections are managed directly in the Supabase dashboard:
+
+1. **Create a collection** in the `collections` table:
+   - `slug`: URL-friendly identifier (e.g., `indie-roguelikes`)
+   - `title`: Display name
+   - `description`: Optional description
+   - `published`: Set to `true` to make visible
+
+2. **Add games** in `collection_games`:
+   - `collection_id`: UUID from collections table
+   - `appid`: Steam AppID (must exist in `games_new`)
+   - `position`: Ordering number
+
+3. **Pin collections** in `collection_pins`:
+   - `context`: `'home'` for home page or `'game'` for game pages
+   - `game_appid`: Required for game context, NULL for home
+   - `position`: Display order
+
+## Architecture
+
+### Database Schema
+
+**Primary Table: `games_new`**
+- Stores Steam game data: screenshots, videos, descriptions, metadata
+- `suggested_game_appids`: JSONB array of `{ appId, title, explanation }` objects
+- Optimized with materialized views for home page queries
+
+**Collections**
+- `collections`: Collection metadata
+- `collection_games`: Games in each collection
+- `collection_pins`: Where collections appear (home/game pages)
+
+**Performance**
+- Materialized view `games_new_home` for fast home page queries
+- Automatic refresh triggers on game updates
+- Indexes on frequently queried columns
+
+### AI Integration
+
+**Model**: `perplexity/sonar-pro`
+
+**Input**: Multimodal message containing:
+- Game screenshot (first screenshot from Steam)
+- Text context (game title, description, tags)
+
+**Output**: Parsed as `title, steam_appid, explanation` lines
+
+**Post-Processing**:
+- Validates app IDs against Steam database
+- Corrects titles via Steam search
+- Filters and prioritizes indie games
+- Merges with existing suggestions
+
+**Indie-First Strategy**:
+- Strictly prioritizes indie games (independent developers, smaller studios)
+- Allows 1-2 non-indie games only if unavoidable for relevance
+- Includes mix of recent (last 6 months) and classic titles
+
+### Ingestion Pipeline
+
+1. **Parse Steam URL** → Extract AppID
+2. **Fetch Steam Data** → Store page, screenshots, videos, descriptions
+3. **Save to Database** → Store in `games_new` table
+4. **Generate Suggestions** → Call AI model with screenshot + context (background)
+5. **Store Suggestions** → Merge into `suggested_game_appids` array
+6. **Auto-Hydrate Missing Games** → Ingest suggested games (Steam data only) to populate UI
+
+### API Routes
+
+#### POST `/api/games/submit`
+
 Submit a Steam URL for ingestion.
 
 **Request:**
 ```json
 {
-  "steamUrl": "https://store.steampowered.com/app/123456/GameName/"
+  "steamUrl": "https://store.steampowered.com/app/123456/GameName/",
+  "skipSuggestions": false
 }
 ```
 
@@ -150,19 +195,18 @@ Submit a Steam URL for ingestion.
   "success": true,
   "appid": 123456,
   "title": "Game Name",
-  "steamData": { },
+  "steamData": { /* Steam API response */ },
   "suggestions": { "suggestions": [] }
 }
 ```
 
-**Optional request fields:**
-- `skipSuggestions: boolean` - if `true`, only fetch/save Steam data (no AI call)
+#### GET `/api/games/[appid]`
 
-### GET `/api/games/search?q=query`
-Search for games in the database and Steam Store.
+Get game details by AppID. Reads `games_new` first, falls back to legacy `games` table.
 
-**Query Parameters:**
-- `q`: Search query (minimum 2 characters)
+#### GET `/api/games/search?q=query`
+
+Search games in database and Steam Store (minimum 2 characters).
 
 **Response:**
 ```json
@@ -176,94 +220,130 @@ Search for games in the database and Steam Store.
 }
 ```
 
-### GET `/api/games/[appid]`
-Get game details by AppID. Reads `games_new` first, then falls back to legacy `games`.
+#### GET `/api/games/[appid]/suggestions`
 
-### GET `/api/games/[appid]/suggestions`
-Get AI-generated game suggestions for a game.
+Get AI-generated suggestions for a game.
 
 **Response:**
 ```json
 {
   "appid": 123456,
   "title": "Game Name",
-  "suggestions": [],
+  "suggestions": [
+    { "appId": 789012, "title": "Similar Game", "explanation": "..." }
+  ],
   "updatedAt": "2026-01-01T00:00:00.000Z"
 }
 ```
 
-### POST `/api/games/[appid]/suggestions/refresh`
+#### POST `/api/games/[appid]/suggestions/refresh`
+
 Refresh suggestions for a game. Supports `?force=true` (dev-only) to clear existing suggestions first.
 
-**Response (shape):**
-- `suggestions`: merged suggestions array
-- `newCount`: count returned by the latest model call
-- `totalCount`: merged total
-- `missingCount` / `missingAppIds`: suggested games not yet present in `games_new`
+#### POST `/api/games/batch`
 
-### POST `/api/games/batch`
-Fetch multiple games by appid list (from `games_new`).
+Fetch multiple games by AppID list (from `games_new`).
 
-## Collections
+## Project Structure
 
-Collections allow you to curate groups of games and display them on the home page or on specific game pages. Collections are managed directly in the Supabase dashboard (no in-app admin UI yet).
+```
+games-graph/
+├── src/
+│   ├── app/
+│   │   ├── api/games/          # API routes
+│   │   │   ├── submit/          # POST /api/games/submit
+│   │   │   ├── search/          # GET /api/games/search
+│   │   │   ├── batch/           # POST /api/games/batch
+│   │   │   └── [appid]/
+│   │   │       ├── route.ts     # GET /api/games/[appid]
+│   │   │       └── suggestions/ # Suggestions endpoints
+│   │   ├── games/[appid]/       # Game detail pages
+│   │   │   ├── page.tsx
+│   │   │   ├── opengraph-image.tsx
+│   │   │   └── twitter-image.tsx
+│   │   ├── collections/[slug]/  # Collection pages
+│   │   ├── page.tsx             # Home page
+│   │   ├── layout.tsx           # Root layout
+│   │   ├── sitemap.ts           # Dynamic sitemap
+│   │   └── robots.ts            # Robots.txt
+│   ├── components/
+│   │   ├── GameCard.tsx         # Game card component
+│   │   ├── GamesGrid.tsx        # Infinite scroll grid
+│   │   ├── SuggestionsList.tsx  # Recommendations display
+│   │   ├── GameVideo.tsx        # Video playback
+│   │   ├── CollectionsSection.tsx
+│   │   └── ui/                   # shadcn/ui components
+│   ├── lib/
+│   │   ├── ingest.ts             # Game ingestion pipeline
+│   │   ├── suggest.ts            # AI suggestion generation
+│   │   ├── steam.ts              # Steam API client
+│   │   ├── collections.ts       # Collection queries
+│   │   ├── supabase/             # Database clients and types
+│   │   └── utils/                # Utility functions
+│   └── hooks/
+│       └── use-mobile.ts         # Mobile detection
+├── supabase/migrations/         # Database migrations
+├── scripts/                      # Utility scripts
+│   ├── ingest-top-indie-games.ts
+│   ├── ingest-suggested-games.ts
+│   └── generate-home-og.ts
+└── public/                       # Static assets
+```
 
-### Creating a Collection
+## Development
 
-1. **Create the collection** in the `collections` table:
-   - `slug`: URL-friendly identifier (e.g., `indie-roguelikes`)
-   - `title`: Display name (e.g., "Indie Roguelikes")
-   - `description`: Optional description
-   - `published`: Set to `true` to make it visible
+### Scripts
 
-2. **Add games to the collection** in the `collection_games` table:
-   - `collection_id`: UUID from the `collections` table
-   - `appid`: Steam AppID (must exist in `games_new`)
-   - `position`: Ordering number (lower = appears first)
+```bash
+# Development server
+pnpm dev
 
-### Pinning Collections
+# Build for production
+pnpm build
 
-#### Pin to Home Page
+# Start production server
+pnpm start
 
-Add a row in the `collection_pins` table:
-- `collection_id`: UUID of the collection
-- `context`: Set to `'home'`
-- `game_appid`: Leave as `NULL`
-- `position`: Ordering number (lower = appears first)
+# Lint code
+pnpm lint
+```
 
-#### Pin to a Game Page
+### Utility Scripts
 
-Add a row in the `collection_pins` table:
-- `collection_id`: UUID of the collection
-- `context`: Set to `'game'`
-- `game_appid`: Steam AppID of the game (must exist in `games_new`)
-- `position`: Ordering number (lower = appears first)
+```bash
+# Ingest top indie games from a list
+tsx scripts/ingest-top-indie-games.ts
 
-### Example Workflow
+# Ingest all suggested games for a game
+tsx scripts/ingest-suggested-games.ts <appid>
 
-1. Create collection: `slug='indie-roguelikes'`, `title='Indie Roguelikes'`, `published=true`
-2. Add games: Insert multiple rows in `collection_games` with `collection_id`, `appid`, and `position`
-3. Pin to home: Insert row in `collection_pins` with `context='home'`, `collection_id`, `position=0`
-4. Pin to game: Insert row in `collection_pins` with `context='game'`, `game_appid=123456`, `collection_id`, `position=0`
+# Generate home page OG image
+tsx scripts/generate-home-og.ts
+```
 
-Collections appear on:
-- Home page: Above "All Games" section (if pinned with `context='home'`)
-- Game pages: Below suggestions (if pinned with `context='game'` and matching `game_appid`)
-- Collection detail page: `/collections/[slug]` shows all games in the collection
+## Performance
 
-## Notes
+- **Home Page**: Uses materialized view for fast queries
+- **Game Detail Pages**: Server-side rendered with caching
+- **Video Playback**: HLS.js for streaming Steam trailers
+- **Image Optimization**: Next.js Image component with Steam CDN domains
+- **SEO**: Dynamic sitemap, robots.txt, OpenGraph images
 
-- Suggestions are generated asynchronously after ingestion (unless `skipSuggestions=true`)
-- The suggestion prompt includes an image + text; image usage depends on your model/provider handling
-- Suggestions include an `explanation` string and are validated/corrected against Steam app IDs
-- The home page sorts games by number of stored suggestions (then by `created_at`)
-- Detail pages include OpenGraph/Twitter images and JSON-LD for SEO
-- Collections are read-only via the app (managed in Supabase dashboard)
+## Contributing
 
-## Next Steps
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-- Add graph visualization of game relationships
-- Implement user preferences and personalized recommendations
-- Add filtering and sorting options
-- Enhance UI with more game metadata and screenshots
-- Add batch ingestion capabilities
+## License
+
+This project is private and proprietary.
+
+## Acknowledgments
+
+- Built with [Next.js](https://nextjs.org/)
+- UI components from [shadcn/ui](https://ui.shadcn.com/)
+- Database powered by [Supabase](https://supabase.com/)
+- AI recommendations via [Perplexity](https://www.perplexity.ai/)
