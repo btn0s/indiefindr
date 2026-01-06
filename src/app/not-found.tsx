@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GamesGrid } from "@/components/GamesGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
@@ -7,58 +6,7 @@ import { CollectionsSection } from "@/components/CollectionsSection";
 
 const PAGE_SIZE = 24;
 
-// Enable ISR - revalidate every 60 seconds
-export const revalidate = 60;
-
-export async function generateMetadata(): Promise<Metadata> {
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
-  const canonicalUrl = `${siteUrl}/`;
-  const title = "Find Your Next Favorite Indie Game — IndieFindr";
-  const description =
-    "Discover indie games on Steam. Search any game, get AI-powered recommendations, and find your next favorite.";
-  const ogImageUrl = `${siteUrl}/og/home.png`;
-
-  return {
-    title,
-    description,
-    keywords: [
-      "games like",
-      "find games like",
-      "similar games",
-      "game recommendations",
-      "indie game recommendations",
-      "steam game recommendations",
-      "discover indie games",
-      "IndieFindr",
-    ],
-    alternates: { canonical: canonicalUrl },
-    openGraph: {
-      title,
-      description,
-      url: canonicalUrl,
-      siteName: "IndieFindr",
-      locale: "en_US",
-      type: "website",
-      images: [
-        {
-          url: ogImageUrl,
-          width: 1200,
-          height: 630,
-          alt: "IndieFindr game discovery",
-        },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [ogImageUrl],
-    },
-  };
-}
-
-export default async function Home() {
+export default async function NotFound() {
   const supabase = getSupabaseServerClient();
   const [{ data, error }, pinnedCollections] = await Promise.all([
     supabase
@@ -87,13 +35,19 @@ export default async function Home() {
 
   return (
     <main className="flex flex-col gap-8 pt-8">
-      <div className="w-full">
-        <div className="container mx-auto max-w-4xl w-full">
-          <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">
-            Find your next favorite indie game
+      {/* 404 Message */}
+      <div className="container mx-auto max-w-4xl w-full">
+        <div className="flex flex-col items-center justify-center gap-4 text-center py-8">
+          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+            Game Not Found
           </h1>
+          <p className="max-w-md text-lg text-muted-foreground">
+            This game doesn&apos;t exist on Steam or hasn&apos;t been added yet. Browse games below or search for a different game.
+          </p>
         </div>
       </div>
+
+      <hr className="border-border" />
 
       {/* Pinned Collections Section */}
       {pinnedCollections.length > 0 && (
