@@ -71,31 +71,39 @@ async function waitForGameInDb(
 }
 
 /**
- * Check if a game exists on Steam by attempting ingestion.
+ * Check if a game exists on Steam by validating the appid.
  * Returns true if game exists, false if not found, null if error/unknown.
  * This is cached to avoid duplicate checks within the same render.
+ * NOTE: This does NOT trigger ingestion - it only validates the appid exists.
  */
 const checkGameExistsOnSteam = cache(
   async (appId: number): Promise<boolean | null> => {
     try {
-      const siteUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-      const response = await fetch(`${siteUrl}/api/games/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          steamUrl: `https://store.steampowered.com/app/${appId}/`,
-          skipSuggestions: true,
-        }),
+      // Use Steam API directly to check if game exists without triggering ingestion
+      const url = `https://store.steampowered.com/api/appdetails?appids=${appId}&l=english`;
+      const response = await fetch(url, { 
+        next: { revalidate: 3600 } // Cache for 1 hour
       });
 
-      if (response.status === 404) {
+      if (!response.ok) {
+        return null; // Error or unknown
+      }
+
+      const data = await response.json();
+      const appData = data[appId.toString()];
+
+      if (!appData || !appData.success) {
         return false; // Game doesn't exist on Steam
       }
-      if (response.ok) {
-        return true; // Game exists
+
+      // Verify the appid in the response matches what we requested
+      const gameData = appData.data;
+      if (gameData.steam_appid && gameData.steam_appid !== appId) {
+        console.warn(`[CHECK] Steam API returned different appid: requested ${appId}, got ${gameData.steam_appid}`);
+        return null; // Mismatch - treat as unknown
       }
-      return null; // Error or unknown
+
+      return true; // Game exists
     } catch {
       return null; // Network error or unknown
     }
@@ -138,7 +146,25 @@ const getGameDataFromDb = cache(
       return null;
     }
 
-    // Game exists on Steam or status unknown - wait for background ingest
+    // Game exists on Steam - trigger ingestion in background (non-blocking)
+    // This ensures the game gets ingested even if user navigated directly to the URL
+    if (existsOnSteam === true) {
+      // Trigger ingestion in background without awaiting
+      // Use the site URL to avoid issues with server-side fetch
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      fetch(`${siteUrl}/api/games/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          steamUrl: `https://store.steampowered.com/app/${appId}/`,
+          skipSuggestions: true,
+        }),
+      }).catch((err) => {
+        console.error(`[GAME PAGE] Failed to trigger ingestion for ${appId}:`, err);
+      });
+    }
+
+    // Wait for game to appear in DB (will wait for background ingestion to complete)
     // This will block the server response and let Next.js stream the UI once it resolves
     return waitForGameInDb(appId);
   }

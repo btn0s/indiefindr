@@ -116,6 +116,14 @@ async function fetchGameDataWithRateLimit(steamUrl: string): Promise<SteamGameDa
 
   const game = appData.data;
 
+  // CRITICAL: Verify the appid in the response matches what we requested
+  // This prevents data corruption where wrong game data gets saved
+  if (game.steam_appid && game.steam_appid !== appId) {
+    throw new Error(
+      `Steam API returned different appid: requested ${appId}, got ${game.steam_appid}. This prevents data corruption.`
+    );
+  }
+
   // Extract screenshots
   const screenshots = (
     (game.screenshots as Array<{
@@ -253,7 +261,7 @@ export async function validateAppId(appId: number): Promise<boolean> {
 export async function validateAppIdWithTitle(
   appId: number,
   expectedTitle: string
-): Promise<{ valid: boolean; actualTitle?: string; titleMatch?: boolean }> {
+): Promise<{ valid: boolean; actualTitle?: string; titleMatch?: boolean; raw?: unknown }> {
   try {
     const game = await fetchSteamGame(appId.toString());
     
@@ -270,7 +278,7 @@ export async function validateAppIdWithTitle(
       console.log(`[STEAM] Title mismatch for ${appId}: expected "${expectedTitle}", got "${game.title}"`);
     }
     
-    return { valid: true, actualTitle: game.title, titleMatch };
+    return { valid: true, actualTitle: game.title, titleMatch, raw: game.raw };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
