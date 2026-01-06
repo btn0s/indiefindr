@@ -13,7 +13,6 @@ export const size = {
 export const contentType = "image/png";
 
 function steamCapsuleUrl(appid: number) {
-  // "Cover"/capsule art (great for a 2x3 grid).
   return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`;
 }
 
@@ -123,7 +122,6 @@ export default async function Image({
     return placeholderGridImage();
   }
 
-  // Resolve up to 6 cover images to data URLs, but fail fast (Discord/Slack scrapers time out easily).
   const coverDataUrls = await Promise.all(
     suggestedAppIds.map(async (id) => {
       const capsule = await fetchImageAsDataUrl(steamCapsuleUrl(id), 1200);

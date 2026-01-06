@@ -184,8 +184,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     return () => clearTimeout(t);
   }, [suggestions, generating, missingAppIds.length]);
 
-  // Poll suggestions + hydrate games (fast, incremental, avoids server-render blocking).
-  // Optimized: pauses when tab hidden, backs off once suggestions exist, defers heavy work.
   useEffect(() => {
     const shouldPoll =
       suggestions === null ||
@@ -303,7 +301,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     triggerSuggestionGeneration,
   ]);
 
-  // Incrementally ingest a small number of missing suggested games (caps cascade).
   useEffect(() => {
     if (!suggestions?.length) return;
     if (!missingAppIds.length) return;
@@ -350,7 +347,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   // No suggestions yet (still generating / waiting)
   if (suggestions.length === 0) {
     if (generating) {
-      // Show a few skeleton cards while generation runs (and only show the notice after a short delay).
       return <SuggestionsSkeleton showNotice={showSlowNotice} count={4} />;
     }
 

@@ -18,7 +18,6 @@ export type GameNew = {
   updated_at: string;
 };
 
-// Minimal shape used for cards/grids (avoid shipping huge fields like `raw`).
 export type GameCardGame = Pick<GameNew, "appid" | "title" | "header_image" | "videos">;
 
 export type Collection = {

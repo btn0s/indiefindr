@@ -117,7 +117,6 @@ async function fetchGameDataWithRateLimit(steamUrl: string): Promise<SteamGameDa
   const game = appData.data;
 
   // CRITICAL: Verify the appid in the response matches what we requested
-  // This prevents data corruption where wrong game data gets saved
   if (game.steam_appid && game.steam_appid !== appId) {
     throw new Error(
       `Steam API returned different appid: requested ${appId}, got ${game.steam_appid}. This prevents data corruption.`

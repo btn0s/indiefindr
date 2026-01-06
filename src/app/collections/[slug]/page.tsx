@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getCollectionBySlug, getCollectionGames } from "@/lib/collections";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import GameCard from "@/components/GameCard";
@@ -117,12 +118,9 @@ export default async function CollectionPage({
                 Check back soon, or explore other collections to discover indie games on Steam.
               </p>
               <div className="pt-4">
-                <a
-                  href="/"
-                  className="text-sm font-medium text-primary hover:underline"
-                >
+                <Link href="/" className="text-sm font-medium text-primary hover:underline">
                   Browse all games →
-                </a>
+                </Link>
               </div>
             </div>
           ) : (

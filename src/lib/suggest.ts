@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { retry } from "./utils/retry";
 import { validateAppIdWithTitle, searchAppIdByTitle } from "./steam";
 import { Suggestion } from "./supabase/types";
+import { isLikelyIndieFromRaw, isRecentFromRaw } from "./utils/indie-detection";
 
 const SONAR_MODEL = "perplexity/sonar-pro";
 
@@ -158,7 +159,7 @@ function parseSuggestions(text: string): ParsedSuggestion[] {
 async function validateAndCorrectSuggestions(
   parsedSuggestions: ParsedSuggestion[]
 ): Promise<Suggestion[]> {
-  const validatedSuggestions: Suggestion[] = [];
+  const validated: Array<{ suggestion: Suggestion; raw?: unknown }> = [];
 
   for (const suggestion of parsedSuggestions) {
     let appId = suggestion.appId;
@@ -175,7 +176,14 @@ async function validateAndCorrectSuggestions(
       
       if (result.valid && result.titleMatch) {
         // App ID is valid and title matches - use it
-        validatedSuggestions.push({ appId, title, explanation: suggestion.explanation });
+        validated.push({
+          raw: result.raw,
+          suggestion: {
+            appId,
+            title: result.actualTitle || title,
+            explanation: suggestion.explanation,
+          },
+        });
       } else if (result.valid && !result.titleMatch) {
         // App ID exists but wrong game - search by title instead
         console.log(`[SUGGEST] App ID ${appId} is "${result.actualTitle}", not "${title}" - searching by title`);
@@ -184,7 +192,14 @@ async function validateAndCorrectSuggestions(
           // Verify the corrected ID also matches
           const correctedResult = await validateAppIdWithTitle(correctedId, title);
           if (correctedResult.valid && correctedResult.titleMatch !== false) {
-            validatedSuggestions.push({ appId: correctedId, title, explanation: suggestion.explanation });
+            validated.push({
+              raw: correctedResult.raw,
+              suggestion: {
+                appId: correctedId,
+                title: correctedResult.actualTitle || title,
+                explanation: suggestion.explanation,
+              },
+            });
           }
         }
       } else {
@@ -192,11 +207,52 @@ async function validateAndCorrectSuggestions(
         console.log(`[SUGGEST] App ID ${appId} invalid, searching for "${title}"`);
         const correctedId = await searchAppIdByTitle(title);
         if (correctedId) {
-          validatedSuggestions.push({ appId: correctedId, title, explanation: suggestion.explanation });
+          const correctedResult = await validateAppIdWithTitle(correctedId, title);
+          if (correctedResult.valid) {
+            validated.push({
+              raw: correctedResult.raw,
+              suggestion: {
+                appId: correctedId,
+                title: correctedResult.actualTitle || title,
+                explanation: suggestion.explanation,
+              },
+            });
+          }
         }
       }
     }
   }
 
-  return validatedSuggestions;
+  const recentIndie: Suggestion[] = [];
+  const indie: Suggestion[] = [];
+  const nonIndie: Suggestion[] = [];
+
+  for (const v of validated) {
+    const raw = v.raw;
+    const likelyIndie = raw ? isLikelyIndieFromRaw(raw) : false;
+    const recent = raw ? isRecentFromRaw(raw, 6) : false;
+
+    if (likelyIndie && recent) recentIndie.push(v.suggestion);
+    else if (likelyIndie) indie.push(v.suggestion);
+    else nonIndie.push(v.suggestion);
+  }
+
+  const picked: Suggestion[] = [];
+  const seen = new Set<number>();
+
+  const pushUnique = (s: Suggestion) => {
+    if (seen.has(s.appId)) return;
+    seen.add(s.appId);
+    picked.push(s);
+  };
+
+  for (const s of recentIndie) pushUnique(s);
+  for (const s of indie) pushUnique(s);
+
+  const remaining = 12 - picked.length;
+  if (remaining > 0) {
+    for (const s of nonIndie.slice(0, Math.min(2, remaining))) pushUnique(s);
+  }
+
+  return picked;
 }

@@ -54,12 +54,15 @@ const INDIE_TAGS = new Set([
  * Uses heuristics: avoids major publishers, checks for indie tags, prefers smaller studios.
  */
 export function isLikelyIndie(game: GameNew): boolean {
-  if (!game.raw || typeof game.raw !== "object") {
-    // If we don't have raw data, assume indie (safer default for our use case)
+  return isLikelyIndieFromRaw(game.raw);
+}
+
+export function isLikelyIndieFromRaw(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") {
     return true;
   }
 
-  const raw = game.raw as {
+  const steam = raw as {
     publishers?: string[];
     developer?: string;
     developers?: string[];
@@ -68,7 +71,7 @@ export function isLikelyIndie(game: GameNew): boolean {
   };
 
   // Check publishers
-  const publishers = raw.publishers || [];
+  const publishers = steam.publishers || [];
   const publisherNames = publishers.map((p) => p.toLowerCase().trim());
   for (const pub of publisherNames) {
     if (MAJOR_PUBLISHERS.has(pub)) {
@@ -77,7 +80,7 @@ export function isLikelyIndie(game: GameNew): boolean {
   }
 
   // Check developers
-  const developers = raw.developers || (raw.developer ? [raw.developer] : []);
+  const developers = steam.developers || (steam.developer ? [steam.developer] : []);
   const developerNames = developers.map((d) => d.toLowerCase().trim());
   for (const dev of developerNames) {
     if (MAJOR_PUBLISHERS.has(dev)) {
@@ -87,11 +90,11 @@ export function isLikelyIndie(game: GameNew): boolean {
 
   // Check for indie tags/categories
   const allTags: string[] = [];
-  if (raw.genres) {
-    allTags.push(...raw.genres.map((g) => g.description.toLowerCase()));
+  if (steam.genres) {
+    allTags.push(...steam.genres.map((g) => g.description.toLowerCase()));
   }
-  if (raw.categories) {
-    allTags.push(...raw.categories.map((c) => c.description.toLowerCase()));
+  if (steam.categories) {
+    allTags.push(...steam.categories.map((c) => c.description.toLowerCase()));
   }
 
   for (const tag of allTags) {
@@ -100,8 +103,6 @@ export function isLikelyIndie(game: GameNew): boolean {
     }
   }
 
-  // If no major publisher/developer found, assume indie (safer default)
-  // This handles cases where metadata might be incomplete
   return publishers.length === 0 || !publisherNames.some((p) => MAJOR_PUBLISHERS.has(p));
 }
 
@@ -110,15 +111,17 @@ export function isLikelyIndie(game: GameNew): boolean {
  * Returns null if not found or invalid.
  */
 export function getReleaseDate(game: GameNew): Date | null {
-  if (!game.raw || typeof game.raw !== "object") {
+  return getReleaseDateFromRaw(game.raw);
+}
+
+export function getReleaseDateFromRaw(raw: unknown): Date | null {
+  if (!raw || typeof raw !== "object") {
     return null;
   }
 
-  const raw = game.raw as {
-    release_date?: { date?: string };
-  };
+  const steam = raw as { release_date?: { date?: string } };
 
-  const dateStr = raw.release_date?.date;
+  const dateStr = steam.release_date?.date;
   if (!dateStr) return null;
 
   // Steam dates can be "Coming soon" or actual dates like "Jan 1, 2024"
@@ -137,6 +140,16 @@ export function getReleaseDate(game: GameNew): Date | null {
  */
 export function isRecent(game: GameNew, monthsAgo: number = 6): boolean {
   const releaseDate = getReleaseDate(game);
+  if (!releaseDate) return false;
+
+  const cutoffDate = new Date();
+  cutoffDate.setMonth(cutoffDate.getMonth() - monthsAgo);
+
+  return releaseDate >= cutoffDate;
+}
+
+export function isRecentFromRaw(raw: unknown, monthsAgo: number = 6): boolean {
+  const releaseDate = getReleaseDateFromRaw(raw);
   if (!releaseDate) return false;
 
   const cutoffDate = new Date();

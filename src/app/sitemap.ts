@@ -34,7 +34,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Fetch all published collections that have at least one game
-  // This avoids soft-404s from empty collections
   const { data: collections, error: collectionsError } = await supabase
     .from("collections")
     .select("slug, updated_at, id")

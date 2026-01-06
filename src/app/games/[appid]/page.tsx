@@ -147,7 +147,6 @@ const getGameDataFromDb = cache(
     }
 
     // Game exists on Steam - trigger ingestion in background (non-blocking)
-    // This ensures the game gets ingested even if user navigated directly to the URL
     if (existsOnSteam === true) {
       // Trigger ingestion in background without awaiting
       // Use the site URL to avoid issues with server-side fetch
@@ -409,7 +408,6 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
     }
     
     // If it still hasn't loaded after waiting, show processing state instead of 404
-    // This handles slow ingestion (rate limiting, network delays) gracefully
     return <GameProcessingState appid={appid} />;
   }
 
@@ -563,7 +561,6 @@ export default async function GameDetailPage({
       >
         <GameContent appId={appId} appid={appid} />
       </Suspense>
-      <DevControlBar appid={appId} />
     </main>
   );
 }

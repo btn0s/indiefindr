@@ -1,8 +1,6 @@
 import { fetchSteamGame, searchAppIdByTitle, type SteamGameData } from "./steam";
 import { suggestGames, type SuggestGamesResult } from "./suggest";
 import { getSupabaseServerClient } from "./supabase/server";
-import { getSupabaseServiceClient } from "./supabase/service";
-import { acquireRateLimit } from "./utils/rate-limiter";
 import { Suggestion } from "./supabase/types";
 
 // Track games currently being ingested to prevent duplicate concurrent ingestion
@@ -60,8 +58,7 @@ export async function ingest(
 
     console.log("[INGEST] Saving to database:", steamData.appid);
     await saveSteamData(steamData);
-    // Home view refresh is expensive and not needed for the ingest to succeed; do it async
-    void refreshHomeView();
+    // Home view refresh is now handled automatically by database trigger
 
     // Step 2: Generate suggestions in background (if not skipped)
     if (!skipSuggestions && steamData.screenshots?.length) {
@@ -95,8 +92,7 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
 
     console.log("[INGEST] Saving suggestions for:", steamData.appid);
     await saveSuggestions(steamData.appid, suggestions.suggestions);
-    // Home view refresh is expensive and not needed for suggestions to be saved; do it async
-    void refreshHomeView();
+    // Home view refresh is now handled automatically by database trigger
 
     console.log("[INGEST] Background suggestions complete for:", steamData.appid);
   } catch (err) {
@@ -177,7 +173,6 @@ export async function refreshSuggestions(appId: number): Promise<{
   // Save merged suggestions
   await saveSuggestions(appId, merged);
 
-  // Surface missing app IDs so the UI can hydrate incrementally (avoids large cascades).
   const missingAppIds = await findMissingGameIds(merged.map((s) => s.appId));
 
   return {
@@ -350,20 +345,6 @@ async function saveSuggestions(appId: number, suggestions: Suggestion[]): Promis
 
   if (error) {
     throw new Error(`Failed to save suggestions: ${error.message}`);
-  }
-}
-
-async function refreshHomeView(): Promise<void> {
-  try {
-    // Throttle refreshes so auto-ingest doesn't spam it.
-    await acquireRateLimit("games_new_home_refresh", 5000);
-    const supabase = getSupabaseServiceClient();
-    const { error } = await supabase.rpc("refresh_games_new_home");
-    if (error) {
-      console.warn("[INGEST] Failed to refresh games_new_home:", error.message);
-    }
-  } catch (err) {
-    console.warn("[INGEST] Failed to refresh games_new_home:", err);
   }
 }
 
