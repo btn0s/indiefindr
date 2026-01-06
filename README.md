@@ -1,16 +1,16 @@
-# IndieFindr
+# indieblargenhagen
 
-Discover your next favorite indie game through AI-powered recommendations. IndieFindr analyzes game screenshots and generates intelligent suggestions, helping you find hidden gems beyond the Steam storefront.
+Discover your next favorite indie game through AI-powered recommendations. indieblargenhagen analyzes game screenshots and generates intelligent suggestions, helping you find hidden gems beyond the Steam storefront.
 
-## What is IndieFindr?
+## What is indieblargenhagen?
 
-IndieFindr solves a real problem: **discovering great indie games is hard**. The Steam storefront is dominated by AAA titles and popular releases, making it difficult to find the indie games that match your taste. 
+indieblargenhagen solves a real problem: **discovering great indie games is hard**. The Steam storefront is dominated by AAA titles and popular releases, making it difficult to find the indie games that match your taste. 
 
-IndieFindr uses multimodal AI to understand what makes games similar—not just genres or tags, but visual style, gameplay feel, and overall vibe. When you find a game you love, IndieFindr shows you similar games with explanations, helping you discover your next obsession.
+indieblargenhagen uses multimodal AI to understand what makes games similar—not just genres or tags, but visual style, gameplay feel, and overall vibe. When you find a game you love, indieblargenhagen shows you similar games with explanations, helping you discover your next obsession.
 
 ### Why Indie Games?
 
-Indie games often offer unique experiences, innovative mechanics, and creative storytelling that you won't find in mainstream releases. But they're harder to discover because they lack the marketing budgets and storefront visibility of AAA titles. IndieFindr prioritizes indie games in its recommendations, surfacing lesser-known titles that deserve attention.
+Indie games often offer unique experiences, innovative mechanics, and creative storytelling that you won't find in mainstream releases. But they're harder to discover because they lack the marketing budgets and storefront visibility of AAA titles. indieblargenhagen prioritizes indie games in its recommendations, surfacing lesser-known titles that deserve attention.
 
 ## Key Features
 
@@ -24,7 +24,7 @@ Indie games often offer unique experiences, innovative mechanics, and creative s
 ## How It Works
 
 1. **Add a Game**: Paste any Steam store URL to add it to your collection
-2. **Get Recommendations**: IndieFindr analyzes the game and generates similar indie game suggestions
+2. **Get Recommendations**: indieblargenhagen analyzes the game and generates similar indie game suggestions
 3. **Explore**: Each suggestion includes an explanation of why it's similar—art style, gameplay mechanics, atmosphere, or overall vibe
 4. **Discover**: Click through to find your next favorite game
 
@@ -94,7 +94,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 
 ### Adding Games
 
-Paste any Steam store URL on the home page. The game will be added to your collection, and IndieFindr will automatically generate recommendations.
+Paste any Steam store URL on the home page. The game will be added to your collection, and indieblargenhagen will automatically generate recommendations.
 
 ### Exploring Recommendations
 
@@ -116,7 +116,7 @@ Collections let you organize games by theme, style, or any other criteria. Creat
 
 ### How Recommendations Work
 
-IndieFindr uses multimodal AI to analyze games:
+indieblargenhagen uses multimodal AI to analyze games:
 
 1. **Input**: Game screenshot + text context (title, description, tags)
 2. **Analysis**: AI model identifies visual style, gameplay feel, atmosphere, and tone
@@ -196,7 +196,7 @@ pnpm lint
 ## Project Structure
 
 ```
-indiefindr/
+indieblargenhagen/
 ├── src/
 │   ├── app/              # Next.js app router pages and API routes
 │   ├── components/       # React components

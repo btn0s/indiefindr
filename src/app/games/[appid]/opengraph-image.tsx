@@ -5,7 +5,7 @@ import { Suggestion } from "@/lib/supabase/types";
 export const runtime = "nodejs";
 export const revalidate = 3600; // 1 hour
 
-export const alt = "Games like this — IndieFindr";
+export const alt = "Games like this — indieblargenhagen";
 export const size = {
   width: 1200,
   height: 630,

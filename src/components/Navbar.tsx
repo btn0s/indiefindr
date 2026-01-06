@@ -177,7 +177,7 @@ export function Navbar() {
             className="flex shrink-0 items-center gap-2 font-bold text-base sm:text-lg"
           >
             <Logo />
-            IndieFindr
+            indieblargenhagen
           </Link>
 
           {/* Search */}
