@@ -1,27 +1,34 @@
 # IndieFindr
 
-A Next.js application that discovers Steam games through AI-powered recommendations. Ingest games from Steam, explore AI-generated "games like this" suggestions, and discover your next favorite indie game.
+Discover your next favorite indie game through AI-powered recommendations. IndieFindr analyzes game screenshots and generates intelligent suggestions, helping you find hidden gems beyond the Steam storefront.
 
-## Overview
+## What is IndieFindr?
 
-IndieFindr uses multimodal AI (Perplexity Sonar Pro) to analyze game screenshots and generate intelligent recommendations. Each suggestion includes an explanation of why the game is similar, helping you discover games that match your preferences.
+IndieFindr solves a real problem: **discovering great indie games is hard**. The Steam storefront is dominated by AAA titles and popular releases, making it difficult to find the indie games that match your taste. 
 
-### Key Features
+IndieFindr uses multimodal AI to understand what makes games similar—not just genres or tags, but visual style, gameplay feel, and overall vibe. When you find a game you love, IndieFindr shows you similar games with explanations, helping you discover your next obsession.
 
-- **Steam Game Ingestion**: Submit any Steam store URL to fetch game data, screenshots, videos, and metadata
-- **AI-Powered Recommendations**: Get 8-12 similar game suggestions with explanations using image + text analysis
-- **Indie-First Discovery**: Prioritizes indie games and lesser-known titles over AAA releases
-- **Game Collections**: Curate and display collections of games on home and detail pages
-- **Smart Search**: Search both your database and Steam store simultaneously
-- **Auto-Hydration**: Missing suggested games are automatically ingested (Steam data only) to populate UI cards
+### Why Indie Games?
 
-## Tech Stack
+Indie games often offer unique experiences, innovative mechanics, and creative storytelling that you won't find in mainstream releases. But they're harder to discover because they lack the marketing budgets and storefront visibility of AAA titles. IndieFindr prioritizes indie games in its recommendations, surfacing lesser-known titles that deserve attention.
 
-- **Framework**: Next.js 16 (App Router, React Server Components)
-- **Database**: Supabase (PostgreSQL with pgvector)
-- **AI**: Perplexity Sonar Pro via AI SDK
-- **Styling**: Tailwind CSS v4 with shadcn/ui components
-- **Type Safety**: TypeScript
+## Key Features
+
+- **AI-Powered Discovery**: Get 8-12 game suggestions with explanations of why each game is similar
+- **Visual Understanding**: Analyzes game screenshots to understand art style, atmosphere, and gameplay feel
+- **Indie-First**: Prioritizes indie games and lesser-known titles over mainstream releases
+- **Smart Recommendations**: Each suggestion includes an explanation, not just a title
+- **Curated Collections**: Browse hand-picked collections of games organized by theme or style
+- **Search**: Find games in your collection or search Steam directly
+
+## How It Works
+
+1. **Add a Game**: Paste any Steam store URL to add it to your collection
+2. **Get Recommendations**: IndieFindr analyzes the game and generates similar indie game suggestions
+3. **Explore**: Each suggestion includes an explanation of why it's similar—art style, gameplay mechanics, atmosphere, or overall vibe
+4. **Discover**: Click through to find your next favorite game
+
+The AI looks at what makes games similar beyond surface-level tags. It understands visual style, camera perspective, combat feel, pacing, and tone—the things that actually matter when you're looking for your next game.
 
 ## Getting Started
 
@@ -75,12 +82,6 @@ supabase db push
 
 Or manually apply migration files in order from `supabase/migrations/`.
 
-**Key migrations:**
-- `20250101000000_initial_schema.sql` - Initial games table with vector embeddings
-- `20250106000000_create_games_new_table.sql` - Primary games_new table
-- `20250112000000_add_collections.sql` - Collections feature
-- `20260104085314_add_games_new_home_view.sql` - Performance optimizations
-
 5. **Run the development server**
 
 ```bash
@@ -91,135 +92,62 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 
 ## Usage
 
-### Ingesting Games
+### Adding Games
 
-1. Navigate to the home page
-2. Paste a Steam store URL (e.g., `https://store.steampowered.com/app/123456/GameName/`)
-3. The game will be fetched from Steam and saved to the database
-4. AI suggestions will be generated automatically in the background
+Paste any Steam store URL on the home page. The game will be added to your collection, and IndieFindr will automatically generate recommendations.
 
 ### Exploring Recommendations
 
-1. Click on any game card to view its detail page
-2. Scroll down to see AI-generated similar games
-3. Each suggestion includes an explanation of why it's similar
-4. Click "Refresh Suggestions" to regenerate recommendations
+Click on any game to see its detail page with AI-generated similar games. Each suggestion includes an explanation of why it's similar. Use the refresh button to get new recommendations.
 
-### Managing Collections
+### Collections
 
-Collections are managed directly in the Supabase dashboard:
-
-1. **Create a collection** in the `collections` table:
-   - `slug`: URL-friendly identifier (e.g., `indie-roguelikes`)
-   - `title`: Display name
-   - `description`: Optional description
-   - `published`: Set to `true` to make visible
-
-2. **Add games** in `collection_games`:
-   - `collection_id`: UUID from collections table
-   - `appid`: Steam AppID (must exist in `games_new`)
-   - `position`: Ordering number
-
-3. **Pin collections** in `collection_pins`:
-   - `context`: `'home'` for home page or `'game'` for game pages
-   - `game_appid`: Required for game context, NULL for home
-   - `position`: Display order
+Collections let you organize games by theme, style, or any other criteria. Create collections in the Supabase dashboard and pin them to the home page or specific game pages.
 
 ## Architecture
 
-### Database Schema
+### Tech Stack
 
-**Primary Table: `games_new`**
-- Stores Steam game data: screenshots, videos, descriptions, metadata
-- `suggested_game_appids`: JSONB array of `{ appId, title, explanation }` objects
-- Optimized with materialized views for home page queries
+- **Framework**: Next.js 16 (App Router, React Server Components)
+- **Database**: Supabase (PostgreSQL)
+- **AI**: Perplexity Sonar Pro via AI SDK
+- **Styling**: Tailwind CSS v4 with shadcn/ui components
+- **Type Safety**: TypeScript
 
-**Collections**
-- `collections`: Collection metadata
-- `collection_games`: Games in each collection
-- `collection_pins`: Where collections appear (home/game pages)
+### How Recommendations Work
 
-**Performance**
-- Materialized view `games_new_home` for fast home page queries
-- Automatic refresh triggers on game updates
-- Indexes on frequently queried columns
+IndieFindr uses multimodal AI to analyze games:
 
-### AI Integration
+1. **Input**: Game screenshot + text context (title, description, tags)
+2. **Analysis**: AI model identifies visual style, gameplay feel, atmosphere, and tone
+3. **Matching**: Finds similar games based on these deeper characteristics
+4. **Filtering**: Prioritizes indie games and validates against Steam database
+5. **Explanation**: Generates a brief explanation for each recommendation
 
-**Model**: `perplexity/sonar-pro`
+The system prioritizes indie games because they often offer unique experiences that are harder to discover through traditional storefront browsing.
 
-**Input**: Multimodal message containing:
-- Game screenshot (first screenshot from Steam)
-- Text context (game title, description, tags)
+### Database
 
-**Output**: Parsed as `title, steam_appid, explanation` lines
+Games are stored in Supabase with their Steam metadata, screenshots, videos, and AI-generated suggestions. Suggestions are stored as JSONB arrays with explanations, making it easy to display and update recommendations.
 
-**Post-Processing**:
-- Validates app IDs against Steam database
-- Corrects titles via Steam search
-- Filters and prioritizes indie games
-- Merges with existing suggestions
+## API Reference
 
-**Indie-First Strategy**:
-- Strictly prioritizes indie games (independent developers, smaller studios)
-- Allows 1-2 non-indie games only if unavoidable for relevance
-- Includes mix of recent (last 6 months) and classic titles
+### POST `/api/games/submit`
 
-### Ingestion Pipeline
-
-1. **Parse Steam URL** → Extract AppID
-2. **Fetch Steam Data** → Store page, screenshots, videos, descriptions
-3. **Save to Database** → Store in `games_new` table
-4. **Generate Suggestions** → Call AI model with screenshot + context (background)
-5. **Store Suggestions** → Merge into `suggested_game_appids` array
-6. **Auto-Hydrate Missing Games** → Ingest suggested games (Steam data only) to populate UI
-
-### API Routes
-
-#### POST `/api/games/submit`
-
-Submit a Steam URL for ingestion.
+Submit a Steam URL to add a game to your collection.
 
 **Request:**
 ```json
 {
-  "steamUrl": "https://store.steampowered.com/app/123456/GameName/",
-  "skipSuggestions": false
+  "steamUrl": "https://store.steampowered.com/app/123456/GameName/"
 }
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "appid": 123456,
-  "title": "Game Name",
-  "steamData": { /* Steam API response */ },
-  "suggestions": { "suggestions": [] }
-}
-```
+### GET `/api/games/[appid]`
 
-#### GET `/api/games/[appid]`
+Get game details by Steam AppID.
 
-Get game details by AppID. Reads `games_new` first, falls back to legacy `games` table.
-
-#### GET `/api/games/search?q=query`
-
-Search games in database and Steam Store (minimum 2 characters).
-
-**Response:**
-```json
-{
-  "db": [
-    { "appid": 123456, "title": "Game Name", "header_image": "...", "inDatabase": true }
-  ],
-  "steam": [
-    { "appid": 789012, "title": "Another Game", "header_image": "...", "inDatabase": false }
-  ]
-}
-```
-
-#### GET `/api/games/[appid]/suggestions`
+### GET `/api/games/[appid]/suggestions`
 
 Get AI-generated suggestions for a game.
 
@@ -229,65 +157,23 @@ Get AI-generated suggestions for a game.
   "appid": 123456,
   "title": "Game Name",
   "suggestions": [
-    { "appId": 789012, "title": "Similar Game", "explanation": "..." }
+    {
+      "appId": 789012,
+      "title": "Similar Game",
+      "explanation": "Shares the same atmospheric pixel art style and exploration-focused gameplay"
+    }
   ],
   "updatedAt": "2026-01-01T00:00:00.000Z"
 }
 ```
 
-#### POST `/api/games/[appid]/suggestions/refresh`
+### POST `/api/games/[appid]/suggestions/refresh`
 
-Refresh suggestions for a game. Supports `?force=true` (dev-only) to clear existing suggestions first.
+Regenerate suggestions for a game.
 
-#### POST `/api/games/batch`
+### GET `/api/games/search?q=query`
 
-Fetch multiple games by AppID list (from `games_new`).
-
-## Project Structure
-
-```
-indiefindr/
-├── src/
-│   ├── app/
-│   │   ├── api/games/          # API routes
-│   │   │   ├── submit/          # POST /api/games/submit
-│   │   │   ├── search/          # GET /api/games/search
-│   │   │   ├── batch/           # POST /api/games/batch
-│   │   │   └── [appid]/
-│   │   │       ├── route.ts     # GET /api/games/[appid]
-│   │   │       └── suggestions/ # Suggestions endpoints
-│   │   ├── games/[appid]/       # Game detail pages
-│   │   │   ├── page.tsx
-│   │   │   ├── opengraph-image.tsx
-│   │   │   └── twitter-image.tsx
-│   │   ├── collections/[slug]/  # Collection pages
-│   │   ├── page.tsx             # Home page
-│   │   ├── layout.tsx           # Root layout
-│   │   ├── sitemap.ts           # Dynamic sitemap
-│   │   └── robots.ts            # Robots.txt
-│   ├── components/
-│   │   ├── GameCard.tsx         # Game card component
-│   │   ├── GamesGrid.tsx        # Infinite scroll grid
-│   │   ├── SuggestionsList.tsx  # Recommendations display
-│   │   ├── GameVideo.tsx        # Video playback
-│   │   ├── CollectionsSection.tsx
-│   │   └── ui/                   # shadcn/ui components
-│   ├── lib/
-│   │   ├── ingest.ts             # Game ingestion pipeline
-│   │   ├── suggest.ts            # AI suggestion generation
-│   │   ├── steam.ts              # Steam API client
-│   │   ├── collections.ts       # Collection queries
-│   │   ├── supabase/             # Database clients and types
-│   │   └── utils/                # Utility functions
-│   └── hooks/
-│       └── use-mobile.ts         # Mobile detection
-├── supabase/migrations/         # Database migrations
-├── scripts/                      # Utility scripts
-│   ├── ingest-top-indie-games.ts
-│   ├── ingest-suggested-games.ts
-│   └── generate-home-og.ts
-└── public/                       # Static assets
-```
+Search games in your collection or Steam store.
 
 ## Development
 
@@ -307,26 +193,18 @@ pnpm start
 pnpm lint
 ```
 
-### Utility Scripts
+## Project Structure
 
-```bash
-# Ingest top indie games from a list
-tsx scripts/ingest-top-indie-games.ts
-
-# Ingest all suggested games for a game
-tsx scripts/ingest-suggested-games.ts <appid>
-
-# Generate home page OG image
-tsx scripts/generate-home-og.ts
 ```
-
-## Performance
-
-- **Home Page**: Uses materialized view for fast queries
-- **Game Detail Pages**: Server-side rendered with caching
-- **Video Playback**: HLS.js for streaming Steam trailers
-- **Image Optimization**: Next.js Image component with Steam CDN domains
-- **SEO**: Dynamic sitemap, robots.txt, OpenGraph images
+indiefindr/
+├── src/
+│   ├── app/              # Next.js app router pages and API routes
+│   ├── components/       # React components
+│   ├── lib/             # Core logic (ingestion, AI suggestions, Steam API)
+│   └── hooks/           # React hooks
+├── supabase/migrations/ # Database migrations
+└── scripts/             # Utility scripts
+```
 
 ## Contributing
 
