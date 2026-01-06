@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const canonicalUrl = `${siteUrl}/`;
-  const title = "Find Your Next Favorite Indie Game — IndieFindr";
+  const title = "TEST";
   const description =
     "Discover indie games on Steam. Search any game, get AI-powered recommendations, and find your next favorite.";
   const ogImageUrl = `${siteUrl}/og/home.png`;
@@ -90,7 +90,7 @@ export default async function Home() {
       <div className="w-full">
         <div className="container mx-auto max-w-4xl w-full">
           <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">
-            Find your next favorite indie game
+            TEST
           </h1>
         </div>
       </div>
