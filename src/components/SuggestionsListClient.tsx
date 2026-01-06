@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { GameNew, Suggestion } from "@/lib/supabase/types";
-import { sortSuggestionsByIndiePriority } from "@/lib/utils/indie-detection";
 
 type SuggestionsResponse = {
   appid: number;
@@ -51,8 +50,8 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
   const displayGames = useMemo(() => {
     if (!suggestions?.length) return [];
 
-    // Map suggestions to games with explanations
-    const gamesWithExplanations = suggestions
+    // Map suggestions to games with explanations (maintain order from suggestions)
+    return suggestions
       .map((s) => {
         const game = gamesById[s.appId];
         if (!game) return null;
@@ -61,28 +60,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
         return { ...game, explanation: s.explanation };
       })
       .filter((g): g is GameNew & { explanation: string } => Boolean(g));
-
-    // Create gamesById map for sorting (without explanation)
-    const gamesByIdForSorting: Record<number, GameNew> = {};
-    for (const game of gamesWithExplanations) {
-      const { explanation, ...gameWithoutExplanation } = game;
-      gamesByIdForSorting[game.appid] = gameWithoutExplanation;
-    }
-
-    // Sort to prioritize indie games (recent indie first, then other indie, then non-indie)
-    const sortedSuggestions = sortSuggestionsByIndiePriority(
-      gamesWithExplanations.map((g) => ({
-        appId: g.appid,
-        explanation: g.explanation,
-      })),
-      gamesByIdForSorting
-    );
-
-    // Map back to games with explanations in sorted order
-    return sortedSuggestions.map((s) => {
-      const game = gamesWithExplanations.find((g) => g.appid === s.appId);
-      return game!;
-    });
   }, [suggestions, gamesById]);
 
   const fetchSuggestions =

@@ -8,7 +8,6 @@ import GameCard from "@/components/GameCard";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameNew, Suggestion } from "@/lib/supabase/types";
 import { autoIngestMissingGames, refreshSuggestions } from "@/lib/ingest";
-import { sortSuggestionsByIndiePriority } from "@/lib/utils/indie-detection";
 
 interface SuggestionsListProps {
   appid: number;
@@ -125,7 +124,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     return rawType === "game" || !rawType;
   });
 
-  // Map suggestions to games
+  // Map suggestions to games (maintain order from suggestions)
   const gamesWithExplanations = suggestions
     .map((suggestion) => {
       const game = cachedGames.find((g) => g.appid === suggestion.appId);
@@ -135,27 +134,8 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     })
     .filter((g): g is GameNew & { explanation: string } => g !== undefined);
 
-  // Create gamesById map for sorting (without explanation, since GameNew doesn't have it)
-  const gamesById: Record<number, GameNew> = {};
-  for (const game of gamesWithExplanations) {
-    const { explanation, ...gameWithoutExplanation } = game;
-    gamesById[game.appid] = gameWithoutExplanation;
-  }
-
-  // Sort to prioritize indie games (recent indie first, then other indie, then non-indie)
-  // Map to suggestions format, sort, then map back to games with explanations
-  const sortedSuggestions = sortSuggestionsByIndiePriority(
-    gamesWithExplanations.map((g) => ({ appId: g.appid, explanation: g.explanation })),
-    gamesById
-  );
-
-  const sortedGames = sortedSuggestions.map((s) => {
-    const game = gamesWithExplanations.find((g) => g.appid === s.appId);
-    return game!;
-  });
-
   // Few or no displayable games? Show what we have + message
-  if (sortedGames.length === 0) {
+  if (gamesWithExplanations.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -174,7 +154,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: `Games similar to ${gameTitle}`,
-    itemListElement: sortedGames.map((game, i) => ({
+    itemListElement: gamesWithExplanations.map((game, i) => ({
       "@type": "ListItem",
       position: i + 1,
       item: {
@@ -185,7 +165,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
     })),
   };
 
-  const topTitles = sortedGames
+  const topTitles = gamesWithExplanations
     .slice(0, 3)
     .map((g) => g.title)
     .join(", ");
@@ -209,7 +189,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
   // Render cached games in suggested order with explanations
   return (
     <>
-      {sortedGames.length > 0 && (
+      {gamesWithExplanations.length > 0 && (
         <>
           <script
             type="application/ld+json"
@@ -227,7 +207,7 @@ export async function SuggestionsList({ appid }: SuggestionsListProps) {
       )}
       <div className="flex flex-col gap-4">
         <div className="grid md:grid-cols-3 gap-6">
-          {sortedGames.map((game) => (
+          {gamesWithExplanations.map((game) => (
             <GameCard key={game.appid} {...game} />
           ))}
         </div>

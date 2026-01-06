@@ -2,7 +2,6 @@ import { generateText } from "ai";
 import { retry } from "./utils/retry";
 import { validateAppIdWithTitle, searchAppIdByTitle } from "./steam";
 import { Suggestion } from "./supabase/types";
-import { isLikelyIndieFromRaw, isRecentFromRaw } from "./utils/indie-detection";
 
 const SONAR_MODEL = "perplexity/sonar-pro";
 
@@ -34,33 +33,36 @@ export async function suggestGames(
     text ? ` and the following context: "${text}"` : ""
   }, find Steam games that are similar to what you see.
 
-Return 8-12 similar Steam games in this EXACT format (one game per line):
+Return 8-12 similar Steam games as a JSON array. Use this EXACT format (no markdown, no code fences, just raw JSON):
 
-title, steam_appid, explanation
+[
+  {"title": "Game Title", "steam_appid": 123456, "explanation": "Why this game relates..."},
+  {"title": "Another Game", "steam_appid": 789012, "explanation": "Why this game relates..."}
+]
 
-CRITICAL REQUIREMENTS - INDIE-FIRST APPROACH:
-- STRICTLY prioritize indie games (independent developers, smaller studios, lesser-known titles)
-- Target ALL indie games; allow at most 1-2 non-indie games ONLY if absolutely unavoidable for relevance
-- AVOID AAA tentpoles and major franchise titles (EA, Ubisoft, Activision, Take-Two, etc.) even if they seem similar
-- If the source game is AAA, still surface indie games that match on mechanics, vibe, art direction, camera perspective, combat loop, pacing, or tone
-- Prefer smaller, lesser-known Steam games over obvious household-name matches
+CRITICAL REQUIREMENTS - INDIE-ONLY FOCUS:
+- RETURN ONLY INDIE GAMES. Independent developers, smaller studios, lesser-known titles, solo developers, small teams.
+- DO NOT include AAA games, major publishers (EA, Ubisoft, Activision, Take-Two, Nintendo, Sony, Microsoft, etc.), or well-known franchise titles.
+- Even if AAA games seem similar, find indie alternatives that match on mechanics, vibe, art direction, camera perspective, combat loop, pacing, or tone.
+- Prioritize lesser-known indie games over popular indie titles when possible.
+- If you cannot find enough indie games that match, return fewer suggestions rather than including AAA/non-indie games.
 
-RECENCY MIX:
-- Include 2-3 indie picks that are released or announced in the last 6 months (must have a Steam store page)
-- These can be newly launched, recently announced, or fresh early access titles
-- They should still match the image/context, but can be more "under-the-radar" discoveries
-- For recency picks, optionally mention in the explanation why it's timely (e.g., "recently launched", "newly announced", "fresh early access")
+RECENCY PRIORITY:
+- Prioritize indie games released or announced in the last 6 months (must have a Steam store page).
+- Include newly launched indie games, recently announced indie titles, and fresh indie early access games.
+- These should still match the image/context, but can be more "under-the-radar" discoveries.
+- For recent picks, mention in the explanation why it's timely (e.g., "recently launched", "newly announced", "fresh early access").
 
 IMPORTANT: Each explanation MUST explain WHY you chose this game - what makes it relate to the image/context.
+
+CRITICAL: NEVER include Steam app IDs or numeric identifiers in the explanation field. The explanation should only contain descriptive text about why the game is similar.
 
 TONE & TENSE: Write explanations in a friendly, conversational way. Always use present tense verbs (shares, features, matches, offers, brings, captures). Be consistent—every explanation should follow the same structure.
 
 Good examples (consistent present tense, indie-focused):
-Hades, 1145360, Features fast-paced roguelike combat with Greek mythology themes and stunning hand-drawn visuals
-Celeste, 504230, Delivers challenging platforming mechanics with a heartfelt narrative and pixel art style
-Dead Cells, 588650, Offers similar roguelike-metroidvania gameplay with fluid combat and procedurally generated levels
-Cuphead, 268910, Captures the same hand-drawn animation aesthetic with challenging boss-focused gameplay
-Hollow Knight, 367520, Shares the same atmospheric metroidvania exploration with beautiful hand-drawn art
+{"title": "Hades", "steam_appid": 1145360, "explanation": "Features fast-paced roguelike combat with Greek mythology themes and stunning hand-drawn visuals"}
+{"title": "Celeste", "steam_appid": 504230, "explanation": "Delivers challenging platforming mechanics with a heartfelt narrative and pixel art style"}
+{"title": "Dead Cells", "steam_appid": 588650, "explanation": "Offers similar roguelike-metroidvania gameplay with fluid combat and procedurally generated levels"}
 
 Bad examples (inconsistent tense - DO NOT USE):
 - "Similar competitive FPS gameplay..." (missing verb)
@@ -68,7 +70,7 @@ Bad examples (inconsistent tense - DO NOT USE):
 - "Because it offers..." (don't start with "because")
 - "closely matching the tone..." (gerund)
 
-Each line must have: game title (comma), Steam app ID number (comma), explanation that explains WHY this game relates to the image/context. Use commas to separate the three fields.`;
+Return ONLY valid JSON. Do not include markdown code fences, explanations, or any text outside the JSON array.`;
 
   // Handle both base64 and URLs
   let imageUrl = image;
@@ -107,16 +109,118 @@ Each line must have: game title (comma), Steam app ID number (comma), explanatio
 
   const parsed = parseSuggestions(result.text);
   const suggestions = await validateAndCorrectSuggestions(parsed);
+  
+  // Sanitize explanations before returning
+  const sanitizedSuggestions = suggestions.map((s) => ({
+    ...s,
+    explanation: sanitizeExplanation(s.explanation),
+  }));
 
-  console.log("[SUGGEST] Validated suggestions:", suggestions);
+  console.log("[SUGGEST] Validated suggestions:", sanitizedSuggestions);
 
-  return { suggestions };
+  return { suggestions: sanitizedSuggestions };
 }
 
 /**
- * Parse suggestions text from Perplexity - expects format: title, steam_appid, explanation
+ * Sanitize explanation text by removing:
+ * - Leading "actually" (case-insensitive)
+ * - Steam-ID-like numbers (6-7 digits)
+ * - Game title corrections (e.g., "actually Prodeus, 964120,")
+ * - Extra whitespace/punctuation
+ */
+export function sanitizeExplanation(explanation: string): string {
+  if (!explanation) return "";
+
+  let cleaned = explanation.trim();
+
+  // Remove leading "actually" (case-insensitive)
+  cleaned = cleaned.replace(/^actually\s+/i, "");
+
+  // Remove patterns like "GameName, 123456," or ", 123456," (corrections with Steam IDs)
+  // This handles cases where the model tried to correct itself
+  cleaned = cleaned.replace(/[^,\s]+,\s*\b\d{6,7}\b\s*,?\s*/g, "");
+  
+  // Remove standalone Steam-ID-like numbers (6-7 digits, word boundaries)
+  cleaned = cleaned.replace(/\b\d{6,7}\b\s*,?\s*/g, "");
+
+  // Clean up extra whitespace and punctuation
+  cleaned = cleaned.replace(/\s+/g, " "); // Multiple spaces to single
+  cleaned = cleaned.replace(/\s*,\s*,/g, ","); // Double commas
+  cleaned = cleaned.replace(/\s*,\s*$/g, ""); // Trailing comma
+  cleaned = cleaned.replace(/^\s*,\s*/g, ""); // Leading comma
+  cleaned = cleaned.trim();
+
+  return cleaned;
+}
+
+/**
+ * Parse suggestions from Perplexity - tries JSON first, falls back to CSV format
  */
 function parseSuggestions(text: string): ParsedSuggestion[] {
+  // Try JSON parsing first
+  const jsonParsed = parseSuggestionsJson(text);
+  if (jsonParsed.length > 0) {
+    return jsonParsed;
+  }
+
+  // Fallback to CSV parsing
+  return parseSuggestionsCsv(text);
+}
+
+/**
+ * Parse suggestions from JSON format: [{title, steam_appid, explanation}, ...]
+ */
+function parseSuggestionsJson(text: string): ParsedSuggestion[] {
+  try {
+    // Try to extract JSON from markdown code fences if present
+    let jsonText = text.trim();
+    const jsonMatch = jsonText.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[1];
+    }
+
+    // Try to find JSON array in the text
+    const arrayMatch = jsonText.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      jsonText = arrayMatch[0];
+    }
+
+    const parsed = JSON.parse(jsonText);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    const items: ParsedSuggestion[] = [];
+    for (const item of parsed) {
+      if (typeof item !== "object" || item === null) continue;
+
+      const title = String(item.title || item.name || "").trim();
+      const appId = typeof item.steam_appid === "number" 
+        ? item.steam_appid 
+        : typeof item.appid === "number"
+        ? item.appid
+        : null;
+      const explanation = String(item.explanation || "").trim();
+
+      if (title && appId && appId > 0) {
+        items.push({ title, appId, explanation });
+      } else if (title && appId === null) {
+        // Title without app ID - will be searched later
+        items.push({ title, appId: null, explanation });
+      }
+    }
+
+    return items;
+  } catch (error) {
+    console.log("[SUGGEST] JSON parse failed, falling back to CSV:", error);
+    return [];
+  }
+}
+
+/**
+ * Parse suggestions from CSV format: title, steam_appid, explanation (legacy fallback)
+ */
+function parseSuggestionsCsv(text: string): ParsedSuggestion[] {
   const items: ParsedSuggestion[] = [];
 
   const lines = text
@@ -223,35 +327,15 @@ async function validateAndCorrectSuggestions(
     }
   }
 
-  const recentIndie: Suggestion[] = [];
-  const indie: Suggestion[] = [];
-  const nonIndie: Suggestion[] = [];
-
-  for (const v of validated) {
-    const raw = v.raw;
-    const likelyIndie = raw ? isLikelyIndieFromRaw(raw) : false;
-    const recent = raw ? isRecentFromRaw(raw, 6) : false;
-
-    if (likelyIndie && recent) recentIndie.push(v.suggestion);
-    else if (likelyIndie) indie.push(v.suggestion);
-    else nonIndie.push(v.suggestion);
-  }
-
+  // Return all validated suggestions in order (prompt now handles indie focus)
+  // Deduplicate by appId to avoid duplicates
   const picked: Suggestion[] = [];
   const seen = new Set<number>();
 
-  const pushUnique = (s: Suggestion) => {
-    if (seen.has(s.appId)) return;
-    seen.add(s.appId);
-    picked.push(s);
-  };
-
-  for (const s of recentIndie) pushUnique(s);
-  for (const s of indie) pushUnique(s);
-
-  const remaining = 12 - picked.length;
-  if (remaining > 0) {
-    for (const s of nonIndie.slice(0, Math.min(2, remaining))) pushUnique(s);
+  for (const v of validated) {
+    if (seen.has(v.suggestion.appId)) continue;
+    seen.add(v.suggestion.appId);
+    picked.push(v.suggestion);
   }
 
   return picked;

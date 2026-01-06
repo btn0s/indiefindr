@@ -1,5 +1,5 @@
 import { fetchSteamGame, searchAppIdByTitle, type SteamGameData } from "./steam";
-import { suggestGames, type SuggestGamesResult } from "./suggest";
+import { suggestGames, sanitizeExplanation, type SuggestGamesResult } from "./suggest";
 import { getSupabaseServerClient } from "./supabase/server";
 import { Suggestion } from "./supabase/types";
 
@@ -312,10 +312,17 @@ async function saveSteamData(steamData: SteamGameData): Promise<void> {
 
 async function saveSuggestions(appId: number, suggestions: Suggestion[]): Promise<void> {
   const supabase = getSupabaseServerClient();
+  
+  // Sanitize explanations before saving
+  const sanitized = suggestions.map((s) => ({
+    ...s,
+    explanation: sanitizeExplanation(s.explanation),
+  }));
+  
   const { error } = await supabase
     .from("games_new")
     .update({
-      suggested_game_appids: suggestions,
+      suggested_game_appids: sanitized,
       updated_at: new Date().toISOString(),
     })
     .eq("appid", appId);
