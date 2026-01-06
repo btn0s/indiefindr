@@ -22,9 +22,8 @@ type SuggestionsResponse = {
 
 const MAX_AUTO_INGEST = 6;
 const SLOW_NOTICE_MS = 3500;
-const MAX_POLL_INTERVAL = 10000; // Max backoff: 10s
-const INITIAL_POLL_INTERVAL = 2000; // Start at 2s
-const PREFETCH_SUGGESTIONS_COUNT = 3; // Prefetch top 3 suggestions
+const POLL_INTERVAL = 2000;
+const PREFETCH_SUGGESTIONS_COUNT = 3;
 
 export function SuggestionsListClient({ appid }: { appid: number }) {
   const router = useRouter();
@@ -168,7 +167,6 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     if (!shouldPoll) return;
 
     let cancelled = false;
-    let pollInterval = INITIAL_POLL_INTERVAL;
     let intervalId: ReturnType<typeof setInterval> | null = null;
     let isVisible = !document.hidden;
 
@@ -180,7 +178,7 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
         intervalId = null;
       } else if (isVisible && !intervalId && !cancelled) {
         void tick();
-        intervalId = setInterval(tick, pollInterval);
+        intervalId = setInterval(tick, POLL_INTERVAL);
       }
     };
 
@@ -209,23 +207,15 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
           return;
         }
 
-        // Backoff: if we have suggestions and no missing games, slow down polling
         const hasAllGames = ids.every((id) => gamesByIdRef.current[id]);
         const currentSuggestions = suggestionsRef.current;
         if (hasAllGames && currentSuggestions && currentSuggestions.length > 0) {
-          // Exponential backoff: double interval up to max
-          pollInterval = Math.min(pollInterval * 1.5, MAX_POLL_INTERVAL);
           if (intervalId) {
             clearInterval(intervalId);
-            intervalId = setInterval(tick, pollInterval);
+            intervalId = null;
           }
-        } else {
-          // Reset to initial interval when actively fetching
-          pollInterval = INITIAL_POLL_INTERVAL;
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = setInterval(tick, pollInterval);
-          }
+          cancelled = true;
+          return;
         }
 
         // Only fetch details for games we don't already have.
@@ -255,10 +245,9 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
       }
     }
 
-    // Start polling
     if (isVisible) {
       void tick();
-      intervalId = setInterval(tick, pollInterval);
+      intervalId = setInterval(tick, POLL_INTERVAL);
     }
 
     return () => {

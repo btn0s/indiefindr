@@ -5,6 +5,7 @@ import Image from "next/image";
 import { GameVideo } from "@/components/GameVideo";
 import { SuggestionsListClient } from "@/components/SuggestionsListClient";
 import { SteamButton } from "@/components/SteamButton";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameDetailSkeleton } from "@/components/skeletons/GameDetailSkeleton";
 import { getPinnedCollectionsForGame } from "@/lib/collections";
@@ -514,7 +515,9 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
             Games similar to {gameData.title}
           </h2>
         </div>
-        <SuggestionsListClient appid={appId} />
+        <ErrorBoundary>
+          <SuggestionsListClient appid={appId} />
+        </ErrorBoundary>
       </div>
 
       {/* Pinned Collections Section */}
