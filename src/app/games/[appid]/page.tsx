@@ -147,7 +147,9 @@ const getGameDataFromDb = cache(
     if (existsOnSteam === true) {
       // Trigger ingestion in background without awaiting
       // Use the site URL to avoid issues with server-side fetch
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
       fetch(`${siteUrl}/api/games/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
