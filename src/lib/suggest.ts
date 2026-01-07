@@ -30,8 +30,13 @@ export async function suggestGames(
   console.log("[SUGGEST] Starting search");
 
   const basePrompt = `Based on this image${
-    text ? ` and the following context: "${text}"` : ""
-  }, find Steam games that are similar to what you see.
+    text ? ` and the following context:\n\n${text}\n` : ""
+  }\nfind Steam games that are similar to what you see.
+
+SEARCH STRATEGY (important for new/obscure games):
+- Do NOT rely only on the game's title. Use the Steam metadata + keyword hints in the context to infer genre, mechanics, and vibe.
+- Use the suggested search queries (if provided) as starting points to dig for similar games, even when the title has limited coverage online.
+- Prioritize matching on mechanics, perspective, art direction, pacing, and tone over exact name similarity.
 
 Return 8-12 similar Steam games as a JSON array. Use this EXACT format (no markdown, no code fences, just raw JSON):
 

@@ -76,11 +76,12 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
   console.log("[INGEST] Generating suggestions in background for:", steamData.title);
   
   try {
-    const textContext = buildTextContext(
-      steamData.title,
-      steamData.short_description,
-      steamData.long_description
-    );
+    const textContext = buildSuggestionContext({
+      title: steamData.title,
+      shortDesc: steamData.short_description,
+      longDesc: steamData.long_description,
+      raw: steamData.raw,
+    });
     const suggestions = await suggestGames(steamData.screenshots[0], textContext);
 
     console.log("[INGEST] Saving suggestions for:", steamData.appid);
@@ -130,7 +131,7 @@ export async function refreshSuggestions(appId: number): Promise<{
   // Fetch game data
   const { data: gameData, error } = await supabase
     .from("games_new")
-    .select("screenshots, title, short_description, long_description, suggested_game_appids")
+    .select("screenshots, title, short_description, long_description, raw, suggested_game_appids")
     .eq("appid", appId)
     .single();
 
@@ -144,11 +145,12 @@ export async function refreshSuggestions(appId: number): Promise<{
 
   // Generate new suggestions
   console.log("[REFRESH] Generating suggestions for:", gameData.title);
-  const textContext = buildTextContext(
-    gameData.title,
-    gameData.short_description,
-    gameData.long_description
-  );
+  const textContext = buildSuggestionContext({
+    title: gameData.title,
+    shortDesc: gameData.short_description,
+    longDesc: gameData.long_description,
+    raw: gameData.raw,
+  });
   const result = await suggestGames(gameData.screenshots[0], textContext);
 
   // Merge with existing (deduplicate by appId, prefer new explanations)
@@ -337,12 +339,299 @@ function parseAppId(steamUrl: string): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
-function buildTextContext(
-  title: string | null,
-  shortDesc: string | null,
-  longDesc: string | null
-): string {
-  return [title, shortDesc, longDesc].filter(Boolean).join(". ");
+function buildSuggestionContext(input: {
+  title: string | null;
+  shortDesc: string | null;
+  longDesc: string | null;
+  raw?: unknown;
+}): string {
+  const title = (input.title || "").trim();
+  const shortDesc = cleanSteamText(input.shortDesc);
+  const longDesc = cleanSteamText(input.longDesc);
+
+  const steamHints = extractSteamHints(input.raw);
+  const keywords = extractKeywords([shortDesc, longDesc].filter(Boolean).join(" "), title);
+  const queryIdeas = buildQueryIdeas({
+    title,
+    genres: steamHints.genres,
+    categories: steamHints.categories,
+    developers: steamHints.developers,
+    keywords,
+  });
+
+  const lines: string[] = [];
+
+  lines.push("Steam page hints (use this to build smarter searches):");
+  if (title) lines.push(`- Title: ${title}`);
+  if (steamHints.releaseDate) {
+    lines.push(
+      `- Release: ${steamHints.releaseDate}${steamHints.comingSoon ? " (coming soon)" : ""}`
+    );
+  }
+  if (steamHints.genres.length) lines.push(`- Genres: ${steamHints.genres.join(", ")}`);
+  if (steamHints.categories.length) {
+    lines.push(`- Store categories/features: ${steamHints.categories.join(", ")}`);
+  }
+  if (steamHints.developers.length) lines.push(`- Developer: ${steamHints.developers.join(", ")}`);
+  if (steamHints.publishers.length) lines.push(`- Publisher: ${steamHints.publishers.join(", ")}`);
+  if (keywords.length) lines.push(`- Keywords: ${keywords.slice(0, 14).join(", ")}`);
+
+  if (shortDesc) lines.push(`\nShort description:\n${truncate(shortDesc, 450)}`);
+  if (longDesc) lines.push(`\nLong description (excerpt):\n${truncate(longDesc, 1100)}`);
+
+  if (queryIdeas.length) {
+    lines.push("\nSuggested search queries (use these as starting points):");
+    for (const [i, q] of queryIdeas.entries()) {
+      lines.push(`${i + 1}) ${q}`);
+    }
+  }
+
+  return truncate(lines.join("\n"), 3200);
+}
+
+function cleanSteamText(input: string | null): string {
+  if (!input) return "";
+  const withoutHtml = stripHtml(input);
+  const decoded = decodeBasicHtmlEntities(withoutHtml);
+  return decoded.replace(/\s+/g, " ").trim();
+}
+
+function stripHtml(html: string): string {
+  return (
+    html
+      // Convert common line breaks to newlines first.
+      .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+      .replace(/<\s*\/p\s*>/gi, "\n")
+      // Then strip remaining tags.
+      .replace(/<[^>]*>/g, " ")
+  );
+}
+
+function decodeBasicHtmlEntities(text: string): string {
+  // Minimal decoding to keep prompts readable without adding dependencies.
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function truncate(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
+}
+
+function extractSteamHints(raw: unknown): {
+  genres: string[];
+  categories: string[];
+  developers: string[];
+  publishers: string[];
+  releaseDate: string | null;
+  comingSoon: boolean;
+} {
+  const r = (raw || {}) as Record<string, unknown>;
+
+  const genres = uniqueStrings(
+    (Array.isArray(r.genres) ? (r.genres as unknown[]) : [])
+      .map((g) => (g as { description?: unknown })?.description)
+      .filter((d): d is string => typeof d === "string" && d.trim().length > 0)
+  );
+
+  const categories = uniqueStrings(
+    (Array.isArray(r.categories) ? (r.categories as unknown[]) : [])
+      .map((c) => (c as { description?: unknown })?.description)
+      .filter((d): d is string => typeof d === "string" && d.trim().length > 0)
+  );
+
+  const developers = uniqueStrings(
+    (Array.isArray(r.developers) ? (r.developers as unknown[]) : []).filter(
+      (d): d is string => typeof d === "string" && d.trim().length > 0
+    )
+  );
+
+  const publishers = uniqueStrings(
+    (Array.isArray(r.publishers) ? (r.publishers as unknown[]) : []).filter(
+      (p): p is string => typeof p === "string" && p.trim().length > 0
+    )
+  );
+
+  const release = (r.release_date || {}) as Record<string, unknown>;
+  const releaseDate = typeof release.date === "string" ? release.date : null;
+  const comingSoon = Boolean(release.coming_soon);
+
+  return { genres, categories, developers, publishers, releaseDate, comingSoon };
+}
+
+function uniqueStrings(items: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    const norm = item.trim();
+    if (!norm) continue;
+    const key = norm.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(norm);
+  }
+  return out;
+}
+
+function extractKeywords(text: string, title: string): string[] {
+  if (!text) return [];
+
+  const stopwords = new Set(
+    [
+      "the",
+      "and",
+      "with",
+      "from",
+      "into",
+      "your",
+      "you",
+      "our",
+      "their",
+      "them",
+      "this",
+      "that",
+      "these",
+      "those",
+      "are",
+      "is",
+      "was",
+      "were",
+      "be",
+      "been",
+      "being",
+      "as",
+      "at",
+      "by",
+      "for",
+      "in",
+      "of",
+      "on",
+      "to",
+      "or",
+      "an",
+      "a",
+      "it",
+      "its",
+      "game",
+      "games",
+      "player",
+      "players",
+      "play",
+      "playing",
+      "experience",
+      "features",
+      "feature",
+      "includes",
+      "include",
+      "new",
+      "all",
+      "one",
+      "two",
+      "also",
+      "can",
+      "will",
+      "may",
+      "more",
+      "most",
+      "over",
+      "under",
+      "up",
+      "down",
+      "out",
+      "about",
+      "across",
+      "through",
+      "each",
+      "every",
+      "where",
+      "when",
+      "while",
+      "what",
+      "who",
+      "why",
+      "how",
+    ].map((s) => s.toLowerCase())
+  );
+
+  const titleWords = new Set(
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3)
+  );
+
+  const counts = new Map<string, number>();
+  const tokens = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s\-]/g, " ")
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  for (const t of tokens) {
+    if (t.length < 4) continue;
+    if (stopwords.has(t)) continue;
+    if (titleWords.has(t)) continue;
+    // Keep a few useful hyphenated terms (e.g., "souls-like", "deckbuilder").
+    const normalized = t.replace(/^-+|-+$/g, "");
+    if (!normalized) continue;
+    counts.set(normalized, (counts.get(normalized) || 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 18)
+    .map(([word]) => word);
+}
+
+function buildQueryIdeas(input: {
+  title: string;
+  genres: string[];
+  categories: string[];
+  developers: string[];
+  keywords: string[];
+}): string[] {
+  const title = input.title.trim();
+  if (!title) return [];
+
+  const genre1 = input.genres[0] || "";
+  const kw = input.keywords.slice(0, 6);
+
+  const hasCoop = input.categories.some((c) => /co-?op|cooperative/i.test(c));
+  const hasPvP = input.categories.some((c) => /pvp|multiplayer/i.test(c));
+
+  const q: string[] = [];
+
+  q.push(`indie games like "${title}" on Steam`);
+  if (genre1) q.push(`indie ${genre1.toLowerCase()} games like "${title}"`);
+
+  if (kw.length >= 2) {
+    q.push(`indie ${genre1 ? `${genre1.toLowerCase()} ` : ""}games with ${kw[0]} and ${kw[1]} (Steam)`);
+  } else if (kw.length === 1) {
+    q.push(`indie ${genre1 ? `${genre1.toLowerCase()} ` : ""}games with ${kw[0]} (Steam)`);
+  }
+
+  if (kw.length >= 4) {
+    q.push(`games similar to "${title}" ${kw.slice(0, 4).join(" ")} indie`);
+  }
+
+  if (hasCoop && genre1) q.push(`co-op indie ${genre1.toLowerCase()} games like "${title}"`);
+  if (hasPvP && genre1) q.push(`multiplayer indie ${genre1.toLowerCase()} games like "${title}"`);
+
+  if (input.developers.length) {
+    q.push(`${input.developers[0]} games similar to "${title}"`);
+  }
+
+  // Deduplicate and cap.
+  return uniqueStrings(q).slice(0, 6);
 }
 
 function mergeSuggestions(existing: Suggestion[], incoming: Suggestion[]): Suggestion[] {
