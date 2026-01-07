@@ -76,11 +76,12 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
   console.log("[INGEST] Generating suggestions in background for:", steamData.title);
   
   try {
-    const textContext = buildTextContext(
-      steamData.title,
-      steamData.short_description,
-      steamData.long_description
-    );
+    const textContext = buildSuggestionContext({
+      title: steamData.title,
+      short_description: steamData.short_description,
+      long_description: steamData.long_description,
+      raw: steamData.raw,
+    });
     const suggestions = await suggestGames(steamData.screenshots[0], textContext);
 
     console.log("[INGEST] Saving suggestions for:", steamData.appid);
@@ -130,7 +131,7 @@ export async function refreshSuggestions(appId: number): Promise<{
   // Fetch game data
   const { data: gameData, error } = await supabase
     .from("games_new")
-    .select("screenshots, title, short_description, long_description, suggested_game_appids")
+    .select("screenshots, title, short_description, long_description, raw, suggested_game_appids")
     .eq("appid", appId)
     .single();
 
@@ -144,11 +145,12 @@ export async function refreshSuggestions(appId: number): Promise<{
 
   // Generate new suggestions
   console.log("[REFRESH] Generating suggestions for:", gameData.title);
-  const textContext = buildTextContext(
-    gameData.title,
-    gameData.short_description,
-    gameData.long_description
-  );
+  const textContext = buildSuggestionContext({
+    title: gameData.title,
+    short_description: gameData.short_description,
+    long_description: gameData.long_description,
+    raw: gameData.raw,
+  });
   const result = await suggestGames(gameData.screenshots[0], textContext);
 
   // Merge with existing (deduplicate by appId, prefer new explanations)
@@ -343,6 +345,224 @@ function buildTextContext(
   longDesc: string | null
 ): string {
   return [title, shortDesc, longDesc].filter(Boolean).join(". ");
+}
+
+function stripHtml(input: string): string {
+  return input
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncate(input: string, maxLen: number): string {
+  if (input.length <= maxLen) return input;
+  return input.slice(0, Math.max(0, maxLen - 1)).trimEnd() + "…";
+}
+
+type SuggestionContextInput = {
+  title: string | null;
+  short_description: string | null;
+  long_description: string | null;
+  raw: unknown;
+};
+
+type SteamSearchMetadata = {
+  genres: string[];
+  categories: string[];
+  developers: string[];
+  publishers: string[];
+  releaseDate: string | null;
+};
+
+function extractSteamSearchMetadata(raw: unknown): SteamSearchMetadata {
+  if (!raw || typeof raw !== "object") {
+    return {
+      genres: [],
+      categories: [],
+      developers: [],
+      publishers: [],
+      releaseDate: null,
+    };
+  }
+
+  const data = raw as {
+    genres?: Array<{ description?: string }>;
+    categories?: Array<{ description?: string }>;
+    developers?: string[];
+    publishers?: string[];
+    release_date?: { date?: string };
+  };
+
+  const genres =
+    (data.genres || [])
+      .map((g) => (g?.description || "").trim())
+      .filter(Boolean)
+      .slice(0, 8) || [];
+
+  // Steam categories include lots of store/feature flags; keep the gameplay-salient ones.
+  const gameplayCategoryAllowlist = new Set([
+    "Single-player",
+    "Multi-player",
+    "Online PvP",
+    "PvP",
+    "Online Co-op",
+    "Co-op",
+    "Local Co-op",
+    "Shared/Split Screen",
+    "Shared/Split Screen Co-op",
+    "Shared/Split Screen PvP",
+    "MMO",
+    "Controller",
+    "Full controller support",
+    "Partial Controller Support",
+    "Turn-Based",
+    "Real-Time",
+    "Steam Workshop",
+    "VR Supported",
+  ]);
+
+  const categories =
+    (data.categories || [])
+      .map((c) => (c?.description || "").trim())
+      .filter((c) => c && gameplayCategoryAllowlist.has(c))
+      .slice(0, 10) || [];
+
+  const developers = (Array.isArray(data.developers) ? data.developers : [])
+    .filter((d): d is string => typeof d === "string" && d.trim().length > 0)
+    .map((d) => d.trim())
+    .slice(0, 4);
+
+  const publishers = (Array.isArray(data.publishers) ? data.publishers : [])
+    .filter((p): p is string => typeof p === "string" && p.trim().length > 0)
+    .map((p) => p.trim())
+    .slice(0, 4);
+
+  const releaseDate =
+    typeof data.release_date?.date === "string" ? data.release_date.date : null;
+
+  return { genres, categories, developers, publishers, releaseDate };
+}
+
+function extractKeywordsFromText(text: string, title: string | null): string[] {
+  const stopwords = new Set([
+    "a","an","and","are","as","at","be","but","by","can","could","do","does","for","from","has","have","in","into","is","it","its","like","more","new","of","on","or","our","over","play","player","players","set","the","their","this","to","two","up","with","you","your",
+    "game","games","steam","pc","experience","features","feature","including","includes","based","across","each","than","than","will","while","where","when","what","who","how",
+  ]);
+
+  const titleWords = new Set(
+    (title || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3)
+  );
+
+  const tokens = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((t) => t.length >= 4 && !stopwords.has(t) && !titleWords.has(t));
+
+  const counts = new Map<string, number>();
+  for (const t of tokens) counts.set(t, (counts.get(t) || 0) + 1);
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([word]) => word)
+    .slice(0, 8);
+}
+
+function buildSearchQueries(
+  title: string,
+  meta: SteamSearchMetadata,
+  keywords: string[]
+): string[] {
+  const queries: string[] = [];
+  const safeTitle = title.trim();
+
+  if (safeTitle) {
+    queries.push(`"${safeTitle}" similar games`);
+    queries.push(`games like "${safeTitle}" on Steam`);
+    queries.push(`similar indie games to "${safeTitle}"`);
+  }
+
+  const primaryGenre = meta.genres[0];
+  if (safeTitle && primaryGenre) {
+    queries.push(`indie ${primaryGenre} games like "${safeTitle}"`);
+  } else if (primaryGenre) {
+    queries.push(`best indie ${primaryGenre} games on Steam`);
+  }
+
+  if (meta.categories.length) {
+    const cat = meta.categories[0];
+    if (safeTitle && primaryGenre) {
+      queries.push(`${primaryGenre} ${cat} indie games like "${safeTitle}"`);
+    } else if (primaryGenre) {
+      queries.push(`${primaryGenre} ${cat} indie games on Steam`);
+    }
+  }
+
+  if (meta.developers.length && safeTitle) {
+    queries.push(`games similar to "${safeTitle}" by ${meta.developers[0]}`);
+  }
+
+  const kw = keywords.slice(0, 3);
+  if (safeTitle && kw.length) {
+    queries.push(`"${safeTitle}" ${kw.join(" ")} similar games`);
+  } else if (kw.length) {
+    queries.push(`indie games ${kw.join(" ")}`);
+  }
+
+  if (meta.releaseDate) {
+    const yearMatch = meta.releaseDate.match(/\b(19|20)\d{2}\b/);
+    const year = yearMatch ? yearMatch[0] : null;
+    if (year && primaryGenre) {
+      queries.push(`new indie ${primaryGenre} games ${year} Steam`);
+    }
+  }
+
+  // De-dupe, keep reasonably short
+  const seen = new Set<string>();
+  const unique = queries
+    .map((q) => q.replace(/\s+/g, " ").trim())
+    .filter((q) => q.length > 0 && q.length <= 120)
+    .filter((q) => (seen.has(q) ? false : (seen.add(q), true)));
+
+  return unique.slice(0, 10);
+}
+
+function buildSuggestionContext(input: SuggestionContextInput): string {
+  const title = (input.title || "").trim();
+  const meta = extractSteamSearchMetadata(input.raw);
+
+  const descParts = [input.short_description, input.long_description]
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .map(stripHtml);
+
+  const desc = truncate(descParts.join(" "), 900);
+  const keywords = desc ? extractKeywordsFromText(desc, title) : [];
+  const queries = buildSearchQueries(title, meta, keywords);
+
+  const lines: string[] = [];
+  if (title) lines.push(`Title: ${title}`);
+  if (desc) lines.push(`Description: ${desc}`);
+  if (meta.genres.length) lines.push(`Genres: ${meta.genres.join(", ")}`);
+  if (meta.categories.length) lines.push(`Steam categories: ${meta.categories.join(", ")}`);
+  if (meta.developers.length) lines.push(`Developers: ${meta.developers.join(", ")}`);
+  if (meta.publishers.length) lines.push(`Publishers: ${meta.publishers.join(", ")}`);
+  if (meta.releaseDate) lines.push(`Release date: ${meta.releaseDate}`);
+  if (keywords.length) lines.push(`Keywords: ${keywords.join(", ")}`);
+  if (queries.length) {
+    lines.push("Search queries to try (use multiple, not just one):");
+    for (const q of queries) lines.push(`- ${q}`);
+  }
+
+  // Fallback to the older behavior if everything is missing.
+  if (!lines.length) {
+    return buildTextContext(input.title, input.short_description, input.long_description);
+  }
+
+  return lines.join("\n");
 }
 
 function mergeSuggestions(existing: Suggestion[], incoming: Suggestion[]): Suggestion[] {
