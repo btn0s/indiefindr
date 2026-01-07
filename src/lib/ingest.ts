@@ -347,11 +347,29 @@ function buildTextContext(
   return [title, shortDesc, longDesc].filter(Boolean).join(". ");
 }
 
+function decodeBasicHtmlEntities(text: string): string {
+  // Minimal decoding to keep prompts readable without adding dependencies.
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
 function stripHtml(input: string): string {
-  return input
-    .replace(/<[^>]*>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const withoutTags = input
+    // Convert common line breaks to newlines first.
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/p\s*>/gi, "\n")
+    // Then strip remaining tags.
+    .replace(/<[^>]*>/g, " ");
+
+  const decoded = decodeBasicHtmlEntities(withoutTags);
+  return decoded.replace(/\s+/g, " ").trim();
 }
 
 function truncate(input: string, maxLen: number): string {
