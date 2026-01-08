@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 function SkeletonCard() {
   return (
@@ -24,10 +25,15 @@ function SkeletonGrid() {
   );
 }
 
-export function SuggestionsLoader({ autoSubmit = false }: { autoSubmit?: boolean }) {
+export function SuggestionsLoader({
+  autoSubmit = false,
+}: {
+  autoSubmit?: boolean;
+}) {
   const { pending } = useFormStatus();
   const formRef = useRef<HTMLFormElement | null>(null);
   const submitted = useRef(false);
+  const prevPendingRef = useRef(pending);
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -38,8 +44,12 @@ export function SuggestionsLoader({ autoSubmit = false }: { autoSubmit?: boolean
   }, [autoSubmit]);
 
   useEffect(() => {
-    if (!pending) {
+    if (!prevPendingRef.current && pending) {
       setElapsed(0);
+    }
+    prevPendingRef.current = pending;
+
+    if (!pending) {
       return;
     }
     const interval = setInterval(() => {
@@ -50,30 +60,28 @@ export function SuggestionsLoader({ autoSubmit = false }: { autoSubmit?: boolean
 
   return (
     <>
-      <button
+      <div
+        className={"flex flex-col items-center gap-4 py-8 w-full bg-muted p-4"}
         ref={(el) => {
-          formRef.current = el?.form ?? null;
+          const button = el?.querySelector("button");
+          formRef.current = button?.form ?? null;
         }}
-        type="submit"
-        disabled={pending}
-        className={
-          pending
-            ? "sr-only"
-            : "px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
-        }
       >
-        {pending ? "Generating..." : "Generate Suggestions"}
-      </button>
-      {pending && (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            <span>Finding similar games...</span>
-            <span className="tabular-nums">{elapsed}s</span>
-          </div>
-          <SkeletonGrid />
+        <h2 className="text-xl font-semibold">
+          Something went wrong generating suggestions
+        </h2>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Generating..." : "Try Again"}
+        </Button>
+      </div>
+      <div className={pending ? "flex flex-col gap-4" : "sr-only"}>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          <span>Finding similar games...</span>
+          <span className="tabular-nums">{elapsed}s</span>
         </div>
-      )}
+        <SkeletonGrid />
+      </div>
     </>
   );
 }
