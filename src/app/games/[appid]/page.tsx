@@ -53,15 +53,6 @@ export async function generateMetadata({
     ? `Discover ${suggestionCount > 0 ? `${suggestionCount} ` : ""}games similar to ${game.title}. ${game.short_description} Get AI-powered recommendations with explanations.`
     : `Find games similar to ${game.title} on Steam. Get AI-powered recommendations with explanations.`;
 
-  const ogImage = game.header_image
-    ? {
-        url: game.header_image,
-        width: 1200,
-        height: 630,
-        alt: game.title,
-      }
-    : undefined;
-
   return {
     title,
     description,
@@ -75,13 +66,11 @@ export async function generateMetadata({
       siteName: "IndieFindr",
       locale: "en_US",
       type: "website",
-      ...(ogImage && { images: [ogImage] }),
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      ...(ogImage && { images: [ogImage.url] }),
     },
   };
 }
