@@ -58,7 +58,9 @@ async function searchSteam(
 async function getPerplexitySuggestions(
   gameTitle: string,
   gameDescription?: string,
-  count = 10
+  developers?: string[],
+  count = 10,
+  retries = 2
 ): Promise<{ raw: RawSuggestion[]; elapsed: number }> {
   const start = Date.now();
 
@@ -66,29 +68,61 @@ async function getPerplexitySuggestions(
     ? ` (${gameDescription.slice(0, 200)})`
     : "";
 
-  const prompt = `Find ${count} indie games similar to "${gameTitle}"${descContext}.
-Match on VIBE: perspective, tone, pacing, aesthetic, core loop.
-Prioritize lesser-known indie games over mainstream titles.
-Write SHORT friendly reasons (under 15 words).
-Return ONLY JSON: [{"title":"Game","reason":"Why similar"}]`;
+  const devContext = developers && developers.length > 0
+    ? ` by ${developers.join(", ")}`
+    : "";
 
-  try {
-    const { text } = await generateText({
-      model: "perplexity/sonar",
-      prompt,
-    });
+  const prompt = `Find ${count} indie games similar to "${gameTitle}"${devContext}${descContext}.
 
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) {
+Match the core loop, vibe, tone, pacing, and aesthetic. Consider games from similar developers.
+Focus on indie/small studio games. Avoid AAA titles and big-budget games from major publishers.
+
+Write SHORT reasons (under 15 words).
+Return ONLY valid JSON: [{"title":"Game Name","reason":"Why it matches"}]`;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const { text } = await generateText({
+        model: "perplexity/sonar",
+        prompt,
+      });
+
+      const match = text.match(/\[[\s\S]*\]/);
+      if (!match) {
+        if (attempt < retries) {
+          console.error(`[SUGGEST-VIBE] No JSON array found, retrying (${attempt + 1}/${retries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        console.error("[SUGGEST-VIBE] No JSON array found in response");
+        return { raw: [], elapsed: Date.now() - start };
+      }
+
+      try {
+        const parsed = JSON.parse(match[0]) as RawSuggestion[];
+        return { raw: parsed, elapsed: Date.now() - start };
+      } catch (parseErr) {
+        if (attempt < retries) {
+          console.error(`[SUGGEST-VIBE] JSON parse error, retrying (${attempt + 1}/${retries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        console.error("[SUGGEST-VIBE] JSON parse error:", parseErr);
+        console.error("[SUGGEST-VIBE] Raw matched text:", match[0].substring(0, 500));
+        return { raw: [], elapsed: Date.now() - start };
+      }
+    } catch (err) {
+      if (attempt < retries) {
+        console.error(`[SUGGEST-VIBE] Perplexity error, retrying (${attempt + 1}/${retries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        continue;
+      }
+      console.error("[SUGGEST-VIBE] Perplexity error:", err);
       return { raw: [], elapsed: Date.now() - start };
     }
-
-    const parsed = JSON.parse(match[0]) as RawSuggestion[];
-    return { raw: parsed, elapsed: Date.now() - start };
-  } catch (err) {
-    console.error("[SUGGEST-VIBE] Perplexity error:", err);
-    return { raw: [], elapsed: Date.now() - start };
   }
+
+  return { raw: [], elapsed: Date.now() - start };
 }
 
 async function validateSuggestions(
@@ -141,6 +175,7 @@ export async function suggestGamesVibe(
   sourceAppid: number,
   sourceTitle: string,
   sourceDescription?: string,
+  developers?: string[],
   count = 10
 ): Promise<VibeResult> {
   const totalStart = Date.now();
@@ -148,6 +183,7 @@ export async function suggestGamesVibe(
   const { raw, elapsed: perplexityTime } = await getPerplexitySuggestions(
     sourceTitle,
     sourceDescription,
+    developers,
     count
   );
 
@@ -195,7 +231,7 @@ export async function suggestGamesVibeFromAppId(
 
   const { data: game, error } = await supabase
     .from("games_new")
-    .select("title, short_description")
+    .select("title, short_description, developers")
     .eq("appid", sourceAppid)
     .single();
 
@@ -207,6 +243,7 @@ export async function suggestGamesVibeFromAppId(
     sourceAppid,
     game.title,
     game.short_description || undefined,
+    game.developers || undefined,
     count
   );
 }
