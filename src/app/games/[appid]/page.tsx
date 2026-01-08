@@ -160,9 +160,15 @@ const getGameDataFromDb = cache(
       }).catch((err) => {
         console.error(`[GAME PAGE] Failed to trigger ingestion for ${appId}:`, err);
       });
+      
+      // Quick check (2 attempts, 500ms delay) to catch fast ingestion race condition
+      // Don't wait long - let client-side GameProcessingState handle retries
+      const quickCheck = await waitForGameInDb(appId, 2, 500);
+      if (quickCheck) return quickCheck;
     }
 
-    return waitForGameInDb(appId);
+    // Return null quickly so page shows GameProcessingState component
+    return null;
   }
 );
 
