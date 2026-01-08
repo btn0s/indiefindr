@@ -50,7 +50,11 @@ export async function generateMetadata({
 
   const title = `Games like ${game.title}`;
   const description = game.short_description
-    ? `Discover ${suggestionCount > 0 ? `${suggestionCount} ` : ""}games similar to ${game.title}. ${game.short_description} Get AI-powered recommendations with explanations.`
+    ? `Discover ${
+        suggestionCount > 0 ? `${suggestionCount} ` : ""
+      }games similar to ${game.title}. ${
+        game.short_description
+      } Get AI-powered recommendations with explanations.`
     : `Find games similar to ${game.title} on Steam. Get AI-powered recommendations with explanations.`;
 
   return {
@@ -228,22 +232,22 @@ export default async function GamePage({
         <div className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Games like {game.title}</h2>
           {hasSuggestions ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {suggestions.map((s) => (
-              <GameCardAsync
-                key={s.suggested_appid}
-                appid={s.suggested_appid}
-                explanation={s.reason}
-              />
-            ))}
-          </div>
-        ) : (
-          <form action={generate}>
-            <SuggestionsLoader autoSubmit />
-          </form>
-        )}
-      </div>
-    </main>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {suggestions.map((s) => (
+                <GameCardAsync
+                  key={s.suggested_appid}
+                  appid={s.suggested_appid}
+                  explanation={s.reason}
+                />
+              ))}
+            </div>
+          ) : (
+            <form action={generate}>
+              <SuggestionsLoader autoSubmit />
+            </form>
+          )}
+        </div>
+      </main>
     </>
   );
 }
