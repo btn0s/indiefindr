@@ -85,7 +85,8 @@ export function Navbar() {
           return;
         }
         if (response.ok) {
-          const data = await response.json();
+          const json = await response.json();
+          const data = json.data || json;
           setDbResults(data.db || []);
           setSteamResults(data.steam || []);
           setShowResults(true);

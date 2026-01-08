@@ -37,36 +37,12 @@ export const SubmitGameSchema = z.object({
 export type SubmitGameInput = z.infer<typeof SubmitGameSchema>;
 
 /**
- * POST /api/games/batch
- */
-export const BatchGamesSchema = z.object({
-  appids: z
-    .array(z.union([z.number(), z.string()]))
-    .min(1, "At least one app ID is required")
-    .max(100, "Maximum 100 app IDs per request")
-    .transform((ids) =>
-      ids
-        .map((id) => (typeof id === "number" ? id : parseInt(String(id), 10)))
-        .filter((id) => Number.isFinite(id) && id > 0)
-    ),
-});
-export type BatchGamesInput = z.infer<typeof BatchGamesSchema>;
-
-/**
  * GET /api/games/search?q=...
  */
 export const SearchGamesSchema = z.object({
   q: z.string().min(2, "Search query must be at least 2 characters"),
 });
 export type SearchGamesInput = z.infer<typeof SearchGamesSchema>;
-
-/**
- * POST /api/games/[appid]/suggestions/refresh
- */
-export const RefreshSuggestionsSchema = z.object({
-  force: z.boolean().optional().default(false),
-});
-export type RefreshSuggestionsInput = z.infer<typeof RefreshSuggestionsSchema>;
 
 // =============================================================================
 // Steam API Response Schemas (for runtime validation)

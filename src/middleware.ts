@@ -38,10 +38,7 @@ function isRateLimited(ip: string): { limited: boolean; remaining: number } {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const rateLimitedPaths = [
-    "/api/games/submit",
-    "/api/games/batch",
-  ];
+  const rateLimitedPaths = ["/api/games/submit"];
 
   const shouldRateLimit = rateLimitedPaths.some((path) =>
     pathname.startsWith(path)
@@ -49,28 +46,6 @@ export function middleware(request: NextRequest) {
 
   if (!shouldRateLimit) {
     return NextResponse.next();
-  }
-
-  if (pathname.includes("/suggestions/refresh")) {
-    const ip = getClientIp(request);
-    const { limited, remaining } = isRateLimited(ip);
-
-    if (limited) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": "60",
-            "X-RateLimit-Remaining": "0",
-          },
-        }
-      );
-    }
-
-    const response = NextResponse.next();
-    response.headers.set("X-RateLimit-Remaining", remaining.toString());
-    return response;
   }
 
   const ip = getClientIp(request);
