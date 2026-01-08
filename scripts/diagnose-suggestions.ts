@@ -55,7 +55,7 @@ async function diagnoseGame(appid: number) {
   
   const title = game.title;
   const desc = game.short_description || "";
-  const devs = game.developers || [];
+  const devs: string[] = game.developers || [];
   
   console.log("=".repeat(80));
   console.log("DIAGNOSING:", title);
