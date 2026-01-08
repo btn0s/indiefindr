@@ -8,6 +8,7 @@ export interface GameCardProps {
   title: string;
   header_image: string | null;
   explanation?: string;
+  priority?: boolean;
 }
 
 export function GameCard({
@@ -15,6 +16,7 @@ export function GameCard({
   title,
   header_image,
   explanation,
+  priority = false,
 }: GameCardProps) {
   return (
     <Link href={`/games/${appid}`} className="block" prefetch={false}>
@@ -27,6 +29,7 @@ export function GameCard({
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
               className="absolute inset-0 w-full h-full object-cover"
+              priority={priority}
             />
           )}
         </div>

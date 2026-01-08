@@ -4,9 +4,14 @@ import { GameCard, GameCardNotFound } from "./GameCard";
 interface GameCardAsyncProps {
   appid: number;
   explanation?: string;
+  priority?: boolean;
 }
 
-export async function GameCardAsync({ appid, explanation }: GameCardAsyncProps) {
+export async function GameCardAsync({
+  appid,
+  explanation,
+  priority = false,
+}: GameCardAsyncProps) {
   const game = await getOrFetchGame(appid);
 
   if (!game) {
@@ -19,6 +24,7 @@ export async function GameCardAsync({ appid, explanation }: GameCardAsyncProps) 
       title={game.title}
       header_image={game.header_image}
       explanation={explanation}
+      priority={priority}
     />
   );
 }

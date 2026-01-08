@@ -47,8 +47,12 @@ export function GameRow({ collections }: GameRowProps) {
               </p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {collection.preview_games.map((game) => (
-                  <GameCardAsync key={game.appid} appid={game.appid} />
+                {collection.preview_games.map((game, index) => (
+                  <GameCardAsync
+                    key={game.appid}
+                    appid={game.appid}
+                    priority={index < 4}
+                  />
                 ))}
               </div>
             )}
