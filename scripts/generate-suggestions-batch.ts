@@ -97,7 +97,7 @@ async function main() {
     const progress = `[${i + 1}/${appIdsArray.length}]`;
 
     try {
-      const result = await generateSuggestions(appid);
+      const result = await generateSuggestions(appid, true); // overwrite mode
 
       if (result.success) {
         successCount++;

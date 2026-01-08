@@ -10,7 +10,8 @@ export type GenerateSuggestionsResult = {
 };
 
 export async function generateSuggestions(
-  appId: number
+  appId: number,
+  overwrite: boolean = true
 ): Promise<GenerateSuggestionsResult> {
   const supabase = getSupabaseServerClient();
 
@@ -42,12 +43,34 @@ export async function generateSuggestions(
       reason: s.explanation,
     }));
 
-    const { error } = await supabase
-      .from("game_suggestions")
-      .upsert(rows, { onConflict: "source_appid,suggested_appid" });
+    if (overwrite) {
+      // Delete all existing suggestions for this game (force overwrite)
+      const { error: deleteError } = await supabase
+        .from("game_suggestions")
+        .delete()
+        .eq("source_appid", appId);
 
-    if (error) {
-      return { success: false, count: 0, error: error.message };
+      if (deleteError) {
+        return { success: false, count: 0, error: deleteError.message };
+      }
+
+      // Insert new suggestions
+      const { error } = await supabase
+        .from("game_suggestions")
+        .insert(rows);
+
+      if (error) {
+        return { success: false, count: 0, error: error.message };
+      }
+    } else {
+      // Merge mode: upsert (update existing, insert new)
+      const { error } = await supabase
+        .from("game_suggestions")
+        .upsert(rows, { onConflict: "source_appid,suggested_appid" });
+
+      if (error) {
+        return { success: false, count: 0, error: error.message };
+      }
     }
 
     return { success: true, count: result.suggestions.length };
