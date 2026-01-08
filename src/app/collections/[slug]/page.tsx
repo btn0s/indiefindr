@@ -1,8 +1,13 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getCollectionBySlug, getCollectionGames } from "@/lib/collections";
 import { GameCardAsync } from "@/components/GameCardAsync";
+import { GameGrid } from "@/components/GameGrid";
+import type { GameCardGame } from "@/lib/supabase/types";
+
+const PAGE_SIZE = 24;
 
 export async function generateMetadata({
   params,
@@ -62,7 +67,33 @@ export default async function CollectionPage({
     notFound();
   }
 
-  const games = await getCollectionGames(collection.id);
+  const [games, allGamesData] = await Promise.all([
+    getCollectionGames(collection.id),
+    (async () => {
+      const supabase = getSupabaseServerClient();
+      const { data, error } = await supabase
+        .from("games_new_home")
+        .select("appid, title, header_image")
+        .order("home_bucket", { ascending: true })
+        .order("suggestions_count", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("appid", { ascending: true })
+        .range(0, PAGE_SIZE - 1);
+
+      if (error) {
+        console.error("Error loading all games:", error);
+        return [];
+      }
+
+      return (data || []).map((g) => ({
+        appid: g.appid,
+        title: g.title,
+        header_image: g.header_image,
+      }));
+    })(),
+  ]);
+
+  const allGames: GameCardGame[] = allGamesData;
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 
@@ -154,6 +185,24 @@ export default async function CollectionPage({
             ))}
           </div>
         )}
+
+        <hr className="border-border" />
+
+        <div className="flex flex-col gap-4 w-full">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-xl">All Games</h2>
+          </div>
+          <div>
+            {allGames.length === 0 ? (
+              <p className="text-muted-foreground">
+                No games ingested yet. Search for a game above to add your first
+                one.
+              </p>
+            ) : (
+              <GameGrid initialGames={allGames} />
+            )}
+          </div>
+        </div>
       </main>
     </>
   );
