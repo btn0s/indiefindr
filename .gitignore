@@ -43,3 +43,6 @@ next-env.d.ts
 
 # generated build-time OG images
 /public/og/home.png
+
+# Test result files
+results-*.json

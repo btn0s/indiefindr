@@ -17,7 +17,7 @@ export async function generateSuggestions(
 
   const { data: game } = await supabase
     .from("games_new")
-    .select("title, short_description")
+    .select("title, short_description, developers")
     .eq("appid", appId)
     .single();
 
@@ -30,6 +30,7 @@ export async function generateSuggestions(
       appId,
       game.title,
       game.short_description || undefined,
+      game.developers || undefined,
       10
     );
 
@@ -37,7 +38,18 @@ export async function generateSuggestions(
       return { success: false, count: 0, error: "No suggestions generated" };
     }
 
-    const rows = result.suggestions.map((s) => ({
+    // Filter out unverified suggestions (hallucinations)
+    const verifiedSuggestions = result.suggestions.filter((s) => {
+      // Only include suggestions that were validated (have appId)
+      // Unverified suggestions are filtered out here
+      return s.appId && s.appId > 0;
+    });
+
+    if (verifiedSuggestions.length === 0) {
+      return { success: false, count: 0, error: "No verified suggestions generated" };
+    }
+
+    const rows = verifiedSuggestions.map((s) => ({
       source_appid: appId,
       suggested_appid: s.appId,
       reason: s.explanation,
@@ -73,7 +85,7 @@ export async function generateSuggestions(
       }
     }
 
-    return { success: true, count: result.suggestions.length };
+    return { success: true, count: verifiedSuggestions.length };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return { success: false, count: 0, error: message };
