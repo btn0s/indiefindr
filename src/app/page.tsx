@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { GamesGrid } from "@/components/GamesGrid";
+import { GameGrid } from "@/components/GameGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
 import { getPinnedHomeCollections } from "@/lib/collections";
-import { CollectionsSection } from "@/components/CollectionsSection";
+import { GameRow } from "@/components/GameRow";
 
 const PAGE_SIZE = 24;
 
-// Enable ISR - revalidate every 60 seconds
 export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -63,7 +62,7 @@ export default async function Home() {
   const [{ data, error }, pinnedCollections] = await Promise.all([
     supabase
       .from("games_new_home")
-      .select("appid, title, header_image, videos")
+      .select("appid, title, header_image")
       .order("home_bucket", { ascending: true })
       .order("suggestions_count", { ascending: false })
       .order("created_at", { ascending: false })
@@ -74,12 +73,11 @@ export default async function Home() {
 
   const games: GameCardGame[] = error
     ? []
-    : ((data || []).map((g) => ({
+    : (data || []).map((g) => ({
         appid: g.appid,
         title: g.title,
         header_image: g.header_image,
-        videos: g.videos,
-      })) satisfies GameCardGame[]);
+      }));
 
   if (error) {
     console.error("Error loading games:", error);
@@ -95,12 +93,10 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* Pinned Collections Section */}
       {pinnedCollections.length > 0 && (
-        <CollectionsSection collections={pinnedCollections} />
+        <GameRow collections={pinnedCollections} />
       )}
 
-      {/* Full-width grid section */}
       <div className="flex flex-col gap-4 w-full">
         <div className="container mx-auto max-w-4xl w-full flex items-center justify-between">
           <h2 className="font-semibold text-xl">All Games</h2>
@@ -112,7 +108,7 @@ export default async function Home() {
               one.
             </p>
           ) : (
-            <GamesGrid initialGames={games} />
+            <GameGrid initialGames={games} />
           )}
         </div>
       </div>

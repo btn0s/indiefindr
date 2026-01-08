@@ -1,348 +1,231 @@
-import { generateText } from "ai";
-import { retry } from "./utils/retry";
-import { validateAppIdWithTitle, searchAppIdByTitle } from "./steam";
+import { getSupabaseServerClient } from "./supabase/server";
 import { Suggestion } from "./supabase/types";
-import { RETRY_CONFIG } from "./config";
+import {
+  fetchSteamSpyData,
+  fetchSteamStoreTags,
+  tagsArrayToRecord,
+  getTopTags,
+  calculateTagSimilarity,
+  isAdultContent,
+  getContentDescriptorIds,
+} from "./utils/steamspy";
 
-const SONAR_MODEL = "perplexity/sonar-pro";
-
-export type SuggestGamesResult = {
-  suggestions: Suggestion[];
+export type CategorizedSuggestions = {
+  sameDeveloper: Suggestion[];
+  niche: Suggestion[];
+  popular: Suggestion[];
+  all: Suggestion[];
 };
 
-export type ParsedSuggestion = {
+type GameWithTags = {
+  appid: number;
   title: string;
-  appId: number | null;
-  explanation: string;
+  steamspy_tags: Record<string, number>;
+  steamspy_owners: string | null;
+  raw: Record<string, unknown>;
 };
 
-/**
- * Suggest similar games based on an image and optional text context.
- * Uses Perplexity to search for games similar to the provided image.
- */
-export async function suggestGames(
-  image: string,
-  text?: string
-): Promise<SuggestGamesResult> {
-  if (!image || typeof image !== "string") {
-    throw new Error("image (string) is required. Provide base64 data URL or image URL.");
-  }
-
-  console.log("[SUGGEST] Starting search");
-
-  const basePrompt = `Based on this image${
-    text ? ` and the following context:\n${text}\n` : ""
-  }, find Steam games that are similar to what you see.
-
-SEARCH STRATEGY (IMPORTANT):
-- Do NOT rely on a single generic query like "games like <title>".
-- Use the provided Steam metadata + keywords to form multiple diverse search queries (genres, Steam categories, developer/publisher, release window, and any standout gameplay keywords).
-- Prefer queries that surface under-the-radar indies (e.g., "indie <genre> co-op games", "new indie <genre> games <year>", "<keyword1> <keyword2> indie games on Steam").
-
-Return 8-12 similar Steam games as a JSON array. Use this EXACT format (no markdown, no code fences, just raw JSON):
-
-[
-  {"title": "Game Title", "steam_appid": 123456, "explanation": "Why this game relates..."},
-  {"title": "Another Game", "steam_appid": 789012, "explanation": "Why this game relates..."}
-]
-
-CRITICAL REQUIREMENTS - INDIE-ONLY FOCUS:
-- RETURN ONLY INDIE GAMES. Independent developers, smaller studios, lesser-known titles, solo developers, small teams.
-- DO NOT include AAA games, major publishers (EA, Ubisoft, Activision, Take-Two, Nintendo, Sony, Microsoft, etc.), or well-known franchise titles.
-- Even if AAA games seem similar, find indie alternatives that match on mechanics, vibe, art direction, camera perspective, combat loop, pacing, or tone.
-- Prioritize lesser-known indie games over popular indie titles when possible.
-- If you cannot find enough indie games that match, return fewer suggestions rather than including AAA/non-indie games.
-
-RECENCY PRIORITY:
-- Prioritize indie games released or announced in the last 6 months (must have a Steam store page).
-- Include newly launched indie games, recently announced indie titles, and fresh indie early access games.
-- These should still match the image/context, but can be more "under-the-radar" discoveries.
-- For recent picks, mention in the explanation why it's timely (e.g., "recently launched", "newly announced", "fresh early access").
-
-IMPORTANT: Each explanation MUST explain WHY you chose this game - what makes it relate to the image/context.
-
-CRITICAL: NEVER include Steam app IDs or numeric identifiers in the explanation field. The explanation should only contain descriptive text about why the game is similar.
-
-TONE & TENSE: Write explanations in a friendly, conversational way. Always use present tense verbs (shares, features, matches, offers, brings, captures). Be consistent—every explanation should follow the same structure.
-
-Good examples (consistent present tense, indie-focused):
-{"title": "Hades", "steam_appid": 1145360, "explanation": "Features fast-paced roguelike combat with Greek mythology themes and stunning hand-drawn visuals"}
-{"title": "Celeste", "steam_appid": 504230, "explanation": "Delivers challenging platforming mechanics with a heartfelt narrative and pixel art style"}
-{"title": "Dead Cells", "steam_appid": 588650, "explanation": "Offers similar roguelike-metroidvania gameplay with fluid combat and procedurally generated levels"}
-
-Bad examples (inconsistent tense - DO NOT USE):
-- "Similar competitive FPS gameplay..." (missing verb)
-- "Sharing the same mechanics..." (gerund instead of present tense)
-- "Because it offers..." (don't start with "because")
-- "closely matching the tone..." (gerund)
-
-Return ONLY valid JSON. Do not include markdown code fences, explanations, or any text outside the JSON array.`;
-
-  // Handle both base64 and URLs
-  let imageUrl = image;
-  if (!image.startsWith("data:") && !image.startsWith("http://") && !image.startsWith("https://")) {
-    imageUrl = `data:image/jpeg;base64,${image}`;
-  }
-
-  const messageContent = [
-    { type: "text" as const, text: basePrompt },
-    { type: "image" as const, image: imageUrl },
-  ];
-
-  console.log("[SUGGEST] Sending request to Perplexity");
-
-  const result = await retry(
-    async () => {
-      const response = await generateText({
-        model: SONAR_MODEL,
-        messages: [{ role: "user", content: messageContent }],
-      });
-      return response;
-    },
-    {
-      maxAttempts: RETRY_CONFIG.PERPLEXITY_MAX_ATTEMPTS,
-      initialDelayMs: RETRY_CONFIG.PERPLEXITY_INITIAL_DELAY_MS,
-      retryable: (error: unknown) => {
-        const err = error as { status?: number; response?: { status?: number } };
-        const status = err?.status || err?.response?.status;
-        return status === 429 || (status !== undefined && status >= 500);
-      },
-    }
-  );
-
-  console.log("[SUGGEST] Response received");
-  console.log("[SUGGEST] Raw text:", result.text);
-
-  const parsed = parseSuggestions(result.text);
-  const suggestions = await validateAndCorrectSuggestions(parsed);
-  
-  // Sanitize explanations before returning
-  const sanitizedSuggestions = suggestions.map((s) => ({
-    ...s,
-    explanation: sanitizeExplanation(s.explanation),
-  }));
-
-  console.log("[SUGGEST] Validated suggestions:", sanitizedSuggestions);
-
-  return { suggestions: sanitizedSuggestions };
+function parseOwners(owners: string | null): number {
+  if (!owners) return 0;
+  const match = owners.match(/^([\d,]+)/);
+  if (!match) return 0;
+  return parseInt(match[1].replace(/,/g, ""), 10);
 }
 
-/**
- * Sanitize explanation text by removing:
- * - Leading "actually" (case-insensitive)
- * - Steam-ID-like numbers (6-7 digits)
- * - Game title corrections (e.g., "actually Prodeus, 964120,")
- * - Extra whitespace/punctuation
- */
-export function sanitizeExplanation(explanation: string): string {
-  if (!explanation) return "";
+async function fetchGamesByDeveloper(developer: string): Promise<number[]> {
+  const url = `https://store.steampowered.com/search/?developer=${encodeURIComponent(developer)}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
 
-  let cleaned = explanation.trim();
+  const html = await res.text();
+  const matches = html.match(/data-ds-appid="(\d+)"/g) || [];
 
-  // Remove leading "actually" (case-insensitive)
-  cleaned = cleaned.replace(/^actually\s+/i, "");
-
-  // Remove patterns like "GameName, 123456," or ", 123456," (corrections with Steam IDs)
-  // This handles cases where the model tried to correct itself
-  cleaned = cleaned.replace(/[^,\s]+,\s*\b\d{6,7}\b\s*,?\s*/g, "");
-  
-  // Remove standalone Steam-ID-like numbers (6-7 digits, word boundaries)
-  cleaned = cleaned.replace(/\b\d{6,7}\b\s*,?\s*/g, "");
-
-  // Clean up extra whitespace and punctuation
-  cleaned = cleaned.replace(/\s+/g, " "); // Multiple spaces to single
-  cleaned = cleaned.replace(/\s*,\s*,/g, ","); // Double commas
-  cleaned = cleaned.replace(/\s*,\s*$/g, ""); // Trailing comma
-  cleaned = cleaned.replace(/^\s*,\s*/g, ""); // Leading comma
-  cleaned = cleaned.trim();
-
-  return cleaned;
+  return matches
+    .map((m) => parseInt(m.match(/\d+/)?.[0] || "0", 10))
+    .filter((id) => id > 0);
 }
 
-/**
- * Parse suggestions from Perplexity - tries JSON first, falls back to CSV format
- */
-function parseSuggestions(text: string): ParsedSuggestion[] {
-  // Try JSON parsing first
-  const jsonParsed = parseSuggestionsJson(text);
-  if (jsonParsed.length > 0) {
-    return jsonParsed;
+async function findSameDeveloperGames(
+  sourceAppid: number,
+  developer: string
+): Promise<number[]> {
+  if (!developer) return [];
+
+  const devs = developer.split(",").map((d) => d.trim()).filter(Boolean);
+  const appIds = new Set<number>();
+
+  for (const dev of devs.slice(0, 2)) {
+    const ids = await fetchGamesByDeveloper(dev);
+    ids.forEach((id) => appIds.add(id));
   }
 
-  // Fallback to CSV parsing
-  return parseSuggestionsCsv(text);
+  appIds.delete(sourceAppid);
+  return Array.from(appIds).slice(0, 10);
 }
 
-/**
- * Parse suggestions from JSON format: [{title, steam_appid, explanation}, ...]
- */
-function parseSuggestionsJson(text: string): ParsedSuggestion[] {
-  try {
-    // Try to extract JSON from markdown code fences if present
-    let jsonText = text.trim();
-    const jsonMatch = jsonText.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
-    if (jsonMatch) {
-      jsonText = jsonMatch[1];
-    }
+async function findTagBasedCandidates(
+  sourceAppid: number,
+  sourceTags: Record<string, number>,
+  limit = 30
+): Promise<GameWithTags[]> {
+  const supabase = getSupabaseServerClient();
+  const topTags = getTopTags(sourceTags, 5);
 
-    // Try to find JSON array in the text
-    const arrayMatch = jsonText.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-      jsonText = arrayMatch[0];
-    }
+  if (topTags.length === 0) return [];
 
-    const parsed = JSON.parse(jsonText);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
+  const { data, error } = await supabase
+    .from("games_new")
+    .select("appid, title, steamspy_tags, steamspy_owners, raw")
+    .neq("appid", sourceAppid)
+    .not("steamspy_tags", "eq", "{}")
+    .limit(200);
 
-    const items: ParsedSuggestion[] = [];
-    for (const item of parsed) {
-      if (typeof item !== "object" || item === null) continue;
-
-      const title = String(item.title || item.name || "").trim();
-      const appId = typeof item.steam_appid === "number" 
-        ? item.steam_appid 
-        : typeof item.appid === "number"
-        ? item.appid
-        : null;
-      const explanation = String(item.explanation || "").trim();
-
-      if (title && appId && appId > 0) {
-        items.push({ title, appId, explanation });
-      } else if (title && appId === null) {
-        // Title without app ID - will be searched later
-        items.push({ title, appId: null, explanation });
-      }
-    }
-
-    return items;
-  } catch (error) {
-    console.log("[SUGGEST] JSON parse failed, falling back to CSV:", error);
+  if (error || !data) {
+    console.error("[SUGGEST-HYBRID] Failed to fetch candidates:", error);
     return [];
   }
-}
 
-/**
- * Parse suggestions from CSV format: title, steam_appid, explanation (legacy fallback)
- */
-function parseSuggestionsCsv(text: string): ParsedSuggestion[] {
-  const items: ParsedSuggestion[] = [];
+  const sourceTagSet = new Set(topTags.map((t) => t.toLowerCase()));
+  const scored: Array<{ game: GameWithTags; score: number }> = [];
 
-  const lines = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line && !line.match(/^(title|example|format)/i));
+  for (const game of data) {
+    const gameTags = game.steamspy_tags as Record<string, number>;
+    if (!gameTags || Object.keys(gameTags).length === 0) continue;
 
-  for (const line of lines) {
-    const parts = line.split(",").map((p) => p.trim());
+    const gameTopTags = getTopTags(gameTags, 10);
+    const shared = gameTopTags.filter((t) => sourceTagSet.has(t.toLowerCase()));
+    const score = shared.length / Math.max(sourceTagSet.size, 1);
 
-    if (parts.length >= 3) {
-      const title = parts[0].trim();
-      const appIdStr = parts[1].trim();
-      const explanation = parts.slice(2).join(", ").trim();
-
-      const appId = parseInt(appIdStr, 10);
-      if (!isNaN(appId) && appId > 0 && title) {
-        items.push({ title, appId, explanation: explanation || "" });
-      } else if (title) {
-        items.push({ title, appId: null, explanation: explanation || "" });
-      }
-    } else if (parts.length === 2) {
-      const title = parts[0].trim();
-      const appIdStr = parts[1].trim();
-      const appId = parseInt(appIdStr, 10);
-      if (!isNaN(appId) && appId > 0 && title) {
-        items.push({ title, appId, explanation: "" });
-      }
+    if (score >= 0.2) {
+      scored.push({ game: game as GameWithTags, score });
     }
   }
 
-  return items;
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((s) => s.game);
 }
 
-/**
- * Validate and correct suggestions from parsed data.
- * Tests each app ID, verifies the title matches, and if invalid/mismatched,
- * tries to find the correct one by searching.
- */
-async function validateAndCorrectSuggestions(
-  parsedSuggestions: ParsedSuggestion[]
-): Promise<Suggestion[]> {
-  const validated: Array<{ suggestion: Suggestion; raw?: unknown }> = [];
+export async function suggestGamesHybrid(
+  sourceAppid: number,
+  sourceTags?: Record<string, number>,
+  sourceDeveloper?: string,
+  sourceRaw?: Record<string, unknown>
+): Promise<CategorizedSuggestions> {
+  const supabase = getSupabaseServerClient();
 
-  for (const suggestion of parsedSuggestions) {
-    let appId = suggestion.appId;
-    const title = suggestion.title;
+  let tags = sourceTags;
+  let developer = sourceDeveloper;
+  let raw = sourceRaw;
 
-    // If no app ID, try searching by title
-    if (!appId && title) {
-      appId = await searchAppIdByTitle(title);
-    }
-
-    // If we have an app ID, validate it AND verify title matches
-    if (appId) {
-      const result = await validateAppIdWithTitle(appId, title);
-      
-      if (result.valid && result.titleMatch) {
-        // App ID is valid and title matches - use it
-        validated.push({
-          raw: result.raw,
-          suggestion: {
-            appId,
-            title: result.actualTitle || title,
-            explanation: suggestion.explanation,
-          },
-        });
-      } else if (result.valid && !result.titleMatch) {
-        // App ID exists but wrong game - search by title instead
-        console.log(`[SUGGEST] App ID ${appId} is "${result.actualTitle}", not "${title}" - searching by title`);
-        const correctedId = await searchAppIdByTitle(title);
-        if (correctedId && correctedId !== appId) {
-          // Verify the corrected ID also matches
-          const correctedResult = await validateAppIdWithTitle(correctedId, title);
-          if (correctedResult.valid && correctedResult.titleMatch !== false) {
-            validated.push({
-              raw: correctedResult.raw,
-              suggestion: {
-                appId: correctedId,
-                title: correctedResult.actualTitle || title,
-                explanation: suggestion.explanation,
-              },
-            });
-          }
-        }
-      } else {
-        // App ID invalid - try to find correct one by title
-        console.log(`[SUGGEST] App ID ${appId} invalid, searching for "${title}"`);
-        const correctedId = await searchAppIdByTitle(title);
-        if (correctedId) {
-          const correctedResult = await validateAppIdWithTitle(correctedId, title);
-          if (correctedResult.valid) {
-            validated.push({
-              raw: correctedResult.raw,
-              suggestion: {
-                appId: correctedId,
-                title: correctedResult.actualTitle || title,
-                explanation: suggestion.explanation,
-              },
-            });
-          }
-        }
-      }
+  if (!tags || !developer) {
+    const steamspyData = await fetchSteamSpyData(sourceAppid);
+    if (steamspyData) {
+      tags = tags || steamspyData.tags;
+      developer = developer || steamspyData.developer;
     }
   }
 
-  // Return all validated suggestions in order (prompt now handles indie focus)
-  // Deduplicate by appId to avoid duplicates
-  const picked: Suggestion[] = [];
+  if (!tags || Object.keys(tags).length === 0) {
+    console.log(`[SUGGEST-HYBRID] No SteamSpy tags for ${sourceAppid}, trying Steam store...`);
+    const steamTags = await fetchSteamStoreTags(sourceAppid);
+    if (steamTags.length > 0) {
+      tags = tagsArrayToRecord(steamTags);
+      console.log(`[SUGGEST-HYBRID] Got ${steamTags.length} tags from Steam store`);
+    }
+  }
+
+  if (!raw) {
+    const { data } = await supabase
+      .from("games_new")
+      .select("raw")
+      .eq("appid", sourceAppid)
+      .single();
+    raw = (data?.raw as Record<string, unknown>) || {};
+  }
+
+  const sourceContentIds = getContentDescriptorIds(raw);
+  const sourceIsAdult = isAdultContent(sourceContentIds);
+
+  const sameDeveloper: Suggestion[] = [];
+  const niche: Suggestion[] = [];
+  const popular: Suggestion[] = [];
   const seen = new Set<number>();
 
-  for (const v of validated) {
-    if (seen.has(v.suggestion.appId)) continue;
-    seen.add(v.suggestion.appId);
-    picked.push(v.suggestion);
+  if (developer) {
+    const devAppIds = await findSameDeveloperGames(sourceAppid, developer);
+
+    for (const appid of devAppIds) {
+      if (seen.has(appid)) continue;
+
+      const { data: gameData } = await supabase
+        .from("games_new")
+        .select("appid, title, raw")
+        .eq("appid", appid)
+        .single();
+
+      if (!gameData) continue;
+
+      const gameRaw = (gameData.raw as Record<string, unknown>) || {};
+      const gameContentIds = getContentDescriptorIds(gameRaw);
+      if (isAdultContent(gameContentIds) && !sourceIsAdult) continue;
+
+      const title = gameData.title || `Game ${appid}`;
+      if (title.toLowerCase().includes("soundtrack")) continue;
+      if (title.toLowerCase().includes("artbook")) continue;
+
+      seen.add(appid);
+      sameDeveloper.push({
+        appId: appid,
+        title,
+        explanation: `From the same developer`,
+        category: "same-developer",
+      });
+    }
   }
 
-  return picked;
+  if (tags && Object.keys(tags).length > 0) {
+    const candidates = await findTagBasedCandidates(sourceAppid, tags, 30);
+    const sourceTopTags = getTopTags(tags, 15);
+
+    for (const candidate of candidates) {
+      if (seen.has(candidate.appid)) continue;
+
+      const candidateTags = candidate.steamspy_tags;
+      const { score, sharedTags, vibeConflict } = calculateTagSimilarity(tags, candidateTags);
+
+      if (vibeConflict) continue;
+      if (score < 0.25) continue;
+
+      const gameRaw = (candidate.raw as Record<string, unknown>) || {};
+      const gameContentIds = getContentDescriptorIds(gameRaw);
+      if (isAdultContent(gameContentIds) && !sourceIsAdult) continue;
+
+      seen.add(candidate.appid);
+
+      const ownerCount = parseOwners(candidate.steamspy_owners);
+      const explanation = `Shares ${sharedTags.slice(0, 3).join(", ")} vibes`;
+
+      if (ownerCount < 200000) {
+        niche.push({
+          appId: candidate.appid,
+          title: candidate.title,
+          explanation,
+          category: "niche",
+        });
+      } else {
+        popular.push({
+          appId: candidate.appid,
+          title: candidate.title,
+          explanation,
+          category: "popular",
+        });
+      }
+    }
+  }
+
+  const all = [...sameDeveloper, ...niche, ...popular];
+
+  return { sameDeveloper, niche, popular, all };
 }

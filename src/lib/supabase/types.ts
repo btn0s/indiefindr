@@ -1,7 +1,10 @@
+export type SuggestionCategory = "same-developer" | "niche" | "popular";
+
 export type Suggestion = {
   appId: number;
-  title: string; // Original title from Perplexity (for fallback lookup if appId fails)
+  title: string;
   explanation: string;
+  category?: SuggestionCategory;
 };
 
 export type GameNew = {
@@ -14,11 +17,16 @@ export type GameNew = {
   long_description: string | null;
   raw: unknown;
   suggested_game_appids: Suggestion[] | null;
+  steamspy_tags: Record<string, number> | null;
+  steamspy_owners: string | null;
+  steamspy_positive: number | null;
+  steamspy_negative: number | null;
+  steamspy_updated_at: string | null;
   created_at: string;
   updated_at: string;
 };
 
-export type GameCardGame = Pick<GameNew, "appid" | "title" | "header_image" | "videos">;
+export type GameCardGame = Pick<GameNew, "appid" | "title" | "header_image">;
 
 export type Collection = {
   id: string;

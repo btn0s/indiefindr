@@ -67,7 +67,7 @@ export async function getPinnedHomeCollections(): Promise<CollectionWithPreview[
   if (uniquePreviewAppIds.length > 0) {
     const { data: games, error: gamesDataError } = await supabase
       .from("games_new")
-      .select("appid, title, header_image, videos")
+      .select("appid, title, header_image")
       .in("appid", uniquePreviewAppIds);
 
     if (!gamesDataError && games) {
@@ -76,7 +76,6 @@ export async function getPinnedHomeCollections(): Promise<CollectionWithPreview[
           appid: g.appid,
           title: g.title,
           header_image: g.header_image,
-          videos: g.videos,
         });
       }
     }
@@ -156,7 +155,7 @@ export async function getPinnedCollectionsForGame(
   if (uniquePreviewAppIds.length > 0) {
     const { data: games, error: gamesDataError } = await supabase
       .from("games_new")
-      .select("appid, title, header_image, videos")
+      .select("appid, title, header_image")
       .in("appid", uniquePreviewAppIds);
 
     if (!gamesDataError && games) {
@@ -165,7 +164,6 @@ export async function getPinnedCollectionsForGame(
           appid: g.appid,
           title: g.title,
           header_image: g.header_image,
-          videos: g.videos,
         });
       }
     }

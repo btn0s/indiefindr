@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-function CollectionRowSkeleton() {
+function GameRowItemSkeleton() {
   return (
     <div className="flex flex-col gap-4 w-full">
       <div className="container mx-auto max-w-4xl w-full flex items-center justify-between">
@@ -24,11 +24,11 @@ function CollectionRowSkeleton() {
   );
 }
 
-export function CollectionsSectionSkeleton({ rows = 2 }: { rows?: number }) {
+export function GameRowSkeleton({ rows = 2 }: { rows?: number }) {
   return (
     <div className="flex flex-col gap-8 w-full">
       {Array.from({ length: rows }).map((_, i) => (
-        <CollectionRowSkeleton key={i} />
+        <GameRowItemSkeleton key={i} />
       ))}
     </div>
   );

@@ -1,15 +1,12 @@
 import Link from "next/link";
-import GameCard from "./GameCard";
+import { GameCardAsync } from "./GameCardAsync";
 import type { CollectionWithPreview } from "@/lib/supabase/types";
 
-interface CollectionsSectionProps {
+interface GameRowProps {
   collections: CollectionWithPreview[];
-  title?: string;
 }
 
-export function CollectionsSection({
-  collections,
-}: CollectionsSectionProps) {
+export function GameRow({ collections }: GameRowProps) {
   if (collections.length === 0) {
     return null;
   }
@@ -51,7 +48,7 @@ export function CollectionsSection({
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {collection.preview_games.map((game) => (
-                  <GameCard key={game.appid} {...game} />
+                  <GameCardAsync key={game.appid} appid={game.appid} />
                 ))}
               </div>
             )}

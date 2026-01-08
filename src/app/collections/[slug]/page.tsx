@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCollectionBySlug, getCollectionGames } from "@/lib/collections";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import GameCard from "@/components/GameCard";
+import { GameCardAsync } from "@/components/GameCardAsync";
 
 export const dynamic = "force-dynamic";
 
@@ -125,7 +125,7 @@ export default async function CollectionPage({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {games.map((game) => (
-                <GameCard key={game.appid} {...game} />
+                <GameCardAsync key={game.appid} appid={game.appid} />
               ))}
             </div>
           )}
