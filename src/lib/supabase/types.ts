@@ -38,22 +38,6 @@ export type Collection = {
   updated_at: string;
 };
 
-export type CollectionGame = {
-  collection_id: string;
-  appid: number;
-  position: number;
-  created_at: string;
-};
-
-export type CollectionPin = {
-  id: string;
-  collection_id: string;
-  context: "home" | "game";
-  game_appid: number | null;
-  position: number;
-  created_at: string;
-};
-
 export type CollectionWithPreview = Collection & {
   preview_games: GameCardGame[];
   total_games_count?: number;
