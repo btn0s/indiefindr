@@ -68,7 +68,11 @@ export function SuggestionsLoader({
   return (
     <>
       <div
-        className={pending ? "sr-only" : "flex flex-col items-center gap-4 py-8 w-full bg-muted p-4"}
+        className={
+          pending
+            ? "sr-only"
+            : "flex flex-col items-center gap-4 py-8 w-full bg-muted p-4"
+        }
         ref={(el) => {
           const button = el?.querySelector("button");
           formRef.current = button?.form ?? null;
