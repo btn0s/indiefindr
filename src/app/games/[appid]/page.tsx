@@ -1,28 +1,10 @@
 import { notFound } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import type { Metadata } from "next";
 import { ArrowUpRight } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getOrFetchGame } from "@/lib/actions/games";
-import { generateSuggestions } from "@/lib/actions/suggestions";
 import { GameVideo } from "@/components/GameVideo";
-import { GameCardAsync } from "@/components/GameCardAsync";
-import { SuggestionsLoader } from "./suggestions-loader";
-
-type Suggestion = {
-  suggested_appid: number;
-  reason: string;
-};
-
-async function getSuggestions(appId: number): Promise<Suggestion[]> {
-  const supabase = getSupabaseServerClient();
-  const { data } = await supabase
-    .from("game_suggestions")
-    .select("suggested_appid, reason")
-    .eq("source_appid", appId);
-
-  return data ?? [];
-}
+import { SuggestionsSection } from "./suggestions-section";
 
 export async function generateMetadata({
   params,
@@ -36,26 +18,26 @@ export async function generateMetadata({
     return { title: "Game Not Found" };
   }
 
-  const game = await getOrFetchGame(appId);
+  // Lightweight metadata fetch - just get title
+  const supabase = getSupabaseServerClient();
+  const { data } = await supabase
+    .from("games_new")
+    .select("title, short_description")
+    .eq("appid", appId)
+    .maybeSingle();
 
-  if (!game) {
+  if (!data) {
     return { title: "Game Not Found" };
   }
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const canonicalUrl = `${siteUrl}/games/${appId}`;
-  const suggestions = await getSuggestions(appId);
-  const suggestionCount = suggestions.length;
 
-  const title = `Games like ${game.title}`;
-  const description = game.short_description
-    ? `Discover ${
-        suggestionCount > 0 ? `${suggestionCount} ` : ""
-      }games similar to ${game.title}. ${
-        game.short_description
-      } Get AI-powered recommendations with explanations.`
-    : `Find games similar to ${game.title} on Steam. Get AI-powered recommendations with explanations.`;
+  const title = `Games like ${data.title}`;
+  const description = data.short_description
+    ? `Discover games similar to ${data.title}. ${data.short_description} Get AI-powered recommendations with explanations.`
+    : `Find games similar to ${data.title} on Steam. Get AI-powered recommendations with explanations.`;
 
   return {
     title,
@@ -91,19 +73,11 @@ export default async function GamePage({
     notFound();
   }
 
+  // Only fetch critical game data - suggestions load separately via Suspense
   const game = await getOrFetchGame(appId);
 
   if (!game) {
     notFound();
-  }
-
-  const suggestions = await getSuggestions(appId);
-  const hasSuggestions = suggestions.length > 0;
-
-  async function generate() {
-    "use server";
-    await generateSuggestions(appId);
-    revalidatePath(`/games/${appId}`);
   }
 
   const siteUrl =
@@ -229,24 +203,7 @@ export default async function GamePage({
           </div>
         </article>
 
-        <div className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">Games like {game.title}</h2>
-          {hasSuggestions ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {suggestions.map((s) => (
-                <GameCardAsync
-                  key={s.suggested_appid}
-                  appid={s.suggested_appid}
-                  explanation={s.reason}
-                />
-              ))}
-            </div>
-          ) : (
-            <form action={generate}>
-              <SuggestionsLoader autoSubmit />
-            </form>
-          )}
-        </div>
+        <SuggestionsSection appId={appId} gameTitle={game.title} />
       </main>
     </>
   );
