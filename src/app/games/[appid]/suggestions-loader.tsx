@@ -34,6 +34,7 @@ export function SuggestionsLoader({
   const formRef = useRef<HTMLFormElement | null>(null);
   const submitted = useRef(false);
   const prevPendingRef = useRef(pending);
+  const shouldResetRef = useRef(false);
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -45,15 +46,21 @@ export function SuggestionsLoader({
 
   useEffect(() => {
     if (!prevPendingRef.current && pending) {
-      setElapsed(0);
+      shouldResetRef.current = true;
     }
     prevPendingRef.current = pending;
 
     if (!pending) {
       return;
     }
+
     const interval = setInterval(() => {
-      setElapsed((e) => e + 1);
+      if (shouldResetRef.current) {
+        setElapsed(0);
+        shouldResetRef.current = false;
+      } else {
+        setElapsed((e) => e + 1);
+      }
     }, 1000);
     return () => clearInterval(interval);
   }, [pending]);
