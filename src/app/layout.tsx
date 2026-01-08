@@ -5,7 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Suspense } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ScrollToTopOnNavigation } from "@/components/ScrollToTopOnNavigation";
-import { DevToolbar } from "@/components/DevToolbar";
+
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -65,7 +65,7 @@ export default function RootLayout({
           <Navbar />
           <div className="px-4">{children}</div>
         </div>
-        <DevToolbar />
+
         <Toaster />
         <Analytics />
         <SpeedInsights />

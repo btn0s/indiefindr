@@ -29,7 +29,7 @@ export async function GameCardAsync({ appid, explanation }: GameCardAsyncProps) 
   }
 
   return (
-    <Link href={`/games-new/${game.appid}`} className="block" prefetch={false}>
+    <Link href={`/games/${game.appid}`} className="block" prefetch={false}>
       <div>
         <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
           {game.header_image && (

@@ -1,9 +1,8 @@
 import { ImageResponse } from "next/og";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { Suggestion } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
-export const revalidate = 3600; // 1 hour
+export const revalidate = 3600;
 
 export const alt = "Games like this — IndieFindr";
 export const size = {
@@ -104,23 +103,17 @@ export default async function Image({
     return placeholderGridImage();
   }
 
-  // Fetch the main game and its suggestions
-  const { data: gameData } = await supabase
-    .from("games_new")
-    .select("title, suggested_game_appids")
-    .eq("appid", appId)
-    .maybeSingle();
+  const { data: suggestions } = await supabase
+    .from("game_suggestions")
+    .select("suggested_appid")
+    .eq("source_appid", appId)
+    .limit(6);
 
-  if (!gameData?.title) {
+  if (!suggestions || suggestions.length === 0) {
     return placeholderGridImage();
   }
 
-  const suggestions: Suggestion[] = gameData.suggested_game_appids || [];
-  const suggestedAppIds = suggestions.slice(0, 6).map((s) => s.appId);
-
-  if (!suggestedAppIds.length) {
-    return placeholderGridImage();
-  }
+  const suggestedAppIds = suggestions.map((s) => s.suggested_appid);
 
   const coverDataUrls = await Promise.all(
     suggestedAppIds.map(async (id) => {
