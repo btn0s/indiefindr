@@ -34,6 +34,8 @@ export type Collection = {
   title: string;
   description: string | null;
   published: boolean;
+  pinned_to_home: boolean;
+  home_position: number;
   created_at: string;
   updated_at: string;
 };

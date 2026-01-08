@@ -9,41 +9,25 @@ import type {
 export async function getPinnedHomeCollections(): Promise<CollectionWithPreview[]> {
   const supabase = getSupabaseServerClient();
 
-  const { data: pins, error: pinsError } = await supabase
-    .from("collection_pins")
-    .select("collection_id, position")
-    .eq("context", "home")
-    .order("position", { ascending: true });
-
-  if (pinsError || !pins || pins.length === 0) {
-    return [];
-  }
-
-  const collectionIds = pins.map((p) => p.collection_id);
-
-  const [collectionsResult, collectionGamesResult] = await Promise.all([
-    supabase
-      .from("collections")
-      .select("*")
-      .in("id", collectionIds)
-      .eq("published", true),
-    supabase
-      .from("collection_games")
-      .select("collection_id, appid, position")
-      .in("collection_id", collectionIds)
-      .order("collection_id", { ascending: true })
-      .order("position", { ascending: true }),
-  ]);
-
-  const { data: collections, error: collectionsError } = collectionsResult;
-  const { data: collectionGames, error: gamesError } = collectionGamesResult;
+  const { data: collections, error: collectionsError } = await supabase
+    .from("collections")
+    .select("*")
+    .eq("published", true)
+    .eq("pinned_to_home", true)
+    .order("home_position", { ascending: true });
 
   if (collectionsError || !collections || collections.length === 0) {
     return [];
   }
 
-  const collectionMap = new Map<string, Collection>();
-  collections.forEach((c) => collectionMap.set(c.id, c));
+  const collectionIds = collections.map((c) => c.id);
+
+  const { data: collectionGames, error: gamesError } = await supabase
+    .from("collection_games")
+    .select("collection_id, appid, position")
+    .in("collection_id", collectionIds)
+    .order("collection_id", { ascending: true })
+    .order("position", { ascending: true });
 
   const appIdsByCollection = new Map<string, number[]>();
   const totalCountsByCollection = new Map<string, number>();
@@ -82,9 +66,7 @@ export async function getPinnedHomeCollections(): Promise<CollectionWithPreview[
   }
 
   const results: CollectionWithPreview[] = [];
-  for (const pin of pins) {
-    const collection = collectionMap.get(pin.collection_id);
-    if (!collection) continue;
+  for (const collection of collections) {
     const appIds = appIdsByCollection.get(collection.id) ?? [];
     const orderedGames = appIds
       .map((appid) => gamesByAppId.get(appid))
@@ -96,92 +78,6 @@ export async function getPinnedHomeCollections(): Promise<CollectionWithPreview[
   return results;
 }
 
-export async function getPinnedCollectionsForGame(
-  appid: number
-): Promise<CollectionWithPreview[]> {
-  const supabase = getSupabaseServerClient();
-
-  const { data: pins, error: pinsError } = await supabase
-    .from("collection_pins")
-    .select("collection_id, position")
-    .eq("context", "game")
-    .eq("game_appid", appid)
-    .order("position", { ascending: true });
-
-  if (pinsError || !pins || pins.length === 0) {
-    return [];
-  }
-
-  const collectionIds = pins.map((p) => p.collection_id);
-
-  const [collectionsResult, collectionGamesResult] = await Promise.all([
-    supabase
-      .from("collections")
-      .select("*")
-      .in("id", collectionIds)
-      .eq("published", true),
-    supabase
-      .from("collection_games")
-      .select("collection_id, appid, position")
-      .in("collection_id", collectionIds)
-      .order("collection_id", { ascending: true })
-      .order("position", { ascending: true }),
-  ]);
-
-  const { data: collections, error: collectionsError } = collectionsResult;
-  const { data: collectionGames, error: gamesError } = collectionGamesResult;
-
-  if (collectionsError || !collections || collections.length === 0) {
-    return [];
-  }
-
-  const collectionMap = new Map<string, Collection>();
-  collections.forEach((c) => collectionMap.set(c.id, c));
-
-  const appIdsByCollection = new Map<string, number[]>();
-  if (!gamesError && collectionGames) {
-    for (const row of collectionGames) {
-      const list = appIdsByCollection.get(row.collection_id) ?? [];
-      if (list.length < 4) {
-        list.push(row.appid);
-        appIdsByCollection.set(row.collection_id, list);
-      }
-    }
-  }
-
-  const uniquePreviewAppIds = [...new Set(Array.from(appIdsByCollection.values()).flat())];
-
-  const gamesByAppId = new Map<number, GameCardGame>();
-  if (uniquePreviewAppIds.length > 0) {
-    const { data: games, error: gamesDataError } = await supabase
-      .from("games_new")
-      .select("appid, title, header_image")
-      .in("appid", uniquePreviewAppIds);
-
-    if (!gamesDataError && games) {
-      for (const g of games) {
-        gamesByAppId.set(g.appid, {
-          appid: g.appid,
-          title: g.title,
-          header_image: g.header_image,
-        });
-      }
-    }
-  }
-
-  const results: CollectionWithPreview[] = [];
-  for (const pin of pins) {
-    const collection = collectionMap.get(pin.collection_id);
-    if (!collection) continue;
-    const appIds = appIdsByCollection.get(collection.id) ?? [];
-    const orderedGames = appIds
-      .map((id) => gamesByAppId.get(id))
-      .filter((g): g is GameCardGame => g !== undefined);
-    results.push({ ...collection, preview_games: orderedGames });
-  }
-
-  return results;
-}
 
 export async function getCollectionBySlug(
   slug: string
