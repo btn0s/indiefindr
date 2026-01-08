@@ -6,10 +6,9 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PROCESSING_POLL_CONFIG } from "@/lib/config";
 
-const POLL_INTERVAL_MS = 2000; // Poll every 2 seconds
-const MAX_POLL_ATTEMPTS = 60; // Stop after 2 minutes (60 * 2s)
-const RETRY_DELAYS_MS = [0, 10000, 30000, 60000]; // Immediately, then 10s, 30s, 60s
+const { POLL_INTERVAL_MS, MAX_POLL_ATTEMPTS, RETRY_DELAYS_MS } = PROCESSING_POLL_CONFIG;
 
 export function GameProcessingState({ appid }: { appid: string }) {
   const router = useRouter();

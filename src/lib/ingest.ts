@@ -2,23 +2,14 @@ import { fetchSteamGame, searchAppIdByTitle, type SteamGameData } from "./steam"
 import { suggestGames, sanitizeExplanation, type SuggestGamesResult } from "./suggest";
 import { getSupabaseServerClient } from "./supabase/server";
 import { Suggestion } from "./supabase/types";
-
-// Track games currently being ingested to prevent duplicate concurrent ingestion
-const ingestingGames = new Set<number>();
+import { acquireLock, releaseLock, isLocked } from "./utils/distributed-lock";
+import { INGEST_CONFIG } from "./config";
 
 export type IngestResult = {
   steamData: SteamGameData;
   suggestions: SuggestGamesResult;
 };
 
-/**
- * Ingest a game by fetching Steam data and optionally generating suggestions.
- *
- * @param steamUrl - Steam store URL or app ID
- * @param skipSuggestions - If true, only fetch Steam data (no Perplexity call)
- * @param force - If true, force re-ingestion even if game already exists
- * @returns Promise resolving to Steam data and suggestions (suggestions may be empty if generated in background)
- */
 export async function ingest(
   steamUrl: string,
   skipSuggestions = false,
@@ -26,26 +17,17 @@ export async function ingest(
 ): Promise<IngestResult> {
   const appId = parseAppId(steamUrl);
 
-  // Return existing data if already in database (unless forcing)
   if (appId && !force) {
     const existing = await getExistingGame(appId);
     if (existing) return existing;
 
-    // Wait if already being ingested
-    if (ingestingGames.has(appId)) {
+    if (await isLocked("ingest", appId)) {
       const result = await waitForIngestion(appId);
       if (result) return result;
     }
-
-    ingestingGames.add(appId);
-  } else if (appId && force) {
-    // When forcing, still check if already being ingested
-    if (ingestingGames.has(appId)) {
-      const result = await waitForIngestion(appId);
-      if (result) return result;
-    }
-    ingestingGames.add(appId);
   }
+
+  const lockAcquired = appId ? await acquireLock("ingest", appId) : { acquired: false };
 
   try {
     console.log("[INGEST] Fetching Steam data for:", steamUrl);
@@ -55,26 +37,22 @@ export async function ingest(
     await saveSteamData(steamData);
 
     if (!skipSuggestions && steamData.screenshots?.length) {
-      // Run suggestions generation in background - don't await
       generateSuggestionsInBackground(steamData).catch((err) => {
         console.error("[INGEST] Background suggestions error:", err);
       });
     }
 
-    // Return immediately with Steam data (suggestions will be generated in background)
     return { steamData, suggestions: { suggestions: [] } };
   } finally {
-    if (appId) ingestingGames.delete(appId);
+    if (lockAcquired.acquired && appId) {
+      await releaseLock("ingest", appId);
+    }
   }
 }
 
-/**
- * Generate suggestions for a game in the background.
- * This is called after steam data is saved so the user can navigate immediately.
- */
 async function generateSuggestionsInBackground(steamData: SteamGameData): Promise<void> {
   console.log("[INGEST] Generating suggestions in background for:", steamData.title);
-  
+
   try {
     const textContext = buildSuggestionContext({
       title: steamData.title,
@@ -86,7 +64,6 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
 
     console.log("[INGEST] Saving suggestions for:", steamData.appid);
     await saveSuggestions(steamData.appid, suggestions.suggestions);
-    // Home view refresh is now handled automatically by database trigger
 
     console.log("[INGEST] Background suggestions complete for:", steamData.appid);
   } catch (err) {
@@ -94,11 +71,6 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
   }
 }
 
-/**
- * Clear all suggestions for a game. Used for force-regenerating suggestions.
- *
- * @param appId - The game's Steam app ID
- */
 export async function clearSuggestions(appId: number): Promise<void> {
   const supabase = getSupabaseServerClient();
   const { error } = await supabase
@@ -114,13 +86,6 @@ export async function clearSuggestions(appId: number): Promise<void> {
   }
 }
 
-/**
- * Generate new suggestions for an existing game and merge with existing ones.
- * Also auto-ingests missing suggested games.
- *
- * @param appId - The game's Steam app ID
- * @returns Promise resolving to merged suggestions
- */
 export async function refreshSuggestions(appId: number): Promise<{
   suggestions: Suggestion[];
   newCount: number;
@@ -128,7 +93,6 @@ export async function refreshSuggestions(appId: number): Promise<{
   missingCount: number;
 }> {
   const supabase = getSupabaseServerClient();
-  // Fetch game data
   const { data: gameData, error } = await supabase
     .from("games_new")
     .select("screenshots, title, short_description, long_description, raw, suggested_game_appids")
@@ -143,7 +107,6 @@ export async function refreshSuggestions(appId: number): Promise<{
     throw new Error("No screenshots available");
   }
 
-  // Generate new suggestions
   console.log("[REFRESH] Generating suggestions for:", gameData.title);
   const textContext = buildSuggestionContext({
     title: gameData.title,
@@ -153,11 +116,9 @@ export async function refreshSuggestions(appId: number): Promise<{
   });
   const result = await suggestGames(gameData.screenshots[0], textContext);
 
-  // Merge with existing (deduplicate by appId, prefer new explanations)
   const existingSuggestions: Suggestion[] = gameData.suggested_game_appids || [];
   const merged = mergeSuggestions(existingSuggestions, result.suggestions);
 
-  // Save merged suggestions
   await saveSuggestions(appId, merged);
 
   const missingAppIds = await findMissingGameIds(merged.map((s) => s.appId));
@@ -170,9 +131,6 @@ export async function refreshSuggestions(appId: number): Promise<{
   };
 }
 
-/**
- * Find which app IDs don't exist in the database.
- */
 export async function findMissingGameIds(appIds: number[]): Promise<number[]> {
   const supabase = getSupabaseServerClient();
   if (!appIds.length) return [];
@@ -186,29 +144,25 @@ export async function findMissingGameIds(appIds: number[]): Promise<number[]> {
   return appIds.filter((id) => !existingSet.has(id));
 }
 
-// Track games currently being auto-ingested to prevent duplicate concurrent attempts
-const autoIngestingGames = new Set<number>();
-
-/**
- * Auto-ingest games that don't exist in the database.
- * Fetches Steam data only (no suggestions) to avoid cascade.
- * Runs sequentially to respect rate limits.
- * When ingestion fails with "not found", tries to correct the suggestion using title search.
- */
 export async function autoIngestMissingGames(appIds: number[]): Promise<void> {
   const missingIds = await findMissingGameIds(appIds);
   if (!missingIds.length) return;
 
-  // Filter out games already being ingested
-  const toIngest = missingIds.filter((id) => !autoIngestingGames.has(id));
-  if (!toIngest.length) return;
+  const toIngest: number[] = [];
+  for (const id of missingIds) {
+    if (!(await isLocked("auto_ingest", id))) {
+      toIngest.push(id);
+    }
+  }
 
-  // Mark as ingesting
-  toIngest.forEach((id) => autoIngestingGames.add(id));
+  if (!toIngest.length) return;
 
   console.log(`[AUTO-INGEST] Ingesting ${toIngest.length} missing games...`);
 
   for (const appId of toIngest) {
+    const lockResult = await acquireLock("auto_ingest", appId);
+    if (!lockResult.acquired) continue;
+
     try {
       await ingest(`https://store.steampowered.com/app/${appId}/`, true);
       console.log(`[AUTO-INGEST] Success: ${appId}`);
@@ -216,27 +170,20 @@ export async function autoIngestMissingGames(appIds: number[]): Promise<void> {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[AUTO-INGEST] Failed: ${appId}`, message);
 
-      // If game doesn't exist on Steam, try to correct using title search
       if (message.includes("not found") || message.includes("unavailable")) {
         await correctOrRemoveInvalidSuggestion(appId);
       }
     } finally {
-      autoIngestingGames.delete(appId);
+      await releaseLock("auto_ingest", appId);
     }
   }
 
   console.log(`[AUTO-INGEST] Completed ${toIngest.length} games`);
 }
 
-/**
- * Try to correct an invalid suggestion using title search.
- * If correction succeeds, updates the suggestion with the correct app ID.
- * If correction fails, removes the suggestion entirely.
- */
 async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<void> {
   const supabase = getSupabaseServerClient();
   try {
-    // Find all games that have this invalid suggestion
     const { data: gamesWithSuggestion } = await supabase
       .from("games_new")
       .select("appid, suggested_game_appids")
@@ -250,7 +197,6 @@ async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<v
 
       if (!invalidSuggestion) continue;
 
-      // Try to find the correct app ID using the title
       let correctedId: number | null = null;
       if (invalidSuggestion.title) {
         console.log(`[AUTO-INGEST] Searching for "${invalidSuggestion.title}" to correct ${invalidAppId}`);
@@ -258,7 +204,6 @@ async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<v
       }
 
       if (correctedId && correctedId !== invalidAppId) {
-        // Correction succeeded - update the suggestion
         console.log(`[AUTO-INGEST] Corrected ${invalidAppId} → ${correctedId} for game ${game.appid}`);
         const corrected = suggestions.map((s) =>
           s.appId === invalidAppId ? { ...s, appId: correctedId! } : s
@@ -268,7 +213,6 @@ async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<v
           .update({ suggested_game_appids: corrected, updated_at: new Date().toISOString() })
           .eq("appid", game.appid);
 
-        // Try to ingest the corrected game
         try {
           await ingest(`https://store.steampowered.com/app/${correctedId}/`, true);
           console.log(`[AUTO-INGEST] Ingested corrected game ${correctedId}`);
@@ -276,7 +220,6 @@ async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<v
           console.log(`[AUTO-INGEST] Failed to ingest corrected game ${correctedId}`);
         }
       } else {
-        // Correction failed - remove the suggestion
         console.log(`[AUTO-INGEST] No correction found, removing ${invalidAppId} from game ${game.appid}`);
         const filtered = suggestions.filter((s) => s.appId !== invalidAppId);
         await supabase
@@ -314,13 +257,12 @@ async function saveSteamData(steamData: SteamGameData): Promise<void> {
 
 async function saveSuggestions(appId: number, suggestions: Suggestion[]): Promise<void> {
   const supabase = getSupabaseServerClient();
-  
-  // Sanitize explanations before saving
+
   const sanitized = suggestions.map((s) => ({
     ...s,
     explanation: sanitizeExplanation(s.explanation),
   }));
-  
+
   const { error } = await supabase
     .from("games_new")
     .update({
@@ -348,7 +290,6 @@ function buildTextContext(
 }
 
 function decodeBasicHtmlEntities(text: string): string {
-  // Minimal decoding to keep prompts readable without adding dependencies.
   return text
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
@@ -362,10 +303,8 @@ function decodeBasicHtmlEntities(text: string): string {
 
 function stripHtml(input: string): string {
   const withoutTags = input
-    // Convert common line breaks to newlines first.
     .replace(/<\s*br\s*\/?\s*>/gi, "\n")
     .replace(/<\s*\/p\s*>/gi, "\n")
-    // Then strip remaining tags.
     .replace(/<[^>]*>/g, " ");
 
   const decoded = decodeBasicHtmlEntities(withoutTags);
@@ -417,7 +356,6 @@ function extractSteamSearchMetadata(raw: unknown): SteamSearchMetadata {
       .filter(Boolean)
       .slice(0, 8) || [];
 
-  // Steam categories include lots of store/feature flags; keep the gameplay-salient ones.
   const gameplayCategoryAllowlist = new Set([
     "Single-player",
     "Multi-player",
@@ -539,7 +477,6 @@ function buildSearchQueries(
     }
   }
 
-  // De-dupe, keep reasonably short
   const seen = new Set<string>();
   const unique = queries
     .map((q) => q.replace(/\s+/g, " ").trim())
@@ -575,7 +512,6 @@ function buildSuggestionContext(input: SuggestionContextInput): string {
     for (const q of queries) lines.push(`- ${q}`);
   }
 
-  // Fallback to the older behavior if everything is missing.
   if (!lines.length) {
     return buildTextContext(input.title, input.short_description, input.long_description);
   }
@@ -586,7 +522,7 @@ function buildSuggestionContext(input: SuggestionContextInput): string {
 function mergeSuggestions(existing: Suggestion[], incoming: Suggestion[]): Suggestion[] {
   const map = new Map<number, Suggestion>();
   for (const s of existing) map.set(s.appId, s);
-  for (const s of incoming) map.set(s.appId, s); // Incoming overwrites
+  for (const s of incoming) map.set(s.appId, s);
   return Array.from(map.values());
 }
 
@@ -624,11 +560,11 @@ async function getExistingGame(appId: number): Promise<IngestResult | null> {
 async function waitForIngestion(appId: number): Promise<IngestResult | null> {
   console.log(`[INGEST] Game ${appId} is being ingested, waiting...`);
 
-  for (let i = 0; i < 10; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  for (let i = 0; i < INGEST_CONFIG.INGESTION_WAIT_MAX_ATTEMPTS; i++) {
+    await new Promise((resolve) => setTimeout(resolve, INGEST_CONFIG.INGESTION_WAIT_DELAY_MS));
     const result = await getExistingGame(appId);
     if (result) return result;
   }
 
-  return null; // Proceed with ingestion if timeout
+  return null;
 }

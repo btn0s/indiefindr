@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { retry } from "./utils/retry";
 import { validateAppIdWithTitle, searchAppIdByTitle } from "./steam";
 import { Suggestion } from "./supabase/types";
+import { RETRY_CONFIG } from "./config";
 
 const SONAR_MODEL = "perplexity/sonar-pro";
 
@@ -99,8 +100,8 @@ Return ONLY valid JSON. Do not include markdown code fences, explanations, or an
       return response;
     },
     {
-      maxAttempts: 2,
-      initialDelayMs: 1000,
+      maxAttempts: RETRY_CONFIG.PERPLEXITY_MAX_ATTEMPTS,
+      initialDelayMs: RETRY_CONFIG.PERPLEXITY_INITIAL_DELAY_MS,
       retryable: (error: unknown) => {
         const err = error as { status?: number; response?: { status?: number } };
         const status = err?.status || err?.response?.status;

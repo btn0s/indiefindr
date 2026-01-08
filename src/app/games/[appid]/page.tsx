@@ -79,8 +79,8 @@ const checkGameExistsOnSteam = cache(
     try {
       // Use Steam API directly to check if game exists without triggering ingestion
       const url = `https://store.steampowered.com/api/appdetails?appids=${appId}&l=english`;
-      const response = await fetch(url, { 
-        next: { revalidate: 3600 } // Cache for 1 hour
+      const response = await fetch(url, {
+        next: { revalidate: 3600 }, // Cache for 1 hour
       });
 
       if (!response.ok) {
@@ -96,7 +96,9 @@ const checkGameExistsOnSteam = cache(
 
       const gameData = appData.data;
       if (gameData.steam_appid && gameData.steam_appid !== appId) {
-        console.warn(`[CHECK] Steam API returned different appid: requested ${appId}, got ${gameData.steam_appid}`);
+        console.warn(
+          `[CHECK] Steam API returned different appid: requested ${appId}, got ${gameData.steam_appid}`
+        );
         return null; // Mismatch - treat as unknown
       }
 
@@ -149,7 +151,9 @@ const getGameDataFromDb = cache(
       // Use the site URL to avoid issues with server-side fetch
       const siteUrl =
         process.env.NEXT_PUBLIC_SITE_URL ||
-        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+        (process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "http://localhost:3000");
       fetch(`${siteUrl}/api/games/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -158,9 +162,12 @@ const getGameDataFromDb = cache(
           skipSuggestions: true,
         }),
       }).catch((err) => {
-        console.error(`[GAME PAGE] Failed to trigger ingestion for ${appId}:`, err);
+        console.error(
+          `[GAME PAGE] Failed to trigger ingestion for ${appId}:`,
+          err
+        );
       });
-      
+
       // Quick check (2 attempts, 500ms delay) to catch fast ingestion race condition
       // Don't wait long - let client-side GameProcessingState handle retries
       const quickCheck = await waitForGameInDb(appId, 2, 500);
@@ -217,24 +224,21 @@ function extractMetadata(raw: unknown): {
       : null;
 
   // Extract developers
-  const developers =
-    Array.isArray(data.developers)
-      ? (data.developers as string[]).filter((d) => typeof d === "string")
-      : [];
+  const developers = Array.isArray(data.developers)
+    ? (data.developers as string[]).filter((d) => typeof d === "string")
+    : [];
 
   // Extract publishers
-  const publishers =
-    Array.isArray(data.publishers)
-      ? (data.publishers as string[]).filter((p) => typeof p === "string")
-      : [];
+  const publishers = Array.isArray(data.publishers)
+    ? (data.publishers as string[]).filter((p) => typeof p === "string")
+    : [];
 
   // Extract genres
-  const genres =
-    Array.isArray(data.genres)
-      ? (data.genres as Array<{ id?: number; description?: string }>)
-          .filter((g) => g.id && g.description)
-          .map((g) => ({ id: g.id!, description: g.description! }))
-      : [];
+  const genres = Array.isArray(data.genres)
+    ? (data.genres as Array<{ id?: number; description?: string }>)
+        .filter((g) => g.id && g.description)
+        .map((g) => ({ id: g.id!, description: g.description! }))
+    : [];
 
   // Extract price
   let price: string | null = null;
@@ -270,7 +274,9 @@ function extractMetadata(raw: unknown): {
 
   // Extract Metacritic score
   const metacritic_score =
-    data.metacritic && typeof data.metacritic === "object" && data.metacritic !== null
+    data.metacritic &&
+    typeof data.metacritic === "object" &&
+    data.metacritic !== null
       ? (data.metacritic as { score?: number }).score || null
       : null;
 
@@ -405,7 +411,7 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
     if (existsOnSteam === false) {
       notFound();
     }
-    
+
     // If it still hasn't loaded after waiting, show processing state instead of 404
     return <GameProcessingState appid={appid} />;
   }
@@ -462,18 +468,19 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
       )}
 
       {/* Cover Art - Full Width (only when no video) */}
-      {(!gameData.videos || gameData.videos.length === 0) && gameData.header_image && (
-        <div className="relative w-full aspect-steam rounded-lg overflow-hidden bg-muted">
-          <Image
-            src={gameData.header_image}
-            alt={gameData.title}
-            fill
-            className="object-cover"
-            sizes="100vw"
-            priority
-          />
-        </div>
-      )}
+      {(!gameData.videos || gameData.videos.length === 0) &&
+        gameData.header_image && (
+          <div className="relative w-full aspect-steam rounded-lg overflow-hidden bg-muted">
+            <Image
+              src={gameData.header_image}
+              alt={gameData.title}
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority
+            />
+          </div>
+        )}
 
       {/* Game Header */}
       <div className="flex flex-col gap-4">
@@ -500,8 +507,12 @@ async function GameContent({ appId, appid }: { appId: number; appid: string }) {
             )}
             {gameData.developers.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground">Developer{gameData.developers.length > 1 ? "s" : ""}:</span>
-                <span className="text-foreground">{gameData.developers.join(", ")}</span>
+                <span className="text-muted-foreground">
+                  Developer{gameData.developers.length > 1 ? "s" : ""}:
+                </span>
+                <span className="text-foreground">
+                  {gameData.developers.join(", ")}
+                </span>
               </div>
             )}
           </div>
@@ -555,11 +566,7 @@ export default async function GameDetailPage({
 
   return (
     <main className="container mx-auto max-w-4xl py-6 sm:py-8 flex flex-col gap-3 sm:gap-4">
-      <Suspense
-        fallback={
-          <GameDetailSkeleton />
-        }
-      >
+      <Suspense fallback={<GameDetailSkeleton />}>
         <GameContent appId={appId} appid={appid} />
       </Suspense>
     </main>

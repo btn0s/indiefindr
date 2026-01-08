@@ -1,29 +1,17 @@
-/**
- * Global rate limiter using Supabase for cross-process coordination.
- * Ensures minimum delay between requests to external APIs.
- */
-
 import { getSupabaseServerClient } from "../supabase/server";
+import { RATE_LIMIT_CONFIG } from "../config";
 
-const DEFAULT_DELAY_MS = 2000; // 2 seconds between requests
+const {
+  STEAM_API_DELAY_MS: DEFAULT_DELAY_MS,
+  MAX_RATE_LIMIT_RETRIES: maxRetries,
+  RATE_LIMIT_POLL_INTERVAL_MS: pollIntervalMs,
+} = RATE_LIMIT_CONFIG;
 
-/**
- * Acquire a rate limit slot for the given key.
- * First call is immediate; subsequent calls wait to ensure minimum spacing.
- * 
- * Uses atomic database operations to coordinate across multiple processes.
- * 
- * @param key - Rate limit key (e.g., 'steam_api')
- * @param minDelayMs - Minimum delay between requests in milliseconds
- * @returns Promise that resolves when it's safe to proceed
- */
 export async function acquireRateLimit(
   key: string = "steam_api",
   minDelayMs: number = DEFAULT_DELAY_MS
 ): Promise<void> {
   const supabase = getSupabaseServerClient();
-  const maxRetries = 30; // Max wait time = 30 * 100ms = 3 seconds of polling
-  const pollIntervalMs = 100;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -99,9 +87,6 @@ export async function acquireRateLimit(
   console.warn(`[RATE LIMITER] Timed out waiting for rate limit slot for key: ${key}`);
 }
 
-/**
- * Sleep for the specified duration
- */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

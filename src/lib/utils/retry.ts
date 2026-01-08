@@ -1,6 +1,4 @@
-/**
- * Retry utility with exponential backoff
- */
+import { RETRY_CONFIG } from "../config";
 
 export interface RetryOptions {
   maxAttempts?: number;
@@ -11,10 +9,10 @@ export interface RetryOptions {
 }
 
 const DEFAULT_OPTIONS: Required<RetryOptions> = {
-  maxAttempts: 3,
-  initialDelayMs: 1000,
-  maxDelayMs: 10000,
-  backoffMultiplier: 2,
+  maxAttempts: RETRY_CONFIG.DEFAULT_MAX_ATTEMPTS,
+  initialDelayMs: RETRY_CONFIG.DEFAULT_INITIAL_DELAY_MS,
+  maxDelayMs: RETRY_CONFIG.DEFAULT_MAX_DELAY_MS,
+  backoffMultiplier: RETRY_CONFIG.DEFAULT_BACKOFF_MULTIPLIER,
   retryable: (error: unknown) => {
     const err = error as {
       message?: string;
@@ -45,16 +43,10 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
   },
 };
 
-/**
- * Sleep for specified milliseconds
- */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Retry a function with exponential backoff
- */
 export async function retry<T>(
   fn: () => Promise<T>,
   options: RetryOptions = {}

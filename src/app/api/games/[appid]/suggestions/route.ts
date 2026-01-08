@@ -1,5 +1,11 @@
-import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { AppIdSchema } from "@/lib/api/schemas";
+import {
+  apiSuccess,
+  apiValidationError,
+  apiNotFound,
+  apiDatabaseError,
+} from "@/lib/api/responses";
 
 export async function GET(
   _request: Request,
@@ -8,11 +14,13 @@ export async function GET(
   try {
     const supabase = getSupabaseServerClient();
     const { appid } = await params;
-    const appId = parseInt(appid, 10);
 
-    if (isNaN(appId)) {
-      return NextResponse.json({ error: "Invalid appid" }, { status: 400 });
+    const parseResult = AppIdSchema.safeParse(appid);
+    if (!parseResult.success) {
+      return apiValidationError(parseResult.error);
     }
+
+    const appId = parseResult.data;
 
     const { data, error } = await supabase
       .from("games_new")
@@ -21,14 +29,14 @@ export async function GET(
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return apiDatabaseError(error.message);
     }
 
     if (!data) {
-      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+      return apiNotFound("Game");
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       appid: data.appid,
       title: data.title,
       suggestions: data.suggested_game_appids || [],
@@ -36,7 +44,6 @@ export async function GET(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiDatabaseError(message);
   }
 }
-

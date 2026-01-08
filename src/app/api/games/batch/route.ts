@@ -1,33 +1,35 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { BatchGamesSchema } from "@/lib/api/schemas";
+import {
+  apiSuccess,
+  apiValidationError,
+  apiDatabaseError,
+  apiInternalError,
+} from "@/lib/api/responses";
+import { API_CONFIG } from "@/lib/config";
+import { ZodError } from "zod";
 
-type Body = {
-  appids?: unknown;
-};
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabaseServerClient();
-    const body = (await request.json()) as Body;
-    const appids = body.appids;
+    const body = await request.json();
+    const input = BatchGamesSchema.parse(body);
 
-    if (!Array.isArray(appids) || appids.length === 0) {
-      return NextResponse.json(
-        { error: "appids (number[]) is required" },
-        { status: 400 }
-      );
-    }
+    const unique = Array.from(new Set(input.appids)).slice(
+      0,
+      API_CONFIG.BATCH_MAX_APPIDS
+    );
 
-    const parsed = appids
-      .map((id) => (typeof id === "number" ? id : parseInt(String(id), 10)))
-      .filter((id) => Number.isFinite(id) && id > 0);
-
-    // Basic safety limits to avoid giant `IN (...)` queries.
-    const unique = Array.from(new Set(parsed)).slice(0, 60);
     if (unique.length === 0) {
-      return NextResponse.json(
-        { error: "No valid app IDs provided" },
-        { status: 400 }
+      return apiValidationError(
+        new ZodError([
+          {
+            code: "custom",
+            path: ["appids"],
+            message: "No valid app IDs provided after parsing",
+          },
+        ])
       );
     }
 
@@ -39,13 +41,16 @@ export async function POST(request: Request) {
       .in("appid", unique);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return apiDatabaseError(error.message);
     }
 
-    return NextResponse.json({ games: data || [] });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiSuccess({ games: data || [] });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return apiValidationError(error);
+    }
+
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return apiInternalError(message);
   }
 }
-

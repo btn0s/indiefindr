@@ -1,19 +1,22 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { SSE_CONFIG } from "@/lib/config";
+import { AppIdSchema } from "@/lib/api/schemas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ appid: string }> }
 ) {
   const { appid } = await params;
-  const appId = parseInt(appid, 10);
+  const parseResult = AppIdSchema.safeParse(appid);
 
-  if (isNaN(appId)) {
+  if (!parseResult.success) {
     return new Response("Invalid appid", { status: 400 });
   }
 
+  const appId = parseResult.data;
   const encoder = new TextEncoder();
   let intervalId: ReturnType<typeof setInterval> | null = null;
   let closed = false;
@@ -23,7 +26,6 @@ export async function GET(
       const supabase = getSupabaseServerClient();
       let lastUpdatedAt: string | null = null;
       let consecutiveNoChange = 0;
-      const MAX_NO_CHANGE = 30;
 
       const sendEvent = (data: object) => {
         if (closed) return;
@@ -78,7 +80,7 @@ export async function GET(
             }
           } else {
             consecutiveNoChange++;
-            if (consecutiveNoChange >= MAX_NO_CHANGE) {
+            if (consecutiveNoChange >= SSE_CONFIG.MAX_NO_CHANGE_POLLS) {
               sendEvent({ type: "timeout" });
               closed = true;
               if (intervalId) clearInterval(intervalId);
@@ -95,7 +97,7 @@ export async function GET(
       await checkForUpdates();
 
       if (!closed) {
-        intervalId = setInterval(checkForUpdates, 2000);
+        intervalId = setInterval(checkForUpdates, SSE_CONFIG.POLL_INTERVAL_MS);
       }
     },
     cancel() {

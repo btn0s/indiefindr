@@ -12,10 +12,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { GameNew, Suggestion } from "@/lib/supabase/types";
+import { UI_CONFIG } from "@/lib/config";
 
-const MAX_AUTO_INGEST = 6;
-const SLOW_NOTICE_MS = 3500;
-const PREFETCH_SUGGESTIONS_COUNT = 3;
+const {
+  CLIENT_MAX_AUTO_INGEST: MAX_AUTO_INGEST,
+  SLOW_NOTICE_DELAY_MS: SLOW_NOTICE_MS,
+  PREFETCH_SUGGESTIONS_COUNT,
+  BATCH_FETCH_RETRY_DELAY_MS,
+  BATCH_FETCH_MAX_RETRIES,
+} = UI_CONFIG;
 
 type SSEMessage =
   | { type: "suggestions"; suggestions: Suggestion[]; updatedAt: string }
@@ -34,8 +39,10 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
 
   const requestedSuggestRef = useRef(false);
   const requestedIngestRef = useRef<Set<number>>(new Set());
+  const fetchRetryCountRef = useRef<Map<number, number>>(new Map());
   const gamesByIdRef = useRef<Record<number, GameNew>>({});
   const generatingRef = useRef(false);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const missingAppIds = useMemo(() => {
     if (!suggestions?.length) return [];
@@ -64,11 +71,17 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ appids: appIds }),
       });
-      const data = (await res.json()) as { games?: GameNew[]; error?: string };
-      if (!res.ok) {
-        throw new Error(data.error || `Failed to load games (${res.status})`);
+      const json = (await res.json()) as {
+        success?: boolean;
+        data?: { games?: GameNew[] };
+        error?: { message?: string };
+      };
+      if (!res.ok || !json.success) {
+        throw new Error(
+          json.error?.message || `Failed to load games (${res.status})`
+        );
       }
-      return data.games || [];
+      return json.data?.games || [];
     },
     []
   );
@@ -133,7 +146,7 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
 
   useEffect(() => {
     if (streamComplete) return;
-    if (!document.hidden === false) return;
+    if (document.hidden) return;
 
     const eventSource = new EventSource(`/api/games/${appid}/suggestions/stream`);
     let closed = false;
@@ -195,16 +208,48 @@ export function SuggestionsListClient({ appid }: { appid: number }) {
     if (!suggestions?.length) return;
     if (!missingAppIds.length) return;
 
-    const toFetch = missingAppIds.filter((id) => !gamesByIdRef.current[id]);
+    const toFetch = missingAppIds.filter((id) => {
+      if (gamesByIdRef.current[id]) return false;
+      const retries = fetchRetryCountRef.current.get(id) ?? 0;
+      return retries < BATCH_FETCH_MAX_RETRIES;
+    });
+
     if (toFetch.length === 0) return;
 
-    void fetchGames(toFetch).then((games) => {
-      setGamesById((prev) => {
-        const next = { ...prev };
-        for (const g of games) next[g.appid] = g;
-        return next;
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+    }
+
+    const isFirstFetch = toFetch.every(
+      (id) => !fetchRetryCountRef.current.has(id)
+    );
+
+    const doFetch = () => {
+      toFetch.forEach((id) => {
+        const current = fetchRetryCountRef.current.get(id) ?? 0;
+        fetchRetryCountRef.current.set(id, current + 1);
       });
-    });
+
+      void fetchGames(toFetch).then((games) => {
+        setGamesById((prev) => {
+          const next = { ...prev };
+          for (const g of games) next[g.appid] = g;
+          return next;
+        });
+      });
+    };
+
+    if (isFirstFetch) {
+      doFetch();
+    } else {
+      fetchTimeoutRef.current = setTimeout(doFetch, BATCH_FETCH_RETRY_DELAY_MS);
+    }
+
+    return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+    };
   }, [suggestions, missingAppIds, fetchGames]);
 
   useEffect(() => {
