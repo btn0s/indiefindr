@@ -46,3 +46,22 @@ next-env.d.ts
 
 # Test result files
 results-*.json
+
+# Cursor IDE (personal workflow files)
+.cursor/
+!.cursor/debug.log  # Keep debug.log ignored if you want, or remove this line
+
+# Other common IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files (if not already covered)
+.DS_Store
+Thumbs.db
+
+# Local development files
+.env.local
+.env*.local
