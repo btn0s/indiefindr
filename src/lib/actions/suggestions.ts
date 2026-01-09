@@ -1,7 +1,7 @@
 "use server";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { suggestGamesVibe } from "@/lib/suggest-new";
+import { suggestGamesVibe } from "@/lib/suggest";
 
 export type GenerateSuggestionsResult = {
   success: boolean;

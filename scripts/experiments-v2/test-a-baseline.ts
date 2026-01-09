@@ -4,7 +4,7 @@ import * as dotenv from "dotenv";
 import * as path from "path";
 dotenv.config({ path: path.resolve(__dirname, "../../.env.local") });
 
-import { suggestGamesVibe } from "../../src/lib/suggest-new";
+import { suggestGamesVibe } from "../../src/lib/suggest";
 import { TEST_GAMES, TestGame } from "./shared/test-games";
 import { TestResult } from "./shared/output";
 

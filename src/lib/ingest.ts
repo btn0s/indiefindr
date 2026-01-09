@@ -1,5 +1,5 @@
 import { fetchSteamGame, searchAppIdByTitle, type SteamGameData } from "./steam";
-import { suggestGamesHybrid } from "./suggest";
+import { suggestGamesVibe } from "./suggest";
 import { getSupabaseServerClient } from "./supabase/server";
 import { Suggestion } from "./supabase/types";
 import { acquireLock, releaseLock, isLocked } from "./utils/distributed-lock";
@@ -54,15 +54,17 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
   console.log("[INGEST] Generating suggestions in background for:", steamData.title);
 
   try {
-    const hybridResult = await suggestGamesHybrid(
+    const developers = (steamData.raw as any)?.developers as string[] | undefined;
+    const vibeResult = await suggestGamesVibe(
       steamData.appid,
-      undefined,
-      undefined,
-      steamData.raw as Record<string, unknown>
+      steamData.title,
+      steamData.short_description || undefined,
+      developers,
+      10
     );
 
     console.log("[INGEST] Saving suggestions for:", steamData.appid);
-    await saveSuggestions(steamData.appid, hybridResult.all);
+    await saveSuggestions(steamData.appid, vibeResult.suggestions);
 
     console.log("[INGEST] Background suggestions complete for:", steamData.appid);
   } catch (err) {
@@ -108,15 +110,17 @@ export async function refreshSuggestions(appId: number): Promise<{
 
   console.log("[REFRESH] Generating suggestions for:", gameData.title);
 
-  const hybridResult = await suggestGamesHybrid(
+  const developers = (gameData.raw as any)?.developers as string[] | undefined;
+  const vibeResult = await suggestGamesVibe(
     appId,
-    undefined,
-    undefined,
-    gameData.raw as Record<string, unknown>
+    gameData.title,
+    gameData.short_description || undefined,
+    developers,
+    10
   );
 
   const existingSuggestions: Suggestion[] = gameData.suggested_game_appids || [];
-  const merged = mergeSuggestions(existingSuggestions, hybridResult.all);
+  const merged = mergeSuggestions(existingSuggestions, vibeResult.suggestions);
 
   await saveSuggestions(appId, merged);
 
@@ -124,7 +128,7 @@ export async function refreshSuggestions(appId: number): Promise<{
 
   return {
     suggestions: merged,
-    newCount: hybridResult.all.length,
+    newCount: vibeResult.suggestions.length,
     missingAppIds,
     missingCount: missingAppIds.length,
   };

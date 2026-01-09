@@ -6,7 +6,7 @@
 
 import { config } from "dotenv";
 import { getSupabaseServerClient } from "../src/lib/supabase/server";
-import { suggestGamesVibeFromAppId } from "../src/lib/suggest-new";
+import { suggestGamesVibeFromAppId } from "../src/lib/suggest";
 
 config({ path: [".env.local"] });
 

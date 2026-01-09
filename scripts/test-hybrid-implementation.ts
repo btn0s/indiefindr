@@ -5,7 +5,7 @@
  */
 
 import { config } from "dotenv";
-import { suggestGamesVibeFromAppId } from "../src/lib/suggest-new";
+import { suggestGamesVibeFromAppId } from "../src/lib/suggest";
 
 config({ path: [".env.local"] });
 
