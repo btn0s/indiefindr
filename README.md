@@ -1,5 +1,7 @@
 # IndieFindr
 
+> **Note:** The repository is named `indiefindr` and the application is branded as **IndieFindr**.
+
 Discover your next favorite indie game through AI-powered recommendations. IndieFindr analyzes game descriptions and generates intelligent suggestions, helping you find hidden gems beyond the Steam storefront.
 
 ## What is IndieFindr?
@@ -39,15 +41,15 @@ The AI looks at what makes games similar beyond surface-level tags. It understan
 
 - Node.js 18+ and pnpm
 - A Supabase project
-- AI SDK provider/gateway configured for `perplexity/sonar` and `openai/gpt-4o-mini`
+- API keys for OpenAI and Perplexity (the app uses Vercel AI SDK with direct provider access)
 
 ### Installation
 
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/btn0s/games-graph.git
-cd games-graph
+git clone https://github.com/btn0s/indiefindr.git
+cd indiefindr
 ```
 
 2. **Install dependencies**
@@ -67,9 +69,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # AI Provider Configuration
-# Configure your AI gateway/provider to resolve perplexity/sonar and openai/gpt-4o-mini
-AI_GATEWAY_BASE_URL=https://your-ai-gateway-url.com
-AI_GATEWAY_API_KEY=your_ai_gateway_api_key
+# The app uses Vercel AI SDK with direct provider access
+# You'll need API keys from both providers:
+OPENAI_API_KEY=your_openai_api_key
+PERPLEXITY_API_KEY=your_perplexity_api_key
 
 # Site Configuration
 NEXT_PUBLIC_SITE_URL=https://your-site-url.com
@@ -179,34 +182,57 @@ npx tsx scripts/experiments-v2/run-all.ts
 ## Project Structure
 
 ```
-games-graph/
+indiefindr/
 ├── src/
 │   ├── app/              # Next.js app router pages and API routes
 │   ├── components/       # React components
 │   ├── lib/              # Core logic
-│   │   ├── suggest-new.ts    # Adaptive suggestion system
+│   │   ├── suggest.ts        # Adaptive suggestion system
 │   │   ├── actions/          # Server actions
 │   │   ├── supabase/         # Database clients
 │   │   └── utils/            # Utilities
 │   └── hooks/            # React hooks
 ├── scripts/
-│   ├── experiments-v2/   # Suggestion approach experiments
-│   └── vibe-experiments/ # Earlier experiments
+│   └── experiments-v2/   # Suggestion approach experiments (Test A is production)
+├── archive/
+│   ├── vibe-experiments/ # Historical experiments (archived)
+│   └── suggestion-experiments/ # Historical experiments (archived)
 ├── supabase/migrations/  # Database migrations
 └── docs/                 # Documentation
 ```
 
+## Why Open Source?
+
+IndieFindr is open source to:
+- Help indie developers understand how game discovery can be improved
+- Enable researchers to study AI-powered recommendation systems
+- Let the community contribute improvements to indie game discovery
+- Demonstrate practical applications of adaptive AI systems
+
+## For Contributors
+
+This is an active project! See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get involved.
+
+Key areas where contributions are welcome:
+- UI/UX improvements
+- Performance optimizations
+- Additional game data sources
+- Better recommendation algorithms
+- Bug fixes and documentation
+
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup guide
+- Code style guidelines  
+- How to submit changes
+- Project structure explanation
+
+For questions or discussions, open an issue on GitHub.
 
 ## License
 
-This project is private and proprietary.
+This project is open source under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 

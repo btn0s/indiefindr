@@ -187,7 +187,7 @@ Created experiments-v2 with 4 test approaches:
 
 ## Technical Implementation
 
-The final system is in `src/lib/suggest-new.ts`:
+The final system is in `src/lib/suggest.ts`:
 
 ```
 suggestGamesVibe(appid, title, description, developers, count)
@@ -217,7 +217,7 @@ suggestGamesVibe(appid, title, description, developers, count)
 
 ## Appendix: Key Files
 
-- `src/lib/suggest-new.ts` - Main suggestion logic
+- `src/lib/suggest.ts` - Main suggestion logic
 - `src/lib/actions/suggestions.ts` - Server action wrapper
 - `scripts/experiments-v2/` - Test experiments
 - `scripts/vibe-experiments/` - Earlier experiments

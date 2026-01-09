@@ -1,5 +1,11 @@
 # Suggestion Experiments v2
 
+> **Production System:** The project uses **Test A (Baseline)** as described in the case study.
+> This multi-strategy consensus system is implemented in `src/lib/suggest.ts`.
+>
+> Tests B, C, and D are alternatives that were evaluated but NOT used in production.
+> They remain here for research purposes and to document the decision-making process.
+
 This directory contains experiments to test simpler approaches to game suggestions while maintaining quality.
 
 ## Structure
