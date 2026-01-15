@@ -71,27 +71,26 @@ pnpm supabase:reset
 2. The preview branch gets its own isolated database, API URL, and credentials
 3. Migrations from `supabase/migrations/` are automatically applied
 4. `supabase/seed.sql` is automatically run on branch creation
-5. **GitHub Actions** syncs the preview branch credentials to Vercel as branch-scoped environment variables
+5. **Supabase's Vercel Integration** automatically syncs preview branch credentials to Vercel
 6. When the PR closes, Supabase automatically deletes the preview branch
 
 ### Setup (One-Time)
 
-1. **Enable Supabase Branching**:
+1. **Enable Supabase GitHub Integration**:
    - Go to your Supabase project dashboard
-   - Navigate to **Settings → Branching**
-   - Enable **Branching** feature
+   - Navigate to **Settings → Integrations → GitHub**
    - Connect your GitHub repository
    - Set `main` as the **production branch**
    - Enable **Automatic branching for PRs**
+   - Configure Supabase directory (default: `./` or `./supabase`)
+   - Enable "Deploy to production on push including PR merges"
 
-2. **Add GitHub Secrets**:
-   - `SUPABASE_ACCESS_TOKEN` - Get from Supabase Dashboard → Account → Access Tokens
-   - `SUPABASE_PROJECT_REF` - Your production project reference ID (found in project settings)
-   - `SUPABASE_ANON_KEY` - Your production project's anon key (from API settings)
-   - `SUPABASE_SERVICE_ROLE_KEY` - Your production project's service role key (from API settings)
-   - `VERCEL_TOKEN` - Get from Vercel Dashboard → Settings → Tokens
-   - `VERCEL_ORG_ID` - Your Vercel organization ID
-   - `VERCEL_PROJECT_ID` - Your Vercel project ID
+2. **Enable Supabase Vercel Integration**:
+   - Navigate to **Settings → Integrations → Vercel**
+   - Connect your Vercel account
+   - Select which Vercel project to sync with
+   - Enable sync for **Production** and **Preview** environments
+   - Supabase will automatically keep environment variables up to date
 
 ### Preview Branch URL Format
 
@@ -110,20 +109,18 @@ https://abc123-feature-x.supabase.co
 1. Create a feature branch and push to GitHub
 2. Open a Pull Request
 3. Supabase creates the preview branch automatically
-4. GitHub Actions waits for branch creation, then sets Vercel env vars
+4. Supabase's Vercel Integration syncs preview branch credentials to Vercel
 5. Vercel deploys the preview with the correct Supabase credentials
 6. Test your changes against the isolated preview database
-7. When PR closes, preview branch and Vercel env vars are cleaned up
+7. When PR closes, Supabase automatically deletes the preview branch
 
 ## Production Migrations
 
-### Option A: Automatic (Recommended)
+Supabase's GitHub Integration automatically applies migrations to production when you merge to `main`. 
 
-Supabase GitHub Integration automatically applies migrations to production when you merge to `main`. This is the simplest approach and requires no additional setup.
+The integration watches your `supabase/migrations/` directory and applies any new migrations to your production database when changes are pushed to the production branch.
 
-### Option B: Explicit CI Deployment
-
-If you prefer explicit control, you can add a GitHub Action that runs `supabase db push` on merges to `main`. See `.github/workflows/supabase-prod-migrations.yml` (if created).
+This happens automatically and doesn't require any additional CI/CD setup.
 
 ## Seed Data
 
@@ -140,18 +137,19 @@ For local development with richer data, you can create `supabase/seed.local.sql`
 
 ## Troubleshooting
 
-### Preview branch not found
+### Preview branch not created
 
-If GitHub Actions reports "branch not found":
-- Wait a few minutes - Supabase Branching may take time to create the branch
-- Check Supabase Dashboard → Branching to see if the branch was created
-- Verify your `SUPABASE_PROJECT_REF` secret is correct
+If preview branches aren't being created:
+- Check Supabase Dashboard → Integrations → GitHub to verify connection
+- Ensure "Automatic branching for PRs" is enabled
+- Verify the Supabase directory path is correct (usually `./` or `./supabase`)
 
 ### Vercel preview uses wrong database
 
-- Ensure branch-scoped env vars are set (check Vercel Dashboard → Settings → Environment Variables)
-- Verify the branch name matches between GitHub and Vercel
-- Check GitHub Actions logs for credential sync errors
+- Check Supabase Dashboard → Integrations → Vercel to verify connection
+- Ensure Preview environment sync is enabled
+- Verify the correct Vercel project is connected
+- Wait a few minutes for Supabase to sync credentials after preview branch creation
 
 ### Local Supabase won't start
 

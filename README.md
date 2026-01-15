@@ -88,6 +88,8 @@ pnpm supabase:reset
 
 For production/preview branches, see [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md) for detailed setup instructions.
 
+**Note**: Preview branches are managed by Supabase's GitHub and Vercel integrations. No additional CI/CD setup required.
+
 5. **Run the development server**
 
 ```bash
