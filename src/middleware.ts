@@ -38,6 +38,16 @@ function isRateLimited(ip: string): { limited: boolean; remaining: number } {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Handle @username routes - rewrite /@username/* to /username/*
+  const usernameMatch = pathname.match(/^\/@([a-z0-9_]+)(\/.*)?$/);
+  if (usernameMatch) {
+    const username = usernameMatch[1];
+    const rest = usernameMatch[2] || "";
+    const newUrl = request.nextUrl.clone();
+    newUrl.pathname = `/${username}${rest}`;
+    return NextResponse.rewrite(newUrl);
+  }
+
   const rateLimitedPaths = ["/api/games/submit"];
 
   const shouldRateLimit = rateLimitedPaths.some((path) =>
@@ -70,5 +80,8 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: [
+    "/api/:path*",
+    "/@:path*",
+  ],
 };

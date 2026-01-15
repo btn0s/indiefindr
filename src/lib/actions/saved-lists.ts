@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
+import { getUsernameByUserId } from "./profiles";
 
 export async function getDefaultSavedList(userId: string) {
   const supabase = getSupabaseServerClient();
@@ -95,8 +96,6 @@ export async function toggleSaveGame(userId: string, appid: number) {
   const supabase = getSupabaseServerClient();
   const serviceClient = getSupabaseServiceClient();
 
-  // Use service client to check for list (bypasses RLS)
-  // This ensures we can find the list even if RLS is blocking
   let { data: list } = await serviceClient
     .from("saved_lists")
     .select("id")
@@ -104,7 +103,6 @@ export async function toggleSaveGame(userId: string, appid: number) {
     .eq("is_default", true)
     .maybeSingle();
 
-  // If no default list exists, create one
   if (!list) {
     const { data: newList, error: createError } = await serviceClient
       .from("saved_lists")
@@ -118,7 +116,6 @@ export async function toggleSaveGame(userId: string, appid: number) {
       .single();
 
     if (createError) {
-      console.error("Error creating saved list:", createError);
       return { error: `Could not create saved list: ${createError.message}` };
     }
 
@@ -129,7 +126,6 @@ export async function toggleSaveGame(userId: string, appid: number) {
     list = newList;
   }
 
-  // Verify the list belongs to the user (security check)
   const { data: listCheck } = await serviceClient
     .from("saved_lists")
     .select("owner_id")
@@ -140,7 +136,6 @@ export async function toggleSaveGame(userId: string, appid: number) {
     return { error: "Unauthorized: List does not belong to user" };
   }
 
-  // Use service client for game operations (server client lacks auth context)
   const { data: existing } = await serviceClient
     .from("saved_list_games")
     .select("appid")
@@ -200,4 +195,15 @@ export async function updateSavedListVisibility(
   revalidatePath("/saved");
   revalidatePath(`/lists/${listId}`);
   return { success: true };
+}
+
+export async function getSavedListShareUrl(listId: string, ownerId: string): Promise<string> {
+  const username = await getUsernameByUserId(ownerId);
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
+  
+  if (username) {
+    return `${baseUrl}/@${username}/saved`;
+  }
+  
+  return `${baseUrl}/lists/${listId}`;
 }

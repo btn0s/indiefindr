@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getProfileByUserId } from "@/lib/actions/profiles";
 import { GameCardAsync } from "@/components/GameCardAsync";
 import { Button } from "@/components/ui/button";
 import type { SavedList } from "@/lib/supabase/types";
@@ -70,6 +71,14 @@ export default async function PublicListPage({
 
   if (!list.is_public) {
     notFound();
+  }
+
+  // Redirect to username-based URL if user has a username and this is their default list
+  if (list.is_default) {
+    const profile = await getProfileByUserId(list.owner_id);
+    if (profile?.username) {
+      redirect(`/@${profile.username}/saved`);
+    }
   }
 
   const { data: savedGames, error: gamesError } = await supabase

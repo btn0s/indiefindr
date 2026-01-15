@@ -23,6 +23,7 @@ export default function SavedPage() {
   const [games, setGames] = useState<GameCardGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
     const loadSavedList = async () => {
@@ -37,6 +38,14 @@ export default function SavedPage() {
       }
 
       try {
+        const supabase = getSupabaseBrowserClient();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .maybeSingle();
+        setUsername(profile?.username ?? null);
+
         const defaultList = await getDefaultSavedList(user.id);
         if (!defaultList) {
           setIsLoading(false);
@@ -108,10 +117,35 @@ export default function SavedPage() {
     }
   };
 
-  const handleCopyShareLink = () => {
+  const handleCopyShareLink = async () => {
     if (!list) return;
 
-    const shareUrl = `${window.location.origin}/lists/${list.id}`;
+    let currentUsername = username;
+    if (!currentUsername) {
+      const supabase = getSupabaseBrowserClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .maybeSingle();
+        currentUsername = profile?.username ?? null;
+        if (currentUsername) {
+          setUsername(currentUsername);
+        }
+      }
+    }
+
+    if (!currentUsername) {
+      toast.error("Please claim a username first to share your list");
+      router.push("/settings");
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}/@${currentUsername}/saved`;
     navigator.clipboard.writeText(shareUrl);
     toast.success("Share link copied to clipboard!");
   };
@@ -142,7 +176,9 @@ export default function SavedPage() {
     );
   }
 
-  const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/lists/${list.id}`;
+  const shareUrl = username
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/@${username}/saved`
+    : null;
 
   return (
     <main className="container mx-auto max-w-4xl py-6 sm:py-8 flex flex-col gap-6">
@@ -177,21 +213,33 @@ export default function SavedPage() {
 
           {list.is_public && (
             <>
-              <Button variant="outline" onClick={handleCopyShareLink}>
-                <Copy className="h-4 w-4" />
-                Copy share link
-              </Button>
-              <a
-                href={shareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex"
-              >
-                <Button variant="ghost" size="sm">
-                  <ExternalLink className="h-4 w-4" />
-                  View public page
-                </Button>
-              </a>
+              {!username ? (
+                <Link href="/settings">
+                  <Button variant="outline" size="sm">
+                    Claim username to share
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={handleCopyShareLink}>
+                    <Copy className="h-4 w-4" />
+                    Copy share link
+                  </Button>
+                  {shareUrl && (
+                    <a
+                      href={shareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex"
+                    >
+                      <Button variant="ghost" size="sm">
+                        <ExternalLink className="h-4 w-4" />
+                        View public page
+                      </Button>
+                    </a>
+                  )}
+                </>
+              )}
             </>
           )}
         </div>

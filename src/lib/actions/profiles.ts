@@ -1,0 +1,129 @@
+"use server";
+
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServiceClient } from "@/lib/supabase/service";
+import { revalidatePath } from "next/cache";
+
+export async function getProfileByUsername(username: string) {
+  const supabase = getSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("username", username.toLowerCase())
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
+export async function getProfileByUserId(userId: string) {
+  const supabase = getSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
+export async function getCurrentUserProfile() {
+  const supabase = getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return getProfileByUserId(user.id);
+}
+
+export async function setUsername(userId: string, username: string): Promise<{ error?: string; success?: boolean }> {
+  const supabase = getSupabaseServerClient();
+  const serviceClient = getSupabaseServiceClient();
+
+  const normalizedUsername = username.toLowerCase().trim();
+
+  if (normalizedUsername.length < 3 || normalizedUsername.length > 20) {
+    return { error: "Username must be between 3 and 20 characters" };
+  }
+
+  if (!/^[a-z0-9_]+$/.test(normalizedUsername)) {
+    return { error: "Username can only contain letters, numbers, and underscores" };
+  }
+
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("username", normalizedUsername)
+    .maybeSingle();
+
+  if (existing && existing.id !== userId) {
+    return { error: "Username is already taken" };
+  }
+
+  const { error, data } = await serviceClient
+    .from("profiles")
+    .update({ username: normalizedUsername })
+    .eq("id", userId)
+    .select();
+
+  if (error) {
+    if (error.code === "23505") {
+      return { error: "Username is already taken" };
+    }
+    if (error.code === "23514") {
+      return { error: "Username format is invalid" };
+    }
+    return { error: error.message };
+  }
+
+  if (!data || data.length === 0) {
+    return { error: "Profile not found" };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/saved");
+  return { success: true };
+}
+
+export async function getUsernameByUserId(userId: string): Promise<string | null> {
+  const profile = await getProfileByUserId(userId);
+  return profile?.username ?? null;
+}
+
+export async function updateDisplayName(
+  userId: string,
+  displayName: string | null
+): Promise<{ error?: string; success?: boolean }> {
+  const serviceClient = getSupabaseServiceClient();
+
+  const { error, data } = await serviceClient
+    .from("profiles")
+    .update({ display_name: displayName })
+    .eq("id", userId)
+    .select();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  if (!data || data.length === 0) {
+    return { error: "Profile not found" };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath("/saved");
+  return { success: true };
+}
