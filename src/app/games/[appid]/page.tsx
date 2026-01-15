@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getOrFetchGame } from "@/lib/actions/games";
 import { GameVideo } from "@/components/GameVideo";
+import { SaveButton } from "@/components/SaveButton";
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
 
@@ -177,7 +179,7 @@ export default async function GamePage({
                 {game.release_date && <span>{game.release_date}</span>}
               </div>
             </div>
-            {game.videos.length > 0 && (
+            {game.videos.length > 0 ? (
               <div className="w-full aspect-video">
                 <GameVideo
                   videos={game.videos}
@@ -187,20 +189,34 @@ export default async function GamePage({
                   autoPlay
                 />
               </div>
-            )}
+            ) : game.header_image ? (
+              <div className="w-full aspect-video relative overflow-hidden rounded-lg bg-muted">
+                <Image
+                  src={game.header_image}
+                  alt={game.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 896px"
+                  priority
+                />
+              </div>
+            ) : null}
             {game.short_description && (
               <p className="text-muted-foreground">{game.short_description}</p>
             )}
 
-            <a
-              href={`https://store.steampowered.com/app/${appId}/`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-fit inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-primary-foreground bg-gradient-to-b from-primary/90 to-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),inset_0_-1px_0_0_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.2)] border border-primary/80 hover:from-primary hover:to-primary/90 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] active:translate-y-px transition-all"
-            >
-              View on Steam
-              <ArrowUpRight className="size-4" />
-            </a>
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href={`https://store.steampowered.com/app/${appId}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-fit inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-primary-foreground bg-gradient-to-b from-primary/90 to-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),inset_0_-1px_0_0_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.2)] border border-primary/80 hover:from-primary hover:to-primary/90 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] active:translate-y-px transition-all"
+              >
+                View on Steam
+                <ArrowUpRight className="size-4" />
+              </a>
+              <SaveButton appid={appId} />
+            </div>
           </div>
         </article>
 

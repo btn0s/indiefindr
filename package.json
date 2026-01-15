@@ -27,7 +27,8 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
-    "supabase:reset": "supabase db reset",
+    "supabase:reset": "bash scripts/reset-db.sh",
+    "reset": "bash scripts/reset-db.sh",
     "supabase:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts"
   },
   "dependencies": {

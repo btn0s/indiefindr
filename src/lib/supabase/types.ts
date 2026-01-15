@@ -44,3 +44,23 @@ export type CollectionWithPreview = Collection & {
   preview_games: GameCardGame[];
   total_games_count?: number;
 };
+
+export type SavedList = {
+  id: string;
+  owner_id: string;
+  title: string;
+  is_default: boolean;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SavedListGame = {
+  list_id: string;
+  appid: number;
+  created_at: string;
+};
+
+export type SavedListWithGames = SavedList & {
+  games: GameCardGame[];
+};

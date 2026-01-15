@@ -54,7 +54,13 @@ async function generateSuggestionsInBackground(steamData: SteamGameData): Promis
   console.log("[INGEST] Generating suggestions in background for:", steamData.title);
 
   try {
-    const developers = (steamData.raw as any)?.developers as string[] | undefined;
+    const developers =
+      steamData.raw &&
+      typeof steamData.raw === "object" &&
+      "developers" in steamData.raw &&
+      Array.isArray(steamData.raw.developers)
+        ? (steamData.raw.developers as string[])
+        : undefined;
     const vibeResult = await suggestGamesVibe(
       steamData.appid,
       steamData.title,
@@ -110,7 +116,13 @@ export async function refreshSuggestions(appId: number): Promise<{
 
   console.log("[REFRESH] Generating suggestions for:", gameData.title);
 
-  const developers = (gameData.raw as any)?.developers as string[] | undefined;
+  const developers =
+    gameData.raw &&
+    typeof gameData.raw === "object" &&
+    "developers" in gameData.raw &&
+    Array.isArray(gameData.raw.developers)
+      ? (gameData.raw.developers as string[])
+      : undefined;
   const vibeResult = await suggestGamesVibe(
     appId,
     gameData.title,

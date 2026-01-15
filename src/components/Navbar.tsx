@@ -4,9 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { Search, X, Bookmark, User, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import Logo from "@/components/logo";
 
 interface SearchResult {
@@ -25,12 +33,38 @@ export function Navbar() {
   const [hasSearched, setHasSearched] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [ingestingAppId, setIngestingAppId] = useState<number | null>(null);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   );
   const abortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    const checkUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUser(user);
+    };
+
+    checkUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (event === "SIGNED_OUT") {
+        router.refresh();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   // Handle search input with debounce
   useEffect(() => {
@@ -141,11 +175,9 @@ export function Navbar() {
       // Game exists in database, navigate directly
       router.push(`/games/${result.appid}`);
     } else {
-      // Game doesn't exist, start ingestion and navigate immediately
-      // We already have the appId from search, so we can navigate right away
       setIngestingAppId(result.appid);
 
-      // Start ingestion in background (don't await)
+      // Start ingestion in background
       const steamUrl = `https://store.steampowered.com/app/${result.appid}/`;
       fetch("/api/games/submit", {
         method: "POST",
@@ -163,10 +195,15 @@ export function Navbar() {
           setIngestingAppId(null);
         });
 
-      // Navigate immediately - the game page will show loading state
-      // and poll for data as it becomes available
       router.push(`/games/${result.appid}`);
     }
+  };
+
+  const handleSignOut = async () => {
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
   };
 
   return (
@@ -305,6 +342,49 @@ export function Navbar() {
                   </div>
                 )}
               </div>
+            )}
+          </div>
+
+          {/* Account Controls */}
+          <div className="flex items-center gap-2 shrink-0">
+            {user ? (
+              <>
+                <Link href="/saved">
+                  <Button variant="ghost" size="sm" className="hidden sm:flex">
+                    <Bookmark className="h-4 w-4" />
+                    Saved
+                  </Button>
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="focus-visible:border-ring focus-visible:ring-ring/30 rounded-md border border-transparent bg-clip-padding text-xs/relaxed font-medium focus-visible:ring-[2px] inline-flex items-center justify-center whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 outline-none h-7 w-7 hover:bg-muted hover:text-foreground">
+                    <User className="h-4 w-4" />
+                    <span className="sr-only">Account menu</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      {user.email || "Account"}
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/saved" className="flex items-center gap-2">
+                        <Bookmark className="h-4 w-4" />
+                        Saved games
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Link href="/login">
+                <Button variant="outline" size="sm">
+                  Sign in
+                </Button>
+              </Link>
             )}
           </div>
         </div>

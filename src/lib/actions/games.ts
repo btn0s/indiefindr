@@ -45,7 +45,9 @@ export async function getOrFetchGame(appId: number): Promise<GameData | null> {
     .eq("appid", appId)
     .maybeSingle();
 
-  if (data?.title) {
+  const hasNoVideos = data && (!data.videos || (Array.isArray(data.videos) && data.videos.length === 0));
+  
+  if (data?.title && !hasNoVideos) {
     return {
       appid: data.appid,
       title: data.title,
