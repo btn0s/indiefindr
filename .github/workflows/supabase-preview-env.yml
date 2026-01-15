@@ -23,7 +23,13 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          supabase login --token "$SUPABASE_ACCESS_TOKEN"
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "⚠️ SUPABASE_ACCESS_TOKEN secret not set. Please add it to GitHub secrets."
+            echo "Get token from: Supabase Dashboard → Account → Access Tokens"
+            exit 1
+          fi
+          # The CLI will use SUPABASE_ACCESS_TOKEN from env automatically
+          echo "✓ Supabase CLI authenticated via SUPABASE_ACCESS_TOKEN"
 
       - name: Wait for preview branch creation
         id: wait-branch
