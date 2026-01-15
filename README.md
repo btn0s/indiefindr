@@ -60,33 +60,33 @@ pnpm install
 
 3. **Set up environment variables**
 
-Create a `.env.local` file:
+Create a `.env.local` file with your API keys:
 
 ```env
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-
 # AI Provider Configuration
 # The app uses Vercel AI SDK with direct provider access
-# You'll need API keys from both providers:
 OPENAI_API_KEY=your_openai_api_key
 PERPLEXITY_API_KEY=your_perplexity_api_key
 
-# Site Configuration
+# Site Configuration (optional)
 NEXT_PUBLIC_SITE_URL=https://your-site-url.com
 ```
 
+**Note**: Supabase credentials are automatically synced when you run `pnpm dev`. For local development, you don't need to set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, or `SUPABASE_SERVICE_ROLE_KEY` manually.
+
 4. **Set up the database**
 
-Apply migrations using the Supabase CLI:
+For local development:
 
 ```bash
-supabase db push
+# Start local Supabase stack
+pnpm supabase:start
+
+# Reset database (applies migrations + seed data)
+pnpm supabase:reset
 ```
 
-Or manually apply migration files in order from `supabase/migrations/`.
+For production/preview branches, see [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md) for detailed setup instructions.
 
 5. **Run the development server**
 
@@ -168,6 +168,13 @@ pnpm start
 
 # Lint code
 pnpm lint
+
+# Supabase local development
+pnpm supabase:start    # Start local Supabase stack
+pnpm supabase:stop     # Stop local Supabase stack
+pnpm supabase:status   # Check local Supabase status
+pnpm supabase:reset    # Reset database (migrations + seed)
+pnpm supabase:types    # Generate TypeScript types from schema
 ```
 
 ### Experiments
