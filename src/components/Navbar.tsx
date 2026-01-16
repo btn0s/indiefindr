@@ -356,7 +356,7 @@ export function Navbar() {
                   </Button>
                 </Link>
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="focus-visible:border-ring focus-visible:ring-ring/30 rounded-md border border-transparent bg-clip-padding text-xs/relaxed font-medium focus-visible:ring-[2px] inline-flex items-center justify-center whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 outline-none h-7 w-7 hover:bg-muted hover:text-foreground">
+                  <DropdownMenuTrigger className="focus-visible:border-ring focus-visible:ring-ring/30 rounded-md border border-transparent bg-clip-padding text-xs/relaxed font-medium focus-visible:ring-2 inline-flex items-center justify-center whitespace-nowrap transition-all disabled:pointer-events-none disabled:opacity-50 outline-none h-7 w-7 hover:bg-muted hover:text-foreground">
                     <User className="h-4 w-4" />
                     <span className="sr-only">Account menu</span>
                   </DropdownMenuTrigger>
@@ -365,17 +365,13 @@ export function Navbar() {
                       {user.email || "Account"}
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/saved" className="flex items-center gap-2">
-                        <Bookmark className="h-4 w-4" />
-                        Saved games
-                      </Link>
+                    <DropdownMenuItem onClick={() => router.push("/saved")}>
+                      <Bookmark className="h-4 w-4" />
+                      Saved games
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings" className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        Settings
-                      </Link>
+                    <DropdownMenuItem onClick={() => router.push("/settings")}>
+                      <Settings className="h-4 w-4" />
+                      Settings
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>

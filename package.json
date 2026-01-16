@@ -29,7 +29,8 @@
     "supabase:status": "supabase status",
     "supabase:reset": "bash scripts/reset-db.sh",
     "reset": "bash scripts/reset-db.sh",
-    "supabase:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts"
+    "supabase:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
+    "worker:suggestions": "tsx scripts/suggestions-worker.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",

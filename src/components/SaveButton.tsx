@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { isGameSaved, toggleSaveGame } from "@/lib/actions/saved-lists";
+import { isGameSaved } from "@/lib/actions/saved-lists";
 import { toast } from "sonner";
 
 interface SaveButtonProps {
@@ -32,9 +32,14 @@ export function SaveButton({ appid }: SaveButtonProps) {
       }
 
       setUserId(user.id);
-      const saved = await isGameSaved(user.id, appid);
-      setIsSaved(saved);
-      setIsLoading(false);
+      try {
+        const saved = await isGameSaved(user.id, appid);
+        setIsSaved(saved);
+      } catch {
+        // If saved-status lookup fails, still allow toggling.
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     checkAuthAndSaved();
@@ -62,14 +67,41 @@ export function SaveButton({ appid }: SaveButtonProps) {
   }, [appid]);
 
   const handleClick = async () => {
-    if (!userId) {
+    const supabase = getSupabaseBrowserClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) {
       router.push("/login");
       return;
     }
 
+    const uid = session.user.id;
+    if (!userId) {
+      setUserId(uid);
+    }
+
     setIsToggling(true);
     try {
-      const result = await toggleSaveGame(userId, appid);
+      const response = await fetch("/api/saved", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          appid,
+          accessToken: session.access_token,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.error || "Failed to save game");
+        return;
+      }
+
+      const result = await response.json();
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -85,7 +117,7 @@ export function SaveButton({ appid }: SaveButtonProps) {
 
   if (isLoading) {
     return (
-      <Button variant="outline" disabled>
+      <Button variant="outline" onClick={handleClick} disabled={isToggling}>
         <Bookmark className="h-4 w-4" />
         Save
       </Button>

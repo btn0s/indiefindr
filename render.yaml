@@ -1,0 +1,15 @@
+services:
+  - type: worker
+    name: suggestions-worker
+    env: node
+    buildCommand: pnpm install
+    startCommand: pnpm worker:suggestions
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false

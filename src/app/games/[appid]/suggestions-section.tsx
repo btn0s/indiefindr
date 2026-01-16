@@ -1,10 +1,8 @@
 import { Suspense } from "react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { generateSuggestions } from "@/lib/actions/suggestions";
-import { revalidatePath } from "next/cache";
 import { GameCardAsync } from "@/components/GameCardAsync";
 import { GameCard } from "@/components/GameCard";
-import { SuggestionsLoader } from "./suggestions-loader";
+import { SuggestionsPoller } from "./suggestions-poller";
 
 type Suggestion = {
   suggested_appid: number;
@@ -26,17 +24,7 @@ async function SuggestionsContent({ appId }: { appId: number }) {
   const hasSuggestions = suggestions.length > 0;
 
   if (!hasSuggestions) {
-    async function generate() {
-      "use server";
-      await generateSuggestions(appId);
-      revalidatePath(`/games/${appId}`);
-    }
-
-    return (
-      <form action={generate}>
-        <SuggestionsLoader autoSubmit />
-      </form>
-    );
+    return <SuggestionsPoller appId={appId} />;
   }
 
   // Batch fetch all suggested game data in one query

@@ -27,15 +27,23 @@ function SkeletonGrid() {
 
 export function SuggestionsLoader({
   autoSubmit = false,
+  pending: pendingProp,
+  elapsed: elapsedProp,
 }: {
   autoSubmit?: boolean;
+  pending?: boolean;
+  elapsed?: number;
 }) {
-  const { pending } = useFormStatus();
+  const formStatus = useFormStatus();
   const formRef = useRef<HTMLFormElement | null>(null);
   const submitted = useRef(false);
-  const prevPendingRef = useRef(pending);
+  const prevPendingRef = useRef(formStatus.pending);
   const shouldResetRef = useRef(false);
   const [elapsed, setElapsed] = useState(0);
+
+  // Use prop if provided, otherwise use form status
+  const pending = pendingProp !== undefined ? pendingProp : formStatus.pending;
+  const displayElapsed = elapsedProp !== undefined ? elapsedProp : elapsed;
 
   useEffect(() => {
     if (autoSubmit && !submitted.current && formRef.current) {
@@ -45,12 +53,17 @@ export function SuggestionsLoader({
   }, [autoSubmit]);
 
   useEffect(() => {
-    if (!prevPendingRef.current && pending) {
+    if (pendingProp !== undefined) {
+      // If pending is controlled via prop, elapsed is also controlled
+      return;
+    }
+
+    if (!prevPendingRef.current && formStatus.pending) {
       shouldResetRef.current = true;
     }
-    prevPendingRef.current = pending;
+    prevPendingRef.current = formStatus.pending;
 
-    if (!pending) {
+    if (!formStatus.pending) {
       return;
     }
 
@@ -63,7 +76,7 @@ export function SuggestionsLoader({
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [pending]);
+  }, [formStatus.pending, pendingProp]);
 
   return (
     <>
@@ -89,7 +102,7 @@ export function SuggestionsLoader({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
           <span>Finding similar games...</span>
-          <span className="tabular-nums">{elapsed}s</span>
+          <span className="tabular-nums">{displayElapsed}s</span>
         </div>
         <SkeletonGrid />
       </div>

@@ -93,7 +93,6 @@ export async function isGameSaved(userId: string, appid: number): Promise<boolea
 }
 
 export async function toggleSaveGame(userId: string, appid: number) {
-  const supabase = getSupabaseServerClient();
   const serviceClient = getSupabaseServiceClient();
 
   let { data: list } = await serviceClient
@@ -126,53 +125,35 @@ export async function toggleSaveGame(userId: string, appid: number) {
     list = newList;
   }
 
-  const { data: listCheck } = await serviceClient
-    .from("saved_lists")
-    .select("owner_id")
-    .eq("id", list.id)
-    .single();
-
-  if (!listCheck || listCheck.owner_id !== userId) {
-    return { error: "Unauthorized: List does not belong to user" };
-  }
-
-  const { data: existing } = await serviceClient
+  const { data: deleted, error: deleteError } = await serviceClient
     .from("saved_list_games")
-    .select("appid")
+    .delete()
     .eq("list_id", list.id)
     .eq("appid", appid)
-    .maybeSingle();
+    .select("appid");
 
-  if (existing) {
-    const { error } = await serviceClient
-      .from("saved_list_games")
-      .delete()
-      .eq("list_id", list.id)
-      .eq("appid", appid);
+  if (deleteError) {
+    return { error: deleteError.message };
+  }
 
-    if (error) {
-      return { error: error.message };
-    }
-
+  if (deleted && deleted.length > 0) {
     revalidatePath("/saved");
     revalidatePath(`/games/${appid}`);
     return { saved: false };
-  } else {
-    const { error } = await serviceClient
-      .from("saved_list_games")
-      .insert({
-        list_id: list.id,
-        appid,
-      });
-
-    if (error) {
-      return { error: error.message };
-    }
-
-    revalidatePath("/saved");
-    revalidatePath(`/games/${appid}`);
-    return { saved: true };
   }
+
+  const { error: insertError } = await serviceClient.from("saved_list_games").insert({
+    list_id: list.id,
+    appid,
+  });
+
+  if (insertError) {
+    return { error: insertError.message };
+  }
+
+  revalidatePath("/saved");
+  revalidatePath(`/games/${appid}`);
+  return { saved: true };
 }
 
 export async function updateSavedListVisibility(
