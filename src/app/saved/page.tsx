@@ -4,22 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import {
-  getDefaultSavedList,
-  getSavedListGamesData,
-  updateSavedListVisibility,
-} from "@/lib/actions/saved-lists";
 import { GameCard } from "@/components/GameCard";
 import type { GameCardGame } from "@/lib/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Copy, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import type { SavedList } from "@/lib/supabase/types";
+import type { Collection } from "@/lib/supabase/types";
 
 export default function SavedPage() {
   const router = useRouter();
-  const [list, setList] = useState<SavedList | null>(null);
+  const [list, setList] = useState<Collection | null>(null);
   const [games, setGames] = useState<GameCardGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
@@ -46,15 +41,53 @@ export default function SavedPage() {
           .maybeSingle();
         setUsername(profile?.username ?? null);
 
-        const defaultList = await getDefaultSavedList(user.id);
+        const { data: defaultList, error: listError } = await supabase
+          .from("collections")
+          .select("*")
+          .eq("owner_id", user.id)
+          .eq("is_default", true)
+          .maybeSingle();
+
+        if (listError) {
+          throw listError;
+        }
+
         if (!defaultList) {
           setIsLoading(false);
           return;
         }
 
         setList(defaultList);
-        const gamesData = await getSavedListGamesData(defaultList.id);
-        setGames(gamesData);
+
+        const { data: savedGames, error: gamesError } = await supabase
+          .from("collection_games")
+          .select("appid")
+          .eq("collection_id", defaultList.id)
+          .order("created_at", { ascending: false });
+
+        if (gamesError || !savedGames || savedGames.length === 0) {
+          setGames([]);
+          return;
+        }
+
+        const appIds = savedGames.map((g) => g.appid);
+
+        const { data: gamesData, error: gamesDataError } = await supabase
+          .from("games_new")
+          .select("appid, title, header_image")
+          .in("appid", appIds);
+
+        if (gamesDataError || !gamesData) {
+          setGames([]);
+          return;
+        }
+
+        const gamesMap = new Map(gamesData.map((g) => [g.appid, g]));
+        const ordered = appIds
+          .map((id) => gamesMap.get(id))
+          .filter((g): g is GameCardGame => g !== undefined);
+
+        setGames(ordered);
       } catch (error) {
         console.error("Error loading saved list:", error);
         toast.error("Failed to load saved games");
@@ -94,14 +127,14 @@ export default function SavedPage() {
         return;
       }
 
-      const result = await updateSavedListVisibility(
-        user.id,
-        list.id,
-        !list.is_public
-      );
+      const { error } = await supabase
+        .from("collections")
+        .update({ is_public: !list.is_public })
+        .eq("id", list.id)
+        .eq("owner_id", user.id);
 
-      if (result.error) {
-        toast.error(result.error);
+      if (error) {
+        toast.error(error.message);
       } else {
         setList({ ...list, is_public: !list.is_public });
         toast.success(

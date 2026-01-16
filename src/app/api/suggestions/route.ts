@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid appid" }, { status: 400 });
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
 
     // Check if suggestions already exist (completion condition)
     const { data: suggestions } = await supabase

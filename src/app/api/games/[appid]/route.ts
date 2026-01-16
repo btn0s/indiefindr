@@ -14,7 +14,7 @@ export async function GET(
   { params }: { params: Promise<{ appid: string }> }
 ) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { appid } = await params;
 
     const parseResult = AppIdSchema.safeParse(appid);

@@ -10,7 +10,7 @@ type Suggestion = {
 };
 
 async function getSuggestions(appId: number): Promise<Suggestion[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data } = await supabase
     .from("game_suggestions")
     .select("suggested_appid, reason")
@@ -29,7 +29,7 @@ async function SuggestionsContent({ appId }: { appId: number }) {
 
   // Batch fetch all suggested game data in one query
   const suggestedAppIds = suggestions.map((s) => s.suggested_appid);
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data: games } = await supabase
     .from("games_new")
     .select("appid, title, header_image")
@@ -60,11 +60,9 @@ async function SuggestionsContent({ appId }: { appId: number }) {
             explanation={s.reason}
           />
         ) : (
-          <GameCardAsync
-            key={s.appid}
-            appid={s.appid}
-            explanation={s.reason}
-          />
+          <Suspense key={s.appid} fallback={<SuggestionCardSkeleton />}>
+            <GameCardAsync appid={s.appid} explanation={s.reason} />
+          </Suspense>
         )
       )}
     </div>
@@ -81,6 +79,16 @@ function SuggestionsSkeleton() {
           <div className="h-3 w-1/2 bg-muted rounded animate-pulse" />
         </div>
       ))}
+    </div>
+  );
+}
+
+function SuggestionCardSkeleton() {
+  return (
+    <div>
+      <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam animate-pulse" />
+      <div className="h-4 w-3/4 bg-muted rounded animate-pulse mb-1" />
+      <div className="h-3 w-1/2 bg-muted rounded animate-pulse" />
     </div>
   );
 }

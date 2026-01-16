@@ -26,7 +26,7 @@ export async function acquireLock(
   resourceId: string | number,
   expirySeconds: number = INGEST_CONFIG.LOCK_EXPIRY_SECONDS
 ): Promise<LockResult> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const lockKey = `${resourceType}:${resourceId}`;
   const now = new Date();
   const expiresAt = new Date(now.getTime() + expirySeconds * 1000);
@@ -77,7 +77,7 @@ export async function releaseLock(
   resourceType: string,
   resourceId: string | number
 ): Promise<void> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const lockKey = `${resourceType}:${resourceId}`;
 
   try {
@@ -98,7 +98,7 @@ export async function isLocked(
   resourceType: string,
   resourceId: string | number
 ): Promise<boolean> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const lockKey = `${resourceType}:${resourceId}`;
   const now = new Date();
 

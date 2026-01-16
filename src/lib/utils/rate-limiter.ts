@@ -11,7 +11,7 @@ export async function acquireRateLimit(
   key: string = "steam_api",
   minDelayMs: number = DEFAULT_DELAY_MS
 ): Promise<void> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {

@@ -15,7 +15,7 @@ async function SameDeveloperContent({
     return null;
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   // Find games from the same developer(s), excluding the current game
   // Use PostgREST cs (contains) operator: check if developers array contains any developer

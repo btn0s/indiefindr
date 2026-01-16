@@ -22,7 +22,7 @@ export async function generateMetadata({
   }
 
   // Lightweight metadata fetch - just get title
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data } = await supabase
     .from("games_new")
     .select("title, short_description")

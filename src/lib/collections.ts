@@ -7,7 +7,7 @@ import type {
 } from "./supabase/types";
 
 export async function getPinnedHomeCollections(): Promise<CollectionWithPreview[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data: collections, error: collectionsError } = await supabase
     .from("collections")
@@ -82,7 +82,7 @@ export async function getPinnedHomeCollections(): Promise<CollectionWithPreview[
 export async function getCollectionBySlug(
   slug: string
 ): Promise<Collection | null> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("collections")
@@ -101,7 +101,7 @@ export async function getCollectionBySlug(
 export async function getCollectionGames(
   collectionId: string
 ): Promise<GameNew[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data: collectionGames, error: gamesError } = await supabase
     .from("collection_games")

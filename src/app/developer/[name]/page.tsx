@@ -41,7 +41,7 @@ export async function generateMetadata({
 }
 
 async function getGamesByDeveloper(developerName: string) {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data: games, error } = await supabase
     .from("games_new")

@@ -5,7 +5,7 @@ import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
 
 export async function getProfileByUsername(username: string) {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("profiles")
@@ -21,7 +21,7 @@ export async function getProfileByUsername(username: string) {
 }
 
 export async function getProfileByUserId(userId: string) {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("profiles")
@@ -37,7 +37,7 @@ export async function getProfileByUserId(userId: string) {
 }
 
 export async function getCurrentUserProfile() {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -50,7 +50,7 @@ export async function getCurrentUserProfile() {
 }
 
 export async function setUsername(userId: string, username: string): Promise<{ error?: string; success?: boolean }> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const serviceClient = getSupabaseServiceClient();
 
   const normalizedUsername = username.toLowerCase().trim();

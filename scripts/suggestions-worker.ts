@@ -68,16 +68,49 @@ async function processJob(job: { id: string; source_appid: number }) {
       10
     );
 
-    if (result.suggestions.length === 0) {
-      throw new Error("No suggestions generated");
-    }
-
     // Filter verified suggestions
-    const verifiedSuggestions = result.suggestions.filter((s) => s.appId && s.appId > 0);
+    const verifiedSuggestions = result.suggestions.filter(
+      (s) => s.appId && s.appId > 0
+    );
 
+    // No results can happen (model returned nothing / all unverified). Treat as a completed run
+    // so we don't get stuck in an infinite requeue loop in the UI.
     if (verifiedSuggestions.length === 0) {
-      throw new Error("No verified suggestions generated");
+      const message =
+        result.suggestions.length === 0
+          ? "No suggestions generated"
+          : "No verified suggestions generated";
+
+      await supabase
+        .from("suggestion_jobs")
+        .update({
+          status: "succeeded",
+          finished_at: new Date().toISOString(),
+          error: message,
+        })
+        .eq("id", id);
+
+      console.log(`[WORKER] Job ${id} completed with no results: ${message}`);
+      return;
     }
+
+    // Defensive: dedupe by suggested appid (curation can produce duplicates)
+    const uniqueByAppId = new Map<
+      number,
+      { appId: number; explanation: string }
+    >();
+    for (const s of verifiedSuggestions) {
+      const appId = s.appId;
+      if (!appId) continue;
+      if (!uniqueByAppId.has(appId)) {
+        uniqueByAppId.set(appId, {
+          appId,
+          explanation: typeof s.explanation === "string" ? s.explanation : "",
+        });
+      }
+    }
+
+    const uniqueSuggestions = Array.from(uniqueByAppId.values());
 
     // Delete existing suggestions and insert new ones
     const { error: deleteError } = await supabase
@@ -86,19 +119,29 @@ async function processJob(job: { id: string; source_appid: number }) {
       .eq("source_appid", source_appid);
 
     if (deleteError) {
-      throw new Error(`Failed to delete existing suggestions: ${deleteError.message}`);
+      throw new Error(
+        `Failed to delete existing suggestions: ${deleteError.message}`
+      );
     }
 
-    const rows = verifiedSuggestions.map((s) => ({
+    const rows = uniqueSuggestions.map((s) => ({
       source_appid,
       suggested_appid: s.appId,
       reason: s.explanation,
     }));
 
-    const { error: insertError } = await supabase.from("game_suggestions").insert(rows);
+    const { error: insertError } = await supabase
+      .from("game_suggestions")
+      .insert(rows);
 
     if (insertError) {
-      throw new Error(`Failed to insert suggestions: ${insertError.message}`);
+      // If we ever race or still hit dupes, upsert as a last resort.
+      const { error: upsertError } = await supabase
+        .from("game_suggestions")
+        .upsert(rows, { onConflict: "source_appid,suggested_appid" });
+      if (upsertError) {
+        throw new Error(`Failed to insert suggestions: ${insertError.message}`);
+      }
     }
 
     // Mark job as succeeded
@@ -111,7 +154,9 @@ async function processJob(job: { id: string; source_appid: number }) {
       })
       .eq("id", id);
 
-    console.log(`[WORKER] Job ${id} completed successfully with ${verifiedSuggestions.length} suggestions`);
+    console.log(
+      `[WORKER] Job ${id} completed successfully with ${rows.length} suggestions`
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error(`[WORKER] Job ${id} failed:`, errorMessage);

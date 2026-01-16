@@ -31,7 +31,7 @@ type DbGameResult = {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q");
 

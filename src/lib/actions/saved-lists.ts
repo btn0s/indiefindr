@@ -1,15 +1,28 @@
 "use server";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { getUsernameByUserId } from "./profiles";
+import type { Collection } from "@/lib/supabase/types";
 
-export async function getDefaultSavedList(userId: string) {
-  const supabase = getSupabaseServerClient();
+async function getCurrentUserId(): Promise<string | null> {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+export async function getDefaultSavedCollection(): Promise<Collection | null> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return null;
+  }
+
+  const supabase = await getSupabaseServerClient();
 
   const { data, error } = await supabase
-    .from("saved_lists")
+    .from("collections")
     .select("*")
     .eq("owner_id", userId)
     .eq("is_default", true)
@@ -22,13 +35,38 @@ export async function getDefaultSavedList(userId: string) {
   return data;
 }
 
-export async function getSavedListGames(listId: string) {
-  const supabase = getSupabaseServerClient();
+// Legacy alias for backward compatibility
+export async function getDefaultSavedList(userId?: string): Promise<Collection | null> {
+  // If userId is provided, use it (for backward compat during migration)
+  // Otherwise derive from auth
+  const effectiveUserId = userId ?? (await getCurrentUserId());
+  if (!effectiveUserId) {
+    return null;
+  }
+
+  const supabase = await getSupabaseServerClient();
 
   const { data, error } = await supabase
-    .from("saved_list_games")
+    .from("collections")
+    .select("*")
+    .eq("owner_id", effectiveUserId)
+    .eq("is_default", true)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
+export async function getCollectionGameAppids(collectionId: string): Promise<number[]> {
+  const supabase = await getSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("collection_games")
     .select("appid")
-    .eq("list_id", listId)
+    .eq("collection_id", collectionId)
     .order("created_at", { ascending: false });
 
   if (error || !data) {
@@ -38,13 +76,18 @@ export async function getSavedListGames(listId: string) {
   return data.map((row) => row.appid);
 }
 
+// Legacy alias for backward compatibility
+export async function getSavedListGames(listId: string): Promise<number[]> {
+  return getCollectionGameAppids(listId);
+}
+
 export async function getSavedListGamesData(listId: string) {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data: savedGames, error: gamesError } = await supabase
-    .from("saved_list_games")
+    .from("collection_games")
     .select("appid")
-    .eq("list_id", listId)
+    .eq("collection_id", listId)
     .order("created_at", { ascending: false });
 
   if (gamesError || !savedGames || savedGames.length === 0) {
@@ -68,13 +111,18 @@ export async function getSavedListGamesData(listId: string) {
     .filter((g): g is { appid: number; title: string; header_image: string | null } => g !== undefined);
 }
 
-export async function isGameSaved(userId: string, appid: number): Promise<boolean> {
-  const supabase = getSupabaseServerClient();
+export async function isGameSaved(appid: number, userId?: string): Promise<boolean> {
+  const effectiveUserId = userId ?? (await getCurrentUserId());
+  if (!effectiveUserId) {
+    return false;
+  }
+
+  const supabase = await getSupabaseServerClient();
 
   const { data: list } = await supabase
-    .from("saved_lists")
+    .from("collections")
     .select("id")
-    .eq("owner_id", userId)
+    .eq("owner_id", effectiveUserId)
     .eq("is_default", true)
     .maybeSingle();
 
@@ -83,90 +131,115 @@ export async function isGameSaved(userId: string, appid: number): Promise<boolea
   }
 
   const { data } = await supabase
-    .from("saved_list_games")
+    .from("collection_games")
     .select("appid")
-    .eq("list_id", list.id)
+    .eq("collection_id", list.id)
     .eq("appid", appid)
     .maybeSingle();
 
   return !!data;
 }
 
-export async function toggleSaveGame(userId: string, appid: number) {
-  const serviceClient = getSupabaseServiceClient();
+export async function toggleSaveGame(appid: number, userId?: string) {
+  const effectiveUserId = userId ?? (await getCurrentUserId());
+  if (!effectiveUserId) {
+    return { error: "You must be signed in to save games" };
+  }
 
-  let { data: list } = await serviceClient
-    .from("saved_lists")
+  const supabase = await getSupabaseServerClient();
+
+  // Get or create default collection
+  let { data: list } = await supabase
+    .from("collections")
     .select("id")
-    .eq("owner_id", userId)
+    .eq("owner_id", effectiveUserId)
     .eq("is_default", true)
     .maybeSingle();
 
   if (!list) {
-    const { data: newList, error: createError } = await serviceClient
-      .from("saved_lists")
+    const { data: newList, error: createError } = await supabase
+      .from("collections")
       .insert({
-        owner_id: userId,
+        owner_id: effectiveUserId,
         title: "Saved",
         is_default: true,
         is_public: true,
+        published: false,
+        pinned_to_home: false,
+        home_position: 0,
       })
       .select("id")
       .single();
 
     if (createError) {
-      return { error: `Could not create saved list: ${createError.message}` };
+      return { error: `Could not create saved collection: ${createError.message}` };
     }
 
     if (!newList) {
-      return { error: "Could not create saved list: No data returned" };
+      return { error: "Could not create saved collection: No data returned" };
     }
 
     list = newList;
   }
 
-  const { data: deleted, error: deleteError } = await serviceClient
-    .from("saved_list_games")
-    .delete()
-    .eq("list_id", list.id)
+  // Check if game is already saved
+  const { data: existing } = await supabase
+    .from("collection_games")
+    .select("appid")
+    .eq("collection_id", list.id)
     .eq("appid", appid)
-    .select("appid");
+    .maybeSingle();
 
-  if (deleteError) {
-    return { error: deleteError.message };
-  }
+  if (existing) {
+    // Remove from collection
+    const { error: deleteError } = await supabase
+      .from("collection_games")
+      .delete()
+      .eq("collection_id", list.id)
+      .eq("appid", appid);
 
-  if (deleted && deleted.length > 0) {
+    if (deleteError) {
+      return { error: deleteError.message };
+    }
+
     revalidatePath("/saved");
     revalidatePath(`/games/${appid}`);
     return { saved: false };
+  } else {
+    // Add to collection
+    const { error: insertError } = await supabase
+      .from("collection_games")
+      .insert({
+        collection_id: list.id,
+        appid,
+        position: 0,
+      });
+
+    if (insertError) {
+      return { error: insertError.message };
+    }
+
+    revalidatePath("/saved");
+    revalidatePath(`/games/${appid}`);
+    return { saved: true };
   }
-
-  const { error: insertError } = await serviceClient.from("saved_list_games").insert({
-    list_id: list.id,
-    appid,
-  });
-
-  if (insertError) {
-    return { error: insertError.message };
-  }
-
-  revalidatePath("/saved");
-  revalidatePath(`/games/${appid}`);
-  return { saved: true };
 }
 
-export async function updateSavedListVisibility(
-  userId: string,
-  listId: string,
+export async function updateCollectionVisibility(
+  collectionId: string,
   isPublic: boolean
-) {
-  const supabase = getSupabaseServerClient();
+): Promise<{ success?: boolean; error?: string }> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return { error: "You must be signed in to update collection visibility" };
+  }
+
+  const supabase = await getSupabaseServerClient();
 
   const { error } = await supabase
-    .from("saved_lists")
+    .from("collections")
     .update({ is_public: isPublic })
-    .eq("id", listId)
+    .eq("id", collectionId)
     .eq("owner_id", userId);
 
   if (error) {
@@ -174,8 +247,23 @@ export async function updateSavedListVisibility(
   }
 
   revalidatePath("/saved");
-  revalidatePath(`/lists/${listId}`);
+  revalidatePath(`/lists/${collectionId}`);
   return { success: true };
+}
+
+// Legacy alias for backward compatibility
+export async function updateSavedListVisibility(
+  userId: string,
+  listId: string,
+  isPublic: boolean
+): Promise<{ success?: boolean; error?: string }> {
+  // Verify userId matches current user (security check)
+  const currentUserId = await getCurrentUserId();
+  if (!currentUserId || currentUserId !== userId) {
+    return { error: "Unauthorized" };
+  }
+
+  return updateCollectionVisibility(listId, isPublic);
 }
 
 export async function getSavedListShareUrl(listId: string, ownerId: string): Promise<string> {

@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const entries: MetadataRoute.Sitemap = [];
 
   // Home page

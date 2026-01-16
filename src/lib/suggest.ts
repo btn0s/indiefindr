@@ -44,6 +44,21 @@ type ValidatedSuggestion = RawSuggestion & {
   source: "db" | "steam" | "unverified";
 };
 
+function coerceRawSuggestions(value: unknown): RawSuggestion[] {
+  if (!Array.isArray(value)) return [];
+
+  const out: RawSuggestion[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as Record<string, unknown>;
+    const title = typeof rec.title === "string" ? rec.title.trim() : "";
+    if (!title) continue;
+    const reason = typeof rec.reason === "string" ? rec.reason.trim() : "";
+    out.push({ title, reason });
+  }
+  return out;
+}
+
 // ============================================================================
 // KNOWN ART-GAME DEVELOPERS
 // ============================================================================
@@ -88,19 +103,19 @@ type Weights = {
 function getWeightsForType(type: GameType): Weights {
   switch (type) {
     case "avant-garde":
-      return { vibe: 0.45, aesthetic: 0.30, theme: 0.20, mechanics: 0.05 };
+      return { vibe: 0.45, aesthetic: 0.3, theme: 0.2, mechanics: 0.05 };
     case "cozy":
-      return { vibe: 0.40, aesthetic: 0.35, theme: 0.15, mechanics: 0.10 };
+      return { vibe: 0.4, aesthetic: 0.35, theme: 0.15, mechanics: 0.1 };
     case "competitive":
-      return { vibe: 0.15, aesthetic: 0.10, theme: 0.10, mechanics: 0.65 };
+      return { vibe: 0.15, aesthetic: 0.1, theme: 0.1, mechanics: 0.65 };
     case "narrative":
-      return { vibe: 0.30, aesthetic: 0.20, theme: 0.35, mechanics: 0.15 };
+      return { vibe: 0.3, aesthetic: 0.2, theme: 0.35, mechanics: 0.15 };
     case "action":
       // Action games need BOTH tone AND mechanics to match
-      return { vibe: 0.30, aesthetic: 0.15, theme: 0.15, mechanics: 0.40 };
+      return { vibe: 0.3, aesthetic: 0.15, theme: 0.15, mechanics: 0.4 };
     case "mainstream":
     default:
-      return { vibe: 0.30, aesthetic: 0.25, theme: 0.20, mechanics: 0.25 };
+      return { vibe: 0.3, aesthetic: 0.25, theme: 0.2, mechanics: 0.25 };
   }
 }
 
@@ -109,7 +124,9 @@ function getWeightsForType(type: GameType): Weights {
 // ============================================================================
 
 function checkKnownArtDev(developers: string[]): boolean {
-  const devLower = developers.map((d) => d.toLowerCase());
+  const devLower = developers
+    .filter((d) => typeof d === "string" && d.length > 0)
+    .map((d) => d.toLowerCase());
   return KNOWN_ARTGAME_DEVS.some((artDev) =>
     devLower.some((d) => d.includes(artDev) || artDev.includes(d))
   );
@@ -198,7 +215,7 @@ Return ONLY JSON.`,
 async function searchDb(
   title: string
 ): Promise<{ appid: number; title: string } | null> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data } = await supabase
     .from("games_new")
     .select("appid, title")
@@ -213,7 +230,9 @@ async function searchSteam(
 ): Promise<{ appid: number; name: string } | null> {
   try {
     const res = await fetch(
-      `https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(query)}`
+      `https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(
+        query
+      )}`
     );
     const results = await res.json();
     return results?.[0]
@@ -287,8 +306,11 @@ async function runStrategyWithRetry(
       }
 
       try {
-        const parsed = JSON.parse(match[0]) as RawSuggestion[];
-        return { raw: parsed, elapsed: Date.now() - start };
+        const parsed = JSON.parse(match[0]);
+        return {
+          raw: coerceRawSuggestions(parsed),
+          elapsed: Date.now() - start,
+        };
       } catch {
         if (attempt < retries) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -316,8 +338,10 @@ function buildVibePrompt(
   developers: string[],
   count: number
 ): string {
-  const devContext = developers.length > 0 ? ` by ${developers.join(", ")}` : "";
-  const vibeContext = profile.vibe.length > 0 ? ` Vibe: ${profile.vibe.join(", ")}.` : "";
+  const devContext =
+    developers.length > 0 ? ` by ${developers.join(", ")}` : "";
+  const vibeContext =
+    profile.vibe.length > 0 ? ` Vibe: ${profile.vibe.join(", ")}.` : "";
 
   if (profile.type === "avant-garde") {
     return `Find ${count} EXPERIMENTAL/AVANT-GARDE indie games similar to "${title}"${devContext}.
@@ -353,8 +377,9 @@ Return ONLY JSON: [{"title":"Game Name","reason":"Why it matches the cozy vibe"}
   }
 
   // Default vibe prompt - focus on tone/feeling, not mechanics
-  const vibeList = profile.vibe.length > 0 ? profile.vibe.join(", ") : "adventurous";
-  
+  const vibeList =
+    profile.vibe.length > 0 ? profile.vibe.join(", ") : "adventurous";
+
   return `Find ${count} indie games that FEEL like "${title}"${devContext}.
 
 Description: ${description}
@@ -380,7 +405,8 @@ function buildMechanicsPrompt(
   developers: string[],
   count: number
 ): string {
-  const devContext = developers.length > 0 ? ` by ${developers.join(", ")}` : "";
+  const devContext =
+    developers.length > 0 ? ` by ${developers.join(", ")}` : "";
 
   if (profile.type === "competitive") {
     return `Find ${count} games with SIMILAR GAMEPLAY MECHANICS to "${title}"${devContext}.
@@ -434,7 +460,8 @@ function buildCommunityPrompt(
   developers: string[],
   count: number
 ): string {
-  const devContext = developers.length > 0 ? ` by ${developers.join(", ")}` : "";
+  const devContext =
+    developers.length > 0 ? ` by ${developers.join(", ")}` : "";
 
   if (profile.type === "avant-garde") {
     return `Find ${count} games that fans of EXPERIMENTAL/ART games like "${title}"${devContext} would love.
@@ -494,16 +521,19 @@ function combineWithConsensus(
 
   const addToMap = (suggestions: RawSuggestion[], source: string) => {
     for (const sug of suggestions) {
-      const key = sug.title.toLowerCase().trim();
+      if (!sug || typeof sug.title !== "string") continue;
+      const title = sug.title.trim();
+      if (!title) continue;
+      const key = title.toLowerCase();
       if (combined.has(key)) {
         const existing = combined.get(key)!;
         existing.count++;
-        existing.reasons.push(sug.reason);
+        existing.reasons.push(typeof sug.reason === "string" ? sug.reason : "");
         existing.sources.push(source);
       } else {
         combined.set(key, {
           count: 1,
-          reasons: [sug.reason],
+          reasons: [typeof sug.reason === "string" ? sug.reason : ""],
           sources: [source],
         });
       }
@@ -535,12 +565,15 @@ async function curateWithAI(
 ): Promise<Array<{ title: string; reason: string; appid: number }>> {
   const candidates = validatedSuggestions.slice(0, 20);
   const weights = getWeightsForType(profile.type);
-  const devContext = developers.length > 0 ? ` by ${developers.join(", ")}` : "";
+  const devContext =
+    developers.length > 0 ? ` by ${developers.join(", ")}` : "";
 
   const suggestionsList = candidates
     .map(
       (sug, i) =>
-        `${i + 1}. "${sug.title}" (${sug.consensus}/3 strategies) - ${sug.reason}`
+        `${i + 1}. "${sug.title}" (${sug.consensus}/3 strategies) - ${
+          sug.reason
+        }`
     )
     .join("\n");
 
@@ -555,14 +588,18 @@ This is an AVANT-GARDE/ART game. Prioritize:
   } else if (profile.type === "competitive") {
     typeGuidance = `
 This is a COMPETITIVE/SKILL game. Prioritize:
-- Games with similar mechanical depth (${(weights.mechanics * 100).toFixed(0)}% weight)
+- Games with similar mechanical depth (${(weights.mechanics * 100).toFixed(
+      0
+    )}% weight)
 - Strategic/tactical similarity
 - Skill expression opportunities`;
   } else if (profile.type === "cozy") {
     typeGuidance = `
 This is a COZY game. Prioritize:
 - Relaxing, low-stress games
-- Similar aesthetic and vibe (${(weights.vibe * 100).toFixed(0)}% + ${(weights.aesthetic * 100).toFixed(0)}% weight)
+- Similar aesthetic and vibe (${(weights.vibe * 100).toFixed(0)}% + ${(
+      weights.aesthetic * 100
+    ).toFixed(0)}% weight)
 - Gentle, comforting experiences`;
   } else if (profile.type === "narrative") {
     typeGuidance = `
@@ -578,8 +615,8 @@ This is a NARRATIVE game. Prioritize:
     highConsensusGames >= 5
       ? `\nIMPORTANT: ${highConsensusGames} games have 2+/3 consensus. STRONGLY prefer these - they were independently identified by multiple search strategies as good matches. Only pick 1/3 consensus games if they're exceptional matches.`
       : highConsensusGames >= 2
-        ? `\nNote: ${highConsensusGames} games have 2+/3 consensus. Prefer these when possible.`
-        : "";
+      ? `\nNote: ${highConsensusGames} games have 2+/3 consensus. Prefer these when possible.`
+      : "";
 
   const prompt = `Curate game recommendations for "${sourceTitle}"${devContext}.
 
@@ -629,12 +666,17 @@ Return ONLY JSON: [{"title":"Game Name","reason":"Why it's a great match"}]`;
     const usedAppids = new Set<number>();
 
     for (const item of curated.slice(0, 10)) {
-      const key = item.title.toLowerCase().trim();
-      const original = candidates.find((sug) => sug.title.toLowerCase() === key);
+      if (!item || typeof item.title !== "string") continue;
+      const key = item.title.trim().toLowerCase();
+      if (!key) continue;
+      const original = candidates.find(
+        (sug) => sug.title.toLowerCase() === key
+      );
       if (original && !usedAppids.has(original.appid)) {
         curatedResults.push({
           title: original.title,
-          reason: item.reason,
+          reason:
+            typeof item.reason === "string" ? item.reason : original.reason,
           appid: original.appid,
         });
         usedAppids.add(original.appid);
@@ -658,7 +700,9 @@ Return ONLY JSON: [{"title":"Game Name","reason":"Why it's a great match"}]`;
 
       if (remaining.length > 0) {
         console.log(
-          `[SUGGEST] Curation returned ${curatedResults.length - remaining.length} valid results, filled ${remaining.length} from top consensus`
+          `[SUGGEST] Curation returned ${
+            curatedResults.length - remaining.length
+          } valid results, filled ${remaining.length} from top consensus`
         );
       }
     }
@@ -957,7 +1001,7 @@ export async function suggestGamesVibeFromAppId(
   sourceAppid: number,
   count = 10
 ): Promise<VibeResult> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data: game, error } = await supabase
     .from("games_new")

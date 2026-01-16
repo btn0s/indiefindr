@@ -30,12 +30,15 @@ export type GameCardGame = Pick<GameNew, "appid" | "title" | "header_image">;
 
 export type Collection = {
   id: string;
-  slug: string;
+  slug: string | null;
   title: string;
   description: string | null;
   published: boolean;
   pinned_to_home: boolean;
   home_position: number;
+  owner_id: string | null;
+  is_default: boolean;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -45,23 +48,15 @@ export type CollectionWithPreview = Collection & {
   total_games_count?: number;
 };
 
-export type SavedList = {
-  id: string;
-  owner_id: string;
-  title: string;
-  is_default: boolean;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
+// Legacy types - kept for backward compatibility during migration
+// These should be removed once all code is migrated to use Collection
+export type SavedList = Collection;
 export type SavedListGame = {
   list_id: string;
   appid: number;
   created_at: string;
 };
-
-export type SavedListWithGames = SavedList & {
+export type SavedListWithGames = Collection & {
   games: GameCardGame[];
 };
 

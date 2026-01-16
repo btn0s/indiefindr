@@ -36,7 +36,7 @@ function extractFromRaw(raw: unknown): {
  * Upserts to DB when fetched from Steam.
  */
 export async function getOrFetchGame(appId: number): Promise<GameData | null> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data } = await supabase
     .from("games_new")
     .select(
@@ -102,7 +102,7 @@ export type HomeGame = {
 };
 
 export async function loadMoreGames(offset: number): Promise<HomeGame[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("games_new_home")
     .select("appid, title, header_image")

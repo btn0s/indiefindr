@@ -5,7 +5,7 @@ import type { GameCardGame } from "@/lib/supabase/types";
 const PAGE_SIZE = 24;
 
 export default async function NotFound() {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("games_new_home")
     .select("appid, title, header_image")

@@ -13,7 +13,7 @@ export async function generateSuggestions(
   appId: number,
   overwrite: boolean = true
 ): Promise<GenerateSuggestionsResult> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data: game } = await supabase
     .from("games_new")

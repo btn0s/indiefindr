@@ -5,7 +5,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getProfileByUserId } from "@/lib/actions/profiles";
 import { GameCardAsync } from "@/components/GameCardAsync";
 import { Button } from "@/components/ui/button";
-import type { SavedList } from "@/lib/supabase/types";
+import type { Collection } from "@/lib/supabase/types";
 
 export async function generateMetadata({
   params,
@@ -13,11 +13,11 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data: list } = await supabase
-    .from("saved_lists")
-    .select("title, is_public")
+    .from("collections")
+    .select("title, is_public, owner_id, is_default")
     .eq("id", id)
     .maybeSingle();
 
@@ -25,19 +25,26 @@ export async function generateMetadata({
     return { title: "List Not Found" };
   }
 
+  const ownerProfile = list.owner_id
+    ? await getProfileByUserId(list.owner_id)
+    : null;
+  const ownerName = ownerProfile
+    ? ownerProfile.display_name || ownerProfile.username || "Unknown user"
+    : "Unknown user";
+
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const canonicalUrl = `${siteUrl}/lists/${id}`;
 
   return {
     title: `${list.title} — IndieFindr`,
-    description: `View ${list.title} - a saved game list on IndieFindr`,
+    description: `View ${list.title} by ${ownerName} - a saved game list on IndieFindr`,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
       title: `${list.title} — IndieFindr`,
-      description: `View ${list.title} - a saved game list on IndieFindr`,
+      description: `View ${list.title} by ${ownerName} - a saved game list on IndieFindr`,
       url: canonicalUrl,
       siteName: "IndieFindr",
       locale: "en_US",
@@ -46,7 +53,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary",
       title: `${list.title} — IndieFindr`,
-      description: `View ${list.title} - a saved game list on IndieFindr`,
+      description: `View ${list.title} by ${ownerName} - a saved game list on IndieFindr`,
     },
   };
 }
@@ -57,10 +64,10 @@ export default async function PublicListPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { data: list, error: listError } = await supabase
-    .from("saved_lists")
+    .from("collections")
     .select("*")
     .eq("id", id)
     .maybeSingle();
@@ -73,18 +80,20 @@ export default async function PublicListPage({
     notFound();
   }
 
+  // Get owner profile for redirect check and display
+  const ownerProfile = list.owner_id
+    ? await getProfileByUserId(list.owner_id)
+    : null;
+
   // Redirect to username-based URL if user has a username and this is their default list
-  if (list.is_default) {
-    const profile = await getProfileByUserId(list.owner_id);
-    if (profile?.username) {
-      redirect(`/@${profile.username}/saved`);
-    }
+  if (list.is_default && ownerProfile?.username) {
+    redirect(`/@${ownerProfile.username}/saved`);
   }
 
   const { data: savedGames, error: gamesError } = await supabase
-    .from("saved_list_games")
+    .from("collection_games")
     .select("appid")
-    .eq("list_id", id)
+    .eq("collection_id", id)
     .order("created_at", { ascending: false });
 
   if (gamesError) {
@@ -100,6 +109,11 @@ export default async function PublicListPage({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold">{list.title}</h1>
+          {ownerProfile && (
+            <p className="text-sm text-muted-foreground">
+              by {ownerProfile.display_name || ownerProfile.username || "Unknown user"}
+            </p>
+          )}
           <p className="text-sm text-muted-foreground">
             {gameAppids.length === 0
               ? "No games in this list"

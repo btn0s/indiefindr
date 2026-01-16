@@ -58,7 +58,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const [{ data, error }, pinnedCollections] = await Promise.all([
     supabase
       .from("games_new_home")

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { isGameSaved } from "@/lib/actions/saved-lists";
 import { toast } from "sonner";
 
 interface SaveButtonProps {
@@ -33,8 +32,26 @@ export function SaveButton({ appid }: SaveButtonProps) {
 
       setUserId(user.id);
       try {
-        const saved = await isGameSaved(user.id, appid);
-        setIsSaved(saved);
+        const { data: list } = await supabase
+          .from("collections")
+          .select("id")
+          .eq("owner_id", user.id)
+          .eq("is_default", true)
+          .maybeSingle();
+
+        if (!list) {
+          setIsSaved(false);
+          return;
+        }
+
+        const { data: existing } = await supabase
+          .from("collection_games")
+          .select("appid")
+          .eq("collection_id", list.id)
+          .eq("appid", appid)
+          .maybeSingle();
+
+        setIsSaved(!!existing);
       } catch {
         // If saved-status lookup fails, still allow toggling.
       } finally {
@@ -50,10 +67,33 @@ export function SaveButton({ appid }: SaveButtonProps) {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
         setUserId(session.user.id);
-        isGameSaved(session.user.id, appid).then((saved) => {
-          setIsSaved(saved);
-          setIsLoading(false);
-        });
+        // Re-check saved status
+        (async () => {
+          try {
+            const { data: list } = await supabase
+              .from("collections")
+              .select("id")
+              .eq("owner_id", session.user.id)
+              .eq("is_default", true)
+              .maybeSingle();
+
+            if (!list) {
+              setIsSaved(false);
+              return;
+            }
+
+            const { data: existing } = await supabase
+              .from("collection_games")
+              .select("appid")
+              .eq("collection_id", list.id)
+              .eq("appid", appid)
+              .maybeSingle();
+
+            setIsSaved(!!existing);
+          } finally {
+            setIsLoading(false);
+          }
+        })();
       } else if (event === "SIGNED_OUT") {
         setUserId(null);
         setIsSaved(false);
@@ -84,30 +124,80 @@ export function SaveButton({ appid }: SaveButtonProps) {
 
     setIsToggling(true);
     try {
-      const response = await fetch("/api/saved", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          appid,
-          accessToken: session.access_token,
-        }),
-      });
+      // Get or create default collection
+      let { data: list } = await supabase
+        .from("collections")
+        .select("id")
+        .eq("owner_id", uid)
+        .eq("is_default", true)
+        .maybeSingle();
 
-      if (!response.ok) {
-        const error = await response.json();
-        toast.error(error.error || "Failed to save game");
-        return;
+      if (!list) {
+        const { data: created, error: createError } = await supabase
+          .from("collections")
+          .insert({
+            owner_id: uid,
+            title: "Saved",
+            is_default: true,
+            is_public: true,
+            published: false,
+            pinned_to_home: false,
+            home_position: 0,
+          })
+          .select("id")
+          .single();
+
+        if (createError) {
+          toast.error(createError.message);
+          return;
+        }
+
+        if (!created) {
+          toast.error("Failed to create saved collection");
+          return;
+        }
+
+        list = created;
       }
 
-      const result = await response.json();
-      if (result.error) {
-        toast.error(result.error);
+      const { data: existing } = await supabase
+        .from("collection_games")
+        .select("appid")
+        .eq("collection_id", list.id)
+        .eq("appid", appid)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("collection_games")
+          .delete()
+          .eq("collection_id", list.id)
+          .eq("appid", appid);
+
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+
+        setIsSaved(false);
+        toast.success("Game removed from saved");
       } else {
-        setIsSaved(result.saved ?? false);
-        toast.success(result.saved ? "Game saved!" : "Game removed from saved");
+        const { error } = await supabase.from("collection_games").insert({
+          collection_id: list.id,
+          appid,
+          position: 0,
+        });
+
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+
+        setIsSaved(true);
+        toast.success("Game saved!");
       }
+
+      router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save game");
     } finally {

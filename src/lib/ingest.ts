@@ -1,6 +1,7 @@
 import { fetchSteamGame, searchAppIdByTitle, type SteamGameData } from "./steam";
 import { suggestGamesVibe } from "./suggest";
 import { getSupabaseServerClient } from "./supabase/server";
+import { getSupabaseServiceClient } from "./supabase/service";
 import { Suggestion } from "./supabase/types";
 import { acquireLock, releaseLock, isLocked } from "./utils/distributed-lock";
 import { INGEST_CONFIG } from "./config";
@@ -27,7 +28,9 @@ export async function ingest(
     }
   }
 
-  const lockAcquired = appId ? await acquireLock("ingest", appId) : { acquired: false };
+  const lockAcquired = appId
+    ? await acquireLock("ingest", appId)
+    : { acquired: false };
 
   try {
     console.log("[INGEST] Fetching Steam data for:", steamUrl);
@@ -37,8 +40,8 @@ export async function ingest(
     await saveSteamData(steamData);
 
     if (!skipSuggestions && steamData.screenshots?.length) {
-      generateSuggestionsInBackground(steamData).catch((err) => {
-        console.error("[INGEST] Background suggestions error:", err);
+      enqueueSuggestionJob(steamData.appid).catch((err) => {
+        console.error("[INGEST] Failed to enqueue suggestion job:", err);
       });
     }
 
@@ -50,36 +53,32 @@ export async function ingest(
   }
 }
 
-async function generateSuggestionsInBackground(steamData: SteamGameData): Promise<void> {
-  console.log("[INGEST] Generating suggestions in background for:", steamData.title);
+async function enqueueSuggestionJob(appId: number): Promise<void> {
+  const supabase = getSupabaseServiceClient();
 
-  try {
-    const developers =
-      steamData.raw &&
-      typeof steamData.raw === "object" &&
-      "developers" in steamData.raw &&
-      Array.isArray(steamData.raw.developers)
-        ? (steamData.raw.developers as string[])
-        : undefined;
-    const vibeResult = await suggestGamesVibe(
-      steamData.appid,
-      steamData.title,
-      steamData.short_description || undefined,
-      developers,
-      10
-    );
+  const { error } = await supabase.from("suggestion_jobs").upsert(
+    {
+      source_appid: appId,
+      status: "queued",
+      error: null,
+      started_at: null,
+      finished_at: null,
+    },
+    {
+      onConflict: "source_appid",
+      ignoreDuplicates: false,
+    }
+  );
 
-    console.log("[INGEST] Saving suggestions for:", steamData.appid);
-    await saveSuggestions(steamData.appid, vibeResult.suggestions);
-
-    console.log("[INGEST] Background suggestions complete for:", steamData.appid);
-  } catch (err) {
-    console.error("[INGEST] Failed to generate suggestions for:", steamData.appid, err);
+  if (error) {
+    throw new Error(`Failed to enqueue suggestion job: ${error.message}`);
   }
+
+  console.log("[INGEST] Enqueued suggestion job for:", appId);
 }
 
 export async function clearSuggestions(appId: number): Promise<void> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { error } = await supabase
     .from("games_new")
     .update({
@@ -99,7 +98,7 @@ export async function refreshSuggestions(appId: number): Promise<{
   missingAppIds: number[];
   missingCount: number;
 }> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data: gameData, error } = await supabase
     .from("games_new")
     .select("screenshots, title, short_description, long_description, raw, suggested_game_appids")
@@ -147,7 +146,7 @@ export async function refreshSuggestions(appId: number): Promise<{
 }
 
 export async function findMissingGameIds(appIds: number[]): Promise<number[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   if (!appIds.length) return [];
 
   const { data: existing } = await supabase
@@ -197,7 +196,7 @@ export async function autoIngestMissingGames(appIds: number[]): Promise<void> {
 }
 
 async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<void> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   try {
     const { data: gamesWithSuggestion } = await supabase
       .from("games_new")
@@ -249,7 +248,7 @@ async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<v
 }
 
 async function saveSteamData(steamData: SteamGameData): Promise<void> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { error } = await supabase.from("games_new").upsert(
     {
       appid: steamData.appid,
@@ -271,7 +270,7 @@ async function saveSteamData(steamData: SteamGameData): Promise<void> {
 }
 
 async function saveSuggestions(appId: number, suggestions: Suggestion[]): Promise<void> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   const { error } = await supabase
     .from("games_new")
@@ -299,7 +298,7 @@ function mergeSuggestions(existing: Suggestion[], incoming: Suggestion[]): Sugge
 }
 
 async function getExistingGame(appId: number): Promise<IngestResult | null> {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data: existing } = await supabase
     .from("games_new")
     .select("*")

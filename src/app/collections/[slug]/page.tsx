@@ -70,7 +70,7 @@ export default async function CollectionPage({
   const [games, allGamesData] = await Promise.all([
     getCollectionGames(collection.id),
     (async () => {
-      const supabase = getSupabaseServerClient();
+      const supabase = await getSupabaseServerClient();
       const { data, error } = await supabase
         .from("games_new_home")
         .select("appid, title, header_image")

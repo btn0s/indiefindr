@@ -95,7 +95,7 @@ export default async function Image({
 }: {
   params: Promise<{ appid: string }>;
 }) {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { appid } = await params;
   const appId = parseInt(appid, 10);
 
