@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
+import { generateRandomUsername } from "@/lib/utils/username";
 
 export async function getProfileByUsername(username: string) {
   const supabase = await getSupabaseServerClient();
@@ -126,4 +127,61 @@ export async function updateDisplayName(
   revalidatePath("/settings");
   revalidatePath("/saved");
   return { success: true };
+}
+
+/**
+ * Generate and set a random username for a user
+ * Retries up to 5 times if the generated username is already taken
+ */
+export async function generateAndSetRandomUsername(
+  userId: string
+): Promise<{ error?: string; username?: string; success?: boolean }> {
+  const supabase = await getSupabaseServerClient();
+  const serviceClient = getSupabaseServiceClient();
+
+  // Try up to 5 times to find an available username
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const randomUsername = generateRandomUsername().toLowerCase();
+
+    // Check if username is already taken
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", randomUsername)
+      .maybeSingle();
+
+    if (existing && existing.id !== userId) {
+      // Username is taken, try again
+      continue;
+    }
+
+    // Username is available, set it
+    const { error, data } = await serviceClient
+      .from("profiles")
+      .update({ username: randomUsername })
+      .eq("id", userId)
+      .select();
+
+    if (error) {
+      if (error.code === "23505") {
+        // Username was taken between check and update, try again
+        continue;
+      }
+      if (error.code === "23514") {
+        return { error: "Generated username format is invalid" };
+      }
+      return { error: error.message };
+    }
+
+    if (!data || data.length === 0) {
+      return { error: "Profile not found" };
+    }
+
+    revalidatePath("/settings");
+    revalidatePath("/saved");
+    return { success: true, username: randomUsername };
+  }
+
+  // All attempts failed
+  return { error: "Unable to generate an available username. Please try again." };
 }

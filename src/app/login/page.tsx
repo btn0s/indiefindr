@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getCurrentUserProfile } from "@/lib/actions/profiles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,8 +22,15 @@ export default function LoginPage() {
     const supabase = getSupabaseBrowserClient();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session) {
+        // Check if user has a username
+        const profile = await getCurrentUserProfile();
+        if (!profile?.username) {
+          // User without username - redirect to username claiming
+          router.push("/settings/username");
+          return;
+        }
         router.push("/");
         router.refresh();
       }
@@ -59,6 +67,14 @@ export default function LoginPage() {
         });
 
         if (error) throw error;
+
+        // Check if user has a username
+        const profile = await getCurrentUserProfile();
+        if (!profile?.username) {
+          // User without username - redirect to username claiming
+          router.push("/settings/username");
+          return;
+        }
 
         router.push("/");
         router.refresh();

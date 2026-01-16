@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { getCurrentUserProfile, setUsername } from "@/lib/actions/profiles";
+import { getCurrentUserProfile, setUsername, generateAndSetRandomUsername } from "@/lib/actions/profiles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,23 +21,43 @@ export default function UsernamePage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = getSupabaseBrowserClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+        if (!user) {
+          router.push("/login");
+          return;
+        }
 
-      setUserId(user.id);
-      const profile = await getCurrentUserProfile();
-      if (profile) {
-        setCurrentUsername(profile.username);
-        setUsernameValue(profile.username || "");
+        setUserId(user.id);
+        const profile = await getCurrentUserProfile();
+        if (profile) {
+          setCurrentUsername(profile.username);
+          setUsernameValue(profile.username || "");
+        } else if (user.email) {
+          // Prefill with email prefix if no username exists
+          const emailPrefix = user.email.split("@")[0];
+          // Sanitize: lowercase, replace invalid chars with underscore, collapse underscores, trim edges
+          const sanitized = emailPrefix
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, "_")
+            .replace(/_+/g, "_")
+            .replace(/^_|_$/g, "");
+
+          if (sanitized.length >= 3) {
+            setUsernameValue(sanitized);
+          }
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to load username settings"
+        );
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     checkAuth();
@@ -124,11 +144,30 @@ export default function UsernamePage() {
         </form>
 
         <div className="text-center">
-          <Link href="/saved">
-            <Button variant="ghost" size="sm">
-              Skip for now
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={async () => {
+              if (!userId) return;
+              setIsSaving(true);
+              try {
+                const result = await generateAndSetRandomUsername(userId);
+                if (result.error) {
+                  toast.error(result.error);
+                } else {
+                  toast.success(`Username set to @${result.username}!`);
+                  router.push("/saved");
+                }
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Failed to generate username");
+              } finally {
+                setIsSaving(false);
+              }
+            }}
+            disabled={isSaving}
+          >
+            {isSaving ? "Generating..." : "Skip for now"}
+          </Button>
         </div>
       </div>
     </main>

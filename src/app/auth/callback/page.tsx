@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getCurrentUserProfile } from "@/lib/actions/profiles";
 import { Spinner } from "@/components/ui/spinner";
 
 export default function AuthCallbackPage() {
@@ -20,6 +21,14 @@ export default function AuthCallbackPage() {
         if (error) {
           console.error("Auth callback error:", error);
           router.push("/login?error=auth_failed");
+          return;
+        }
+
+        // Check if user has a username
+        const profile = await getCurrentUserProfile();
+        if (!profile?.username) {
+          // New user without username - redirect to username claiming
+          router.push("/settings/username");
           return;
         }
 
