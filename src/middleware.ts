@@ -82,6 +82,8 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/api/:path*",
-    "/@:path*",
+    // Match paths like /@btn0s and /@btn0s/saved
+    "/@:username",
+    "/@:username/:path*",
   ],
 };

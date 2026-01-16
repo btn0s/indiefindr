@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, X, Bookmark, User, LogOut, Settings } from "lucide-react";
+import { Search, X, Bookmark, User, LogOut, Settings, UserCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +34,7 @@ export function Navbar() {
   const [showResults, setShowResults] = useState(false);
   const [ingestingAppId, setIngestingAppId] = useState<number | null>(null);
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   );
@@ -48,16 +49,35 @@ export function Navbar() {
         data: { user },
       } = await supabase.auth.getUser();
       setUser(user);
+      
+      if (user) {
+        // Fetch username
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .maybeSingle();
+        setUsername(profile?.username ?? null);
+      }
     };
 
     checkUser();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       if (event === "SIGNED_OUT") {
+        setUsername(null);
         router.refresh();
+      } else if (session?.user) {
+        // Fetch username when signed in
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        setUsername(profile?.username ?? null);
       }
     });
 
@@ -202,6 +222,7 @@ export function Navbar() {
   const handleSignOut = async () => {
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
+
     router.push("/");
     router.refresh();
   };
@@ -365,6 +386,12 @@ export function Navbar() {
                       {user.email || "Account"}
                     </div>
                     <DropdownMenuSeparator />
+                    {username && (
+                      <DropdownMenuItem onClick={() => router.push(`/@${username}`)}>
+                        <UserCircle className="h-4 w-4" />
+                        View profile
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => router.push("/saved")}>
                       <Bookmark className="h-4 w-4" />
                       Saved games

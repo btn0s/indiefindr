@@ -129,3 +129,57 @@ export async function getCollectionGames(
     .map((appid) => gamesMap.get(appid))
     .filter((g): g is GameNew => g !== undefined);
 }
+
+export async function getSavedCollectionWithPreview(
+  userId: string
+): Promise<CollectionWithPreview | null> {
+  const supabase = await getSupabaseServerClient();
+
+  const { data: collection, error: collectionError } = await supabase
+    .from("collections")
+    .select("*")
+    .eq("owner_id", userId)
+    .eq("is_default", true)
+    .maybeSingle();
+
+  if (collectionError || !collection || !collection.is_public) {
+    return null;
+  }
+
+  const { data: collectionGames, error: gamesError } = await supabase
+    .from("collection_games")
+    .select("appid")
+    .eq("collection_id", collection.id)
+    .order("created_at", { ascending: false });
+
+  if (gamesError || !collectionGames) {
+    return { ...collection, preview_games: [], total_games_count: 0 };
+  }
+
+  const totalCount = collectionGames.length;
+  const previewAppIds = collectionGames.slice(0, 4).map((cg) => cg.appid);
+
+  if (previewAppIds.length === 0) {
+    return { ...collection, preview_games: [], total_games_count: totalCount };
+  }
+
+  const { data: games, error: gamesDataError } = await supabase
+    .from("games_new")
+    .select("appid, title, header_image")
+    .in("appid", previewAppIds);
+
+  if (gamesDataError || !games) {
+    return { ...collection, preview_games: [], total_games_count: totalCount };
+  }
+
+  const gamesMap = new Map(games.map((g) => [g.appid, g]));
+  const previewGames = previewAppIds
+    .map((appid) => gamesMap.get(appid))
+    .filter((g): g is GameCardGame => g !== undefined);
+
+  return {
+    ...collection,
+    preview_games: previewGames,
+    total_games_count: totalCount,
+  };
+}
