@@ -85,11 +85,15 @@ export default async function CollectionPage({
         return [];
       }
 
-      return (data || []).map((g) => ({
-        appid: g.appid,
-        title: g.title,
-        header_image: g.header_image,
-      }));
+      return (data || [])
+        .filter((g): g is typeof g & { appid: number; title: string } =>
+          g.appid !== null && g.title !== null
+        )
+        .map((g) => ({
+          appid: g.appid,
+          title: g.title,
+          header_image: g.header_image,
+        }));
     })(),
   ]);
 

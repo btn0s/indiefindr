@@ -1,12 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
-let cachedServiceClient: SupabaseClient | null = null;
+let cachedServiceClient: SupabaseClient<Database> | null = null;
 
 /**
  * Server-only Supabase client using the service role key.
  * Use this ONLY in trusted server contexts (route handlers, server actions, etc.).
  */
-export function getSupabaseServiceClient(): SupabaseClient {
+export function getSupabaseServiceClient(): SupabaseClient<Database> {
   if (cachedServiceClient) return cachedServiceClient;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -18,7 +19,7 @@ export function getSupabaseServiceClient(): SupabaseClient {
     );
   }
 
-  cachedServiceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  cachedServiceClient = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

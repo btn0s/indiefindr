@@ -1,6 +1,7 @@
 import { acquireRateLimit } from "./utils/rate-limiter";
 import { retry } from "./utils/retry";
 import { parseSteamUrl } from "./utils/parse-steam-url";
+import type { Json } from "./supabase/database.types";
 
 export { parseSteamUrl };
 
@@ -12,8 +13,8 @@ export type SteamGameData = {
   header_image: string | null;
   short_description: string | null;
   long_description: string | null;
-  type: string; // "game", "dlc", "demo", "mod", etc.
-  raw: unknown; // Raw Steam API response
+  type: string;
+  raw: Json;
 };
 
 const STEAM_API_BASE_URL = "https://store.steampowered.com/api";

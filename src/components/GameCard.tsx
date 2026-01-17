@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -11,7 +12,7 @@ export interface GameCardProps {
   priority?: boolean;
 }
 
-export function GameCard({
+export const GameCard = memo(function GameCard({
   appid,
   title,
   header_image,
@@ -19,7 +20,7 @@ export function GameCard({
   priority = false,
 }: GameCardProps) {
   return (
-    <Link href={`/games/${appid}`} className="block" prefetch={false}>
+    <Link href={`/games/${appid}`} className="block game-card-item" prefetch={false}>
       <div>
         <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
           {header_image && (
@@ -42,7 +43,7 @@ export function GameCard({
       </div>
     </Link>
   );
-}
+});
 
 export function GameCardNotFound({ explanation }: { explanation?: string }) {
   return (

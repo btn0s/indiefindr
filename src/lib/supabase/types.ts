@@ -1,3 +1,5 @@
+import type { Database } from "./database.types";
+
 export type SuggestionCategory = "same-developer" | "niche" | "popular";
 
 export type Suggestion = {
@@ -7,49 +9,17 @@ export type Suggestion = {
   category?: SuggestionCategory;
 };
 
-export type GameNew = {
-  appid: number;
-  screenshots: string[];
-  videos: string[];
-  title: string;
-  header_image: string | null;
-  short_description: string | null;
-  long_description: string | null;
-  raw: unknown;
-  suggested_game_appids: Suggestion[] | null;
-  steamspy_tags: Record<string, number> | null;
-  steamspy_owners: string | null;
-  steamspy_positive: number | null;
-  steamspy_negative: number | null;
-  steamspy_updated_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+export type GameNew = Database["public"]["Tables"]["games_new"]["Row"];
+export type Collection = Database["public"]["Tables"]["collections"]["Row"];
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 export type GameCardGame = Pick<GameNew, "appid" | "title" | "header_image">;
-
-export type Collection = {
-  id: string;
-  slug: string | null;
-  title: string;
-  description: string | null;
-  published: boolean;
-  pinned_to_home: boolean;
-  home_position: number;
-  owner_id: string | null;
-  is_default: boolean;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-};
 
 export type CollectionWithPreview = Collection & {
   preview_games: GameCardGame[];
   total_games_count?: number;
 };
 
-// Legacy types - kept for backward compatibility during migration
-// These should be removed once all code is migrated to use Collection
 export type SavedList = Collection;
 export type SavedListGame = {
   list_id: string;
@@ -58,12 +28,4 @@ export type SavedListGame = {
 };
 export type SavedListWithGames = Collection & {
   games: GameCardGame[];
-};
-
-export type Profile = {
-  id: string;
-  username: string | null;
-  display_name: string | null;
-  created_at: string;
-  updated_at: string;
 };

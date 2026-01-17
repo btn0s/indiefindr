@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   // Externalize steam-user and its dependencies to avoid bundling issues
   // steam-crypto needs to access system.pem file at runtime
   serverExternalPackages: ["steam-user", "@doctormckay/steam-crypto"],
+  // Optimize barrel imports for better bundle size and faster cold starts
+  // See: https://vercel.com/blog/how-we-optimized-package-imports-in-next-js
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts", "date-fns"],
+  },
   images: {
     remotePatterns: [
       {

@@ -109,7 +109,7 @@ export async function refreshSuggestions(appId: number): Promise<{
     throw new Error("Game not found");
   }
 
-  if (!gameData.screenshots?.length) {
+  if (!Array.isArray(gameData.screenshots) || gameData.screenshots.length === 0) {
     throw new Error("No screenshots available");
   }
 
@@ -130,7 +130,9 @@ export async function refreshSuggestions(appId: number): Promise<{
     10
   );
 
-  const existingSuggestions: Suggestion[] = gameData.suggested_game_appids || [];
+  const existingSuggestions: Suggestion[] = Array.isArray(gameData.suggested_game_appids) 
+    ? (gameData.suggested_game_appids as Suggestion[]) 
+    : [];
   const merged = mergeSuggestions(existingSuggestions, vibeResult.suggestions);
 
   await saveSuggestions(appId, merged);
@@ -206,7 +208,9 @@ async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<v
     if (!gamesWithSuggestion) return;
 
     for (const game of gamesWithSuggestion) {
-      const suggestions: Suggestion[] = game.suggested_game_appids || [];
+      const suggestions: Suggestion[] = Array.isArray(game.suggested_game_appids)
+        ? (game.suggested_game_appids as Suggestion[])
+        : [];
       const invalidSuggestion = suggestions.find((s) => s.appId === invalidAppId);
 
       if (!invalidSuggestion) continue;
@@ -314,8 +318,8 @@ async function getExistingGame(appId: number): Promise<IngestResult | null> {
     steamData: {
       appid: existing.appid,
       title: existing.title,
-      screenshots: existing.screenshots || [],
-      videos: existing.videos || [],
+      screenshots: Array.isArray(existing.screenshots) ? (existing.screenshots as string[]) : [],
+      videos: Array.isArray(existing.videos) ? (existing.videos as string[]) : [],
       header_image: existing.header_image,
       short_description: existing.short_description,
       long_description: existing.long_description,
@@ -323,7 +327,9 @@ async function getExistingGame(appId: number): Promise<IngestResult | null> {
       raw: existing.raw,
     },
     suggestions: {
-      suggestions: existing.suggested_game_appids || [],
+      suggestions: Array.isArray(existing.suggested_game_appids) 
+        ? (existing.suggested_game_appids as Suggestion[]) 
+        : [],
     },
   };
 }

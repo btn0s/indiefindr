@@ -16,7 +16,7 @@ import { generateSuggestions } from "../src/lib/actions/suggestions";
 config({ path: [".env.local"] });
 
 async function main() {
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   console.log("🔍 Fetching games to generate suggestions for...\n");
 
@@ -47,7 +47,7 @@ async function main() {
     }
 
     collectionGames?.forEach((cg) => {
-      pinnedAppIds.add(cg.appid);
+      if (cg.appid) pinnedAppIds.add(cg.appid);
     });
 
     console.log(`📌 Found ${pinnedAppIds.size} games in ${collectionIds.length} pinned collection(s)`);
@@ -70,7 +70,9 @@ async function main() {
     process.exit(1);
   }
 
-  const homeAppIds = new Set(homeGames?.map((g) => g.appid) || []);
+  const homeAppIds = new Set(
+    homeGames?.map((g) => g.appid).filter((id): id is number => id !== null) || []
+  );
   console.log(`🏠 Found ${homeAppIds.size} games from home page\n`);
 
   // 3. Combine and deduplicate

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { Database } from "./database.types";
 
 /**
  * Server-side Supabase client (anon key + RLS) that reads auth from cookies.
@@ -18,7 +19,7 @@ export async function getSupabaseServerClient() {
     );
   }
 
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
+  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
     cookies: {
       async getAll() {
         const cookieStore = await cookies();

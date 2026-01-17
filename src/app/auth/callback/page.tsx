@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getCurrentUserProfile } from "@/lib/actions/profiles";
 import { Spinner } from "@/components/ui/spinner";
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -24,10 +24,8 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // Check if user has a username
         const profile = await getCurrentUserProfile();
         if (!profile?.username) {
-          // New user without username - redirect to username claiming
           router.push("/settings/username");
           return;
         }
@@ -49,5 +47,22 @@ export default function AuthCallbackPage() {
         <p className="text-sm text-muted-foreground">Completing sign in...</p>
       </div>
     </main>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="container mx-auto max-w-md py-12 px-4">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <Spinner />
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </div>
+        </main>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
-let cachedBrowserClient: ReturnType<typeof createClient> | null = null;
+let cachedBrowserClient: ReturnType<typeof createClient<Database>> | null = null;
 
 /**
  * Browser/client Supabase client.
@@ -19,6 +20,6 @@ export function getSupabaseBrowserClient() {
     );
   }
 
-  cachedBrowserClient = createClient(supabaseUrl, supabaseAnonKey);
+  cachedBrowserClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
   return cachedBrowserClient;
 }

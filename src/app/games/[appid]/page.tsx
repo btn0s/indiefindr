@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getOrFetchGame } from "@/lib/actions/games";
-import { GameVideo } from "@/components/GameVideo";
+import { getGameMetadata } from "@/lib/data/games";
+import { GameVideo } from "@/components/GameVideoLazy";
 import { SaveButton } from "@/components/SaveButton";
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
@@ -21,13 +21,7 @@ export async function generateMetadata({
     return { title: "Game Not Found" };
   }
 
-  // Lightweight metadata fetch - just get title
-  const supabase = await getSupabaseServerClient();
-  const { data } = await supabase
-    .from("games_new")
-    .select("title, short_description")
-    .eq("appid", appId)
-    .maybeSingle();
+  const data = await getGameMetadata(appId);
 
   if (!data) {
     return { title: "Game Not Found" };

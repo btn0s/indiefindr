@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       { search_query: searchQuery, max_results: API_CONFIG.SEARCH_DB_LIMIT }
     );
 
-    let dbGames = ftsGames;
+    let dbGames: DbGameResult[] | null = ftsGames;
     let error = ftsError;
 
     if (ftsError || !ftsGames || ftsGames.length === 0) {

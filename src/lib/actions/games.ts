@@ -52,7 +52,7 @@ export async function getOrFetchGame(appId: number): Promise<GameData | null> {
       appid: data.appid,
       title: data.title,
       short_description: data.short_description,
-      videos: data.videos ?? [],
+      videos: Array.isArray(data.videos) ? (data.videos as string[]) : [],
       header_image: data.header_image,
       developers: data.developers ?? [],
       release_date: data.release_date,
@@ -114,9 +114,13 @@ export async function loadMoreGames(offset: number): Promise<HomeGame[]> {
 
   if (error) return [];
 
-  return (data || []).map((g) => ({
-    appid: g.appid,
-    title: g.title,
-    header_image: g.header_image,
-  }));
+  return (data || [])
+    .filter((g): g is typeof g & { appid: number; title: string } =>
+      g.appid !== null && g.title !== null
+    )
+    .map((g) => ({
+      appid: g.appid,
+      title: g.title,
+      header_image: g.header_image,
+    }));
 }

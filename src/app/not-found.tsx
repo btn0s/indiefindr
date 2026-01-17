@@ -17,11 +17,15 @@ export default async function NotFound() {
 
   const games: GameCardGame[] = error
     ? []
-    : (data || []).map((g) => ({
-        appid: g.appid,
-        title: g.title,
-        header_image: g.header_image,
-      }));
+    : (data || [])
+        .filter((g): g is typeof g & { appid: number; title: string } =>
+          g.appid !== null && g.title !== null
+        )
+        .map((g) => ({
+          appid: g.appid,
+          title: g.title,
+          header_image: g.header_image,
+        }));
 
   if (error) {
     console.error("Error loading games:", error);
