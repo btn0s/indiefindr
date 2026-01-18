@@ -20,13 +20,13 @@ export async function POST(request: NextRequest) {
       input.force ? "(force)" : ""
     );
 
-    const result = await ingest(input.steamUrl, input.skipSuggestions, input.force);
+    const result = await ingest(input.steamUrl, input.skipEmbeddings, input.force);
 
     return apiSuccess({
       appid: result.steamData.appid,
       title: result.steamData.title,
       steamData: result.steamData,
-      suggestions: result.suggestions,
+      embeddings: result.embeddings,
     });
   } catch (error) {
     if (error instanceof ZodError) {
@@ -49,12 +49,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return apiSuccess({
-    description: "Submit a Steam URL for ingestion and suggestion generation",
+    description: "Submit a Steam URL for ingestion and embedding generation",
     usage: {
       method: "POST",
       body: {
         steamUrl: "string - Required: Steam store URL or app ID",
-        skipSuggestions: "boolean - Optional: Skip suggestion generation",
+        skipEmbeddings: "boolean - Optional: Skip embedding generation",
         force: "boolean - Optional: Force re-ingestion",
       },
     },

@@ -152,7 +152,7 @@ export function Navbar() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ steamUrl, skipSuggestions: true }),
+        body: JSON.stringify({ steamUrl, skipEmbeddings: true }),
         keepalive: true,
       })
         .then((response) => response.json())

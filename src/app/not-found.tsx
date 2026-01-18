@@ -10,7 +10,6 @@ export default async function NotFound() {
     .from("games_new_home")
     .select("appid, title, header_image")
     .order("home_bucket", { ascending: true })
-    .order("suggestions_count", { ascending: false })
     .order("created_at", { ascending: false })
     .order("appid", { ascending: true })
     .range(0, PAGE_SIZE - 1);

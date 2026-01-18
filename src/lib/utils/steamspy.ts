@@ -110,69 +110,6 @@ export function getTopTags(tags: Record<string, number>, limit = 10): string[] {
     .map(([tag]) => tag);
 }
 
-const NEGATIVE_VIBES: Record<string, Set<string>> = {
-  horror: new Set(["Wholesome", "Family Friendly", "Cute", "Relaxing", "Cozy"]),
-  wholesome: new Set(["Horror", "Gore", "Violent", "Dark", "Psychological Horror"]),
-  adult: new Set(["Family Friendly", "Wholesome", "Cute"]),
-};
-
-function hasVibeConflict(sourceTags: string[], suggestedTags: string[]): boolean {
-  const sourceSet = new Set(sourceTags.map((t) => t.toLowerCase()));
-  const suggestedSet = new Set(suggestedTags.map((t) => t.toLowerCase()));
-
-  if (
-    (sourceSet.has("horror") || sourceSet.has("psychological horror")) &&
-    (suggestedSet.has("wholesome") || suggestedSet.has("family friendly"))
-  ) {
-    return true;
-  }
-
-  if (
-    (sourceSet.has("wholesome") || sourceSet.has("family friendly")) &&
-    (suggestedSet.has("horror") || suggestedSet.has("gore") || suggestedSet.has("psychological horror"))
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-export function calculateTagSimilarity(
-  sourceTags: Record<string, number>,
-  suggestedTags: Record<string, number>
-): { score: number; sharedTags: string[]; vibeConflict: boolean } {
-  const sourceTopTags = getTopTags(sourceTags, 15);
-  const suggestedTopTags = getTopTags(suggestedTags, 15);
-
-  if (sourceTopTags.length === 0 || suggestedTopTags.length === 0) {
-    return { score: 0.5, sharedTags: [], vibeConflict: false };
-  }
-
-  const vibeConflict = hasVibeConflict(sourceTopTags, suggestedTopTags);
-
-  const sourceSet = new Set(sourceTopTags.map((t) => t.toLowerCase()));
-  const sharedTags: string[] = [];
-
-  for (const tag of suggestedTopTags) {
-    if (sourceSet.has(tag.toLowerCase())) {
-      sharedTags.push(tag);
-    }
-  }
-
-  const minTags = Math.min(sourceTopTags.length, suggestedTopTags.length);
-  const score = minTags > 0 ? sharedTags.length / minTags : 0;
-
-  return { score, sharedTags, vibeConflict };
-}
-
-export type TagValidationResult = {
-  valid: boolean;
-  score: number;
-  sharedTags: string[];
-  vibeConflict: boolean;
-  reason?: string;
-};
-
 const STEAM_CONTENT_DESCRIPTOR_SEXUAL = 3;
 const STEAM_CONTENT_DESCRIPTOR_ADULT_ONLY = 4;
 
@@ -186,47 +123,4 @@ export function isAdultContent(contentDescriptorIds: number[]): boolean {
 export function getContentDescriptorIds(steamRawData: Record<string, unknown>): number[] {
   const descriptors = steamRawData?.content_descriptors as { ids?: number[] } | undefined;
   return descriptors?.ids ?? [];
-}
-
-export async function validateSuggestionByTags(
-  sourceAppId: number,
-  suggestedAppId: number,
-  minScore = 0.15
-): Promise<TagValidationResult> {
-  const [sourceData, suggestedData] = await Promise.all([
-    fetchSteamSpyData(sourceAppId),
-    fetchSteamSpyData(suggestedAppId),
-  ]);
-
-  if (!sourceData || Object.keys(sourceData.tags).length === 0) {
-    return { valid: true, score: 1, sharedTags: [], vibeConflict: false, reason: "Source has no tags, skipping validation" };
-  }
-
-  if (!suggestedData || Object.keys(suggestedData.tags).length === 0) {
-    return { valid: true, score: 0.5, sharedTags: [], vibeConflict: false, reason: "Suggested game has no tags, allowing" };
-  }
-
-  const { score, sharedTags, vibeConflict } = calculateTagSimilarity(sourceData.tags, suggestedData.tags);
-
-  if (vibeConflict) {
-    return {
-      valid: false,
-      score,
-      sharedTags,
-      vibeConflict: true,
-      reason: `Vibe conflict detected (e.g., horror vs wholesome)`,
-    };
-  }
-
-  if (score < minScore) {
-    return {
-      valid: false,
-      score,
-      sharedTags,
-      vibeConflict: false,
-      reason: `Tag similarity too low: ${(score * 100).toFixed(0)}% < ${(minScore * 100).toFixed(0)}%`,
-    };
-  }
-
-  return { valid: true, score, sharedTags, vibeConflict: false };
 }

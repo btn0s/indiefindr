@@ -68,7 +68,7 @@ export const RETRY_CONFIG = {
 } as const;
 
 // =============================================================================
-// Ingestion & Suggestions
+// Ingestion & Embeddings
 // =============================================================================
 
 export const INGEST_CONFIG = {
@@ -80,17 +80,20 @@ export const INGEST_CONFIG = {
 
   /** Lock expiry time for distributed locks (seconds) */
   LOCK_EXPIRY_SECONDS: 60,
-
-  /** Maximum games to auto-ingest from suggestions */
-  MAX_AUTO_INGEST: 6,
 } as const;
 
-export const SUGGESTION_CONFIG = {
-  /** Target number of suggestions per game */
-  TARGET_SUGGESTION_COUNT: 12,
+export const EMBEDDING_CONFIG = {
+  /** Delay between games when batch processing (ms) */
+  BATCH_DELAY_MS: 1000,
 
-  /** Minimum suggestions to consider complete */
-  MIN_SUGGESTION_COUNT: 8,
+  /** Delay between image embeddings (ms) */
+  IMAGE_DELAY_MS: 500,
+
+  /** Default similarity threshold for search */
+  DEFAULT_SIMILARITY_THRESHOLD: 0.5,
+
+  /** Default number of similar games to return */
+  DEFAULT_SIMILAR_COUNT: 12,
 } as const;
 
 // =============================================================================
@@ -113,8 +116,8 @@ export const UI_CONFIG = {
   /** Delay before showing "slow loading" notice (ms) */
   SLOW_NOTICE_DELAY_MS: 3500,
 
-  /** Number of suggestions to prefetch */
-  PREFETCH_SUGGESTIONS_COUNT: 3,
+  /** Number of similar games to prefetch */
+  PREFETCH_SIMILAR_COUNT: 3,
 
   /** Max auto-ingest attempts client-side */
   CLIENT_MAX_AUTO_INGEST: 6,

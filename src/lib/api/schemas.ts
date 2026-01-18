@@ -31,7 +31,7 @@ export const SteamUrlSchema = z
  */
 export const SubmitGameSchema = z.object({
   steamUrl: SteamUrlSchema,
-  skipSuggestions: z.boolean().optional().default(false),
+  skipEmbeddings: z.boolean().optional().default(false),
   force: z.boolean().optional().default(false),
 });
 export type SubmitGameInput = z.infer<typeof SubmitGameSchema>;

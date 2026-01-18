@@ -1,12 +1,3 @@
-export type SuggestionCategory = "same-developer" | "niche" | "popular";
-
-export type Suggestion = {
-  appId: number;
-  title: string;
-  explanation: string;
-  category?: SuggestionCategory;
-};
-
 export type GameNew = {
   appid: number;
   screenshots: string[];
@@ -16,7 +7,6 @@ export type GameNew = {
   short_description: string | null;
   long_description: string | null;
   raw: unknown;
-  suggested_game_appids: Suggestion[] | null;
   steamspy_tags: Record<string, number> | null;
   steamspy_owners: string | null;
   steamspy_positive: number | null;
