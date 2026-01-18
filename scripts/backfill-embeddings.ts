@@ -43,9 +43,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Rate limiting
-const DELAY_BETWEEN_GAMES_MS = 1000; // 1 second between games
-const DELAY_BETWEEN_IMAGES_MS = 500; // 0.5 seconds between image embeds
+const DELAY_BETWEEN_GAMES_MS = 1000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

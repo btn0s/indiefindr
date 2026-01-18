@@ -8,7 +8,7 @@
  * - Game modes
  */
 
-import { embedTextProjected, cleanTextForEmbedding } from "./text";
+import { embedTextProjected } from "./text";
 import {
   categorizeTags,
   extractSortedTags,
@@ -102,14 +102,6 @@ export async function generateMechanicsEmbedding(
  * Check if a game has sufficient data for MECHANICS embedding
  */
 export function canGenerateMechanicsEmbedding(game: GameWithIgdb): boolean {
-  // We can always generate something, but quality depends on available tags
   const tags = extractSortedTags(game.steamspy_tags);
   return tags.length >= 1 || !!game.raw?.genres?.length;
-}
-
-/**
- * Get a preview of what the MECHANICS template would look like
- */
-export function previewMechanicsTemplate(game: GameWithIgdb): string {
-  return buildMechanicsText(game);
 }

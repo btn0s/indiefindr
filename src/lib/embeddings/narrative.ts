@@ -127,40 +127,22 @@ function inferNarrativeTone(game: GameWithIgdb): string {
  */
 function inferPlayerFantasy(game: GameWithIgdb): string {
   const desc = game.short_description || "";
-  const tags = extractSortedTags(game.steamspy_tags);
 
-  // Try to extract from description
-  const fantasyPatterns = [
-    /you (?:are|play as|become) (?:a |an )?([^,.]+)/i,
-    /take (?:on )?the role of (?:a |an )?([^,.]+)/i,
-    /(?:as|play) (?:a |an )?([^,.]+?)(?:,| who| and| in)/i,
-  ];
+  // Try simple pattern extraction
+  const match = desc.match(/you (?:are|play as|become) (?:a |an )?([^,.]+)/i);
+  if (match) {
+    return match[1].trim();
+  }
 
-  for (const pattern of fantasyPatterns) {
-    const match = desc.match(pattern);
-    if (match) {
-      return match[1].trim();
+  // Just use first part of description if available
+  if (desc.length > 10) {
+    const firstSentence = desc.split(/[.!?]/)[0];
+    if (firstSentence.length < 100) {
+      return firstSentence.trim();
     }
   }
 
-  // Infer from tags
-  if (tags.includes("survival")) {
-    return "Survivor in a hostile world";
-  }
-  if (tags.includes("detective") || tags.includes("mystery")) {
-    return "Detective solving mysteries";
-  }
-  if (tags.includes("management") || tags.includes("tycoon")) {
-    return "Manager building an empire";
-  }
-  if (tags.includes("farming") || tags.includes("life-sim")) {
-    return "Farmer living a peaceful life";
-  }
-  if (tags.includes("roguelike") || tags.includes("dungeon-crawler")) {
-    return "Adventurer exploring dangerous dungeons";
-  }
-
-  return "Protagonist on an adventure";
+  return "";
 }
 
 /**
@@ -186,10 +168,13 @@ export function buildNarrativeText(game: GameWithIgdb): string {
   const parts: string[] = [
     `Setting: ${setting}`,
     `Themes: ${themes.join(", ") || "Adventure"}`,
-    `Story: ${description || "An indie game experience"}`,
-    `Fantasy: ${fantasy}`,
+    `Story: ${description || game.title}`,
     `Tone: ${tone}`,
   ];
+
+  if (fantasy) {
+    parts.push(`Fantasy: ${fantasy}`);
+  }
 
   // Add storyline if available and different from description
   if (storyline && storyline !== description) {
@@ -235,17 +220,9 @@ export async function generateNarrativeEmbedding(
  * Check if a game has sufficient data for NARRATIVE embedding
  */
 export function canGenerateNarrativeEmbedding(game: GameWithIgdb): boolean {
-  // We need at least a description or IGDB storyline
   return !!(
     game.short_description ||
     game.long_description ||
     game.igdb_data?.storyline
   );
-}
-
-/**
- * Get a preview of what the NARRATIVE template would look like
- */
-export function previewNarrativeTemplate(game: GameWithIgdb): string {
-  return buildNarrativeText(game);
 }
