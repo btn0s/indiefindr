@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { setUsername, updateDisplayName } from "@/lib/actions/profiles";
+import { setUsername, updateDisplayName, deleteAccount } from "@/lib/actions/profiles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Logo from "@/components/logo";
-import { User, ArrowLeft } from "lucide-react";
+import { User, ArrowLeft, Trash2 } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -18,6 +18,9 @@ export default function SettingsPage() {
   const [displayName, setDisplayNameValue] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -211,6 +214,81 @@ export default function SettingsPage() {
             </Link>
           </div>
         </form>
+
+        <div className="flex flex-col gap-4 p-6 border border-destructive/50 rounded-lg">
+          <h2 className="text-lg font-medium text-destructive">Danger Zone</h2>
+          
+          {!showDeleteConfirm ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-muted-foreground">
+                Permanently delete your account and all associated data. This action cannot be undone.
+              </p>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-fit"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Account
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                This will permanently delete your account, profile, and all saved games. 
+                Type <span className="font-mono font-semibold">delete my account</span> to confirm.
+              </p>
+              <Input
+                type="text"
+                placeholder="delete my account"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                disabled={isDeleting}
+              />
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={deleteConfirmText !== "delete my account" || isDeleting}
+                  onClick={async () => {
+                    setIsDeleting(true);
+                    try {
+                      const result = await deleteAccount();
+                      if (result.error) {
+                        toast.error(result.error);
+                        setIsDeleting(false);
+                        return;
+                      }
+                      
+                      const supabase = getSupabaseBrowserClient();
+                      await supabase.auth.signOut();
+                      
+                      toast.success("Account deleted successfully");
+                      router.push("/");
+                    } catch (error) {
+                      toast.error("Failed to delete account");
+                      setIsDeleting(false);
+                    }
+                  }}
+                >
+                  {isDeleting ? "Deleting..." : "Permanently Delete"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText("");
+                  }}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

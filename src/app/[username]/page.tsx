@@ -73,9 +73,9 @@ export default async function UserProfilePage({
           viewMoreText="View more →"
         />
       ) : (
-        <div className="flex flex-col items-center justify-center gap-4 py-12">
+        <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
           <p className="text-muted-foreground">
-            This user hasn&apos;t made their saved games public yet.
+            {displayName} hasn&apos;t shared any games yet.
           </p>
         </div>
       )}

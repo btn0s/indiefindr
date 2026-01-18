@@ -185,3 +185,47 @@ export async function generateAndSetRandomUsername(
   // All attempts failed
   return { error: "Unable to generate an available username. Please try again." };
 }
+
+export async function deleteAccount(): Promise<{ error?: string; success?: boolean }> {
+  const supabase = await getSupabaseServerClient();
+  const serviceClient = getSupabaseServiceClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  const userId = user.id;
+
+  const { error: collectionsError } = await serviceClient
+    .from("collections")
+    .delete()
+    .eq("owner_id", userId);
+
+  if (collectionsError) {
+    console.error("Error deleting collections:", collectionsError);
+    return { error: "Failed to delete account data" };
+  }
+
+  const { error: profileError } = await serviceClient
+    .from("profiles")
+    .delete()
+    .eq("id", userId);
+
+  if (profileError) {
+    console.error("Error deleting profile:", profileError);
+    return { error: "Failed to delete account data" };
+  }
+
+  const { error: authError } = await serviceClient.auth.admin.deleteUser(userId);
+
+  if (authError) {
+    console.error("Error deleting auth user:", authError);
+    return { error: "Failed to delete account" };
+  }
+
+  return { success: true };
+}

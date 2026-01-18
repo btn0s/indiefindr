@@ -279,12 +279,15 @@ export default function SavedPage() {
       </div>
 
       {games.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 py-12">
-          <p className="text-muted-foreground">
-            You haven&apos;t saved any games yet.
-          </p>
+        <div className="flex flex-col items-center justify-center gap-6 py-16 text-center">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-xl font-semibold">Start your collection</h2>
+            <p className="text-muted-foreground max-w-md">
+              Find games you love and save them here. Click the bookmark icon on any game page to add it to your list.
+            </p>
+          </div>
           <Link href="/">
-            <Button variant="outline">Browse games</Button>
+            <Button>Browse games</Button>
           </Link>
         </div>
       ) : (
