@@ -1,14 +1,5 @@
 import type { Database } from "./database.types";
 
-export type SuggestionCategory = "same-developer" | "niche" | "popular";
-
-export type Suggestion = {
-  appId: number;
-  title: string;
-  explanation: string;
-  category?: SuggestionCategory;
-};
-
 export type GameNew = Database["public"]["Tables"]["games_new"]["Row"];
 export type Collection = Database["public"]["Tables"]["collections"]["Row"];
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];

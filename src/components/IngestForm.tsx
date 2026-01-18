@@ -58,7 +58,7 @@ export function IngestForm({ onSuccess }: IngestFormProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ steamUrl: steamUrl.trim(), skipSuggestions: true }),
+        body: JSON.stringify({ steamUrl: steamUrl.trim(), skipEmbeddings: true }),
         keepalive: true,
       }).catch((error) => {
         console.error("Error ingesting game:", error);

@@ -6,7 +6,7 @@ import { getOrFetchGame } from "@/lib/actions/games";
 import { getGameMetadata } from "@/lib/data/games";
 import { GameVideo } from "@/components/GameVideoLazy";
 import { SaveButton } from "@/components/SaveButton";
-import { SuggestionsSection } from "./suggestions-section";
+import { SimilarGamesSection } from "./similar-games-section";
 import { SameDeveloperSection } from "./same-developer-section";
 
 export async function generateMetadata({
@@ -216,7 +216,7 @@ export default async function GamePage({
 
         <SameDeveloperSection appId={appId} developers={game.developers} />
 
-        <SuggestionsSection appId={appId} gameTitle={game.title} />
+        <SimilarGamesSection appId={appId} gameTitle={game.title} />
       </main>
     </>
   );

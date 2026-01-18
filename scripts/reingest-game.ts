@@ -32,12 +32,12 @@ async function main() {
   console.log(`   URL: ${steamUrl}\n`);
 
   try {
-    const result = await ingest(steamUrl, false, true); // skipSuggestions=false, force=true
+    const result = await ingest(steamUrl, false, true); // skipEmbeddings=false, force=true
 
     console.log(`✅ Successfully re-ingested game ${appIdNum}`);
     console.log(`   Title: ${result.steamData.title}`);
     console.log(`   AppID: ${result.steamData.appid}`);
-    console.log(`   Suggestions: ${result.suggestions.suggestions.length} (generating in background)`);
+    console.log(`   Embeddings: generating in background`);
   } catch (error) {
     console.error(`❌ Failed to re-ingest game ${appIdNum}:`, error);
     const message = error instanceof Error ? error.message : String(error);

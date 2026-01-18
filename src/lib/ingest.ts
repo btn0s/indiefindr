@@ -1,19 +1,21 @@
-import { fetchSteamGame, searchAppIdByTitle, type SteamGameData } from "./steam";
-import { suggestGamesVibe } from "./suggest";
+import { fetchSteamGame, type SteamGameData } from "./steam";
 import { getSupabaseServerClient } from "./supabase/server";
-import { getSupabaseServiceClient } from "./supabase/service";
-import { Suggestion } from "./supabase/types";
 import { acquireLock, releaseLock, isLocked } from "./utils/distributed-lock";
 import { INGEST_CONFIG } from "./config";
+import {
+  generateAllEmbeddings,
+  type GameForEmbedding,
+  type EmbeddingInput,
+} from "./embeddings";
 
 export type IngestResult = {
   steamData: SteamGameData;
-  suggestions: { suggestions: Suggestion[] };
+  embeddings: EmbeddingInput[];
 };
 
 export async function ingest(
   steamUrl: string,
-  skipSuggestions = false,
+  skipEmbeddings = false,
   force = false
 ): Promise<IngestResult> {
   const appId = parseAppId(steamUrl);
@@ -39,13 +41,14 @@ export async function ingest(
     console.log("[INGEST] Saving to database:", steamData.appid);
     await saveSteamData(steamData);
 
-    if (!skipSuggestions && steamData.screenshots?.length) {
-      enqueueSuggestionJob(steamData.appid).catch((err) => {
-        console.error("[INGEST] Failed to enqueue suggestion job:", err);
+    // Generate embeddings in background
+    if (!skipEmbeddings && steamData.screenshots?.length) {
+      generateEmbeddingsInBackground(steamData).catch((err) => {
+        console.error("[INGEST] Background embeddings error:", err);
       });
     }
 
-    return { steamData, suggestions: { suggestions: [] } };
+    return { steamData, embeddings: [] };
   } finally {
     if (lockAcquired.acquired && appId) {
       await releaseLock("ingest", appId);
@@ -53,201 +56,54 @@ export async function ingest(
   }
 }
 
-async function enqueueSuggestionJob(appId: number): Promise<void> {
-  const supabase = getSupabaseServiceClient();
+async function generateEmbeddingsInBackground(steamData: SteamGameData): Promise<void> {
+  console.log("[INGEST] Generating embeddings in background for:", steamData.title);
 
-  const { error } = await supabase.from("suggestion_jobs").upsert(
-    {
-      source_appid: appId,
-      status: "queued",
-      error: null,
-      started_at: null,
-      finished_at: null,
-    },
-    {
-      onConflict: "source_appid",
-      ignoreDuplicates: false,
-    }
-  );
-
-  if (error) {
-    throw new Error(`Failed to enqueue suggestion job: ${error.message}`);
-  }
-
-  console.log("[INGEST] Enqueued suggestion job for:", appId);
-}
-
-export async function clearSuggestions(appId: number): Promise<void> {
-  const supabase = await getSupabaseServerClient();
-  const { error } = await supabase
-    .from("games_new")
-    .update({
-      suggested_game_appids: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("appid", appId);
-
-  if (error) {
-    throw new Error(`Failed to clear suggestions: ${error.message}`);
-  }
-}
-
-export async function refreshSuggestions(appId: number): Promise<{
-  suggestions: Suggestion[];
-  newCount: number;
-  missingAppIds: number[];
-  missingCount: number;
-}> {
-  const supabase = await getSupabaseServerClient();
-  const { data: gameData, error } = await supabase
-    .from("games_new")
-    .select("screenshots, title, short_description, long_description, raw, suggested_game_appids")
-    .eq("appid", appId)
-    .single();
-
-  if (error || !gameData) {
-    throw new Error("Game not found");
-  }
-
-  if (!Array.isArray(gameData.screenshots) || gameData.screenshots.length === 0) {
-    throw new Error("No screenshots available");
-  }
-
-  console.log("[REFRESH] Generating suggestions for:", gameData.title);
-
-  const developers =
-    gameData.raw &&
-    typeof gameData.raw === "object" &&
-    "developers" in gameData.raw &&
-    Array.isArray(gameData.raw.developers)
-      ? (gameData.raw.developers as string[])
-      : undefined;
-  const vibeResult = await suggestGamesVibe(
-    appId,
-    gameData.title,
-    gameData.short_description || undefined,
-    developers,
-    10
-  );
-
-  const existingSuggestions: Suggestion[] = Array.isArray(gameData.suggested_game_appids) 
-    ? (gameData.suggested_game_appids as Suggestion[]) 
-    : [];
-  const merged = mergeSuggestions(existingSuggestions, vibeResult.suggestions);
-
-  await saveSuggestions(appId, merged);
-
-  const missingAppIds = await findMissingGameIds(merged.map((s) => s.appId));
-
-  return {
-    suggestions: merged,
-    newCount: vibeResult.suggestions.length,
-    missingAppIds,
-    missingCount: missingAppIds.length,
-  };
-}
-
-export async function findMissingGameIds(appIds: number[]): Promise<number[]> {
-  const supabase = await getSupabaseServerClient();
-  if (!appIds.length) return [];
-
-  const { data: existing } = await supabase
-    .from("games_new")
-    .select("appid")
-    .in("appid", appIds);
-
-  const existingSet = new Set((existing || []).map((g) => g.appid));
-  return appIds.filter((id) => !existingSet.has(id));
-}
-
-export async function autoIngestMissingGames(appIds: number[]): Promise<void> {
-  const missingIds = await findMissingGameIds(appIds);
-  if (!missingIds.length) return;
-
-  const toIngest: number[] = [];
-  for (const id of missingIds) {
-    if (!(await isLocked("auto_ingest", id))) {
-      toIngest.push(id);
-    }
-  }
-
-  if (!toIngest.length) return;
-
-  console.log(`[AUTO-INGEST] Ingesting ${toIngest.length} missing games...`);
-
-  for (const appId of toIngest) {
-    const lockResult = await acquireLock("auto_ingest", appId);
-    if (!lockResult.acquired) continue;
-
-    try {
-      await ingest(`https://store.steampowered.com/app/${appId}/`, true);
-      console.log(`[AUTO-INGEST] Success: ${appId}`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[AUTO-INGEST] Failed: ${appId}`, message);
-
-      if (message.includes("not found") || message.includes("unavailable")) {
-        await correctOrRemoveInvalidSuggestion(appId);
-      }
-    } finally {
-      await releaseLock("auto_ingest", appId);
-    }
-  }
-
-  console.log(`[AUTO-INGEST] Completed ${toIngest.length} games`);
-}
-
-async function correctOrRemoveInvalidSuggestion(invalidAppId: number): Promise<void> {
-  const supabase = await getSupabaseServerClient();
   try {
-    const { data: gamesWithSuggestion } = await supabase
-      .from("games_new")
-      .select("appid, suggested_game_appids")
-      .not("suggested_game_appids", "is", null);
+    const game: GameForEmbedding = {
+      appid: steamData.appid,
+      title: steamData.title,
+      header_image: steamData.header_image,
+      screenshots: steamData.screenshots || [],
+      short_description: steamData.short_description,
+      long_description: steamData.long_description,
+      steamspy_tags: null, // Will be enriched later
+      raw: steamData.raw as GameForEmbedding["raw"],
+    };
 
-    if (!gamesWithSuggestion) return;
+    const embeddings = await generateAllEmbeddings(game);
 
-    for (const game of gamesWithSuggestion) {
-      const suggestions: Suggestion[] = Array.isArray(game.suggested_game_appids)
-        ? (game.suggested_game_appids as Suggestion[])
-        : [];
-      const invalidSuggestion = suggestions.find((s) => s.appId === invalidAppId);
+    // Save embeddings to database
+    await saveEmbeddings(embeddings);
 
-      if (!invalidSuggestion) continue;
-
-      let correctedId: number | null = null;
-      if (invalidSuggestion.title) {
-        console.log(`[AUTO-INGEST] Searching for "${invalidSuggestion.title}" to correct ${invalidAppId}`);
-        correctedId = await searchAppIdByTitle(invalidSuggestion.title);
-      }
-
-      if (correctedId && correctedId !== invalidAppId) {
-        console.log(`[AUTO-INGEST] Corrected ${invalidAppId} → ${correctedId} for game ${game.appid}`);
-        const corrected = suggestions.map((s) =>
-          s.appId === invalidAppId ? { ...s, appId: correctedId! } : s
-        );
-        await supabase
-          .from("games_new")
-          .update({ suggested_game_appids: corrected, updated_at: new Date().toISOString() })
-          .eq("appid", game.appid);
-
-        try {
-          await ingest(`https://store.steampowered.com/app/${correctedId}/`, true);
-          console.log(`[AUTO-INGEST] Ingested corrected game ${correctedId}`);
-        } catch {
-          console.log(`[AUTO-INGEST] Failed to ingest corrected game ${correctedId}`);
-        }
-      } else {
-        console.log(`[AUTO-INGEST] No correction found, removing ${invalidAppId} from game ${game.appid}`);
-        const filtered = suggestions.filter((s) => s.appId !== invalidAppId);
-        await supabase
-          .from("games_new")
-          .update({ suggested_game_appids: filtered, updated_at: new Date().toISOString() })
-          .eq("appid", game.appid);
-      }
-    }
+    console.log("[INGEST] Background embeddings complete for:", steamData.appid);
   } catch (err) {
-    console.error(`[AUTO-INGEST] Failed to correct/remove suggestion ${invalidAppId}:`, err);
+    console.error("[INGEST] Failed to generate embeddings for:", steamData.appid, err);
+  }
+}
+
+async function saveEmbeddings(embeddings: EmbeddingInput[]): Promise<void> {
+  if (embeddings.length === 0) return;
+
+  const supabase = await getSupabaseServerClient();
+
+  for (const embedding of embeddings) {
+    const { error } = await supabase.from("game_embeddings").upsert(
+      {
+        appid: embedding.appid,
+        facet: embedding.facet,
+        embedding: embedding.embedding,
+        embedding_model: embedding.embedding_model || "unknown",
+        embedding_version: 1,
+        source_type: embedding.source_type,
+        source_data: embedding.source_data || null,
+      },
+      { onConflict: "appid,facet" }
+    );
+
+    if (error) {
+      console.error(`[INGEST] Failed to save ${embedding.facet} embedding:`, error.message);
+    }
   }
 }
 
@@ -273,32 +129,9 @@ async function saveSteamData(steamData: SteamGameData): Promise<void> {
   }
 }
 
-async function saveSuggestions(appId: number, suggestions: Suggestion[]): Promise<void> {
-  const supabase = await getSupabaseServerClient();
-
-  const { error } = await supabase
-    .from("games_new")
-    .update({
-      suggested_game_appids: suggestions,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("appid", appId);
-
-  if (error) {
-    throw new Error(`Failed to save suggestions: ${error.message}`);
-  }
-}
-
 function parseAppId(steamUrl: string): number | null {
   const match = steamUrl.match(/\/(\d+)\/?$/);
   return match ? parseInt(match[1], 10) : null;
-}
-
-function mergeSuggestions(existing: Suggestion[], incoming: Suggestion[]): Suggestion[] {
-  const map = new Map<number, Suggestion>();
-  for (const s of existing) map.set(s.appId, s);
-  for (const s of incoming) map.set(s.appId, s);
-  return Array.from(map.values());
 }
 
 async function getExistingGame(appId: number): Promise<IngestResult | null> {
@@ -326,11 +159,7 @@ async function getExistingGame(appId: number): Promise<IngestResult | null> {
       type: rawType,
       raw: existing.raw,
     },
-    suggestions: {
-      suggestions: Array.isArray(existing.suggested_game_appids) 
-        ? (existing.suggested_game_appids as Suggestion[]) 
-        : [],
-    },
+    embeddings: [],
   };
 }
 

@@ -103,17 +103,19 @@ export default async function Image({
     return placeholderGridImage();
   }
 
-  const { data: suggestions } = await supabase
-    .from("game_suggestions")
-    .select("suggested_appid")
-    .eq("source_appid", appId)
-    .limit(6);
+  // Use embedding-based similarity to find similar games
+  const { data: similarGames } = await supabase.rpc("find_similar_games_weighted", {
+    p_appid: appId,
+    p_weights: { aesthetic: 0.35, mechanics: 0.35, narrative: 0.30 },
+    p_limit: 6,
+    p_threshold: 0.3,
+  });
 
-  if (!suggestions || suggestions.length === 0) {
+  if (!similarGames || similarGames.length === 0) {
     return placeholderGridImage();
   }
 
-  const suggestedAppIds = suggestions.map((s) => s.suggested_appid);
+  const suggestedAppIds = similarGames.map((g: { appid: number }) => g.appid);
 
   const coverDataUrls = await Promise.all(
     suggestedAppIds.map(async (id) => {
