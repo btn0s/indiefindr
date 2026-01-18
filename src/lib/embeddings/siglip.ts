@@ -150,19 +150,3 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return dotProduct / denominator;
 }
 
-/**
- * Embed text using SigLIP's text encoder (for cross-modal search)
- *
- * Note: This requires a different model endpoint that supports text encoding.
- * For now, we'll use OpenAI for text and only use SigLIP for images.
- *
- * @param text - Text to embed
- * @returns 768-dimensional embedding vector
- */
-export async function embedTextWithSiglip(text: string): Promise<number[]> {
-  // TODO: Implement when we have a SigLIP text encoder endpoint
-  // For now, throw an error to indicate this is not yet implemented
-  throw new Error(
-    "SigLIP text embedding not yet implemented. Use OpenAI text embedding instead."
-  );
-}

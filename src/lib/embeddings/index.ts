@@ -32,7 +32,6 @@ export {
   embedTexts,
   embedTextProjected,
   projectDimensions,
-  combineEmbeddings,
   cleanTextForEmbedding,
 } from "./text";
 
@@ -72,14 +71,12 @@ export {
   generateMechanicsEmbedding,
   canGenerateMechanicsEmbedding,
   buildMechanicsText,
-  previewMechanicsTemplate,
 } from "./mechanics";
 
 export {
   generateNarrativeEmbedding,
   canGenerateNarrativeEmbedding,
   buildNarrativeText,
-  previewNarrativeTemplate,
 } from "./narrative";
 
 // =============================================================================

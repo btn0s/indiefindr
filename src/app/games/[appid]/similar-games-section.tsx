@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { GameCard } from "@/components/GameCard";
 import { cn } from "@/lib/utils";
 import { FACET_CONFIGS, type FacetType } from "@/lib/embeddings/types";
@@ -73,11 +73,11 @@ function SimilarGamesSkeleton() {
 function FacetTabs({
   activeFacet,
   onFacetChange,
-  isPending,
+  disabled,
 }: {
   activeFacet: FacetType | "all";
   onFacetChange: (facet: FacetType | "all") => void;
-  isPending: boolean;
+  disabled: boolean;
 }) {
   return (
     <div className="flex gap-2 flex-wrap">
@@ -85,14 +85,13 @@ function FacetTabs({
         <button
           key={tab.id}
           onClick={() => onFacetChange(tab.id)}
-          disabled={isPending}
+          disabled={disabled}
           className={cn(
             "px-3 py-1.5 text-sm rounded-md transition-colors",
-            "border border-transparent",
             activeFacet === tab.id
               ? "bg-primary text-primary-foreground"
               : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground",
-            isPending && "opacity-50 cursor-not-allowed"
+            disabled && "opacity-50 cursor-not-allowed"
           )}
           title={tab.description}
         >
@@ -144,21 +143,16 @@ export function SimilarGamesSection({
   const [games, setGames] = useState<SimilarGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
 
-  // Fetch similar games when facet changes
   useEffect(() => {
     async function fetchSimilarGames() {
       setIsLoading(true);
       setError(null);
 
       try {
-        const params = new URLSearchParams({
-          facet: activeFacet,
-          limit: "12",
-        });
-
-        const response = await fetch(`/api/games/${appId}/similar?${params}`);
+        const response = await fetch(
+          `/api/games/${appId}/similar?facet=${activeFacet}&limit=12`
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch similar games");
@@ -178,12 +172,6 @@ export function SimilarGamesSection({
     fetchSimilarGames();
   }, [appId, activeFacet]);
 
-  const handleFacetChange = (facet: FacetType | "all") => {
-    startTransition(() => {
-      setActiveFacet(facet);
-    });
-  };
-
   const currentTab = FACET_TABS.find((t) => t.id === activeFacet);
 
   return (
@@ -197,8 +185,8 @@ export function SimilarGamesSection({
         </div>
         <FacetTabs
           activeFacet={activeFacet}
-          onFacetChange={handleFacetChange}
-          isPending={isPending}
+          onFacetChange={setActiveFacet}
+          disabled={isLoading}
         />
       </div>
 

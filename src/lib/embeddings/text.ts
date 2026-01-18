@@ -8,9 +8,7 @@
 import { embed } from "ai";
 import { TARGET_EMBEDDING_DIMENSIONS } from "./types";
 
-// OpenAI embedding model configuration
 const TEXT_EMBEDDING_MODEL = "openai/text-embedding-3-small";
-const OPENAI_EMBEDDING_DIMENSIONS = 1536;
 
 /**
  * Generate an embedding for text using OpenAI
@@ -91,43 +89,6 @@ export async function embedTextProjected(
 ): Promise<number[]> {
   const embedding = await embedText(text);
   return projectDimensions(embedding, targetDims);
-}
-
-/**
- * Combine multiple text embeddings with weights
- *
- * @param embeddings - Array of embedding vectors
- * @param weights - Weights for each embedding (should sum to 1)
- * @returns Combined embedding
- */
-export function combineEmbeddings(
-  embeddings: number[][],
-  weights: number[]
-): number[] {
-  if (embeddings.length === 0) {
-    throw new Error("Cannot combine empty embeddings array");
-  }
-
-  if (embeddings.length !== weights.length) {
-    throw new Error("Embeddings and weights arrays must have same length");
-  }
-
-  const dims = embeddings[0].length;
-
-  // Normalize weights
-  const totalWeight = weights.reduce((a, b) => a + b, 0);
-  const normalizedWeights = weights.map((w) => w / totalWeight);
-
-  // Weighted sum
-  const result = new Array(dims).fill(0);
-
-  for (let i = 0; i < embeddings.length; i++) {
-    for (let j = 0; j < dims; j++) {
-      result[j] += embeddings[i][j] * normalizedWeights[i];
-    }
-  }
-
-  return result;
 }
 
 /**
