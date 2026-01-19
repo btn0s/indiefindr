@@ -11,8 +11,7 @@
 -- Email: test@example.com
 -- Password: password123
 
--- Sample games for testing (3 popular indie games)
--- Note: Videos will be fetched from Steam when games are accessed
+-- Sample games for testing (diverse set for embedding experiments)
 INSERT INTO games_new (appid, screenshots, videos, title, header_image, short_description, long_description, raw)
 VALUES
   (
@@ -44,6 +43,106 @@ VALUES
     'We fused card games and roguelikes together to make the best single player deckbuilder we could',
     'We fused card games and roguelikes together to make the best single player deckbuilder we could. Craft a unique deck, encounter bizarre creatures, discover relics of immense power, and Slay the Spire!',
     '{"type": "game", "name": "Slay the Spire", "steam_appid": 646570}'::jsonb
+  ),
+  (
+    1145360,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/1145360/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'Hades',
+    'https://cdn.akamai.steamstatic.com/steam/apps/1145360/header.jpg',
+    'Defy the god of the dead as you hack and slash out of the Underworld',
+    'Defy the god of the dead as you hack and slash out of the Underworld in this rogue-like dungeon crawler from the creators of Bastion, Transistor, and Pyre.',
+    '{"type": "game", "name": "Hades", "steam_appid": 1145360}'::jsonb
+  ),
+  (
+    1449850,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/1449850/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'Yu-Gi-Oh! Master Duel',
+    'https://cdn.akamai.steamstatic.com/steam/apps/1449850/header.jpg',
+    'The definitive edition of the competitive card game that has been evolving for over 20 years!',
+    'The definitive edition of the competitive card game that has been evolving for over 20 years! Duel at the highest level with 10,000+ cards and a rich deck of strategies.',
+    '{"type": "game", "name": "Yu-Gi-Oh! Master Duel", "steam_appid": 1449850}'::jsonb
+  ),
+  (
+    244850,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/244850/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'Space Engineers',
+    'https://cdn.akamai.steamstatic.com/steam/apps/244850/header.jpg',
+    'Space Engineers is a sandbox game about engineering, construction, exploration and survival',
+    'Space Engineers is a sandbox game about engineering, construction, exploration and survival in space and on planets. Players build space ships, wheeled vehicles, space stations, planetary outposts of various sizes and uses.',
+    '{"type": "game", "name": "Space Engineers", "steam_appid": 244850}'::jsonb
+  ),
+  (
+    230410,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/230410/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'Warframe',
+    'https://cdn.akamai.steamstatic.com/steam/apps/230410/header.jpg',
+    'Awaken as an unstoppable warrior and battle alongside your friends',
+    'Awaken as an unstoppable warrior and battle alongside your friends in this story-driven free-to-play online action game. Confront warring factions, solve mysteries, and explore a vast universe.',
+    '{"type": "game", "name": "Warframe", "steam_appid": 230410}'::jsonb
+  ),
+  (
+    105600,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/105600/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'Terraria',
+    'https://cdn.akamai.steamstatic.com/steam/apps/105600/header.jpg',
+    'Dig, fight, explore, build! Nothing is impossible in this action-packed adventure game',
+    'Dig, fight, explore, build! Nothing is impossible in this action-packed adventure game. The world is your canvas and the ground itself is your paint.',
+    '{"type": "game", "name": "Terraria", "steam_appid": 105600}'::jsonb
+  ),
+  (
+    892970,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/892970/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'Valheim',
+    'https://cdn.akamai.steamstatic.com/steam/apps/892970/header.jpg',
+    'A brutal exploration and survival game for 1-10 players, set in a procedurally-generated purgatory',
+    'A brutal exploration and survival game for 1-10 players, set in a procedurally-generated purgatory inspired by viking culture. Battle, build, and conquer your way to a saga worthy of Odin''s patronage!',
+    '{"type": "game", "name": "Valheim", "steam_appid": 892970}'::jsonb
+  ),
+  (
+    1282100,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/1282100/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'Remnant II',
+    'https://cdn.akamai.steamstatic.com/steam/apps/1282100/header.jpg',
+    'REMNANT II is the sequel to the best-selling game Remnant: From the Ashes',
+    'REMNANT II is the sequel to the best-selling game Remnant: From the Ashes that pits survivors of humanity against new deadly creatures and god-like bosses across terrifying worlds.',
+    '{"type": "game", "name": "Remnant II", "steam_appid": 1282100}'::jsonb
+  ),
+  (
+    1245620,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/1245620/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'ELDEN RING',
+    'https://cdn.akamai.steamstatic.com/steam/apps/1245620/header.jpg',
+    'THE NEW FANTASY ACTION RPG. Rise, Tarnished, and be guided by grace',
+    'THE NEW FANTASY ACTION RPG. Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring and become an Elden Lord in the Lands Between.',
+    '{"type": "game", "name": "ELDEN RING", "steam_appid": 1245620}'::jsonb
+  ),
+  (
+    1203220,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/1203220/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'NARAKA: BLADEPOINT',
+    'https://cdn.akamai.steamstatic.com/steam/apps/1203220/header.jpg',
+    'NARAKA: BLADEPOINT is a 60-player action battle royale offering players insane mobility',
+    'NARAKA: BLADEPOINT is a 60-player action battle royale offering players insane mobility powered by parkour and grappling hook, a vast arsenal of melee and ranged weapons, and a roster of characters with powerful abilities.',
+    '{"type": "game", "name": "NARAKA: BLADEPOINT", "steam_appid": 1203220}'::jsonb
+  ),
+  (
+    1621690,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/1621690/ss_1.jpg"]'::jsonb,
+    '[]'::jsonb,
+    'Core Keeper',
+    'https://cdn.akamai.steamstatic.com/steam/apps/1621690/header.jpg',
+    'Explore an endless cavern of creatures, relics and resources in a mining sandbox',
+    'Explore an endless cavern of creatures, relics and resources in a mining sandbox adventure for 1-8 players. Mine, build, fight, craft and farm to unravel the mystery of the ancient Core.',
+    '{"type": "game", "name": "Core Keeper", "steam_appid": 1621690}'::jsonb
   )
 ON CONFLICT (appid) DO NOTHING;
 
@@ -59,12 +158,12 @@ VALUES
   )
 ON CONFLICT (slug) DO NOTHING;
 
--- Link games to collection (only games that exist in seed)
+-- Link games to collection (using appids that exist in seed)
 INSERT INTO collection_games (collection_id, appid, position)
 VALUES
   ('00000000-0000-0000-0000-000000000001', 413150, 0),
   ('00000000-0000-0000-0000-000000000001', 367520, 1),
-  ('00000000-0000-0000-0000-000000000001', 646570, 2)
+  ('00000000-0000-0000-0000-000000000001', 1145360, 2)
 ON CONFLICT (collection_id, appid) DO NOTHING;
 
 -- Seed user for local development
