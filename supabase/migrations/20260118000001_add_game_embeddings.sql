@@ -165,10 +165,10 @@ CREATE OR REPLACE FUNCTION find_similar_games(
   p_threshold FLOAT DEFAULT 0.5
 )
 RETURNS TABLE (
-  appid INTEGER,
-  title TEXT,
-  header_image TEXT,
-  similarity FLOAT
+  out_appid INTEGER,
+  out_title TEXT,
+  out_header_image TEXT,
+  out_similarity FLOAT
 )
 LANGUAGE plpgsql
 STABLE
@@ -183,9 +183,9 @@ BEGIN
   END IF;
 
   -- Get source game's embedding for this facet
-  SELECT embedding INTO source_embedding
-  FROM game_embeddings
-  WHERE appid = p_appid AND facet = p_facet;
+  SELECT ge.embedding INTO source_embedding
+  FROM game_embeddings ge
+  WHERE ge.appid = p_appid AND ge.facet = p_facet;
 
   -- Return empty if no embedding found
   IF source_embedding IS NULL THEN
@@ -218,11 +218,11 @@ CREATE OR REPLACE FUNCTION find_similar_games_weighted(
   p_threshold FLOAT DEFAULT 0.4
 )
 RETURNS TABLE (
-  appid INTEGER,
-  title TEXT,
-  header_image TEXT,
-  weighted_similarity FLOAT,
-  facet_scores JSONB
+  out_appid INTEGER,
+  out_title TEXT,
+  out_header_image TEXT,
+  out_weighted_similarity FLOAT,
+  out_facet_scores JSONB
 )
 LANGUAGE plpgsql
 STABLE
@@ -242,7 +242,7 @@ BEGIN
   -- Calculate similarity for each game and facet
   similarities AS (
     SELECT
-      ge.appid,
+      ge.appid AS sim_appid,
       ge.facet,
       1 - (ge.embedding <=> se.embedding) AS similarity
     FROM game_embeddings ge
@@ -253,14 +253,14 @@ BEGIN
   -- Compute weighted average
   weighted AS (
     SELECT
-      s.appid,
+      s.sim_appid,
       -- Weighted average similarity
       SUM(s.similarity * COALESCE((p_weights->>s.facet)::FLOAT, 0)) /
         NULLIF(SUM(COALESCE((p_weights->>s.facet)::FLOAT, 0)), 0) AS weighted_sim,
       -- Individual facet scores for UI display
       jsonb_object_agg(s.facet, ROUND(s.similarity::NUMERIC, 3)) AS scores
     FROM similarities s
-    GROUP BY s.appid
+    GROUP BY s.sim_appid
   )
 
   SELECT
@@ -270,7 +270,7 @@ BEGIN
     w.weighted_sim::FLOAT,
     w.scores
   FROM weighted w
-  JOIN games_new g ON g.appid = w.appid
+  JOIN games_new g ON g.appid = w.sim_appid
   WHERE w.weighted_sim >= p_threshold
   ORDER BY w.weighted_sim DESC
   LIMIT p_limit;
