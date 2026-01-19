@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from "../supabase/server";
+import { getSupabaseServiceClient } from "../supabase/service";
 import { RATE_LIMIT_CONFIG } from "../config";
 
 const {
@@ -11,7 +11,7 @@ export async function acquireRateLimit(
   key: string = "steam_api",
   minDelayMs: number = DEFAULT_DELAY_MS
 ): Promise<void> {
-  const supabase = await getSupabaseServerClient();
+  const supabase = getSupabaseServiceClient();
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
