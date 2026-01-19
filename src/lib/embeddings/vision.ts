@@ -25,12 +25,15 @@ List each element on its own line:
 
 Do NOT use generic mood words like "dark" or "cozy". Describe what you literally see.`;
 
-const VISUAL_STYLE_PROMPT = `Describe the visual art style of this video game screenshot in 2-3 sentences. Focus on:
-- Art style (pixel art, realistic 3D, anime, hand-drawn, low-poly, etc.)
-- Color palette (vibrant, muted, neon, pastel, monochrome, etc.)
-- Visual techniques (cel-shading, lighting style, texture quality)
+const VISUAL_STYLE_PROMPT = `Analyze this video game screenshot's visual art style. List SPECIFIC observable features:
 
-Be concise and focus on visual aesthetics, not the content or gameplay.`;
+- Rendering: (pixel art with resolution estimate, cel-shaded 3D, photorealistic, hand-painted, vector, low-poly, voxel)
+- Perspective: (2D side-view, top-down, isometric, first-person, third-person)
+- Color scheme: (specific dominant colors, saturation level, contrast)
+- Line work: (thick outlines, no outlines, sketch-like, clean vectors)
+- Texture style: (flat colors, detailed textures, painterly, retro)
+
+Be specific. "Pixel art" alone is too vague - say "16-bit pixel art with limited palette" or "HD pixel art with smooth gradients".`;
 
 export async function describeImageAtmosphere(imageUrl: string): Promise<string> {
   try {
@@ -90,27 +93,25 @@ export function combineAtmosphereDescriptions(descriptions: string[]): string {
 
 export async function describeImageVisualStyle(imageUrl: string): Promise<string> {
   try {
-    const output = await getReplicate().run(MOONDREAM_MODEL, {
-      input: {
-        image: imageUrl,
-        prompt: VISUAL_STYLE_PROMPT,
-      },
-    }) as unknown;
+    const { text } = await generateText({
+      model: "openai/gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: VISUAL_STYLE_PROMPT },
+            { type: "image", image: imageUrl },
+          ],
+        },
+      ],
+      maxOutputTokens: 300,
+    });
 
-    let text: string;
-    if (Array.isArray(output)) {
-      text = output.join("").trim();
-    } else if (typeof output === "string") {
-      text = output.trim();
-    } else {
-      throw new Error(`Unexpected output format from Moondream: ${typeof output}`);
+    if (!text?.trim()) {
+      throw new Error("Empty response from GPT-4o-mini");
     }
 
-    if (!text) {
-      throw new Error("Empty response from Moondream");
-    }
-
-    return text;
+    return text.trim();
   } catch (error) {
     console.error(`Failed to describe image visual style: ${imageUrl}`, error);
     throw error;
