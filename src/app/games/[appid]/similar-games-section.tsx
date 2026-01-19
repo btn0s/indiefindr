@@ -41,6 +41,11 @@ const FACET_TABS: Array<{
     description: FACET_CONFIGS.aesthetic.description,
   },
   {
+    id: "atmosphere",
+    label: FACET_CONFIGS.atmosphere.label,
+    description: FACET_CONFIGS.atmosphere.description,
+  },
+  {
     id: "mechanics",
     label: FACET_CONFIGS.mechanics.label,
     description: FACET_CONFIGS.mechanics.description,

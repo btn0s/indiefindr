@@ -79,11 +79,17 @@ export {
   buildNarrativeText,
 } from "./narrative";
 
+export {
+  generateAtmosphereEmbedding,
+  canGenerateAtmosphereEmbedding,
+} from "./atmosphere";
+
 // =============================================================================
 // MAIN GENERATION FUNCTION
 // =============================================================================
 
 import { generateAestheticEmbedding, canGenerateAestheticEmbedding } from "./aesthetic";
+import { generateAtmosphereEmbedding, canGenerateAtmosphereEmbedding } from "./atmosphere";
 import { generateMechanicsEmbedding, canGenerateMechanicsEmbedding } from "./mechanics";
 import { generateNarrativeEmbedding, canGenerateNarrativeEmbedding } from "./narrative";
 import type { GameWithIgdb, EmbeddingInput, FacetType } from "./types";
@@ -100,7 +106,7 @@ export async function generateAllEmbeddings(
   facets?: FacetType[]
 ): Promise<EmbeddingInput[]> {
   const results: EmbeddingInput[] = [];
-  const targetFacets = facets || ["aesthetic", "mechanics", "narrative"];
+  const targetFacets = facets || ["aesthetic", "atmosphere", "mechanics", "narrative"];
 
   console.log(`\nGenerating embeddings for: ${game.title} (${game.appid})`);
   console.log(`  Target facets: ${targetFacets.join(", ")}`);
@@ -113,6 +119,17 @@ export async function generateAllEmbeddings(
       console.log(`  ✓ AESTHETIC generated`);
     } catch (error) {
       console.error(`  ✗ AESTHETIC failed:`, error);
+    }
+  }
+
+  // ATMOSPHERE
+  if (targetFacets.includes("atmosphere") && canGenerateAtmosphereEmbedding(game)) {
+    try {
+      const embedding = await generateAtmosphereEmbedding(game);
+      results.push(embedding);
+      console.log(`  ✓ ATMOSPHERE generated`);
+    } catch (error) {
+      console.error(`  ✗ ATMOSPHERE failed:`, error);
     }
   }
 
@@ -138,8 +155,6 @@ export async function generateAllEmbeddings(
     }
   }
 
-  // ATMOSPHERE and DYNAMICS will be added in later phases
-
   console.log(`  Generated ${results.length}/${targetFacets.length} embeddings\n`);
 
   return results;
@@ -153,6 +168,10 @@ export function getAvailableFacets(game: GameWithIgdb): FacetType[] {
 
   if (canGenerateAestheticEmbedding(game)) {
     available.push("aesthetic");
+  }
+
+  if (canGenerateAtmosphereEmbedding(game)) {
+    available.push("atmosphere");
   }
 
   if (canGenerateMechanicsEmbedding(game)) {
