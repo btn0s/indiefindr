@@ -18,7 +18,7 @@ interface SimilarGame {
 
 interface SimilarGamesResponse {
   games: SimilarGame[];
-  facet: FacetType | "all";
+  facet: FacetType;
 }
 
 // =============================================================================
@@ -26,15 +26,10 @@ interface SimilarGamesResponse {
 // =============================================================================
 
 const FACET_TABS: Array<{
-  id: FacetType | "all";
+  id: FacetType;
   label: string;
   description: string;
 }> = [
-  {
-    id: "all",
-    label: "All",
-    description: "Balanced match across all facets",
-  },
   {
     id: "aesthetic",
     label: FACET_CONFIGS.aesthetic.label,
@@ -80,8 +75,8 @@ function FacetTabs({
   onFacetChange,
   disabled,
 }: {
-  activeFacet: FacetType | "all";
-  onFacetChange: (facet: FacetType | "all") => void;
+  activeFacet: FacetType;
+  onFacetChange: (facet: FacetType) => void;
   disabled: boolean;
 }) {
   return (
@@ -138,13 +133,13 @@ function SimilarGamesGrid({ games }: { games: SimilarGame[] }) {
 export function SimilarGamesSection({
   appId,
   gameTitle,
-  initialFacet = "all",
+  initialFacet = "aesthetic",
 }: {
   appId: number;
   gameTitle: string;
-  initialFacet?: FacetType | "all";
+  initialFacet?: FacetType;
 }) {
-  const [activeFacet, setActiveFacet] = useState<FacetType | "all">(initialFacet);
+  const [activeFacet, setActiveFacet] = useState<FacetType>(initialFacet);
   const [games, setGames] = useState<SimilarGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

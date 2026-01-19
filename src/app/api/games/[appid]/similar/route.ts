@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { FacetType } from "@/lib/embeddings/types";
 
-// Default weights for "all" facet mode
-const DEFAULT_WEIGHTS = {
-  aesthetic: 0.25,
-  atmosphere: 0.25,
-  mechanics: 0.25,
-  narrative: 0.25,
-};
+const VALID_FACETS: FacetType[] = [
+  "aesthetic",
+  "atmosphere",
+  "mechanics",
+  "narrative",
+  "dynamics",
+];
 
 export async function GET(
   request: NextRequest,
@@ -22,87 +22,43 @@ export async function GET(
   }
 
   const searchParams = request.nextUrl.searchParams;
-  const facet = searchParams.get("facet") || "all";
+  const facet = (searchParams.get("facet") || "aesthetic") as FacetType;
   const limit = Math.min(parseInt(searchParams.get("limit") || "12", 10), 24);
   const threshold = parseFloat(searchParams.get("threshold") || "0.5");
+
+  if (!VALID_FACETS.includes(facet)) {
+    return NextResponse.json({ error: "Invalid facet" }, { status: 400 });
+  }
 
   const supabase = await getSupabaseServerClient();
 
   try {
-    let games;
+    const { data, error } = await supabase.rpc("find_similar_games", {
+      p_appid: appid,
+      p_facet: facet,
+      p_limit: limit,
+      p_threshold: threshold,
+    });
 
-    if (facet === "all") {
-      // Use weighted multi-facet search
-      const { data, error } = await supabase.rpc("find_similar_games_weighted", {
-        p_appid: appid,
-        p_weights: DEFAULT_WEIGHTS,
-        p_limit: limit,
-        p_threshold: threshold,
-      });
-
-      if (error) {
-        console.error("Error fetching weighted similar games:", error);
-        return NextResponse.json(
-          { error: "Failed to fetch similar games" },
-          { status: 500 }
-        );
-      }
-
-      // Map from out_* column names to expected format
-      games = (data || []).map((g: {
-        out_appid: number;
-        out_title: string;
-        out_header_image: string | null;
-        out_weighted_similarity: number;
-      }) => ({
-        appid: g.out_appid,
-        title: g.out_title,
-        header_image: g.out_header_image,
-        similarity: g.out_weighted_similarity,
-      }));
-    } else {
-      // Validate facet type
-      const validFacets: FacetType[] = [
-        "aesthetic",
-        "atmosphere",
-        "mechanics",
-        "narrative",
-        "dynamics",
-      ];
-
-      if (!validFacets.includes(facet as FacetType)) {
-        return NextResponse.json({ error: "Invalid facet" }, { status: 400 });
-      }
-
-      // Use single-facet search
-      const { data, error } = await supabase.rpc("find_similar_games", {
-        p_appid: appid,
-        p_facet: facet,
-        p_limit: limit,
-        p_threshold: threshold,
-      });
-
-      if (error) {
-        console.error("Error fetching similar games:", error);
-        return NextResponse.json(
-          { error: "Failed to fetch similar games" },
-          { status: 500 }
-        );
-      }
-
-      // Map from out_* column names to expected format
-      games = (data || []).map((g: {
-        out_appid: number;
-        out_title: string;
-        out_header_image: string | null;
-        out_similarity: number;
-      }) => ({
-        appid: g.out_appid,
-        title: g.out_title,
-        header_image: g.out_header_image,
-        similarity: g.out_similarity,
-      }));
+    if (error) {
+      console.error("Error fetching similar games:", error);
+      return NextResponse.json(
+        { error: "Failed to fetch similar games" },
+        { status: 500 }
+      );
     }
+
+    const games = (data || []).map((g: {
+      out_appid: number;
+      out_title: string;
+      out_header_image: string | null;
+      out_similarity: number;
+    }) => ({
+      appid: g.out_appid,
+      title: g.out_title,
+      header_image: g.out_header_image,
+      similarity: g.out_similarity,
+    }));
 
     return NextResponse.json({
       games,
