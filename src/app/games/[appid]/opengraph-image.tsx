@@ -118,7 +118,7 @@ export default async function Image({
   const suggestedAppIds = similarGames.map((g: { appid: number }) => g.appid);
 
   const coverDataUrls = await Promise.all(
-    suggestedAppIds.map(async (id) => {
+    suggestedAppIds.map(async (id: number) => {
       const capsule = await fetchImageAsDataUrl(steamCapsuleUrl(id), 1200);
       if (capsule) return capsule;
       return fetchImageAsDataUrl(steamHeaderUrl(id), 1200);
