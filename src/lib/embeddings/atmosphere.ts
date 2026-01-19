@@ -1,10 +1,10 @@
-import { weightedAverageEmbedding, normalizeEmbedding } from "./siglip";
+import { normalizeEmbedding } from "./siglip";
 import { embedTextProjected } from "./text";
+import { describeImagesAtmosphere, combineAtmosphereDescriptions } from "./vision";
 import { categorizeTags, extractSortedTags } from "./tags";
 import type { GameWithIgdb, EmbeddingInput } from "./types";
 
-const VISUAL_WEIGHT = 0.6;
-const TEXT_WEIGHT = 0.4;
+const MAX_IMAGES_FOR_ATMOSPHERE = 3;
 
 const MOOD_PATTERNS = [
   { pattern: /dark|grim|bleak|sinister/i, mood: "dark" },
@@ -17,15 +17,12 @@ const MOOD_PATTERNS = [
   { pattern: /melancholic|sad|emotional/i, mood: "melancholic" },
 ];
 
-function buildMoodText(game: GameWithIgdb): string {
+function buildTagBasedMoodText(game: GameWithIgdb): string {
   const categorized = categorizeTags(extractSortedTags(game.steamspy_tags));
   const parts: string[] = [];
 
   if (categorized.moods.length > 0) {
-    parts.push(`Mood: ${categorized.moods.slice(0, 5).join(", ")}`);
-  }
-  if (categorized.visuals.length > 0) {
-    parts.push(`Style: ${categorized.visuals.slice(0, 3).join(", ")}`);
+    parts.push(`Mood tags: ${categorized.moods.slice(0, 5).join(", ")}`);
   }
   if (categorized.themes.length > 0) {
     parts.push(`Theme: ${categorized.themes.slice(0, 3).join(", ")}`);
@@ -37,49 +34,69 @@ function buildMoodText(game: GameWithIgdb): string {
   const desc = (game.short_description || "").toLowerCase();
   const moodWords = MOOD_PATTERNS.filter(({ pattern }) => pattern.test(desc)).map(({ mood }) => mood);
   if (moodWords.length > 0) {
-    parts.push(`Feel: ${moodWords.join(", ")}`);
+    parts.push(`Detected mood: ${moodWords.join(", ")}`);
   }
 
-  return parts.join("\n") || "atmospheric indie game";
+  return parts.join(". ");
+}
+
+function getAtmosphereImageUrls(game: GameWithIgdb): string[] {
+  const urls: string[] = [];
+  if (game.header_image) urls.push(game.header_image);
+  urls.push(...game.screenshots.slice(0, MAX_IMAGES_FOR_ATMOSPHERE - 1));
+  return urls;
 }
 
 export async function generateAtmosphereEmbedding(
   game: GameWithIgdb,
-  aestheticEmbedding?: number[]
+  _aestheticEmbedding?: number[]
 ): Promise<EmbeddingInput> {
   console.log(`Generating ATMOSPHERE embedding for ${game.title}...`);
 
-  const embeddings: number[][] = [];
-  const weights: number[] = [];
+  const imageUrls = getAtmosphereImageUrls(game);
+  let visionDescriptions: string[] = [];
+  let usedVision = false;
 
-  if (aestheticEmbedding) {
-    embeddings.push(aestheticEmbedding);
-    weights.push(VISUAL_WEIGHT);
+  if (imageUrls.length > 0) {
+    try {
+      console.log(`  Analyzing ${imageUrls.length} images for atmosphere...`);
+      visionDescriptions = await describeImagesAtmosphere(imageUrls);
+      usedVision = visionDescriptions.length > 0;
+      console.log(`  Got ${visionDescriptions.length} atmosphere descriptions`);
+    } catch (error) {
+      console.warn(`  Vision analysis failed, falling back to tags:`, error);
+    }
   }
 
-  const moodText = buildMoodText(game);
-  const textEmb = await embedTextProjected(moodText);
-  embeddings.push(textEmb);
-  weights.push(TEXT_WEIGHT);
-
-  if (embeddings.length === 0) {
-    throw new Error(`No embeddings generated for atmosphere: ${game.appid}`);
+  const tagMoodText = buildTagBasedMoodText(game);
+  
+  let atmosphereText: string;
+  if (usedVision) {
+    const visionText = combineAtmosphereDescriptions(visionDescriptions);
+    atmosphereText = tagMoodText 
+      ? `${visionText}\n\nGame metadata: ${tagMoodText}`
+      : visionText;
+  } else {
+    atmosphereText = tagMoodText || "atmospheric indie game";
   }
 
-  const combined = weightedAverageEmbedding(embeddings, weights);
-  const normalized = normalizeEmbedding(combined);
+  console.log(`  Embedding atmosphere text (${atmosphereText.length} chars)...`);
+  const embedding = await embedTextProjected(atmosphereText);
+  const normalized = normalizeEmbedding(embedding);
 
   return {
     appid: game.appid,
     facet: "atmosphere",
     embedding: normalized,
-    source_type: "multimodal",
+    source_type: usedVision ? "multimodal" : "text",
     source_data: {
-      aesthetic_reused: !!aestheticEmbedding,
-      mood_text: moodText,
-      igdb_themes: game.igdb_data?.themes || null,
+      vision_descriptions: visionDescriptions,
+      tag_mood_text: tagMoodText,
+      combined_text: atmosphereText,
+      used_vision: usedVision,
+      image_count: imageUrls.length,
     },
-    embedding_model: "siglip2+text-embedding-3-small",
+    embedding_model: usedVision ? "moondream2+text-embedding-3-small" : "text-embedding-3-small",
   };
 }
 

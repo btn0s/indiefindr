@@ -1,5 +1,5 @@
 {
-  "description": "Ground truth pairs using ONLY games that exist in the database - realistic evaluation dataset",
+  "description": "Ground truth pairs using ONLY games that exist in the database - realistic evaluation dataset with edge cases",
   "pairs": {
     "same_series": [
       {
@@ -38,7 +38,7 @@
         "source_title": "Cat Bait",
         "target_title": "Katanaut",
         "expected_similarity": "high",
-        "reason": "Both soulslike games"
+        "reason": "Both soulslike action games"
       }
     ],
     "high_similarity_metroidvania": [
@@ -49,6 +49,14 @@
         "target_title": "Slumbering Feline",
         "expected_similarity": "high",
         "reason": "Both metroidvania games"
+      },
+      {
+        "source": 2721530,
+        "target": 2153190,
+        "source_title": "Afterplace",
+        "target_title": "GHOST at DAWN",
+        "expected_similarity": "high",
+        "reason": "Both indie metroidvania with exploration focus"
       }
     ],
     "high_similarity_fps_coop": [
@@ -61,6 +69,26 @@
         "reason": "Both FPS co-op games with loot/progression"
       }
     ],
+    "high_similarity_horror": [
+      {
+        "source": 2287520,
+        "target": 1046820,
+        "source_title": "Five Nights at Freddy's: Help Wanted 2",
+        "target_title": "I'm on Observation Duty",
+        "expected_similarity": "high",
+        "reason": "Both observation-based horror games"
+      }
+    ],
+    "high_similarity_puzzle": [
+      {
+        "source": 1229580,
+        "target": 2165740,
+        "source_title": "Disc Room",
+        "target_title": "SokoFrog",
+        "expected_similarity": "high",
+        "reason": "Both indie puzzle games with unique mechanics"
+      }
+    ],
     "moderate_similarity_cozy": [
       {
         "source": 1687550,
@@ -69,6 +97,14 @@
         "target_title": "Tales of Seikyu",
         "expected_similarity": "moderate",
         "reason": "Both cozy/relaxing narrative games"
+      },
+      {
+        "source": 1687550,
+        "target": 1390350,
+        "source_title": "Bear's Restaurant",
+        "target_title": "Webbed",
+        "expected_similarity": "moderate",
+        "reason": "Both cozy indie games with charming art"
       }
     ],
     "moderate_similarity_horror": [
@@ -89,6 +125,54 @@
         "target_title": "Monsters and Monocles",
         "expected_similarity": "moderate",
         "reason": "Both indie action games with similar aesthetics"
+      }
+    ],
+    "moderate_similarity_strategy": [
+      {
+        "source": 647960,
+        "target": 1422440,
+        "source_title": "Rusted Warfare - RTS",
+        "target_title": "Cataclismo",
+        "expected_similarity": "moderate",
+        "reason": "Both strategy games but different subgenres"
+      }
+    ],
+    "moderate_similarity_party_coop": [
+      {
+        "source": 4037180,
+        "target": 1062830,
+        "source_title": "Go Ape Ship!",
+        "target_title": "Embr",
+        "expected_similarity": "moderate",
+        "reason": "Both chaotic party co-op games"
+      }
+    ],
+    "edge_case_similar_aesthetic_different_genre": [
+      {
+        "source": 1927720,
+        "target": 1473350,
+        "source_title": "Monument Valley",
+        "target_title": "(the) Gnorp Apologue",
+        "expected_similarity": "low",
+        "reason": "Both have minimalist art but completely different gameplay - puzzle vs idle"
+      },
+      {
+        "source": 1390350,
+        "target": 2165740,
+        "source_title": "Webbed",
+        "target_title": "SokoFrog",
+        "expected_similarity": "moderate",
+        "reason": "Both cute indie games but different genres - adventure vs puzzle"
+      }
+    ],
+    "edge_case_whimsical_vs_action": [
+      {
+        "source": 659110,
+        "target": 49520,
+        "source_title": "Vicious Attack Llama Apocalypse",
+        "target_title": "Borderlands 2",
+        "expected_similarity": "low",
+        "reason": "Both have humorous elements but VALA is whimsical arcade, BL2 is serious FPS"
       }
     ],
     "low_similarity_shooter_vs_cozy": [
@@ -139,6 +223,26 @@
         "target_title": "Bear's Restaurant",
         "expected_similarity": "low",
         "reason": "Action game vs narrative cozy game"
+      }
+    ],
+    "low_similarity_vr_vs_2d": [
+      {
+        "source": 843390,
+        "target": 1229580,
+        "source_title": "Vertigo 2",
+        "target_title": "Disc Room",
+        "expected_similarity": "low",
+        "reason": "VR FPS vs 2D arcade puzzle - completely different experience"
+      }
+    ],
+    "low_similarity_simulation_vs_action": [
+      {
+        "source": 2637940,
+        "target": 1504340,
+        "source_title": "Used Cars Simulator",
+        "target_title": "CrushBorgs",
+        "expected_similarity": "low",
+        "reason": "Business simulation vs action arcade"
       }
     ]
   },

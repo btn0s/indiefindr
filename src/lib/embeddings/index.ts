@@ -111,25 +111,19 @@ export async function generateAllEmbeddings(
   console.log(`\nGenerating embeddings for: ${game.title} (${game.appid})`);
   console.log(`  Target facets: ${targetFacets.join(", ")}`);
 
-  // Track AESTHETIC embedding to reuse for ATMOSPHERE (per spec)
-  let aestheticEmbedding: number[] | undefined;
-
-  // AESTHETIC (must run first if ATMOSPHERE is also requested)
   if (targetFacets.includes("aesthetic") && canGenerateAestheticEmbedding(game)) {
     try {
       const embedding = await generateAestheticEmbedding(game);
       results.push(embedding);
-      aestheticEmbedding = embedding.embedding;
       console.log(`  ✓ AESTHETIC generated`);
     } catch (error) {
       console.error(`  ✗ AESTHETIC failed:`, error);
     }
   }
 
-  // ATMOSPHERE (reuses AESTHETIC embedding per spec)
   if (targetFacets.includes("atmosphere") && canGenerateAtmosphereEmbedding(game)) {
     try {
-      const embedding = await generateAtmosphereEmbedding(game, aestheticEmbedding);
+      const embedding = await generateAtmosphereEmbedding(game);
       results.push(embedding);
       console.log(`  ✓ ATMOSPHERE generated`);
     } catch (error) {
