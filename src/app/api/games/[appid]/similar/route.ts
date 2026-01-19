@@ -4,9 +4,10 @@ import type { FacetType } from "@/lib/embeddings/types";
 
 // Default weights for "all" facet mode
 const DEFAULT_WEIGHTS = {
-  aesthetic: 0.35,
-  mechanics: 0.35,
-  narrative: 0.30,
+  aesthetic: 0.25,
+  atmosphere: 0.25,
+  mechanics: 0.25,
+  narrative: 0.25,
 };
 
 export async function GET(
