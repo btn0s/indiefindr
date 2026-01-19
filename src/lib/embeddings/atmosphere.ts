@@ -2,21 +2,21 @@
  * ATMOSPHERE facet embedding generation
  *
  * Generates multimodal embeddings that capture:
- * - Emotional mood from screenshots
- * - Vibe/tone from tags and description
+ * - Emotional mood from visual style (reuses AESTHETIC embedding)
+ * - Vibe/tone from tags, IGDB themes, and description
  */
 
-import { embedImage, weightedAverageEmbedding, normalizeEmbedding } from "./siglip";
+import { weightedAverageEmbedding, normalizeEmbedding } from "./siglip";
 import { embedTextProjected } from "./text";
 import { categorizeTags, extractSortedTags } from "./tags";
 import type { GameWithIgdb, EmbeddingInput } from "./types";
 
 // Match spec: 0.6 visual + 0.4 text (from 02-facet-model.md)
-const IMAGE_WEIGHT = 0.6;
+const VISUAL_WEIGHT = 0.6;
 const TEXT_WEIGHT = 0.4;
 
 /**
- * Build mood text from tags and description
+ * Build mood text from tags, IGDB themes, and description
  */
 function buildMoodText(game: GameWithIgdb): string {
   const tags = extractSortedTags(game.steamspy_tags);
@@ -34,9 +34,15 @@ function buildMoodText(game: GameWithIgdb): string {
     parts.push(`Style: ${categorized.visuals.slice(0, 3).join(", ")}`);
   }
 
-  // Themes set the tone
+  // Steam theme tags
   if (categorized.themes.length > 0) {
     parts.push(`Theme: ${categorized.themes.slice(0, 3).join(", ")}`);
+  }
+
+  // IGDB themes (structured data, per spec)
+  const igdbThemes = game.igdb_data?.themes;
+  if (igdbThemes && igdbThemes.length > 0) {
+    parts.push(`Setting: ${igdbThemes.slice(0, 4).join(", ")}`);
   }
 
   // Extract mood words from description
@@ -69,26 +75,30 @@ function buildMoodText(game: GameWithIgdb): string {
 
 /**
  * Generate ATMOSPHERE embedding for a game
+ *
+ * Per spec (02-facet-model.md), uses:
+ * - AESTHETIC embedding for visual mood (0.6 weight)
+ * - Text embedding from mood tags/themes (0.4 weight)
+ *
+ * @param game - Game data with optional IGDB enrichment
+ * @param aestheticEmbedding - Pre-computed AESTHETIC embedding to reuse
  */
 export async function generateAtmosphereEmbedding(
-  game: GameWithIgdb
+  game: GameWithIgdb,
+  aestheticEmbedding?: number[]
 ): Promise<EmbeddingInput> {
   console.log(`Generating ATMOSPHERE embedding for ${game.title}...`);
 
   const embeddings: number[][] = [];
   const weights: number[] = [];
 
-  // Get image embedding from first screenshot or header
-  const imageUrl = game.screenshots[0] || game.header_image;
-  if (imageUrl) {
-    try {
-      const imageEmb = await embedImage(imageUrl);
-      embeddings.push(imageEmb);
-      weights.push(IMAGE_WEIGHT);
-      console.log(`  Image embedding from screenshot`);
-    } catch (error) {
-      console.warn(`  Failed to embed image:`, error);
-    }
+  // Use AESTHETIC embedding for visual mood component (per spec)
+  if (aestheticEmbedding) {
+    embeddings.push(aestheticEmbedding);
+    weights.push(VISUAL_WEIGHT);
+    console.log(`  Reusing AESTHETIC embedding for visual mood`);
+  } else {
+    console.warn(`  No AESTHETIC embedding provided, atmosphere will be text-only`);
   }
 
   // Get text embedding from mood data
@@ -117,8 +127,9 @@ export async function generateAtmosphereEmbedding(
     embedding: normalized,
     source_type: "multimodal",
     source_data: {
-      image_used: !!imageUrl,
+      aesthetic_reused: !!aestheticEmbedding,
       mood_text: moodText,
+      igdb_themes: game.igdb_data?.themes || null,
     },
     embedding_model: "siglip2+text-embedding-3-small",
   };
