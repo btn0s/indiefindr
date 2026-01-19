@@ -7,6 +7,7 @@ import {
   type GameForEmbedding,
   type EmbeddingInput,
 } from "./embeddings";
+import type { Json } from "./supabase/database.types";
 
 export type IngestResult = {
   steamData: SteamGameData;
@@ -88,15 +89,16 @@ async function saveEmbeddings(embeddings: EmbeddingInput[]): Promise<void> {
   const supabase = await getSupabaseServerClient();
 
   for (const embedding of embeddings) {
+    const embeddingStr = `[${embedding.embedding.join(",")}]`;
     const { error } = await supabase.from("game_embeddings").upsert(
       {
         appid: embedding.appid,
         facet: embedding.facet,
-        embedding: embedding.embedding,
+        embedding: embeddingStr,
         embedding_model: embedding.embedding_model || "unknown",
         embedding_version: 1,
         source_type: embedding.source_type,
-        source_data: embedding.source_data || null,
+        source_data: embedding.source_data as { [key: string]: Json | undefined } | undefined,
       },
       { onConflict: "appid,facet" }
     );

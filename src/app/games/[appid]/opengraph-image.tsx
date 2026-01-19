@@ -115,7 +115,7 @@ export default async function Image({
     return placeholderGridImage();
   }
 
-  const suggestedAppIds = similarGames.map((g: { appid: number }) => g.appid);
+  const suggestedAppIds = similarGames.map((g: { out_appid: number }) => g.out_appid);
 
   const coverDataUrls = await Promise.all(
     suggestedAppIds.map(async (id: number) => {

@@ -26,7 +26,7 @@ export async function GET(
   const limit = Math.min(parseInt(searchParams.get("limit") || "12", 10), 24);
   const threshold = parseFloat(searchParams.get("threshold") || "0.5");
 
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
 
   try {
     let games;

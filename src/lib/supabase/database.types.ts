@@ -143,40 +143,106 @@ export type Database = {
         }
         Relationships: []
       }
-      game_suggestions: {
+      game_embeddings: {
         Row: {
-          created_at: string | null
+          appid: number
+          created_at: string
+          embedding: string
+          embedding_model: string
+          embedding_version: number
+          facet: string
           id: string
-          reason: string
-          source_appid: number
-          suggested_appid: number
+          source_data: Json | null
+          source_type: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
+          appid: number
+          created_at?: string
+          embedding: string
+          embedding_model?: string
+          embedding_version?: number
+          facet: string
           id?: string
-          reason: string
-          source_appid: number
-          suggested_appid: number
+          source_data?: Json | null
+          source_type: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
+          appid?: number
+          created_at?: string
+          embedding?: string
+          embedding_model?: string
+          embedding_version?: number
+          facet?: string
           id?: string
-          reason?: string
-          source_appid?: number
-          suggested_appid?: number
+          source_data?: Json | null
+          source_type?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "game_suggestions_source_appid_fkey"
-            columns: ["source_appid"]
+            foreignKeyName: "game_embeddings_appid_fkey"
+            columns: ["appid"]
             isOneToOne: false
             referencedRelation: "games_new"
             referencedColumns: ["appid"]
           },
           {
-            foreignKeyName: "game_suggestions_source_appid_fkey"
-            columns: ["source_appid"]
+            foreignKeyName: "game_embeddings_appid_fkey"
+            columns: ["appid"]
             isOneToOne: false
+            referencedRelation: "games_new_home"
+            referencedColumns: ["appid"]
+          },
+        ]
+      }
+      game_igdb_data: {
+        Row: {
+          appid: number
+          fetched_at: string
+          game_engines: string[] | null
+          game_modes: string[] | null
+          igdb_id: number | null
+          keywords: string[] | null
+          player_perspectives: string[] | null
+          storyline: string | null
+          themes: string[] | null
+        }
+        Insert: {
+          appid: number
+          fetched_at?: string
+          game_engines?: string[] | null
+          game_modes?: string[] | null
+          igdb_id?: number | null
+          keywords?: string[] | null
+          player_perspectives?: string[] | null
+          storyline?: string | null
+          themes?: string[] | null
+        }
+        Update: {
+          appid?: number
+          fetched_at?: string
+          game_engines?: string[] | null
+          game_modes?: string[] | null
+          igdb_id?: number | null
+          keywords?: string[] | null
+          player_perspectives?: string[] | null
+          storyline?: string | null
+          themes?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_igdb_data_appid_fkey"
+            columns: ["appid"]
+            isOneToOne: true
+            referencedRelation: "games_new"
+            referencedColumns: ["appid"]
+          },
+          {
+            foreignKeyName: "game_igdb_data_appid_fkey"
+            columns: ["appid"]
+            isOneToOne: true
             referencedRelation: "games_new_home"
             referencedColumns: ["appid"]
           },
@@ -201,8 +267,6 @@ export type Database = {
           steamspy_positive: number | null
           steamspy_tags: Json | null
           steamspy_updated_at: string | null
-          suggested_game_appids: Json | null
-          suggestions_count: number | null
           title: string
           updated_at: string | null
           videos: Json
@@ -225,8 +289,6 @@ export type Database = {
           steamspy_positive?: number | null
           steamspy_tags?: Json | null
           steamspy_updated_at?: string | null
-          suggested_game_appids?: Json | null
-          suggestions_count?: number | null
           title: string
           updated_at?: string | null
           videos: Json
@@ -249,8 +311,6 @@ export type Database = {
           steamspy_positive?: number | null
           steamspy_tags?: Json | null
           steamspy_updated_at?: string | null
-          suggested_game_appids?: Json | null
-          suggestions_count?: number | null
           title?: string
           updated_at?: string | null
           videos?: Json
@@ -370,8 +430,6 @@ export type Database = {
           steamspy_positive: number | null
           steamspy_tags: Json | null
           steamspy_updated_at: string | null
-          suggested_game_appids: Json | null
-          suggestions_count: number | null
           title: string | null
           updated_at: string | null
           videos: Json | null
@@ -396,8 +454,6 @@ export type Database = {
           steamspy_positive?: number | null
           steamspy_tags?: Json | null
           steamspy_updated_at?: string | null
-          suggested_game_appids?: Json | null
-          suggestions_count?: number | null
           title?: string | null
           updated_at?: string | null
           videos?: Json | null
@@ -422,8 +478,6 @@ export type Database = {
           steamspy_positive?: number | null
           steamspy_tags?: Json | null
           steamspy_updated_at?: string | null
-          suggested_game_appids?: Json | null
-          suggestions_count?: number | null
           title?: string | null
           updated_at?: string | null
           videos?: Json | null
@@ -432,12 +486,59 @@ export type Database = {
       }
     }
     Functions: {
+      find_similar_games: {
+        Args: {
+          p_appid: number
+          p_facet: string
+          p_limit?: number
+          p_threshold?: number
+        }
+        Returns: {
+          out_appid: number
+          out_header_image: string
+          out_similarity: number
+          out_title: string
+        }[]
+      }
+      find_similar_games_weighted: {
+        Args: {
+          p_appid: number
+          p_limit?: number
+          p_threshold?: number
+          p_weights: Json
+        }
+        Returns: {
+          out_appid: number
+          out_facet_scores: Json
+          out_header_image: string
+          out_title: string
+          out_weighted_similarity: number
+        }[]
+      }
+      get_embedding_coverage: {
+        Args: never
+        Returns: {
+          coverage_pct: number
+          facet: string
+          game_count: number
+          total_games: number
+        }[]
+      }
       search_games: {
         Args: { max_results?: number; search_query: string }
         Returns: {
           appid: number
           header_image: string
           rank: number
+          title: string
+        }[]
+      }
+      search_games_by_embedding: {
+        Args: { p_facet: string; p_limit?: number; p_query_embedding: string }
+        Returns: {
+          appid: number
+          header_image: string
+          similarity: number
           title: string
         }[]
       }
