@@ -48,16 +48,17 @@ export async function GET(
         );
       }
 
+      // Map from out_* column names to expected format
       games = (data || []).map((g: {
-        appid: number;
-        title: string;
-        header_image: string | null;
-        weighted_similarity: number;
+        out_appid: number;
+        out_title: string;
+        out_header_image: string | null;
+        out_weighted_similarity: number;
       }) => ({
-        appid: g.appid,
-        title: g.title,
-        header_image: g.header_image,
-        similarity: g.weighted_similarity,
+        appid: g.out_appid,
+        title: g.out_title,
+        header_image: g.out_header_image,
+        similarity: g.out_weighted_similarity,
       }));
     } else {
       // Validate facet type
@@ -89,7 +90,18 @@ export async function GET(
         );
       }
 
-      games = data || [];
+      // Map from out_* column names to expected format
+      games = (data || []).map((g: {
+        out_appid: number;
+        out_title: string;
+        out_header_image: string | null;
+        out_similarity: number;
+      }) => ({
+        appid: g.out_appid,
+        title: g.out_title,
+        header_image: g.out_header_image,
+        similarity: g.out_similarity,
+      }));
     }
 
     return NextResponse.json({
