@@ -1,5 +1,8 @@
 -- Fix ambiguous column references in similarity functions
--- The output column names conflicted with table column names
+-- Must DROP first because return type is changing
+
+DROP FUNCTION IF EXISTS find_similar_games(INTEGER, TEXT, INTEGER, FLOAT);
+DROP FUNCTION IF EXISTS find_similar_games_weighted(INTEGER, JSONB, INTEGER, FLOAT);
 
 CREATE OR REPLACE FUNCTION find_similar_games(
   p_appid INTEGER,
