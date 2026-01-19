@@ -242,7 +242,7 @@ export const FACET_PRESETS: FacetPreset[] = [
     description: "Prioritizes mechanics and feel",
     weights: {
       mechanics: 0.6,
-      dynamics: 0.4,
+      atmosphere: 0.4,
     },
   },
   {
