@@ -11,8 +11,9 @@ import { embedTextProjected } from "./text";
 import { categorizeTags, extractSortedTags } from "./tags";
 import type { GameWithIgdb, EmbeddingInput } from "./types";
 
-const IMAGE_WEIGHT = 0.7;
-const TEXT_WEIGHT = 0.3;
+// Match spec: 0.6 visual + 0.4 text (from 02-facet-model.md)
+const IMAGE_WEIGHT = 0.6;
+const TEXT_WEIGHT = 0.4;
 
 /**
  * Build mood text from tags and description
