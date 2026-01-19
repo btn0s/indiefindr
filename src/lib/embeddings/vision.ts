@@ -1,6 +1,6 @@
 import Replicate from "replicate";
 
-const MOONDREAM_MODEL = "lucataco/moondream2:392a53ac3f36d630d2d07ce0e78142aca956571e3b25a26e770692398ebe4c18";
+const MOONDREAM_MODEL = "lucataco/moondream2:72ccb656353c348c1385df54b237eeb7bfa874bf11486cf0b9473e691b662d31";
 
 let _replicate: Replicate | null = null;
 function getReplicate(): Replicate {
@@ -33,11 +33,20 @@ export async function describeImageAtmosphere(imageUrl: string): Promise<string>
       },
     }) as unknown;
 
-    if (typeof output !== "string" || !output.trim()) {
+    let text: string;
+    if (Array.isArray(output)) {
+      text = output.join("").trim();
+    } else if (typeof output === "string") {
+      text = output.trim();
+    } else {
       throw new Error(`Unexpected output format from Moondream: ${typeof output}`);
     }
 
-    return output.trim();
+    if (!text) {
+      throw new Error("Empty response from Moondream");
+    }
+
+    return text;
   } catch (error) {
     console.error(`Failed to describe image atmosphere: ${imageUrl}`, error);
     throw error;
@@ -82,11 +91,20 @@ export async function describeImageVisualStyle(imageUrl: string): Promise<string
       },
     }) as unknown;
 
-    if (typeof output !== "string" || !output.trim()) {
+    let text: string;
+    if (Array.isArray(output)) {
+      text = output.join("").trim();
+    } else if (typeof output === "string") {
+      text = output.trim();
+    } else {
       throw new Error(`Unexpected output format from Moondream: ${typeof output}`);
     }
 
-    return output.trim();
+    if (!text) {
+      throw new Error("Empty response from Moondream");
+    }
+
+    return text;
   } catch (error) {
     console.error(`Failed to describe image visual style: ${imageUrl}`, error);
     throw error;
