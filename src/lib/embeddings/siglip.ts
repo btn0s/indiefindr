@@ -1,19 +1,29 @@
 import Replicate from "replicate";
 import { TARGET_EMBEDDING_DIMENSIONS } from "./types";
 
-const replicate = new Replicate();
-const SIGLIP_MODEL = "lucataco/siglip:0c6c0a9ff7a872eb070820e8cac937a9cf2cd86d50a7455dec5a79ac26f41733";
+const CLIP_MODEL = "krthr/clip-embeddings:1c0371070cb827ec3c7f2f28adcdde54b50dcd239aa6faea0bc98b174ef03fb4";
+
+let _replicate: Replicate | null = null;
+function getReplicate(): Replicate {
+  if (!_replicate) {
+    _replicate = new Replicate();
+  }
+  return _replicate;
+}
 
 export async function embedImage(imageUrl: string): Promise<number[]> {
   try {
-    const output = await replicate.run(SIGLIP_MODEL, { input: { image: imageUrl } });
-    const embedding = Array.isArray(output) ? output[0] : output;
+    const output = await getReplicate().run(CLIP_MODEL, { input: { image: imageUrl } }) as { embedding: number[] };
 
-    if (!Array.isArray(embedding) || embedding.length !== TARGET_EMBEDDING_DIMENSIONS) {
-      throw new Error(`Unexpected embedding format: expected array of ${TARGET_EMBEDDING_DIMENSIONS}, got ${typeof embedding}`);
+    if (!output?.embedding || !Array.isArray(output.embedding)) {
+      throw new Error(`Unexpected embedding format: expected {embedding: number[]}, got ${typeof output}`);
     }
 
-    return embedding;
+    if (output.embedding.length !== TARGET_EMBEDDING_DIMENSIONS) {
+      throw new Error(`Unexpected embedding dimensions: expected ${TARGET_EMBEDDING_DIMENSIONS}, got ${output.embedding.length}`);
+    }
+
+    return output.embedding;
   } catch (error) {
     console.error(`Failed to embed image: ${imageUrl}`, error);
     throw error;

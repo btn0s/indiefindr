@@ -9,23 +9,26 @@ const SETTING_PRIORITY = [
 
 function inferSetting(game: GameWithIgdb): string {
   const themes = categorizeTags(extractSortedTags(game.steamspy_tags)).themes;
+  const allTags = extractSortedTags(game.steamspy_tags).map(t => t.toLowerCase());
 
   if (game.igdb_data?.themes?.length) {
     return game.igdb_data.themes.slice(0, 3).join(", ");
   }
 
   for (const setting of SETTING_PRIORITY) {
-    if (themes.includes(setting)) {
+    if (themes.includes(setting) || allTags.some(t => t.includes(setting))) {
       return setting.charAt(0).toUpperCase() + setting.slice(1);
     }
   }
 
   const desc = (game.short_description || "").toLowerCase();
-  if (desc.includes("space") || desc.includes("galaxy") || desc.includes("planet")) return "Science fiction, Space";
-  if (desc.includes("magic") || desc.includes("kingdom") || desc.includes("dragon")) return "Fantasy";
-  if (desc.includes("zombie") || desc.includes("apocalypse") || desc.includes("wasteland")) return "Post-apocalyptic";
+  if (desc.includes("space") || desc.includes("galaxy") || desc.includes("planet") || allTags.some(t => t.includes("space"))) return "Science fiction, Space";
+  if (desc.includes("magic") || desc.includes("kingdom") || desc.includes("dragon") || allTags.some(t => t.includes("magic") || t.includes("fantasy"))) return "Fantasy";
+  if (desc.includes("zombie") || desc.includes("apocalypse") || desc.includes("wasteland") || allTags.some(t => t.includes("zombie") || t.includes("apocalyptic"))) return "Post-apocalyptic";
+  if (allTags.some(t => t.includes("horror"))) return "Horror";
+  if (allTags.some(t => t.includes("anime") || t.includes("visual novel"))) return "Anime, Visual Novel";
 
-  return themes.slice(0, 2).join(", ") || "Unknown";
+  return themes.slice(0, 2).join(", ") || "Contemporary";
 }
 
 function inferThemes(game: GameWithIgdb): string[] {
@@ -46,12 +49,15 @@ function inferThemes(game: GameWithIgdb): string[] {
 
 function inferNarrativeTone(game: GameWithIgdb): string {
   const moods = categorizeTags(extractSortedTags(game.steamspy_tags)).moods;
+  const allTags = extractSortedTags(game.steamspy_tags).map(t => t.toLowerCase());
 
-  if (moods.includes("horror") || moods.includes("dark")) return "Dark, tense";
-  if (moods.includes("cozy") || moods.includes("relaxing")) return "Warm, gentle";
-  if (moods.includes("funny") || moods.includes("comedy")) return "Comedic, lighthearted";
-  if (moods.includes("emotional") || moods.includes("story-rich")) return "Emotional, dramatic";
-  if (moods.includes("atmospheric")) return "Atmospheric, immersive";
+  if (moods.includes("horror") || moods.includes("dark") || allTags.some(t => t.includes("horror"))) return "Dark, tense";
+  if (moods.includes("cozy") || moods.includes("relaxing") || allTags.some(t => t.includes("cozy") || t.includes("wholesome"))) return "Warm, gentle";
+  if (moods.includes("funny") || moods.includes("comedy") || allTags.some(t => t.includes("comedy") || t.includes("funny"))) return "Comedic, lighthearted";
+  if (moods.includes("emotional") || moods.includes("story-rich") || allTags.some(t => t.includes("story rich") || t.includes("emotional"))) return "Emotional, dramatic";
+  if (moods.includes("atmospheric") || allTags.some(t => t.includes("atmospheric"))) return "Atmospheric, immersive";
+  if (allTags.some(t => t.includes("action") || t.includes("fast-paced"))) return "Action-packed, intense";
+  if (allTags.some(t => t.includes("mystery") || t.includes("detective"))) return "Mysterious, intriguing";
 
   return "Engaging";
 }

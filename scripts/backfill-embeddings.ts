@@ -11,6 +11,7 @@
  *   npx tsx scripts/backfill-embeddings.ts --limit 10   # First 10 games
  *   npx tsx scripts/backfill-embeddings.ts --appid 123  # Specific game
  *   npx tsx scripts/backfill-embeddings.ts --facet aesthetic  # Specific facet only
+ *   npx tsx scripts/backfill-embeddings.ts --force           # Regenerate all (overwrite existing)
  */
 
 import { config } from "dotenv";
@@ -36,6 +37,7 @@ const dryRun = args.includes("--dry-run");
 const limit = limitArg ? parseInt(limitArg.split("=")[1]) : undefined;
 const specificAppId = appidArg ? parseInt(appidArg.split("=")[1]) : undefined;
 const specificFacet = facetArg ? (facetArg.split("=")[1] as FacetType) : undefined;
+const forceRegenerate = args.includes("--force");
 
 // Create Supabase client with service role for writes
 const supabase = createClient(
@@ -175,6 +177,10 @@ async function main() {
     console.log(`Limiting to ${limit} games`);
   }
 
+  if (forceRegenerate) {
+    console.log("⚠️  FORCE MODE - Will overwrite existing embeddings");
+  }
+
   console.log("");
 
   // Fetch games
@@ -200,11 +206,11 @@ async function main() {
 
     let facetsToGenerate: FacetType[];
 
-    if (specificFacet) {
-      // Generate only specific facet if not already exists
+    if (forceRegenerate) {
+      facetsToGenerate = specificFacet ? [specificFacet] : availableFacets;
+    } else if (specificFacet) {
       facetsToGenerate = existingFacets.has(specificFacet) ? [] : [specificFacet];
     } else {
-      // Generate all available facets that don't exist yet
       facetsToGenerate = availableFacets.filter((f) => !existingFacets.has(f));
     }
 
