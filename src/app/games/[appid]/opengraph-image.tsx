@@ -106,7 +106,7 @@ export default async function Image({
   // Use embedding-based similarity to find similar games
   const { data: similarGames } = await supabase.rpc("find_similar_games_weighted", {
     p_appid: appId,
-    p_weights: { aesthetic: 0.35, mechanics: 0.35, narrative: 0.30 },
+    p_weights: { aesthetic: 0.25, atmosphere: 0.25, mechanics: 0.25, narrative: 0.25 },
     p_limit: 6,
     p_threshold: 0.3,
   });
