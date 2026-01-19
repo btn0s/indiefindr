@@ -189,7 +189,7 @@ export const FACET_CONFIGS: Record<FacetType, FacetConfig> = {
   },
   narrative: {
     facet: "narrative",
-    label: "About",
+    label: "Premise",
     description: "Similar themes and story",
     source_type: "text",
     embedding_model: "openai_small",
