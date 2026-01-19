@@ -1,0 +1,151 @@
+{
+  "description": "Ground truth pairs using ONLY games that exist in the database - realistic evaluation dataset",
+  "pairs": {
+    "same_series": [
+      {
+        "source": 49520,
+        "target": 397540,
+        "source_title": "Borderlands 2",
+        "target_title": "Borderlands 3",
+        "expected_similarity": "very_high",
+        "reason": "Same franchise, same developer, same gameplay"
+      }
+    ],
+    "high_similarity_coop_platformers": [
+      {
+        "source": 1607680,
+        "target": 3204780,
+        "source_title": "Bread & Fred",
+        "target_title": "Bonk It!",
+        "expected_similarity": "high",
+        "reason": "Both co-op platformers with similar mechanics"
+      }
+    ],
+    "high_similarity_roguelike_deckbuilders": [
+      {
+        "source": 2562000,
+        "target": 3179730,
+        "source_title": "Argo",
+        "target_title": "Deck of Haunts",
+        "expected_similarity": "high",
+        "reason": "Both roguelike deckbuilders"
+      }
+    ],
+    "high_similarity_soulslike": [
+      {
+        "source": 2929730,
+        "target": 3032830,
+        "source_title": "Cat Bait",
+        "target_title": "Katanaut",
+        "expected_similarity": "high",
+        "reason": "Both soulslike games"
+      }
+    ],
+    "high_similarity_metroidvania": [
+      {
+        "source": 2153190,
+        "target": 3328410,
+        "source_title": "GHOST at DAWN",
+        "target_title": "Slumbering Feline",
+        "expected_similarity": "high",
+        "reason": "Both metroidvania games"
+      }
+    ],
+    "high_similarity_fps_coop": [
+      {
+        "source": 49520,
+        "target": 24240,
+        "source_title": "Borderlands 2",
+        "target_title": "PAYDAY The Heist",
+        "expected_similarity": "high",
+        "reason": "Both FPS co-op games with loot/progression"
+      }
+    ],
+    "moderate_similarity_cozy": [
+      {
+        "source": 1687550,
+        "target": 2340520,
+        "source_title": "Bear's Restaurant",
+        "target_title": "Tales of Seikyu",
+        "expected_similarity": "moderate",
+        "reason": "Both cozy/relaxing narrative games"
+      }
+    ],
+    "moderate_similarity_horror": [
+      {
+        "source": 2287520,
+        "target": 2802820,
+        "source_title": "Five Nights at Freddy's: Help Wanted 2",
+        "target_title": "School 666",
+        "expected_similarity": "moderate",
+        "reason": "Both horror games but different subgenres"
+      }
+    ],
+    "moderate_similarity_indie_action": [
+      {
+        "source": 1504340,
+        "target": 328510,
+        "source_title": "CrushBorgs",
+        "target_title": "Monsters and Monocles",
+        "expected_similarity": "moderate",
+        "reason": "Both indie action games with similar aesthetics"
+      }
+    ],
+    "low_similarity_shooter_vs_cozy": [
+      {
+        "source": 49520,
+        "target": 1687550,
+        "source_title": "Borderlands 2",
+        "target_title": "Bear's Restaurant",
+        "expected_similarity": "low",
+        "reason": "FPS shooter vs cozy restaurant narrative"
+      }
+    ],
+    "low_similarity_horror_vs_platformer": [
+      {
+        "source": 2287520,
+        "target": 1607680,
+        "source_title": "Five Nights at Freddy's: Help Wanted 2",
+        "target_title": "Bread & Fred",
+        "expected_similarity": "low",
+        "reason": "Horror vs cozy co-op platformer"
+      }
+    ],
+    "low_similarity_strategy_vs_metroidvania": [
+      {
+        "source": 647960,
+        "target": 2721530,
+        "source_title": "Rusted Warfare - RTS",
+        "target_title": "Afterplace",
+        "expected_similarity": "low",
+        "reason": "RTS strategy vs metroidvania"
+      }
+    ],
+    "low_similarity_shooter_vs_puzzle": [
+      {
+        "source": 49520,
+        "target": 1473350,
+        "source_title": "Borderlands 2",
+        "target_title": "(the) Gnorp Apologue",
+        "expected_similarity": "low",
+        "reason": "FPS shooter vs idle puzzle game"
+      }
+    ],
+    "low_similarity_action_vs_narrative": [
+      {
+        "source": 1504340,
+        "target": 1687550,
+        "source_title": "CrushBorgs",
+        "target_title": "Bear's Restaurant",
+        "expected_similarity": "low",
+        "reason": "Action game vs narrative cozy game"
+      }
+    ]
+  },
+  "similarity_thresholds": {
+    "very_high": { "min": 0.75, "ideal": 0.85 },
+    "high": { "min": 0.68, "ideal": 0.75 },
+    "moderate": { "min": 0.58, "max": 0.72, "ideal": 0.65 },
+    "low": { "max": 0.55, "ideal": 0.45 }
+  }
+}

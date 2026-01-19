@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-01-19T08:03:10.766Z",
+  "overall_accuracy": 0.35714285714285715,
+  "by_facet": {
+    "aesthetic": {
+      "avg_similarity": 0.6708839075148944,
+      "coverage": 0.6428571428571429,
+      "correlation_with_expected": 0.21998291474298579
+    },
+    "atmosphere": {
+      "avg_similarity": 0.5645450634898918,
+      "coverage": 1,
+      "correlation_with_expected": 0.17181228725740402
+    },
+    "mechanics": {
+      "avg_similarity": 0.7892642029589069,
+      "coverage": 1,
+      "correlation_with_expected": 0.8979045269505047
+    },
+    "narrative": {
+      "avg_similarity": 0.5921021438074615,
+      "coverage": 1,
+      "correlation_with_expected": 0.4048222328012964
+    }
+  },
+  "threshold_analysis": {
+    "very_high": {
+      "avg": 0.737450855856086,
+      "min": 0.737450855856086,
+      "max": 0.737450855856086,
+      "count": 1
+    },
+    "high": {
+      "avg": 0.6644319828352252,
+      "min": 0.623438044883278,
+      "max": 0.7059105419664288,
+      "count": 5
+    },
+    "moderate": {
+      "avg": 0.6782478123409147,
+      "min": 0.6341343921740722,
+      "max": 0.7164503782857083,
+      "count": 3
+    },
+    "low": {
+      "avg": 0.6020690990982326,
+      "min": 0.5797262206746918,
+      "max": 0.6358284077830672,
+      "count": 5
+    }
+  }
+}

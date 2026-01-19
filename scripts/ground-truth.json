@@ -1,0 +1,339 @@
+{
+  "description": "Ground truth pairs for embedding quality evaluation - expanded with edge cases from case study",
+  "pairs": {
+    "same_series": [
+      {
+        "source": 49520,
+        "target": 397540,
+        "source_title": "Borderlands 2",
+        "target_title": "Borderlands 3",
+        "expected_similarity": "very_high",
+        "reason": "Same franchise, same developer"
+      },
+      {
+        "source": 292030,
+        "target": 374320,
+        "source_title": "The Witcher 3",
+        "target_title": "The Witcher 2",
+        "expected_similarity": "very_high",
+        "reason": "Same series, same developer"
+      },
+      {
+        "source": 570,
+        "target": 730,
+        "source_title": "Dota 2",
+        "target_title": "Counter-Strike: Global Offensive",
+        "expected_similarity": "moderate",
+        "reason": "Same developer but very different genres (MOBA vs FPS)"
+      }
+    ],
+    "whimsical_adventure": [
+      {
+        "source": 1151640,
+        "target": 757310,
+        "source_title": "DuneCrawl",
+        "target_title": "Sable",
+        "expected_similarity": "high",
+        "reason": "Both whimsical exploration adventures (case study: DuneCrawl edge case)"
+      },
+      {
+        "source": 1151640,
+        "target": 1092790,
+        "source_title": "DuneCrawl",
+        "target_title": "Ship of Fools",
+        "expected_similarity": "high",
+        "reason": "Both whimsical co-op adventures with quirky tone"
+      },
+      {
+        "source": 1151640,
+        "target": 1128860,
+        "source_title": "DuneCrawl",
+        "target_title": "Lovers in a Dangerous Spacetime",
+        "expected_similarity": "high",
+        "reason": "Both whimsical co-op with charming aesthetics"
+      },
+      {
+        "source": 1151640,
+        "target": 513710,
+        "source_title": "DuneCrawl",
+        "target_title": "Void Bastards",
+        "expected_similarity": "low",
+        "reason": "DuneCrawl is whimsical, Void Bastards is gritty action (should NOT match)"
+      }
+    ],
+    "gritty_action_fps": [
+      {
+        "source": 1574270,
+        "target": 1229490,
+        "source_title": "PIGFACE",
+        "target_title": "ULTRAKILL",
+        "expected_similarity": "high",
+        "reason": "Both gritty fast-paced FPS (case study: PIGFACE edge case)"
+      },
+      {
+        "source": 1574270,
+        "target": 1471700,
+        "source_title": "PIGFACE",
+        "target_title": "Cruelty Squad",
+        "expected_similarity": "high",
+        "reason": "Both dark, gritty, unconventional FPS"
+      },
+      {
+        "source": 1574270,
+        "target": 1104810,
+        "source_title": "PIGFACE",
+        "target_title": "Trepang2",
+        "expected_similarity": "high",
+        "reason": "Both tactical gritty FPS"
+      },
+      {
+        "source": 1574270,
+        "target": 632470,
+        "source_title": "PIGFACE",
+        "target_title": "Disco Elysium",
+        "expected_similarity": "low",
+        "reason": "PIGFACE is action FPS, Disco is narrative RPG (should NOT match despite dark story)"
+      }
+    ],
+    "avant_garde_art_games": [
+      {
+        "source": 1109490,
+        "target": 650700,
+        "source_title": "Eating Nature",
+        "target_title": "Yume Nikki",
+        "expected_similarity": "high",
+        "reason": "Both experimental art games (case study: Eating Nature edge case)"
+      },
+      {
+        "source": 1109490,
+        "target": 1471700,
+        "source_title": "Eating Nature",
+        "target_title": "Cruelty Squad",
+        "expected_similarity": "high",
+        "reason": "Both avant-garde experimental games"
+      },
+      {
+        "source": 1109490,
+        "target": 1092790,
+        "source_title": "Eating Nature",
+        "target_title": "Ship of Fools",
+        "expected_similarity": "low",
+        "reason": "Eating Nature is avant-garde, Ship of Fools is mainstream co-op (should NOT match)"
+      }
+    ],
+    "party_coop": [
+      {
+        "source": 1930580,
+        "target": 448510,
+        "source_title": "Go Ape Ship!",
+        "target_title": "Overcooked! 2",
+        "expected_similarity": "high",
+        "reason": "Both chaotic party co-op (case study: Go Ape Ship edge case)"
+      },
+      {
+        "source": 1930580,
+        "target": 1128860,
+        "source_title": "Go Ape Ship!",
+        "target_title": "Lovers in a Dangerous Spacetime",
+        "expected_similarity": "high",
+        "reason": "Both party co-op with coordination mechanics"
+      },
+      {
+        "source": 1930580,
+        "target": 996580,
+        "source_title": "Go Ape Ship!",
+        "target_title": "Moving Out",
+        "expected_similarity": "high",
+        "reason": "Both chaotic party co-op games"
+      },
+      {
+        "source": 1930580,
+        "target": 553850,
+        "source_title": "Go Ape Ship!",
+        "target_title": "HELLDIVERS 2",
+        "expected_similarity": "moderate",
+        "reason": "Both co-op but HELLDIVERS is action-focused, not party game (should rank lower)"
+      }
+    ],
+    "cozy_games": [
+      {
+        "source": 1687550,
+        "target": 2340520,
+        "source_title": "Bear's Restaurant",
+        "target_title": "Tales of Seikyu",
+        "expected_similarity": "moderate",
+        "reason": "Both cozy/relaxing games"
+      },
+      {
+        "source": 413150,
+        "target": 1702970,
+        "source_title": "Stardew Valley",
+        "target_title": "Spiritfarer",
+        "expected_similarity": "high",
+        "reason": "Both cozy, heartwarming, gentle games"
+      },
+      {
+        "source": 413150,
+        "target": 1092790,
+        "source_title": "Stardew Valley",
+        "target_title": "Ship of Fools",
+        "expected_similarity": "moderate",
+        "reason": "Both have cozy elements but Ship of Fools is more action-oriented"
+      }
+    ],
+    "atmospheric_horror": [
+      {
+        "source": 2287520,
+        "target": 2802820,
+        "source_title": "Five Nights at Freddy's: Help Wanted 2",
+        "target_title": "School 666",
+        "expected_similarity": "moderate",
+        "reason": "Both horror games"
+      },
+      {
+        "source": 282070,
+        "target": 48000,
+        "source_title": "Limbo",
+        "target_title": "INSIDE",
+        "expected_similarity": "very_high",
+        "reason": "Same developer, same dark atmospheric puzzle style"
+      },
+      {
+        "source": 282070,
+        "target": 1092790,
+        "source_title": "Limbo",
+        "target_title": "Ship of Fools",
+        "expected_similarity": "low",
+        "reason": "Limbo is dark/oppressive, Ship of Fools is whimsical (opposite atmosphere)"
+      }
+    ],
+    "metroidvania": [
+      {
+        "source": 2153190,
+        "target": 3328410,
+        "source_title": "GHOST at DAWN",
+        "target_title": "Slumbering Feline",
+        "expected_similarity": "high",
+        "reason": "Both metroidvania games"
+      },
+      {
+        "source": 367520,
+        "target": 261570,
+        "source_title": "Hollow Knight",
+        "target_title": "Ori and the Blind Forest",
+        "expected_similarity": "high",
+        "reason": "Both hand-drawn atmospheric metroidvanias"
+      },
+      {
+        "source": 367520,
+        "target": 1030300,
+        "source_title": "Hollow Knight",
+        "target_title": "Rain World",
+        "expected_similarity": "moderate",
+        "reason": "Both atmospheric metroidvanias but Rain World is more survival-focused"
+      }
+    ],
+    "roguelike_deckbuilders": [
+      {
+        "source": 2562000,
+        "target": 3179730,
+        "source_title": "Argo",
+        "target_title": "Deck of Haunts",
+        "expected_similarity": "high",
+        "reason": "Both roguelike deckbuilders"
+      },
+      {
+        "source": 646570,
+        "target": 1092790,
+        "source_title": "Slay the Spire",
+        "target_title": "Ship of Fools",
+        "expected_similarity": "moderate",
+        "reason": "Both roguelikes but different core mechanics (deckbuilder vs action)"
+      }
+    ],
+    "soulslike": [
+      {
+        "source": 2929730,
+        "target": 3032830,
+        "source_title": "Cat Bait",
+        "target_title": "Katanaut",
+        "expected_similarity": "high",
+        "reason": "Both soulslike games"
+      },
+      {
+        "source": 374320,
+        "target": 1245620,
+        "source_title": "Dark Souls III",
+        "target_title": "Elden Ring",
+        "expected_similarity": "very_high",
+        "reason": "Same developer, same soulslike formula"
+      }
+    ],
+    "platformers": [
+      {
+        "source": 1607680,
+        "target": 3204780,
+        "source_title": "Bread & Fred",
+        "target_title": "Bonk It!",
+        "expected_similarity": "high",
+        "reason": "Both co-op platformers"
+      },
+      {
+        "source": 504230,
+        "target": 1426210,
+        "source_title": "Celeste",
+        "target_title": "Dead Cells",
+        "expected_similarity": "moderate",
+        "reason": "Both pixel art platformers but different feel (precision vs action)"
+      }
+    ],
+    "different_genres_low_similarity": [
+      {
+        "source": 49520,
+        "target": 1687550,
+        "source_title": "Borderlands 2",
+        "target_title": "Bear's Restaurant",
+        "expected_similarity": "low",
+        "reason": "FPS shooter vs cozy restaurant sim"
+      },
+      {
+        "source": 2287520,
+        "target": 1607680,
+        "source_title": "Five Nights at Freddy's: Help Wanted 2",
+        "target_title": "Bread & Fred",
+        "expected_similarity": "low",
+        "reason": "Horror vs cozy platformer"
+      },
+      {
+        "source": 647960,
+        "target": 2721530,
+        "source_title": "Rusted Warfare - RTS",
+        "target_title": "Afterplace",
+        "expected_similarity": "low",
+        "reason": "RTS strategy vs metroidvania"
+      },
+      {
+        "source": 413150,
+        "target": 1229490,
+        "source_title": "Stardew Valley",
+        "target_title": "ULTRAKILL",
+        "expected_similarity": "low",
+        "reason": "Cozy farming sim vs intense FPS"
+      },
+      {
+        "source": 367520,
+        "target": 570,
+        "source_title": "Hollow Knight",
+        "target_title": "Dota 2",
+        "expected_similarity": "low",
+        "reason": "Metroidvania vs MOBA"
+      }
+    ]
+  },
+  "similarity_thresholds": {
+    "very_high": { "min": 0.70, "ideal": 0.80 },
+    "high": { "min": 0.62, "ideal": 0.70 },
+    "moderate": { "min": 0.55, "ideal": 0.65 },
+    "low": { "max": 0.65, "ideal": 0.55 }
+  }
+}
