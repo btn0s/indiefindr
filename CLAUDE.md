@@ -51,6 +51,7 @@ scripts/                  # OG image gen, data ingest, env sync
 - **Config-driven tuning** -- all retry/polling/rate-limit constants live in `src/lib/config.ts`. Change behavior there, not inline.
 - **Distributed locking** -- ingestion uses DB-level locks (`LOCK_EXPIRY_SECONDS`) to prevent duplicate concurrent ingests of the same game.
 - **AI suggestions** -- `suggest.ts` calls OpenAI/Perplexity models via Vercel AI SDK (`ai` package) with structured Zod schemas. Results stored in `game_suggestions` table.
+- **Evaluating recommendations** -- `docs/recommendation-evaluation-framework.md` describes the eval stack (human pairwise, offline scorecard, stress tests, future logging/OPE) from current `games like X` toward taste-brief / agent-assisted matching. Cited external work is summarized in `docs/research/` (stable IDs, limits, takeaways).
 - **SSE streaming** -- submit endpoint streams ingestion progress to clients.
 - **Redirects** -- legacy routes (`/find/:id`, `/:id/:slug`, `/user/:username`) redirected in `next.config.ts`.
 
