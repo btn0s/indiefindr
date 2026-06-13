@@ -6,6 +6,7 @@ LLM spend becomes **bounded and offline**: one-time per-game enrichment at inges
 
 **Related docs**
 
+- [Interaction-trained recommender (Part 2)](./interaction-trained-recommender.md) — the follow-on plan: traditional item-item recommender trained on bootstrapped interaction data (trainer task, agent + human labeling, co-review mining), experiments E6–E11.
 - [Recommendation evaluation framework](./recommendation-evaluation-framework.md) — the eval stack (pairwise human eval, scorecard, gold set) these experiments plug into.
 - [Case study](./case-study-suggestion-system.md) — how the current pipeline evolved.
 - [`scripts/experiments-v2/`](../scripts/experiments-v2/README.md) — previous round (prompt variants; all still LLM-serving). This plan is the successor.
