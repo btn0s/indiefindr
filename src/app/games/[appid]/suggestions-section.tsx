@@ -1,10 +1,9 @@
 import { Suspense } from "react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { generateSuggestions } from "@/lib/actions/suggestions";
-import { revalidatePath } from "next/cache";
+import { suggestGames } from "@/lib/suggest";
+import { SUGGESTION_CONFIG } from "@/lib/config";
 import { GameCardAsync } from "@/components/GameCardAsync";
 import { GameCard } from "@/components/GameCard";
-import { SuggestionsLoader } from "./suggestions-loader";
 
 type Suggestion = {
   suggested_appid: number;
@@ -21,25 +20,46 @@ async function getSuggestions(appId: number): Promise<Suggestion[]> {
   return data ?? [];
 }
 
+async function ensureSuggestions(appId: number): Promise<Suggestion[]> {
+  const existing = await getSuggestions(appId);
+  if (existing.length > 0) return existing;
+
+  const result = await suggestGames(appId, SUGGESTION_CONFIG.TARGET_SUGGESTION_COUNT);
+  if (result.suggestions.length === 0) return [];
+
+  const supabase = getSupabaseServerClient();
+  const rows = result.suggestions.map((s) => ({
+    source_appid: appId,
+    suggested_appid: s.appId,
+    reason: s.explanation,
+  }));
+
+  const { error } = await supabase.from("game_suggestions").insert(rows);
+  if (error) {
+    console.error("[SUGGESTIONS] Failed to write suggestions:", error.message);
+    return result.suggestions.map((s) => ({
+      suggested_appid: s.appId,
+      reason: s.explanation,
+    }));
+  }
+
+  return rows.map((r) => ({
+    suggested_appid: r.suggested_appid,
+    reason: r.reason,
+  }));
+}
+
 async function SuggestionsContent({ appId }: { appId: number }) {
-  const suggestions = await getSuggestions(appId);
-  const hasSuggestions = suggestions.length > 0;
+  const suggestions = await ensureSuggestions(appId);
 
-  if (!hasSuggestions) {
-    async function generate() {
-      "use server";
-      await generateSuggestions(appId);
-      revalidatePath(`/games/${appId}`);
-    }
-
+  if (suggestions.length === 0) {
     return (
-      <form action={generate}>
-        <SuggestionsLoader autoSubmit />
-      </form>
+      <p className="text-sm text-muted-foreground">
+        No similar games found in the catalog yet.
+      </p>
     );
   }
 
-  // Batch fetch all suggested game data in one query
   const suggestedAppIds = suggestions.map((s) => s.suggested_appid);
   const supabase = getSupabaseServerClient();
   const { data: games } = await supabase

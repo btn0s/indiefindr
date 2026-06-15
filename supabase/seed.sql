@@ -153,8 +153,8 @@ VALUES
     '{"type": "game", "name": "NARAKA: BLADEPOINT", "steam_appid": 1203220}'::jsonb
   ),
   (
-    1203220,
-    '["https://cdn.akamai.steamstatic.com/steam/apps/1203220/ss_1.jpg"]'::jsonb,
+    1621690,
+    '["https://cdn.akamai.steamstatic.com/steam/apps/1621690/ss_1.jpg"]'::jsonb,
     '[]'::jsonb,
     'Core Keeper',
     'https://cdn.akamai.steamstatic.com/steam/apps/1621690/header.jpg',
@@ -180,6 +180,6 @@ ON CONFLICT (slug) DO NOTHING;
 INSERT INTO collection_games (collection_id, appid, position)
 VALUES
   ('00000000-0000-0000-0000-000000000001', 1091500, 0),
-  ('00000000-0000-0000-0000-000000000001', 271590, 1),
-  ('00000000-0000-0000-0000-000000000001', 730, 2)
+  ('00000000-0000-0000-0000-000000000001', 413150, 1),
+  ('00000000-0000-0000-0000-000000000001', 367520, 2)
 ON CONFLICT (collection_id, appid) DO NOTHING;

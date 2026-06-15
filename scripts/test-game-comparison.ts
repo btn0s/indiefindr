@@ -6,7 +6,7 @@
 
 import { config } from "dotenv";
 import { getSupabaseServerClient } from "../src/lib/supabase/server";
-import { suggestGamesVibeFromAppId } from "../src/lib/suggest";
+import { suggestGames } from "../src/lib/suggest";
 
 config({ path: [".env.local"] });
 
@@ -70,22 +70,14 @@ async function main() {
 
   try {
     const start = Date.now();
-    const result = await suggestGamesVibeFromAppId(appid, 10);
+    const result = await suggestGames(appid, 10);
     const totalTime = Date.now() - start;
 
-    console.log(`\n✅ Generated ${result.suggestions.length} suggestions in ${totalTime}ms`);
-    console.log(`\nTiming breakdown:`);
-    console.log(`  Strategies (parallel): ${result.timing.strategies}ms`);
-    console.log(`  Validation: ${result.timing.validation}ms`);
-    console.log(`  Curation: ${result.timing.curation}ms`);
-    console.log(`  Total: ${result.timing.total}ms`);
-
+    console.log(`\nGenerated ${result.suggestions.length} suggestions in ${totalTime}ms`);
     console.log(`\nStats:`);
-    console.log(`  Total unique: ${result.stats.totalUnique}`);
-    console.log(`  High consensus (2+): ${result.stats.highConsensus}`);
-    console.log(`  From DB: ${result.stats.fromDb}`);
-    console.log(`  From Steam: ${result.stats.fromSteam}`);
-    console.log(`  Unverified (filtered): ${result.stats.unverified}`);
+    console.log(`  Catalog size: ${result.stats.catalogSize}`);
+    console.log(`  Candidates scored: ${result.stats.candidatesScored}`);
+    console.log(`  Filtered: ${result.stats.filtered}`);
 
     console.log(`\nNew suggestions:`);
     result.suggestions.forEach((s, i) => {

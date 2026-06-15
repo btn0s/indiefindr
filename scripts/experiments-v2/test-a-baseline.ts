@@ -4,7 +4,7 @@ import * as dotenv from "dotenv";
 import * as path from "path";
 dotenv.config({ path: path.resolve(__dirname, "../../.env.local") });
 
-import { suggestGamesVibe } from "../../src/lib/suggest";
+import { suggestGames } from "../../src/lib/suggest";
 import { TEST_GAMES, TestGame } from "./shared/test-games";
 import { TestResult } from "./shared/output";
 
@@ -14,13 +14,7 @@ export async function runBaselineTest(): Promise<TestResult[]> {
   for (const game of TEST_GAMES) {
     const startTime = Date.now();
     
-    const result = await suggestGamesVibe(
-      game.appid,
-      game.title,
-      game.description,
-      undefined, // developers
-      10
-    );
+    const result = await suggestGames(game.appid, 10);
     
     const timing = Date.now() - startTime;
 

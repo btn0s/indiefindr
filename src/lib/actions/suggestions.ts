@@ -1,7 +1,8 @@
 "use server";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { suggestGamesVibe } from "@/lib/suggest";
+import { suggestGames } from "@/lib/suggest";
+import { SUGGESTION_CONFIG } from "@/lib/config";
 
 export type GenerateSuggestionsResult = {
   success: boolean;
@@ -15,48 +16,23 @@ export async function generateSuggestions(
 ): Promise<GenerateSuggestionsResult> {
   const supabase = getSupabaseServerClient();
 
-  const { data: game } = await supabase
-    .from("games_new")
-    .select("title, short_description, developers")
-    .eq("appid", appId)
-    .single();
-
-  if (!game) {
-    return { success: false, count: 0, error: "Game not found" };
-  }
-
   try {
-    const result = await suggestGamesVibe(
+    const result = await suggestGames(
       appId,
-      game.title,
-      game.short_description || undefined,
-      game.developers || undefined,
-      10
+      SUGGESTION_CONFIG.TARGET_SUGGESTION_COUNT
     );
 
     if (result.suggestions.length === 0) {
-      return { success: false, count: 0, error: "No suggestions generated" };
+      return { success: false, count: 0, error: "No similar games found" };
     }
 
-    // Filter out unverified suggestions (hallucinations)
-    const verifiedSuggestions = result.suggestions.filter((s) => {
-      // Only include suggestions that were validated (have appId)
-      // Unverified suggestions are filtered out here
-      return s.appId && s.appId > 0;
-    });
-
-    if (verifiedSuggestions.length === 0) {
-      return { success: false, count: 0, error: "No verified suggestions generated" };
-    }
-
-    const rows = verifiedSuggestions.map((s) => ({
+    const rows = result.suggestions.map((s) => ({
       source_appid: appId,
       suggested_appid: s.appId,
       reason: s.explanation,
     }));
 
     if (overwrite) {
-      // Delete all existing suggestions for this game (force overwrite)
       const { error: deleteError } = await supabase
         .from("game_suggestions")
         .delete()
@@ -66,7 +42,6 @@ export async function generateSuggestions(
         return { success: false, count: 0, error: deleteError.message };
       }
 
-      // Insert new suggestions
       const { error } = await supabase
         .from("game_suggestions")
         .insert(rows);
@@ -75,7 +50,6 @@ export async function generateSuggestions(
         return { success: false, count: 0, error: error.message };
       }
     } else {
-      // Merge mode: upsert (update existing, insert new)
       const { error } = await supabase
         .from("game_suggestions")
         .upsert(rows, { onConflict: "source_appid,suggested_appid" });
@@ -85,7 +59,7 @@ export async function generateSuggestions(
       }
     }
 
-    return { success: true, count: verifiedSuggestions.length };
+    return { success: true, count: result.suggestions.length };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return { success: false, count: 0, error: message };

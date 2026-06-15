@@ -25,9 +25,6 @@ const judgmentSchema = z.object({
 export async function submitJudgment(
   input: SubmitJudgmentInput
 ): Promise<{ success: boolean; error?: string }> {
-  if (process.env.TRAINER_ENABLED !== "true") {
-    return { success: false, error: "Trainer is disabled" };
-  }
 
   const parsed = judgmentSchema.safeParse(input);
   if (!parsed.success) {

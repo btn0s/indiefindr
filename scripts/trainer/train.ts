@@ -36,7 +36,7 @@ const AGENT_WEIGHT = numArg("agent-weight", 0.3);
 const REJECTED_WEIGHT = 2; // explicit "definitely not" is a stronger negative
 const L2 = 1e-4;
 const MAX_PAIRS_PER_JUDGMENT = 40;
-const HOLDOUT_BUCKETS = 5; // seed_appid % 5 === 0 → holdout (~20%)
+const HOLDOUT_FRACTION = 0.2;
 
 const FEATURE_NAMES = [
   "tag_similarity",
@@ -117,6 +117,14 @@ function shuffleInPlace<T>(items: T[]): void {
     const j = Math.floor(Math.random() * (i + 1));
     [items[i], items[j]] = [items[j], items[i]];
   }
+}
+
+function hashSeed(appid: number): number {
+  let h = appid;
+  h = ((h >> 16) ^ h) * 0x45d9f3b;
+  h = ((h >> 16) ^ h) * 0x45d9f3b;
+  h = (h >> 16) ^ h;
+  return h >>> 0;
 }
 
 async function fetchJudgments(): Promise<JudgmentRow[]> {
@@ -201,7 +209,7 @@ function buildPairs(
     }
     shuffleInPlace(pairs);
 
-    const bucket = judgment.seed_appid % HOLDOUT_BUCKETS === 0 ? holdout : train;
+    const bucket = hashSeed(judgment.seed_appid) % 100 < HOLDOUT_FRACTION * 100 ? holdout : train;
     bucket.push(...pairs.slice(0, MAX_PAIRS_PER_JUDGMENT));
   }
 

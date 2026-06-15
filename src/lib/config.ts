@@ -68,7 +68,7 @@ export const RETRY_CONFIG = {
 } as const;
 
 // =============================================================================
-// Ingestion & Suggestions
+// Ingestion
 // =============================================================================
 
 export const INGEST_CONFIG = {
@@ -84,6 +84,10 @@ export const INGEST_CONFIG = {
   /** Maximum games to auto-ingest from suggestions */
   MAX_AUTO_INGEST: 6,
 } as const;
+
+// =============================================================================
+// Suggestions (tag-similarity engine)
+// =============================================================================
 
 export const SUGGESTION_CONFIG = {
   /** Target number of suggestions per game */

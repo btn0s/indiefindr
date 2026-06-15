@@ -10,13 +10,13 @@ import type {
 export const SAMPLER_VERSION = "tags-v1";
 
 const SCREEN_SIZE = 8;
-const TOP_PICKS = 3; // confirm/deny the current model's belief
-const NEAR_PICKS = 3; // hard cases: similar-ish by tags, where labels matter most
+const TOP_PICKS = 3;
+const NEAR_PICKS = 3;
 const RANDOM_PICKS = SCREEN_SIZE - TOP_PICKS - NEAR_PICKS;
 const CANDIDATE_SAMPLE = 160;
 const FACET_SCREEN_RATE = 0.2;
-const MIN_SEED_TAGS = 5;
-const MIN_CANDIDATE_TAGS = 3;
+const MIN_SEED_TAGS = 1;
+const MIN_CANDIDATE_TAGS = 0;
 
 type GameRow = {
   appid: number;

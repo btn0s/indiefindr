@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { buildTrainerScreen } from "@/lib/trainer/sampler";
 import { TrainerClient } from "./trainer-client";
 
@@ -10,10 +9,6 @@ export const metadata = {
 };
 
 export default async function TrainerPage() {
-  if (process.env.TRAINER_ENABLED !== "true") {
-    notFound();
-  }
-
   const screen = await buildTrainerScreen();
 
   return (
