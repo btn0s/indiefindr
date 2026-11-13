@@ -1,6 +1,6 @@
 "use client";
 import { ArrowUpRight, Search } from "lucide-react";
-import { ControllerMark } from "./ControllerMark";
+import { SwordMark } from "./SwordMark";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,7 +18,7 @@ export function Navbar() {
   const { games, details, loading, error, search } = useGameSearch();
   const close = () => { setOpen(false); (document.activeElement as HTMLElement | null)?.blur(); };
   return <header className="site-header"><div className="site-nav">
-    <Link href="/" className="wordmark"><ControllerMark /><span>indiefindr</span></Link>
+    <Link href="/" className="wordmark"><SwordMark /><span>indiefindr</span></Link>
     {/* On phones the open search becomes a full-screen sheet; dismissing the keyboard keeps it open. */}
     <form className="site-search" data-open={open} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && !matchMedia(PHONE).matches) setOpen(false); }}
       onSubmit={event => { event.preventDefault(); if (games[active]) { setOpen(false); router.push(`/games/${games[active].appid}`); } }}>
