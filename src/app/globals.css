@@ -1,3 +1,4 @@
+@layer ui-sdk;
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -186,7 +187,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .search-box input { width: 100%; min-width: 0; background: transparent; outline: none; padding: 8px 0; }
 .search-box:focus-within { border-color: var(--brand); }
 .search-box button { display: none; }
-.search-results { position: absolute; z-index: 30; width: 100%; top: calc(100% + 8px); border: 1px solid var(--border); border-radius: 10px; background: var(--card); padding: 6px; box-shadow: 0 12px 36px color-mix(in srgb, var(--foreground) 8%, transparent); }
+.search-results { z-index: 30; width: var(--anchor-width); margin: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--card); padding: 6px; box-shadow: 0 12px 36px color-mix(in srgb, var(--foreground) 8%, transparent); }
 .search-results a { display: flex; align-items: center; gap: 12px; padding: 6px; border-radius: 8px; }
 .search-art { flex-shrink: 0; width: 92px; aspect-ratio: 460/215; overflow: hidden; border-radius: 4px; background: var(--muted); }
 .search-art img { width: 100%; height: 100%; object-fit: cover; }
@@ -204,13 +205,13 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .site-search[data-open=true] { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 1fr; align-content: start; column-gap: 12px; padding: 10px 16px 0; background: var(--background); animation: search-sheet .24s cubic-bezier(.2,.8,.2,1); }
   .site-search[data-open=true] .search-box { background: var(--card); }
   .site-search[data-open=true] .search-cancel { display: block; }
-  .site-search[data-open=true] .search-results { position: static; width: auto; grid-column: 1 / -1; margin: 12px -16px 0; padding: 0 10px calc(16px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; background: none; box-shadow: none; overflow-y: auto; overscroll-behavior: contain; animation: search-rows .28s cubic-bezier(.2,.8,.2,1); }
+  .site-search[data-open=true] .search-results { position: fixed !important; inset: 60px 0 0 !important; width: 100%; grid-column: 1 / -1; margin: 12px -16px 0; padding: 0 10px calc(16px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; background: none; box-shadow: none; overflow-y: auto; overscroll-behavior: contain; animation: search-rows .28s cubic-bezier(.2,.8,.2,1); }
   html:has(.site-search[data-open=true]) { overflow: hidden; }
 }
 @keyframes search-sheet { from { opacity: 0; transform: translateY(-6px); } }
 @keyframes search-rows { from { opacity: 0; transform: translateY(8px); } }
 @media(prefers-reduced-motion: reduce) { .site-search[data-open=true], .site-search[data-open=true] .search-results { animation: none; } }
-.search-results a:hover, .search-results a[aria-selected=true] { background: var(--muted); }
+.search-results a:hover, .search-results a[data-highlighted] { background: var(--muted); }
 
 /* Page frame: every page opens with a title block, then sections a fixed gap apart. */
 .discovery-page { max-width: 896px; margin: auto; padding: var(--page-top) 0 64px; }

@@ -1,0 +1,11 @@
+import { afterEach } from 'vitest';
+import { cleanup } from '@testing-library/react';
+HTMLElement.prototype.showPopover = function () {};
+HTMLElement.prototype.hidePopover = function () {};
+Element.prototype.getAnimations = () => [];
+Element.prototype.scrollIntoView = function () {};
+Element.prototype.checkVisibility = () => true;
+document.elementFromPoint = () => null;
+document.elementsFromPoint = () => [];
+globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+afterEach(cleanup);
