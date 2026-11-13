@@ -36,6 +36,8 @@ for table,rows in [('tags',tags),('games',games)]:
   except urllib.error.HTTPError as e:
    print(e.read().decode()[:1000]);raise SystemExit(1)
  print('loaded',table,len(rows),flush=True)
+# Keep eligible archived suggestions, but remove targets invalidated by ownership changes.
+query("delete from public.game_recs r using public.games g where r.rec_appid=g.appid and r.source='llm' and not g.is_indie")
 ids=sorted(byid)
 for start in range(0,len(ids),250):
  batch=ids[start:start+250];records=[r for appid in batch for source in ['model','llm'] for r in slates.get((appid,source),[])]

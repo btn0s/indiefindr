@@ -28,6 +28,7 @@ with (ROOT/'data/ingest.lock').open('a') as lock:
   if built.exists() and pathlib.Path(built.read_text().strip())!=source:previous=['--previous',built.read_text().strip()]
   stage('normalize','scripts/relaunch/normalize-steam.py','--out',source,*previous)
   (source/'llm_slates.json').write_bytes((ROOT/'data/relaunch-source/llm_slates.json').read_bytes());built.write_text(str(source)+'\n')
+  stage('prices','scripts/relaunch/us-prices.py','--source',source)
   if 'encode' not in state['completed']:execute('scripts/relaunch/capacity.py','--source',source)
   stage('encode','scripts/recommender/run.py','encode','--source',source,'--artifacts',artifacts)
   stage('score','scripts/recommender/run.py','score','--source',source,'--artifacts',artifacts)
