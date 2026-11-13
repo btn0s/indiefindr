@@ -12,7 +12,7 @@ export function AdSense({ client, slot }: { client: string; slot: string }) {
     (window.adsbygoogle = window.adsbygoogle || []).push({});
   }, []);
   return <aside aria-label="Advertisement" className="my-6">
-    <p className="text-xs text-muted-foreground mb-2">Advertisement</p>
+    <p className="ad-label text-muted-foreground mb-2">Advertisement</p>
     <Script id="adsense" strategy="afterInteractive" crossOrigin="anonymous"
       src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`} />
     <ins className="adsbygoogle" style={{ display: "block", minHeight: 90 }}
