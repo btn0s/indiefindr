@@ -1,6 +1,6 @@
 # Relaunch checkpoint — 2026-11-13
 
-Phase 1 preview: https://games-graph-4w64yifhz-thinkhumanco.vercel.app
+Phase 1 preview: https://games-graph-p0vpp725t-thinkhumanco.vercel.app
 
 Fresh Free Supabase project: `rqcqlpoxtdddjcylhopk`, `indiefindr-relaunch`, cirqplus organization, us-west-2. The existing archive's organization is Pro; creating there would incur compute charges, so it was not used. The existing free organization was verified before creation. No plan upgrades or paid services were purchased.
 
