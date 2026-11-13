@@ -44,17 +44,31 @@ export function useGameSearch() {
     return () => { engine.terminate(); worker.current = null; };
   }, [show]);
 
+  // The empty search shows the most-reviewed indies, with their row details in the same query.
+  const loadPopular = useCallback(async (id: number) => {
+    const { data } = await getSupabaseBrowserClient().from("games")
+      .select("appid,title,header_image,release_date,review_positive_pct,review_count")
+      .eq("is_indie", true).order("review_count", { ascending: false }).limit(8)
+      .returns<(SearchDetail & { title: string })[]>();
+    const rows = data ?? [];
+    rows.forEach(row => requested.current.add(row.appid));
+    setDetails(previous => new Map([...previous, ...rows.map(row => [row.appid, row] as const)]));
+    const popular = rows.map(({ appid, title }) => ({ appid, title }));
+    cache.current.set("", popular);
+    if (id === sequence.current) show(popular);
+  }, [show]);
+
   const search = useCallback((query: string) => {
     const key = query.trim().toLowerCase();
     lastQuery.current = key;
     const id = ++sequence.current;
-    if (!key) { setGames([]); setLoading(false); return; }
     const cached = cache.current.get(key);
     if (cached) return show(cached);
-    // Keep the previous rows on screen until the new ones arrive, so typing doesn't flash an empty list.
     setLoading(true);
+    if (!key) return void loadPopular(id);
+    // Keep the previous rows on screen until the new ones arrive, so typing doesn't flash an empty list.
     worker.current?.postMessage({ type: "search", query: key, id });
-  }, [show]);
+  }, [show, loadPopular]);
 
   return { games, details, loading, error, search };
 }
