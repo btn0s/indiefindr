@@ -2,7 +2,7 @@
 
 Encode and score in separate processes to avoid mixing Torch/LightGBM OpenMP.
 The Fable scorer's global normalization is preserved over the eligible catalog.
-Only indie targets enter the two retrieval lists and final stored top-ten.
+Only indie targets enter the two retrieval lists and final stored slate.
 """
 import os
 os.environ.update(HF_HUB_OFFLINE='1',TOKENIZERS_PARALLELISM='false',OMP_NUM_THREADS='2',OPENBLAS_NUM_THREADS='2',MKL_NUM_THREADS='2',VECLIB_MAXIMUM_THREADS='2')
