@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { AdSlot } from "@/components/AdSlot";
+import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGame } from "@/lib/catalog";
@@ -166,12 +168,14 @@ export default async function GamePage({
             )}
 
             <SteamLink appid={appId} />
+            <ShopLinks appid={appId} />
           </div>
         </article>
 
         <SameDeveloperSection appId={appId} developers={game.developers} />
 
         <SuggestionsSection appId={appId} gameTitle={game.title} />
+        <AdSlot />
       </main>
     </>
   );

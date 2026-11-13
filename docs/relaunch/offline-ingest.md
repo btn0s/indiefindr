@@ -31,3 +31,7 @@ Publication checks the current organization's plan and database size. It refuses
 The scorer code and parameter snapshot are copied unchanged from the completed merged experiment. The saved ranker has 22 inputs in its original feature order; there is no refitting or model selection. Its Fable feature keeps the global top-200 score normalization across the eligible catalog. Flat-tag and BGE candidate retrieval are restricted to indie targets before the union is ranked.
 
 Encoding chunks are bound to the encoder SHA and exact source text. Ranking journals are bound to catalog, metadata, and ranker hashes, and recover only an interrupted final record. Finished source slates are published to disk atomically. Database model slates are replaced transactionally per source batch, preserving complete lists throughout publication.
+
+The native scheduler uses an OS-owned file lock and a durable `data/active-run.json` stage manifest. Failed runs resume their completed generation, rather than starting another model run. Before a new encoding run, capacity is checked; a blocked publication can resume directly after approval without recomputing recommendations.
+
+BB script automations have a 15-minute execution ceiling, so the long-running MPS pipeline uses a native macOS LaunchAgent instead of an agent automation. It is scheduled for 03:15 local time, uses background priority, and writes stdout/stderr under `data/nightly/`. It invokes no LLM and never modifies production deployment state.

@@ -1,3 +1,4 @@
+import { adsenseClient } from "@/lib/monetization";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -32,6 +33,7 @@ const geistMono = Geist_Mono({
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 
 export const metadata: Metadata = {
+  other: adsenseClient() ? { "google-adsense-account": adsenseClient()! } : {},
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg"
   ),
