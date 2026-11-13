@@ -14,6 +14,7 @@ create table public.games (
 );
 create index games_search on public.games using gin(search_vector);
 create index games_home on public.games(is_indie, review_count desc, appid);
+create index games_popular on public.games(review_count desc, appid);
 create table public.game_recs (
  appid integer references public.games on delete cascade,
  rank integer check (rank between 1 and 10),
