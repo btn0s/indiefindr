@@ -35,6 +35,7 @@ with (ROOT/'data/ingest.lock').open('a') as lock:
   stage('publish','scripts/relaunch/publish.py','--data',imports)
   stage('media','scripts/relaunch/media.py','--top','250000')
   stage('search','scripts/relaunch/publish-search.py','--games',imports/'games.jsonl')
+  stage('verify','scripts/relaunch/verify-publication.py')
   state['status']='published';state['finished_at']=datetime.datetime.now(datetime.timezone.utc).isoformat();save(state)
   (ROOT/'data/latest-published-run.txt').write_text(str(run)+'\n');(run/'result.json').write_text(json.dumps(state))
  except subprocess.CalledProcessError as error:

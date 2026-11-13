@@ -1,0 +1,32 @@
+"""Save final database counts and the size of the public uploaded search index."""
+import gzip
+import json
+import pathlib
+import urllib.request
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+v = dict(line.split('=', 1) for line in (ROOT / '.env.relaunch-admin').read_text().splitlines() if '=' in line)
+ref = v['RELAUNCH_PROJECT_REF']
+assert ref == 'rqcqlpoxtdddjcylhopk'
+sql = """select
+ (select count(*) from public.games) as games,
+ (select count(*) from public.games where is_indie) as indie_games,
+ (select count(*) from public.game_recs) as rec_rows,
+ (select count(*) from public.game_recs where source='model') as model_rows,
+ (select count(*) from public.game_recs where source='llm') as llm_rows,
+ (select count(distinct appid) from public.game_recs where source='llm') as llm_slates,
+ (select count(*) from public.games where cardinality(screenshots)>0 or jsonb_array_length(trailers)>0) as games_with_media,
+ (select count(*) from public.games g where (select count(*) from public.game_recs r where r.appid=g.appid and source='model')<>10) as invalid_model_slates,
+ (select count(*) from public.game_recs r join public.games g on g.appid=r.rec_appid where not g.is_indie) as non_indie_targets
+"""
+request = urllib.request.Request(f'https://api.supabase.com/v1/projects/{ref}/database/query',
+    headers={'Authorization': 'Bearer ' + v['SUPABASE_ACCESS_TOKEN'], 'Content-Type': 'application/json'},
+    data=json.dumps({'query': sql}).encode())
+with urllib.request.urlopen(request, timeout=180) as response:
+    report = json.load(response)[0]
+with urllib.request.urlopen(f'https://{ref}.supabase.co/storage/v1/object/public/search/titles.json', timeout=120) as response:
+    body = response.read()
+report.update(index_games=len(json.loads(body)['games']), index_bytes=len(body), index_gzip_bytes=len(gzip.compress(body)))
+assert report['invalid_model_slates'] == report['non_indie_targets'] == 0, report
+(ROOT / 'data/publication-report.json').write_text(json.dumps(report, indent=2))
+print(json.dumps(report), flush=True)
