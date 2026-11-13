@@ -2,15 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
-function steamCapsuleUrl(appid: number) {
-  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`;
-}
-
-function steamHeaderUrl(appid: number) {
-  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
-}
-
-async function fetchImageAsDataUrl(url: string, timeoutMs = 1500): Promise<string | null> {
+async function fetchImageAsDataUrl(url: string, timeoutMs: number): Promise<string | null> {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -27,70 +19,13 @@ async function fetchImageAsDataUrl(url: string, timeoutMs = 1500): Promise<strin
   }
 }
 
-function placeholderGridImage() {
-  const tile = (key: string) => (
-    <div
-      key={key}
-      style={{
-        width: 350,
-        height: 200,
-        display: "flex",
-        borderRadius: 0,
-        overflow: "hidden",
-        backgroundColor: "#151515",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
-        border: "1px solid rgba(255,255,255,0.06)",
-      }}
-    />
-  );
-
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          height: "100%",
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#0a0a0a",
-          backgroundImage:
-            "radial-gradient(1200px 630px at 20% 0%, rgba(255,255,255,0.08), rgba(0,0,0,0)), radial-gradient(900px 500px at 100% 40%, rgba(124,58,237,0.16), rgba(0,0,0,0))",
-          padding: "52px 56px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 16,
-            width: 3 * 350 + 2 * 16,
-            justifyContent: "center",
-          }}
-        >
-          {tile("1")}
-          {tile("2")}
-          {tile("3")}
-          {tile("4")}
-          {tile("5")}
-          {tile("6")}
-        </div>
-      </div>
-    ),
-    { ...OG_SIZE }
-  );
-}
-
-
-/** The IndieFindr share image: a 3x2 grid of game covers. Empty slots render as dark tiles. */
-export async function gameGridImage(appids: number[]) {
-  const ids = appids.slice(0, 6);
-  if (!ids.length) return placeholderGridImage();
-  const coverDataUrls = await Promise.all(ids.map(async (id) =>
-    (await fetchImageAsDataUrl(steamCapsuleUrl(id), 1200)) ?? fetchImageAsDataUrl(steamHeaderUrl(id), 1200)));
+/** The IndieFindr share image: a 3x2 grid of the games' stored header images. Missing images render as dark tiles. */
+export async function gameGridImage(headerImages: (string | null)[]) {
+  const urls = Array.from({ length: 6 }, (_, i) => headerImages[i] ?? null);
+  const coverDataUrls = await Promise.all(urls.map(url => url ? fetchImageAsDataUrl(url, 3000) : null));
   const tiles = coverDataUrls.map((src, i) => (
     <div
-      key={`${ids[i] ?? i}`}
+      key={i}
       style={{
         width: 350,
         height: 200,

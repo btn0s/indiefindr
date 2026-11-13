@@ -9,5 +9,5 @@ export const contentType = "image/png";
 
 export default async function Image({ params }: { params: Promise<{ shelf: string }> }) {
   const { shelf } = await params;
-  return gameGridImage(isShelf(shelf) ? (await getShelf(shelf, 6)).map(game => game.appid) : []);
+  return gameGridImage(isShelf(shelf) ? (await getShelf(shelf, 6)).map(game => game.header_image) : []);
 }
