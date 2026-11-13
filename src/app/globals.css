@@ -168,9 +168,11 @@ body { font-family: var(--font-inter), sans-serif; }
 .showcase-recs a { display: block; border-radius: 9px; overflow: hidden; border: 3px solid var(--background); box-shadow: 0 10px 22px color-mix(in srgb, var(--foreground) 18%, transparent); transition: transform .2s cubic-bezier(.2,.8,.2,1); }
 .showcase-recs a:hover { transform: translateY(-6px); }
 .showcase-recs img { width: 100%; aspect-ratio: 460/215; object-fit: cover; }
-.section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 14px; }
+.section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 14px; }
+.section-heading p { margin-top: 2px; color: var(--muted-foreground); font-size: 14px; }
+.see-all { flex-shrink: 0; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.see-all:hover { text-decoration: underline; text-underline-offset: 3px; }
 .section-heading h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
-.section-heading span { color: var(--muted-foreground); font-size: 13px; }
 .game-card { display: block; background: transparent; border: none; padding: 0; }
 .game-card:hover .game-card-title { text-decoration: underline; text-underline-offset: 3px; }
 .game-card-art { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 460/215; background: var(--muted); }
@@ -179,7 +181,7 @@ body { font-family: var(--font-inter), sans-serif; }
 .steam-link { white-space: nowrap; display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px; border-radius: 7px; background: var(--primary); color: var(--primary-foreground); font-size: 14px; font-weight: 500; }
 .steam-link:hover { background: color-mix(in srgb, var(--primary) 82%, white); }
 .site-footer { max-width: 896px; margin: auto; padding: 28px 0 36px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 24px; color: var(--muted-foreground); font-size: 12px; }
-@media(max-width: 700px) { .site-nav { gap: 12px; } .home-intro { grid-template-columns: 1fr; gap: 30px; padding: 24px 0 40px; } .showcase { display: none; } .discovery-page { padding-top: 10px; } .section-heading span { display: none; } .site-footer { padding: 24px 0; } }
+@media(max-width: 700px) { .site-nav { gap: 12px; } .home-intro { grid-template-columns: 1fr; gap: 30px; padding: 24px 0 40px; } .showcase { display: none; } .discovery-page { padding-top: 10px; } .site-footer { padding: 24px 0; } }
 
 .page-title { font-size: 26px; font-weight: 600; letter-spacing: -.02em; line-height: 1.2; text-wrap: balance; }
 .source-game { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; }

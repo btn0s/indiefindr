@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import Link from "next/link";
+import { ShelfHeading } from "@/components/ShelfHeading";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameCard } from "@/components/GameCard";
 import type { GameCardGame } from "@/lib/supabase/types";
@@ -42,38 +42,13 @@ async function SameDeveloperContent({
   }));
 
   return (
-    <div className="flex flex-col gap-4 w-full">
-      <div className="container mx-auto max-w-4xl w-full flex flex-col gap-1">
-        <div className="flex items-baseline gap-2">
-          <h2 className="font-semibold text-xl">
-            More from{" "}
-            {developers.length === 1 ? developers[0] : "these developers"}
-          </h2>
-          {developers.length === 1 && (
-            <Link
-              href={`/developer/${encodeURIComponent(developers[0])}`}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-              prefetch={true}
-            >
-              View all →
-            </Link>
-          )}
-        </div>
+    <section>
+      <ShelfHeading title={`More from ${developers.length === 1 ? developers[0] : "these developers"}`}
+        href={developers.length === 1 ? `/developer/${encodeURIComponent(developers[0])}` : undefined} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
+        {gameCards.map((game) => <GameCard key={game.appid} {...game} />)}
       </div>
-      <div className="container mx-auto max-w-4xl w-full">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {gameCards.map((game, index) => (
-            <GameCard
-              key={game.appid}
-              appid={game.appid}
-              title={game.title}
-              header_image={game.header_image}
-              priority={index < 4}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
+    </section>
   );
 }
 

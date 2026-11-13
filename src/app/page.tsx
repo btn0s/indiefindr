@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameGrid } from "@/components/GameGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
-import { getGame, getHomeShelves, getRecommendations } from "@/lib/catalog";
+import { getGame, getHomeShelves, getRecommendations, SHELVES, type ShelfSlug } from "@/lib/catalog";
+import { ShelfHeading } from "@/components/ShelfHeading";
 import { GameCard } from "@/components/GameCard";
 
 // Well-known indies whose pages show off the recommendations; one is featured per revalidation.
@@ -108,21 +109,21 @@ export default async function Home() {
           </div>
         </div>}
       </section>
-      <Shelf title="Rising" note="Breakout indies from the past year" games={shelves.rising} />
-      <Shelf title="Hidden gems" note="Loved by players, still under the radar · new picks daily" games={shelves.gems} />
-      {shelves.fresh.length >= 4 && <Shelf title="New on Steam" note="Released in the last two months" games={shelves.fresh.slice(0, 4)} />}
+      <Shelf slug="rising" games={shelves.rising} />
+      <Shelf slug="hidden-gems" games={shelves.gems} />
+      {shelves.fresh.length >= 4 && <Shelf slug="new" games={shelves.fresh} />}
       <section>
-        <div className="section-heading"><h2>Browse all</h2></div>
+        <ShelfHeading title="Browse all" />
         {games.length ? <GameGrid initialGames={games} /> : <p className="text-muted-foreground">The catalog is being updated. Please check back soon.</p>}
       </section>
     </main>
   );
 }
 
-function Shelf({ title, note, games }: { title: string; note: string; games: GameCardGame[] }) {
+function Shelf({ slug, games }: { slug: ShelfSlug; games: GameCardGame[] }) {
   if (!games.length) return null;
   return <section className="shelf">
-    <div className="section-heading"><h2>{title}</h2><span>{note}</span></div>
+    <ShelfHeading title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} />
     <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
       {games.map(game => <GameCard key={game.appid} {...game} />)}
     </div>

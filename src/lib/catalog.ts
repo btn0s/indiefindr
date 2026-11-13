@@ -45,21 +45,37 @@ function dailyPick<T>(items: T[], count: number): T[] {
   return pool.slice(0, count);
 }
 
-/** Home discovery shelves: recent risers, well-loved lesser-known games, and brand-new releases. */
+const shelfBase = () => getSupabaseServerClient().from("games").select(SHELF_FIELDS).eq("is_indie", true);
+type ShelfQuery = ReturnType<typeof shelfBase>;
+
+/** Discovery shelves: one definition drives both the home preview and the shelf's own page. */
+export const SHELVES = {
+  rising: {
+    title: "Rising", note: "Breakout indies from the past year",
+    query: (q: ShelfQuery) => q.gte("release_date", daysAgo(365)).gte("review_count", 200).gte("review_positive_pct", 80)
+      .order("review_count", { ascending: false }),
+  },
+  "hidden-gems": {
+    title: "Hidden gems", note: "Loved by players, still under the radar",
+    query: (q: ShelfQuery) => q.gte("review_positive_pct", 92).gte("review_count", 300).lte("review_count", 5000)
+      .order("review_positive_pct", { ascending: false }).order("review_count", { ascending: false }),
+  },
+  new: {
+    title: "New on Steam", note: "Released in the last two months",
+    query: (q: ShelfQuery) => q.gte("release_date", daysAgo(60))
+      .order("release_date", { ascending: false }).order("review_count", { ascending: false }),
+  },
+} as const;
+export type ShelfSlug = keyof typeof SHELVES;
+
+export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGame[]> {
+  const { data, error } = await SHELVES[slug].query(shelfBase()).limit(limit);
+  if (error) throw new Error("Catalog unavailable");
+  return data;
+}
+
+/** Home previews; hidden gems rotate daily from the top of the shelf. */
 export async function getHomeShelves() {
-  const db = getSupabaseServerClient();
-  const indie = () => db.from("games").select(SHELF_FIELDS).eq("is_indie", true);
-  const [rising, gems, fresh] = await Promise.all([
-    indie().gte("release_date", daysAgo(365)).gte("review_count", 200).gte("review_positive_pct", 80)
-      .order("review_count", { ascending: false }).limit(8),
-    indie().gte("review_positive_pct", 92).gte("review_count", 300).lte("review_count", 5000)
-      .order("review_positive_pct", { ascending: false }).order("review_count", { ascending: false }).limit(240),
-    indie().gte("release_date", daysAgo(60)).order("release_date", { ascending: false }).order("review_count", { ascending: false }).limit(8),
-  ]);
-  if (rising.error || gems.error || fresh.error) throw new Error("Catalog unavailable");
-  return {
-    rising: rising.data as ShelfGame[],
-    gems: dailyPick(gems.data as ShelfGame[], 8),
-    fresh: fresh.data as ShelfGame[],
-  };
+  const [rising, gems, fresh] = await Promise.all([getShelf("rising", 8), getShelf("hidden-gems", 240), getShelf("new", 4)]);
+  return { rising, gems: dailyPick(gems, 8), fresh };
 }
