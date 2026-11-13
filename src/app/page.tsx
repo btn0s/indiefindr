@@ -4,6 +4,10 @@ import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameGrid } from "@/components/GameGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
+import { getGame, getRecommendations } from "@/lib/catalog";
+
+// Well-known indies whose pages show off the recommendations; one is featured per revalidation.
+const SHOWCASE = [413150, 367520, 105600, 1145360, 504230, 646570];
 
 
 
@@ -75,6 +79,9 @@ export default async function Home() {
     console.error("Error loading games:", error);
   }
 
+  const showcaseId = SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)];
+  const [showcase, showcaseRecs] = await Promise.all([getGame(showcaseId), getRecommendations(showcaseId)]);
+
   return (
     <main className="discovery-page">
       <section className="home-intro">
@@ -82,11 +89,17 @@ export default async function Home() {
           <h1>Indie games like<br /><em>your favorites.</em></h1>
           <p>Search a game you know. Find independent games with similar gameplay, themes, and feel.</p>
         </div>
-        <div className="featured-art" aria-label="Discover indie favorites">
-          {games.slice(0,2).map(game => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true}>
-            {game.header_image && <Image src={game.header_image} alt={game.title} width={460} height={215} priority />}
-          </Link>)}
-        </div>
+        {showcase && <div className="showcase">
+          <Link href={`/games/${showcase.appid}`} prefetch={true} className="showcase-source">
+            {showcase.header_image && <Image src={showcase.header_image} alt="" width={460} height={215} priority />}
+            <span>Games like <strong>{showcase.title}</strong></span>
+          </Link>
+          <div className="showcase-recs">
+            {showcaseRecs.slice(0, 3).map(({ game }) => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true} title={game.title}>
+              {game.header_image && <Image src={game.header_image} alt={game.title} width={230} height={108} />}
+            </Link>)}
+          </div>
+        </div>}
       </section>
       <section>
         <div className="section-heading"><h2>A good place to start</h2></div>

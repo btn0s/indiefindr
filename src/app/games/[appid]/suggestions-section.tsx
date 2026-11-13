@@ -2,11 +2,10 @@ import { getRecommendations } from "@/lib/catalog";
 import { GameCard } from "@/components/GameCard";
 
 export async function SuggestionsSection({ appId, gameTitle }: { appId: number; gameTitle: string }) {
-  void gameTitle;
   const slate = await getRecommendations(appId);
   return (
     <section>
-      <div className="section-heading"><h2>Explore similar indie games</h2><span>Find your next favorite</span></div>
+      <div className="section-heading"><h2>Indie games like {gameTitle}</h2></div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {slate.map(({ game, rank }) => (
           <GameCard key={game.appid} {...game} pageAppid={appId} position={rank} />

@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { GameMedia, type Trailer } from "@/components/GameMedia";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
@@ -148,22 +147,20 @@ export default async function GamePage({
         }}
       />
       <main className="discovery-page">
-        <Link href="/" className="text-sm text-muted-foreground">← Back to discovery</Link>
         <h1 className="page-title">Games like {game.title}</h1>
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <GameMedia title={game.title} header={game.header_image} screenshots={game.screenshots ?? []}
             trailers={(Array.isArray(game.trailers) ? game.trailers : []) as Trailer[]} />
           <div className="source-game-info">
-            <h2>{game.title}</h2>
             {game.short_description && <p className="source-description">{game.short_description}</p>}
             <dl className="game-facts">
               {game.developers?.length > 0 && <div><dt>Developer</dt><dd>{game.developers.join(", ")}</dd></div>}
               {game.release_date && <div><dt>Released</dt><dd>{new Date(game.release_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</dd></div>}
               {game.genres?.length > 0 && <div><dt>Genres</dt><dd>{game.genres.slice(0, 4).join(", ")}</dd></div>}
-              {game.review_count > 0 && <div><dt>Steam reviews</dt><dd>{game.review_positive_pct != null ? `${game.review_positive_pct}% positive · ` : ""}{Number(game.review_count).toLocaleString("en-US")} reviews</dd></div>}
+              {game.review_count > 0 && <div><dt>Reviews</dt><dd>{game.review_positive_pct != null && `${game.review_positive_pct}% positive · `}{Number(game.review_count).toLocaleString("en-US")}</dd></div>}
             </dl>
             <div className="source-game-actions"><SteamLink appid={appId} />
-              {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)} USD</span>}
+              {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)}</span>}
             </div>
             <ShopLinks appid={appId} />
           </div>
