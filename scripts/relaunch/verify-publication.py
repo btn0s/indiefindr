@@ -27,6 +27,13 @@ with urllib.request.urlopen(request, timeout=180) as response:
 with urllib.request.urlopen(f'https://{ref}.supabase.co/storage/v1/object/public/search/titles.json', timeout=120) as response:
     body = response.read()
 report.update(index_games=len(json.loads(body)['games']), index_bytes=len(body), index_gzip_bytes=len(gzip.compress(body)))
+prices=json.loads((ROOT/'data/steam-full/us-prices.json').read_text())
+request.data=json.dumps({'query':'select appid,price_cents from public.games where appid in (2868840,3321460,2878710,382110,2864560,774181)'}).encode()
+with urllib.request.urlopen(request,timeout=180) as response:
+    samples=json.load(response)
+for sample in samples:
+    assert sample['price_cents']==(prices[str(sample['appid'])] or {}).get('final'),sample
+report['verified_us_price_examples']=samples
 assert report['invalid_model_slates'] == report['non_indie_targets'] == 0, report
 (ROOT / 'data/publication-report.json').write_text(json.dumps(report, indent=2))
 print(json.dumps(report), flush=True)
