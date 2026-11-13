@@ -1,3 +1,5 @@
+import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameGrid } from "@/components/GameGrid";
@@ -74,29 +76,22 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex flex-col gap-8 pt-8">
-      <div className="w-full">
-        <div className="container mx-auto max-w-4xl w-full">
-          <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">
-            Find your next favorite indie game
-          </h1>
+    <main className="discovery-page">
+      <section className="home-intro">
+        <div><span className="eyebrow">Big feelings. Independent games.</span>
+          <h1>Your next favorite<br /><em>is out there.</em></h1>
+          <p>Start with a game you love. Discover indie games with that same spark—and a little something of their own.</p>
         </div>
-      </div>
-
-      <div className="flex flex-col gap-4 w-full">
-        <div className="container mx-auto max-w-4xl w-full flex items-center justify-between">
-          <h2 className="font-semibold text-xl">All Games</h2>
+        <div className="featured-art" aria-label="Discover indie favorites">
+          {games.slice(0,2).map(game => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true}>
+            {game.header_image && <Image src={game.header_image} alt={game.title} width={460} height={215} priority />}
+          </Link>)}
         </div>
-        <div className="container mx-auto max-w-4xl w-full">
-          {games.length === 0 ? (
-            <p className="text-muted-foreground">
-              The catalog is being updated. Please check back soon.
-            </p>
-          ) : (
-            <GameGrid initialGames={games} />
-          )}
-        </div>
-      </div>
+      </section>
+      <section>
+        <div className="section-heading"><h2>A good place to start</h2><span>Indie favorites, endless possibilities</span></div>
+        {games.length ? <GameGrid initialGames={games} /> : <p className="text-muted-foreground">The catalog is being updated. Please check back soon.</p>}
+      </section>
     </main>
   );
 }

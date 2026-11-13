@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description:
-    "Find games like your favorites. Discover similar indie games on Steam with indie game recommendations and explanations.",
+    "Find games like your favorites. Discover similar indie games on Steam with recommendations based on gameplay, themes, and feel.",
   openGraph: {
     siteName: "IndieFindr",
     locale: "en_US",
@@ -117,9 +117,10 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <ScrollToTopOnNavigation />
         </Suspense>
-        <div className="min-h-screen bg-zinc-50 dark:bg-black">
+        <div className="site-shell">
           <Navbar />
-          <div className="px-4">{children}</div>
+          <div className="px-4 sm:px-7">{children}</div>
+          <footer className="site-footer"><span>indiefindr · For the love of independent games.</span><span>Find something worth playing.</span></footer>
         </div>
 
         <Toaster />

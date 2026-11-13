@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
@@ -43,8 +45,8 @@ export async function generateMetadata({
 
   const title = `Games like ${data.title}`;
   const description = data.short_description
-    ? `Discover games similar to ${data.title}. ${data.short_description} Get indie game recommendations with explanations.`
-    : `Find games similar to ${data.title} on Steam. Get indie game recommendations with explanations.`;
+    ? `Discover games similar to ${data.title}. ${data.short_description} Find independent games with similar gameplay, themes, and feel.`
+    : `Find games similar to ${data.title} on Steam. Find independent games with similar gameplay, themes, and feel.`;
 
   return {
     title,
@@ -124,12 +126,6 @@ export default async function GamePage({
       {
         "@type": "ListItem",
         position: 2,
-        name: "Games",
-        item: `${siteUrl}/games`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
         name: game.title,
         item: `${siteUrl}/games/${appId}`,
       },
@@ -151,30 +147,18 @@ export default async function GamePage({
           __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c"),
         }}
       />
-      <main className="container mx-auto max-w-4xl py-6 sm:py-8 flex flex-col gap-6">
-        <article itemScope itemType="https://schema.org/VideoGame">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-semibold">{game.title}</h1>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                {game.developers.length > 0 && (
-                  <span>By {game.developers.join(", ")}</span>
-                )}
-                {game.release_date && <span>{game.release_date}</span>}
-              </div>
-            </div>
-            {game.short_description && (
-              <p className="text-muted-foreground">{game.short_description}</p>
-            )}
-
-            <SteamLink appid={appId} />
-            <ShopLinks appid={appId} />
-          </div>
+      <main className="discovery-page">
+        <Link href="/" className="text-sm text-muted-foreground">← Back to discovery</Link>
+        <article className="game-hero" itemScope itemType="https://schema.org/VideoGame">
+          {game.header_image && <div className="game-hero-art"><Image src={game.header_image} alt="" fill priority sizes="(max-width: 700px) 100vw, 800px" className="object-cover" /></div>}
+          <p className="eyebrow">Loved it? Keep the feeling going.</p>
+          <h1>Games like <em>{game.title}</em></h1>
+          <p className="game-hero-summary">Discover independent games with a similar spark. Your next favorite could be right here.</p>
+          <SteamLink appid={appId} />
+          <ShopLinks appid={appId} />
         </article>
-
-        <SameDeveloperSection appId={appId} developers={game.developers} />
-
         <SuggestionsSection appId={appId} gameTitle={game.title} />
+        <div className="mt-12"><SameDeveloperSection appId={appId} developers={game.developers} /></div>
         <AdSlot />
       </main>
     </>

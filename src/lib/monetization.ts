@@ -8,9 +8,9 @@ export const PROVIDERS = {
 
 const affiliate = z.object({
   provider: z.enum(["humble", "fanatical", "gmg"]),
-  url: z.url().refine((value) => new URL(value).protocol === "https:"),
+  url: z.url().refine((value) => new URL(value).protocol === "https:" && !new URL(value).username && !new URL(value).password),
 });
-const links = z.record(z.string().regex(/^\d+$/), z.array(affiliate).max(3));
+const links = z.record(z.string().regex(/^\d+$/), z.array(affiliate).max(3).refine((items) => new Set(items.map((item) => item.provider)).size === items.length));
 
 /** Only approved, game-specific tracking links supplied by the account owner. */
 export function affiliateLinks(appid: number) {

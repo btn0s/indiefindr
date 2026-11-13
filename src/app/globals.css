@@ -128,3 +128,46 @@
 .aspect-steam {
   aspect-ratio: 460 / 215;
 }
+/* IndieFindr: a quiet frame that lets the games bring the color. */
+:root { --background: #f5f5ef; --foreground: #20251f; --muted-foreground: #687064; --radius: 0.9rem; }
+body { font-family: var(--font-inter), sans-serif; }
+.site-shell { min-height: 100vh; background: #f5f5ef; }
+.site-nav { max-width: 1240px; margin: auto; padding: 24px 28px; display: flex; align-items: center; justify-content: space-between; gap: 28px; }
+.wordmark { display: inline-flex; align-items: center; gap: 10px; font-size: 23px; font-weight: 800; letter-spacing: -1px; white-space: nowrap; }
+.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; background: #d8f36a; border: 1px solid #20251f; border-radius: 11px; }
+.site-search { position: relative; width: min(430px, 100%); }
+.search-box { display: flex; align-items: center; padding: 5px 6px 5px 16px; gap: 9px; border: 1px solid #d9ddd1; background: #fff; border-radius: 50px; }
+.search-box input { width: 100%; min-width: 0; background: transparent; outline: none; font-size: 14px; padding: 8px 0; }
+.search-box button { width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; background: #20251f; color: #fff; }
+.search-results { position: absolute; z-index: 30; width: 100%; top: calc(100% + 8px); border: 1px solid #d9ddd1; border-radius: 18px; background: #fff; padding: 8px; box-shadow: 0 12px 36px #20251f15; }
+.search-results a { display: block; padding: 12px; border-radius: 10px; font-size: 14px; }
+.search-results a:hover { background: #f0f3e8; }
+.discovery-page { max-width: 1184px; margin: auto; padding: 22px 0 64px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+.home-intro { padding: 44px 0 56px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 64px; align-items: center; }
+.home-intro h1 { font-size: clamp(42px, 5.5vw, 72px); line-height: 1.05; font-weight: 650; letter-spacing: -0.065em; margin: 20px 0; }
+.home-intro h1 em { font-style: normal; color: #647c32; }
+.home-intro p { max-width: 390px; font-size: 17px; line-height: 1.7; color: #687064; }
+.featured-art { position: relative; padding: 16px 20px; }
+.featured-art::before { content: ''; position: absolute; inset: 3% 8%; background: #e3e8d6; border-radius: 50%; }
+.featured-art a { display: block; position: relative; width: 85%; border: 7px solid #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 12px 24px #20251f18; }
+.featured-art a:nth-child(1) { transform: rotate(-6deg); }
+.featured-art a:nth-child(2) { margin: -36px 0 0 auto; transform: rotate(5deg); }
+.featured-art img { width: 100%; aspect-ratio: 460/215; object-fit: cover; }
+.section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 24px; padding-top: 14px; }
+.section-heading h2 { font-size: 25px; font-weight: 650; letter-spacing: -0.8px; }
+.section-heading span { color: #687064; font-size: 13px; }
+.game-card { display: block; background: #fff; border: 1px solid #e2e5da; border-radius: 16px; padding: 8px; }
+.game-card:hover { border-color: #9eae7d; box-shadow: 0 6px 18px #20251f08; }
+.game-card-art { position: relative; overflow: hidden; border-radius: 10px; aspect-ratio: 460/215; background: #e6e9de; }
+.game-card-title { display: flex; justify-content: space-between; gap: 12px; padding: 14px 8px 9px; font-size: 15px; font-weight: 600; line-height: 1.4; }
+.game-card-title svg { flex-shrink: 0; color: #7d8972; margin-top: 2px; }
+.game-hero { position: relative; overflow: hidden; border-radius: 24px; background: #202b21; color: #fff; padding: 50px; margin: 20px 0 42px; isolation: isolate; }
+.game-hero-art { position: absolute; z-index: -2; inset: 0 0 0 30%; opacity: .75; }
+.game-hero::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg,#202b21 15%,#202b21dc 45%,#202b2140); }
+.game-hero h1 { max-width: 780px; font-size: clamp(34px,4.3vw,56px); line-height: 1.1; letter-spacing: -.045em; font-weight: 600; margin: 16px 0; text-wrap: balance; }
+.game-hero h1 em { color: #d8f36a; font-style: normal; }
+.game-hero-summary { max-width: 560px; font-size: 15px; line-height: 1.7; color: #e1e6dc; margin: 18px 0 26px; }
+.steam-link { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 30px; background: #d8f36a; color: #20251f; font-size: 13px; font-weight: 650; }
+.site-footer { max-width: 1184px; margin: auto; padding: 28px 0 36px; border-top: 1px solid #d9ddd1; display: flex; justify-content: space-between; gap: 24px; color: #687064; font-size: 12px; }
+@media(max-width: 700px) { .site-nav { padding: 20px 16px; flex-wrap: wrap; gap: 18px; } .site-search { width: 100%; } .home-intro { grid-template-columns: 1fr; gap: 30px; padding: 24px 0 40px; } .featured-art { display: none; } .discovery-page { padding-top: 10px; } .game-hero { padding: 28px 22px; border-radius: 18px; } .game-hero-art { inset: 0; opacity: .35; } .game-hero::after { background: #202b2170; } .section-heading span { display: none; } .site-footer { padding: 24px 0; } }

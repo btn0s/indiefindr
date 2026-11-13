@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight, Gamepad2, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -10,9 +11,9 @@ export function Navbar() {
   const [error, setError] = useState("");
 
   return (
-    <header className="container mx-auto max-w-4xl p-4">
-      <Link href="/" className="font-bold">IndieFindr</Link>
-      <form className="relative mt-3" onSubmit={async (event) => {
+    <header className="site-nav">
+      <Link href="/" className="wordmark"><span className="brand-mark"><Gamepad2 size={21} /></span>indiefindr<span className="text-[#7f925a]">.</span></Link>
+      <form className="site-search" onSubmit={async (event) => {
         event.preventDefault();
         setPending(true);
         setError("");
@@ -28,19 +29,18 @@ export function Navbar() {
         }
       }}>
         <label htmlFor="game-search" className="sr-only">Search games</label>
-        <input id="game-search" className="border rounded p-2 w-full"
-          placeholder="Find indie games like…" value={query}
-          onChange={(event) => setQuery(event.target.value)} />
-        <button className="mt-2 underline" disabled={pending}>
-          {pending ? "Searching…" : "Search"}
-        </button>
+        <div className="search-box"><Search size={18} className="text-muted-foreground shrink-0" />
+          <input id="game-search" placeholder="A game you love…" value={query}
+            onChange={(event) => setQuery(event.target.value)} />
+          <button aria-label={pending ? "Searching" : "Search games"} disabled={pending}><ArrowUpRight size={18} /></button>
+        </div>
         {error && <p role="status">{error}</p>}
-        {games.map((game) => (
-          <Link className="block p-2" key={game.appid} href={`/games/${game.appid}`}
-            prefetch={true} onClick={() => setGames([])}>
+        {games.length > 0 && <div className="search-results">{games.map((game) => (
+          <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true} onClick={() => setGames([])}>
             {game.title}
           </Link>
-        ))}
+        ))}</div>}
+
       </form>
     </header>
   );
