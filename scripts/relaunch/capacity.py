@@ -1,14 +1,33 @@
 """Entitlement-aware publication guard; never changes plans or purchases capacity."""
-import json,pathlib,urllib.request,argparse
+import functools,base64,json,pathlib,urllib.request,argparse
 PROJECT_REF='rqcqlpoxtdddjcylhopk'
+@functools.lru_cache(maxsize=8)
+def metrics_key(management):
+ return {k['name']:k['api_key'] for k in management(f'projects/{PROJECT_REF}/api-keys')}['service_role']
+def physical_disk_usage(management):
+ req=urllib.request.Request(f'https://{PROJECT_REF}.supabase.co/customer/v1/privileged/metrics',headers={'Authorization':'Basic '+base64.b64encode(('service_role:'+metrics_key(management)).encode()).decode()})
+ with urllib.request.urlopen(req,timeout=180) as response:lines=response.read().decode().splitlines()
+ def metric(name):
+  return float(next(line.rsplit(' ',1)[1] for line in lines if line.startswith(name+'{') and 'mountpoint="/data"' in line))
+ size=metric('node_filesystem_size_bytes');available=metric('node_filesystem_avail_bytes')
+ return {'size_bytes':round(size),'available_bytes':round(available),'used_bytes':round(size-available)}
+def assert_physical_headroom(management,budget):
+ usage=physical_disk_usage(management)
+ assert usage['used_bytes']+64*1024*1024<budget, f'Physical disk operating budget reached; stopping writes: {usage}'
+ return usage
 def check_capacity(management,game_count,rec_count):
  project=management(f'projects/{PROJECT_REF}');org=management('organizations/'+project['organization_id']);plan=org['plan']
- limit=500_000_000 if plan=='free' else 8_000_000_000
- budget=int(limit*.9)
+ disk=management(f'projects/{PROJECT_REF}/config/disk')['attributes']
+ limit=min(500_000_000,disk['size_gb']*1_000_000_000) if plan=='free' else disk['size_gb']*1_000_000_000
+ database_budget=int(limit*.9)
+ budget=int(disk['size_gb']*1_000_000_000*.9)
  sql="select pg_database_size(current_database()) as database_bytes,(select count(*) from games) as games,(select count(*) from game_recs) as recs,(select pg_total_relation_size('public.games')) as games_bytes,(select pg_total_relation_size('public.game_recs')) as recs_bytes"
  stats=management(f'projects/{PROJECT_REF}/database/query',{'query':sql})[0]
  projected=stats['database_bytes']+max(0,game_count-stats['games'])*stats['games_bytes']/max(stats['games'],1)+max(0,rec_count-stats['recs'])*stats['recs_bytes']/max(stats['recs'],1)
- return {'plan':plan,'current_database_bytes':stats['database_bytes'],'conservative_projected_bytes':round(projected),'disk_entitlement_bytes':limit,'operating_budget_bytes':budget,'publication_allowed':projected<budget}
+ physical_used=physical_disk_usage(management)['used_bytes']
+ growth=max(0,projected-stats['database_bytes']);wal_reserve=2*growth
+ physical_projection=physical_used+growth+wal_reserve
+ return {'provisioned_disk_gb':disk['size_gb'],'physical_used_bytes':round(physical_used),'wal_growth_reserve_bytes':round(wal_reserve),'projected_physical_bytes':round(physical_projection),'plan':plan,'current_database_bytes':stats['database_bytes'],'conservative_projected_bytes':round(projected),'disk_entitlement_bytes':limit,'operating_budget_bytes':budget,'database_operating_budget_bytes':database_budget,'publication_allowed':projected<database_budget and physical_projection<budget}
 if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('--source',type=pathlib.Path,required=True);a=p.parse_args()
  from selection import SLATE_SIZE

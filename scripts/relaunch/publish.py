@@ -5,7 +5,7 @@ transactions so a page's stored slate is never partially updated. LLM lists are
 preserved from their frozen export. Checks run before and after publication.
 """
 import argparse,json,pathlib,urllib.request
-from capacity import check_capacity
+from capacity import check_capacity,assert_physical_headroom
 from selection import POPULARITY_CAPS, MODEL_VERSION, SLATE_SIZE
 p=argparse.ArgumentParser();p.add_argument('--data',type=pathlib.Path,default=pathlib.Path('data/full-import'));p.add_argument('--check-budget-only',action='store_true');a=p.parse_args()
 values=dict(l.split('=',1) for l in pathlib.Path('.env.relaunch-admin').read_text().splitlines() if '=' in l);ref=values['RELAUNCH_PROJECT_REF'];assert ref=='rqcqlpoxtdddjcylhopk'
@@ -40,11 +40,12 @@ for table,rows in [('tags',tags),('games',games)]:
 # Keep eligible archived suggestions, but remove targets invalidated by ownership changes.
 query("delete from public.game_recs r using public.games g where r.rec_appid=g.appid and r.source='llm' and not g.is_indie")
 ids=sorted(byid)
-for start in range(0,len(ids),250):
- batch=ids[start:start+250];records=[r for appid in batch for source in ['model','llm'] for r in slates.get((appid,source),[])]
+for start in range(0,len(ids),100):
+ assert_physical_headroom(management,capacity['operating_budget_bytes'])
+ batch=ids[start:start+100];records=[r for appid in batch for source in ['model','llm'] for r in slates.get((appid,source),[])]
  data=json.dumps(records).replace("'","''")
  query("begin; delete from public.game_recs where (source='model' or source='llm' and appid in (select appid from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,source text) where source='llm')) and appid in ("+','.join(map(str,batch))+"); insert into public.game_recs(appid,rank,rec_appid,source,model_version) select appid,rank,rec_appid,source,model_version from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,rank integer,rec_appid integer,source text,model_version text); commit;")
- if start%5000==0:print('published',min(start+250,len(ids)),flush=True)
+ if start%5000==0:print('published',min(start+100,len(ids)),flush=True)
 cap_violations=' or '.join(f'count(*) filter(where g.review_count>={threshold})>{cap}' for threshold,cap in POPULARITY_CAPS)
 checks=query(f"select (select count(*) from games g where (select count(*) from game_recs r where r.appid=g.appid and r.source='model') >{SLATE_SIZE}) as oversized_model_pages,(select count(*) from game_recs r join games g on g.appid=r.rec_appid where not g.is_indie) as non_indie_targets,(select count(*) from (select r.appid from game_recs r join games g on g.appid=r.rec_appid where r.source='model' group by r.appid having "+cap_violations+") invalid) as popularity_cap_violations")
 assert all(int(v)==0 for v in checks[0].values()),checks
