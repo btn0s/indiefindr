@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
-import { RatingBadge } from "@/components/Rating";
+import { GameMetadata } from "@/components/GameMetadata";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getDeveloperGames, getGame, getRecommendations } from "@/lib/catalog";
 
@@ -174,12 +174,8 @@ export default async function GamePage({
           <header className="source-header">
             <div className="page-head">
             <h1 className="page-title"><span className="title-lead">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
-            <p className="game-meta">
-              {game.developers?.length > 0 && <span className="meta-by">By {game.developers.join(", ")}</span>}
-              {game.release_date && <span>{new Date(game.release_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>}
-            </p>
+            <GameMetadata game={game} />
             </div>
-            <RatingBadge pct={game.review_positive_pct} count={game.review_count} />
           </header>
           <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}
             trailer={((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null} />

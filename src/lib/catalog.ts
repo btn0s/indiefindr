@@ -5,7 +5,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 export const getGame = cache(async (appid: number) => {
   const { data, error } = await getSupabaseServerClient()
     .from("games")
-    .select("appid,title,short_description,header_image,developers,publishers,release_date,genres,review_count,review_positive_pct,price_cents,is_free,screenshots,trailers")
+    .select("appid,title,short_description,header_image,developers,publishers,release_date,genres,review_count,review_positive_pct,price_cents,is_free,is_indie,screenshots,trailers")
     .eq("appid", appid)
     .maybeSingle();
   if (error) throw new Error("Catalog unavailable");
