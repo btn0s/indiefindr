@@ -8,6 +8,7 @@ import { getGame, getRecommendations } from "@/lib/catalog";
 
 // Well-known indies whose pages show off the recommendations; one is featured per revalidation.
 const SHOWCASE = [413150, 367520, 105600, 1145360, 504230, 646570];
+const pickShowcase = () => SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)];
 
 
 
@@ -79,7 +80,7 @@ export default async function Home() {
     console.error("Error loading games:", error);
   }
 
-  const showcaseId = SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)];
+  const showcaseId = pickShowcase();
   const [showcase, showcaseRecs] = await Promise.all([getGame(showcaseId), getRecommendations(showcaseId)]);
 
   return (
