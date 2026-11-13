@@ -186,8 +186,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Home hero */
 .home-intro { padding: 8px 0 0; display: grid; grid-template-columns: 1fr 1.05fr; gap: 40px; align-items: center; }
 .home-intro h1 { font-size: var(--type-display); line-height: 1.05; text-wrap: balance; font-weight: 650; letter-spacing: -0.045em; margin: 0 0 16px; }
-.home-intro .lede { max-width: 25em; font-size: 17px; line-height: 1.55; color: var(--text-body); text-wrap: balance; }
-.home-intro .lede span { display: block; margin-top: 2px; }
+.home-intro .lede { max-width: 26em; font-size: 17px; line-height: 1.55; color: var(--text-body); text-wrap: pretty; }
 .home-intro .examples { margin-top: 16px; font-size: var(--type-ui); color: var(--muted-foreground); text-wrap: balance; }
 .home-intro .examples span { white-space: nowrap; }
 .home-intro .examples a { color: var(--foreground); font-weight: 500; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
