@@ -172,7 +172,20 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .search-box:focus-within { border-color: var(--brand); }
 .search-box button { display: none; }
 .search-results { position: absolute; z-index: 30; width: 100%; top: calc(100% + 8px); border: 1px solid var(--border); border-radius: 10px; background: var(--card); padding: 6px; box-shadow: 0 12px 36px color-mix(in srgb, var(--foreground) 8%, transparent); }
-.search-results a { display: block; padding: 9px 10px; border-radius: 6px; font-size: var(--type-ui); }
+.search-results a { display: flex; align-items: center; gap: 12px; padding: 6px; border-radius: 8px; }
+.search-art { flex-shrink: 0; width: 92px; aspect-ratio: 460/215; overflow: hidden; border-radius: 4px; background: var(--muted); }
+.search-art img { width: 100%; height: 100%; object-fit: cover; }
+.search-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.search-title { font-size: var(--type-ui); font-weight: 500; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-meta { display: flex; font-size: var(--type-caption); line-height: 1.4; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; }
+.search-meta > span + span::before { content: "·"; margin: 0 6px; }
+.search-meta strong { color: var(--foreground); font-weight: 600; font-variant-numeric: tabular-nums; }
+@media(max-width: 700px) {
+  /* On phones the list spans the header, not just the narrow search box. */
+  .site-nav { position: relative; }
+  .site-search { position: static; }
+  .search-results { left: 16px; right: 16px; width: auto; top: calc(100% - 2px); max-height: calc(100dvh - 120px); overflow-y: auto; }
+}
 .search-results a:hover, .search-results a[aria-selected=true] { background: var(--muted); }
 
 /* Page frame: every page opens with a title block, then sections a fixed gap apart. */

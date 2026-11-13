@@ -1,14 +1,35 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
 export type SearchGame = { appid: number; title: string };
+/** What a result row shows beyond its title. The title index stays small; the visible rows fetch this. */
+export type SearchDetail = { appid: number; header_image: string | null; release_date: string | null; review_positive_pct: number | null; review_count: number };
+
 export function useGameSearch() {
   const worker = useRef<Worker | null>(null);
   const sequence = useRef(0);
   const cache = useRef(new Map<string, SearchGame[]>());
   const lastQuery = useRef("");
+  const requested = useRef(new Set<number>());
   const [games, setGames] = useState<SearchGame[]>([]);
+  const [details, setDetails] = useState<Map<number, SearchDetail>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const loadDetails = useCallback(async (results: SearchGame[]) => {
+    const missing = results.map(game => game.appid).filter(appid => !requested.current.has(appid));
+    if (!missing.length) return;
+    missing.forEach(appid => requested.current.add(appid));
+    const { data } = await getSupabaseBrowserClient().from("games")
+      .select("appid,header_image,release_date,review_positive_pct,review_count").in("appid", missing).returns<SearchDetail[]>();
+    if (data?.length) setDetails(previous => new Map([...previous, ...data.map(row => [row.appid, row] as const)]));
+  }, []);
+
+  const show = useCallback((results: SearchGame[]) => {
+    setGames(results); setLoading(false); loadDetails(results);
+  }, [loadDetails]);
+
   useEffect(() => {
     const engine = new Worker("/search-worker.js");
     worker.current = engine;
@@ -16,21 +37,24 @@ export function useGameSearch() {
       if (data.type === "error") { setError("Search couldn't load. Please refresh and try again."); setLoading(false); }
       if (data.type === "results" && data.id === sequence.current) {
         cache.current.set(lastQuery.current, data.games);
-        setGames(data.games); setLoading(false);
+        show(data.games);
       }
     };
     engine.postMessage({ type: "load", url: "https://rqcqlpoxtdddjcylhopk.supabase.co/storage/v1/object/public/search/titles.json" });
     return () => { engine.terminate(); worker.current = null; };
-  }, []);
+  }, [show]);
+
   const search = useCallback((query: string) => {
     const key = query.trim().toLowerCase();
     lastQuery.current = key;
     const id = ++sequence.current;
     if (!key) { setGames([]); setLoading(false); return; }
     const cached = cache.current.get(key);
-    if (cached) { setGames(cached); setLoading(false); return; }
-    setGames([]); setLoading(true);
+    if (cached) return show(cached);
+    // Keep the previous rows on screen until the new ones arrive, so typing doesn't flash an empty list.
+    setLoading(true);
     worker.current?.postMessage({ type: "search", query: key, id });
-  }, []);
-  return { games, loading, error, search };
+  }, [show]);
+
+  return { games, details, loading, error, search };
 }

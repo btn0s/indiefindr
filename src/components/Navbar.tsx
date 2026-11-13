@@ -4,14 +4,16 @@ import { ControllerMark } from "./ControllerMark";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useGameSearch } from "@/lib/use-game-search";
+import Image from "next/image";
+import { useGameSearch, type SearchDetail } from "@/lib/use-game-search";
+import { steamRating } from "@/lib/rating";
 
 export function Navbar() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const { games, loading, error, search } = useGameSearch();
+  const { games, details, loading, error, search } = useGameSearch();
   return <header className="site-header"><div className="site-nav">
     <Link href="/" className="wordmark"><ControllerMark /><span>indiefindr</span></Link>
     <form className="site-search" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
@@ -31,9 +33,26 @@ export function Navbar() {
       </div>
       {open && query && <div className="search-results" id="search-results" role="listbox" aria-label="Games">
         {games.map((game,index) => <Link key={game.appid} id={`search-game-${game.appid}`} role="option" aria-selected={index === active}
-          href={`/games/${game.appid}`} prefetch={true} onMouseEnter={() => setActive(index)} onClick={() => setOpen(false)}>{game.title}</Link>)}
+          href={`/games/${game.appid}`} prefetch={true} onMouseEnter={() => setActive(index)} onClick={() => setOpen(false)}>
+          <SearchRow title={game.title} detail={details.get(game.appid)} />
+        </Link>)}
         {!games.length && <p role="status" className="p-3 text-sm text-muted-foreground">{error || (loading ? "Loading search…" : "No matching games.")}</p>}
       </div>}
     </form>
   </div></header>;
+}
+
+function SearchRow({ title, detail }: { title: string; detail?: SearchDetail }) {
+  const rating = detail && steamRating(detail.review_positive_pct, detail.review_count);
+  const year = detail?.release_date?.slice(0, 4);
+  return <>
+    <span className="search-art">{detail?.header_image && <Image src={detail.header_image} alt="" width={92} height={43} />}</span>
+    <span className="search-text">
+      <span className="search-title">{title}</span>
+      {(year || rating) && <span className="search-meta">
+        {year && <span>{year}</span>}
+        {rating && <span><strong>{detail.review_positive_pct}%</strong> {rating}</span>}
+      </span>}
+    </span>
+  </>;
 }
