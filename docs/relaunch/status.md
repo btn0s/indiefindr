@@ -2,7 +2,7 @@
 
 Phase 1 preview: https://games-graph-jp1eb7p44-thinkhumanco.vercel.app
 
-Fresh Free Supabase project: `rqcqlpoxtdddjcylhopk`, `indiefindr-relaunch`, cirqplus organization, us-west-2. The existing archive's organization is Pro; creating there would incur compute charges, so it was not used. The existing free organization was verified before creation. No plan upgrades or paid services were purchased.
+Supabase project `rqcqlpoxtdddjcylhopk` (`indiefindr-relaunch`, us-west-2) is now on the approved Pro organization with Micro compute and 8 GB disk. Publication checks a 7.2 GB operating budget; paid plans do not bypass capacity checks.
 
 Loaded 25,555 games, 446 tags, and 327,809 recommendation rows. 18,785 games meet the settled indie rule. Major publisher names are normalized before matching. The merged model's saved score-ordered top-200 candidates are filtered with the indie mask before selecting ten. All 25,555 games now have exactly ten distinct indie model recommendations (255,550 model rows), and all 8,648 LLM source slates remain preserved (72,259 rows). Database assertions confirm zero missing model pages and zero non-indie targets. The original 786 empty model slates are fixed. Saved candidate SHA-256: `28d0d87e5eb1ef16702cf1a0f799eeb5e17bd11e5d0d7e10f0a3dce7252684cc`.
 
@@ -19,7 +19,7 @@ Validation: production build and TypeScript pass; ESLint has zero errors (one ex
 ## Remaining authorized work
 
 - Expand the source catalog to the full Steam set; copy the offline merged model pipeline and encoder, enrich through Steam's public batch API, rerank with indie eligibility before top-ten selection, and load the new project.
-- Implement the free nightly offline ingest job on the Mac (MPS is required for encoding); no request-time inference.
+- Install the native nightly offline ingest on devbox (MPS encoding); no request-time inference or LLM calls.
 - Add disabled-by-default ad slots and approved affiliate deep links after account details are available.
 - Obtain bt's preview approval before any production promotion. Production has not been changed.
 
@@ -42,9 +42,12 @@ The original preview rendered game pages dynamically, queried the seed separatel
 
 Vercel's build confirms 100 prerendered game paths. An authenticated deployed request to Stardew Valley returned `x-nextjs-prerender: 1`, `x-vercel-cache: PRERENDER`, and complete recommendation HTML. These are cache correctness checks, not latency benchmarks. First visits to uncached long-tail pages still need a render; subsequent visits use the static page cache. Search and event ingestion remain server operations.
 
-## Latest steering
+## Full expansion — 2026-11-13
 
-- bt approved retaining Supabase and the additional Micro project cost on the existing Pro organization: $0.01344/hour (about $10/month). No billing change has been applied yet. The Studio transfer preview rejects the CLI PAT with `401 Unsupported access token`, and Computer Use's browser host is unavailable. Required dashboard handoff: transfer `rqcqlpoxtdddjcylhopk` from cirqplus to `thinkhumanco` (`yyiklgfmyxbytyywfddh`) through project General settings; then apply `ci_micro` through the supported billing-addons API. Do not upgrade cirqplus or change the archive.
-- All encoding and typecheck processes started on the user's Mac were stopped. Heavy processing moved to devbox (`host_57uprbbbx5`, `/Users/bot/dev/indiefindr-relaunch`). Native MPS is available there. The pinned environment, frozen models, normalized source, and completed embedding chunks were copied securely; the encoder reused the completed chunks. Remote terminal: `term_kmebjvhkt7`. It encodes, then scores, with two CPU threads. No expanded database upload is running.
-- Full catalog acquisition/normalization completed: 200,896 games, including 793 preserved legacy pages; 235 unavailable/non-game entries excluded. The Free-plan capacity guard projects 729,321,838 bytes conservatively against a 500 MB entitlement and refuses expanded publication until the approved organization move is complete.
-- The visual preview now has game-art heroes, a consistent search header, improved card layouts, and `Games like {title}` as the H1. Ad/affiliate components are implemented and disabled by default. The nightly installer is prepared for devbox but has not yet been installed; do not install it on the user's Mac.
+The source contains **200,896 games**, including preserved legacy pages. The approximately 122k handoff number is obsolete. Heavy compute runs only on devbox (`host_57uprbbbx5`, `/Users/bot/dev/indiefindr-relaunch`), with normalized source `data/full-source` and artifacts `data/full-model`.
+
+The existing scorer remains running without restart. Its candidate retrieval applies the shared indie mask before LambdaRank top-ten selection. `finish-expansion.py` waits for the atomically completed slate file, then resumes the lock-protected ingest at prepare/publish, enriches all catalog media, publishes search, and installs the native 03:15 launchd job only after success. Its log is `data/finish-expansion.log`; the durable stage manifest is `data/active-run.json`.
+
+The live capacity check confirms Pro: 151,975,603 current database bytes and a conservative expanded projection of 989,807,686 bytes, below the 7,200,000,000-byte operating budget. Media caches now use requested app IDs instead of unstable batch offsets. Search automatically trims to games with reviews only if its complete gzip size exceeds 3 MB. Publication preserves existing LLM slates when no incoming archived slate exists and verifies ten model rows per game and zero non-indie targets.
+
+Publication, media counts, search size, and launchd installation are pending scorer completion. No `src/` edits or Vercel deployment are part of this work.

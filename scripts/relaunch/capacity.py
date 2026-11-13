@@ -1,13 +1,14 @@
-"""Free-plan publication guard; never changes plans or purchases capacity."""
+"""Entitlement-aware publication guard; never changes plans or purchases capacity."""
 import json,pathlib,urllib.request,argparse
 PROJECT_REF='rqcqlpoxtdddjcylhopk'
 def check_capacity(management,game_count,rec_count):
  project=management(f'projects/{PROJECT_REF}');org=management('organizations/'+project['organization_id']);plan=org['plan']
- if plan!='free':return {'plan':plan,'publication_allowed':True}
+ limit=500_000_000 if plan=='free' else 8_000_000_000
+ budget=int(limit*.9)
  sql="select pg_database_size(current_database()) as database_bytes,(select count(*) from games) as games,(select count(*) from game_recs) as recs,(select pg_total_relation_size('public.games')) as games_bytes,(select pg_total_relation_size('public.game_recs')) as recs_bytes"
  stats=management(f'projects/{PROJECT_REF}/database/query',{'query':sql})[0]
  projected=stats['database_bytes']+max(0,game_count-stats['games'])*stats['games_bytes']/max(stats['games'],1)+max(0,rec_count-stats['recs'])*stats['recs_bytes']/max(stats['recs'],1)
- return {'plan':plan,'current_database_bytes':stats['database_bytes'],'conservative_projected_bytes':round(projected),'free_limit_bytes':500_000_000,'operating_budget_bytes':450_000_000,'publication_allowed':projected<450_000_000}
+ return {'plan':plan,'current_database_bytes':stats['database_bytes'],'conservative_projected_bytes':round(projected),'disk_entitlement_bytes':limit,'operating_budget_bytes':budget,'publication_allowed':projected<budget}
 if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('--source',type=pathlib.Path,required=True);a=p.parse_args()
  from catalog import is_indie

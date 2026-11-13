@@ -33,6 +33,7 @@ with (ROOT/'data/ingest.lock').open('a') as lock:
   stage('score','scripts/recommender/run.py','score','--source',source,'--artifacts',artifacts)
   stage('prepare','scripts/relaunch/prepare.py',source,'--out',imports)
   stage('publish','scripts/relaunch/publish.py','--data',imports)
+  stage('media','scripts/relaunch/media.py','--top','250000')
   stage('search','scripts/relaunch/publish-search.py','--games',imports/'games.jsonl')
   state['status']='published';state['finished_at']=datetime.datetime.now(datetime.timezone.utc).isoformat();save(state)
   (ROOT/'data/latest-published-run.txt').write_text(str(run)+'\n');(run/'result.json').write_text(json.dumps(state))
