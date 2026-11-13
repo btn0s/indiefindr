@@ -1,3 +1,4 @@
+import type { CardGame } from "@/lib/catalog";
 export type SuggestionCategory = "same-developer" | "niche" | "popular";
 
 export type Suggestion = {
@@ -26,7 +27,7 @@ export type GameNew = {
   updated_at: string;
 };
 
-export type GameCardGame = Pick<GameNew, "appid" | "title" | "header_image">;
+export type GameCardGame = CardGame;
 
 export type Collection = {
   id: string;

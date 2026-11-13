@@ -1,3 +1,4 @@
+import { adsenseClient } from "@/lib/monetization";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -8,6 +9,8 @@ import { ScrollToTopOnNavigation } from "@/components/ScrollToTopOnNavigation";
 
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+
+export const preferredRegion = "pdx1";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -30,15 +33,16 @@ const geistMono = Geist_Mono({
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 
 export const metadata: Metadata = {
+  other: adsenseClient() ? { "google-adsense-account": adsenseClient()! } : {},
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg"
   ),
   title: {
-    default: "IndieFindr - Discover Games Like Your Favorites",
+    default: "IndieFindr: Find your next favorite indie game",
     template: "%s",
   },
   description:
-    "Find games like your favorites. Discover similar indie games on Steam with AI-powered recommendations and explanations.",
+    "Find games like your favorites. Discover similar indie games on Steam with recommendations based on gameplay, themes, and feel.",
   openGraph: {
     siteName: "IndieFindr",
     locale: "en_US",
@@ -60,22 +64,14 @@ const organizationSchema = {
   url: SITE_URL,
   logo: `${SITE_URL}/icon.svg`,
   description:
-    "Discover indie games on Steam with AI-powered recommendations",
+    "Discover indie games on Steam with indie game recommendations",
 };
 
 const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "IndieFindr",
-  url: SITE_URL,
-  potentialAction: {
-    "@type": "SearchAction",
-    target: {
-      "@type": "EntryPoint",
-      urlTemplate: `${SITE_URL}/?q={search_term_string}`,
-    },
-    "query-input": "required name=search_term_string",
-  },
+  url: SITE_URL
 };
 
 export default function RootLayout({
@@ -113,9 +109,10 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <ScrollToTopOnNavigation />
         </Suspense>
-        <div className="min-h-screen bg-zinc-50 dark:bg-black">
+        <div className="site-shell">
           <Navbar />
-          <div className="px-4">{children}</div>
+          <div className="px-4 sm:px-7">{children}</div>
+          <footer className="site-footer"><span>indiefindr</span><span>Game information and media from Steam.</span></footer>
         </div>
 
         <Toaster />

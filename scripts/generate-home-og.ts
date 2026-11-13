@@ -37,8 +37,7 @@ const FALLBACK_APPIDS = [
 
 type Row = {
   appid: number;
-  suggested_game_appids: unknown;
-  created_at: string;
+  review_count: number;
 };
 
 function steamCapsuleUrl(appid: number) {
@@ -151,9 +150,11 @@ async function getTopAppIds(): Promise<number[]> {
   try {
     const supabase = createClient(url, key, { auth: { persistSession: false } });
     const { data, error } = await supabase
-      .from("games_new")
-      .select("appid, suggested_game_appids, created_at")
-      .limit(60);
+      .from("games")
+      .select("appid, review_count")
+      .eq("is_indie", true)
+      .order("review_count", { ascending: false })
+      .limit(6);
 
     if (error || !data) {
       console.warn(
@@ -164,18 +165,8 @@ async function getTopAppIds(): Promise<number[]> {
     }
 
     const games = data as Row[];
-    const sorted = games.sort((a, b) => {
-      const aCount = Array.isArray(a.suggested_game_appids)
-        ? a.suggested_game_appids.length
-        : 0;
-      const bCount = Array.isArray(b.suggested_game_appids)
-        ? b.suggested_game_appids.length
-        : 0;
-      if (bCount !== aCount) return bCount - aCount;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
 
-    const ids = sorted
+    const ids = games
       .map((g) => g.appid)
       .filter((x): x is number => typeof x === "number" && Number.isFinite(x))
       .slice(0, 6);

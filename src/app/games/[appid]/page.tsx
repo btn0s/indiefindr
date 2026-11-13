@@ -1,11 +1,25 @@
 import { notFound } from "next/navigation";
+import { GameTrailer, type Trailer } from "@/components/GameTrailer";
 import type { Metadata } from "next";
-import { ArrowUpRight } from "lucide-react";
+import { AdSlot } from "@/components/AdSlot";
+import { ShopLinks } from "@/components/ShopLinks";
+import { SteamLink } from "@/components/SteamLink";
+import { RatingBadge } from "@/components/Rating";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getOrFetchGame } from "@/lib/actions/games";
-import { GameVideo } from "@/components/GameVideo";
+import { getGame, getRecommendations } from "@/lib/catalog";
+
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
+
+// Popular pages are built ahead of time; other catalog pages are cached on demand.
+export const revalidate = 3600;
+export const dynamic = "force-static";
+export async function generateStaticParams() {
+  const { data, error } = await getSupabaseServerClient().from("games")
+    .select("appid").order("review_count", { ascending: false }).limit(100);
+  if (error) throw new Error("Catalog unavailable");
+  return (data ?? []).map(game => ({ appid: String(game.appid) }));
+}
 
 export async function generateMetadata({
   params,
@@ -19,26 +33,21 @@ export async function generateMetadata({
     return { title: "Game Not Found" };
   }
 
-  // Lightweight metadata fetch - just get title
-  const supabase = getSupabaseServerClient();
-  const { data } = await supabase
-    .from("games_new")
-    .select("title, short_description")
-    .eq("appid", appId)
-    .maybeSingle();
+  const [data, recs] = await Promise.all([getGame(appId), getRecommendations(appId)]);
 
   if (!data) {
     return { title: "Game Not Found" };
   }
+  const names = recs.slice(0, 3).map(({ game }) => game.title);
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const canonicalUrl = `${siteUrl}/games/${appId}`;
 
-  const title = `Games like ${data.title}`;
-  const description = data.short_description
-    ? `Discover games similar to ${data.title}. ${data.short_description} Get AI-powered recommendations with explanations.`
-    : `Find games similar to ${data.title} on Steam. Get AI-powered recommendations with explanations.`;
+  const title = recs.length ? `Games Like ${data.title}: ${recs.length} Indie Games to Play Next` : `Games Like ${data.title}`;
+  const description = names.length
+    ? `Love ${data.title}? Try ${names.join(", ")}${recs.length > names.length ? ` and ${recs.length - names.length} more` : ""}: indie games with similar gameplay, themes, and feel.`
+    : `Indie games like ${data.title}, with similar gameplay, themes, and feel.`;
 
   return {
     title,
@@ -75,7 +84,7 @@ export default async function GamePage({
   }
 
   // Only fetch critical game data - suggestions load separately via Suspense
-  const game = await getOrFetchGame(appId);
+  const game = await getGame(appId);
 
   if (!game) {
     notFound();
@@ -105,18 +114,18 @@ export default async function GamePage({
     }),
   };
 
-  const videoObjectSchema =
-    game.videos.length > 0
-      ? {
-          "@context": "https://schema.org",
-          "@type": "VideoObject",
-          name: `${game.title} - Trailer`,
-          description: game.short_description || `Trailer for ${game.title}`,
-          thumbnailUrl: game.header_image || undefined,
-          uploadDate: game.release_date || undefined,
-          contentUrl: game.videos[0],
-        }
-      : null;
+  const recs = await getRecommendations(appId);
+  const recommendationsSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Indie games like ${game.title}`,
+    itemListElement: recs.map(({ game: rec }, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: `${siteUrl}/games/${rec.appid}`,
+      name: rec.title,
+    })),
+  };
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -131,12 +140,6 @@ export default async function GamePage({
       {
         "@type": "ListItem",
         position: 2,
-        name: "Games",
-        item: `${siteUrl}/games`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
         name: game.title,
         item: `${siteUrl}/games/${appId}`,
       },
@@ -148,65 +151,44 @@ export default async function GamePage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(videoGameSchema),
+          __html: JSON.stringify(videoGameSchema).replace(/</g, "\\u003c"),
         }}
       />
-      {videoObjectSchema && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(videoObjectSchema),
-          }}
-        />
-      )}
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbSchema),
+          __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c"),
         }}
       />
-      <main className="container mx-auto max-w-4xl py-6 sm:py-8 flex flex-col gap-6">
-        <article itemScope itemType="https://schema.org/VideoGame">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-semibold">{game.title}</h1>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                {game.developers.length > 0 && (
-                  <span>By {game.developers.join(", ")}</span>
-                )}
-                {game.release_date && <span>{game.release_date}</span>}
-              </div>
+      {recs.length > 0 && <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(recommendationsSchema).replace(/</g, "\\u003c"),
+        }}
+      />}
+      <main className="discovery-page">
+        <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
+          <header className="source-header">
+            <div>
+            <h1 className="page-title">Games like <span itemProp="name">{game.title}</span></h1>
+            <p className="game-meta">
+              {game.developers?.length > 0 && <span>By {game.developers.join(", ")}</span>}
+              {game.release_date && <span>{new Date(game.release_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>}
+              {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)}</span>}
+            </p>
             </div>
-            {game.videos.length > 0 && (
-              <div className="w-full aspect-video">
-                <GameVideo
-                  videos={game.videos}
-                  headerImage={game.header_image}
-                  alt={game.title}
-                  className="w-full h-full"
-                  autoPlay
-                />
-              </div>
-            )}
-            {game.short_description && (
-              <p className="text-muted-foreground">{game.short_description}</p>
-            )}
-
-            <a
-              href={`https://store.steampowered.com/app/${appId}/`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-fit inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-primary-foreground bg-gradient-to-b from-primary/90 to-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),inset_0_-1px_0_0_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.2)] border border-primary/80 hover:from-primary hover:to-primary/90 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] active:translate-y-px transition-all"
-            >
-              View on Steam
-              <ArrowUpRight className="size-4" />
-            </a>
-          </div>
+            <RatingBadge pct={game.review_positive_pct} count={game.review_count} />
+          </header>
+          <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}
+            trailer={((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null} />
+          {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
+          <div className="source-game-actions"><SteamLink appid={appId} /></div>
+          <ShopLinks appid={appId} />
         </article>
-
-        <SameDeveloperSection appId={appId} developers={game.developers} />
-
         <SuggestionsSection appId={appId} gameTitle={game.title} />
+        <div className="mt-10"><SameDeveloperSection appId={appId} developers={game.developers} /></div>
+        <AdSlot />
       </main>
     </>
   );

@@ -1,11 +1,20 @@
+import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameGrid } from "@/components/GameGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
-import { getPinnedHomeCollections } from "@/lib/collections";
-import { GameRow } from "@/components/GameRow";
+import { getBrowsePage, getGame, getHomeShelves, getRecommendations, SHELVES, type ShelfSlug } from "@/lib/catalog";
+import { ShelfHeading } from "@/components/ShelfHeading";
+import { GameCard } from "@/components/GameCard";
 
-const PAGE_SIZE = 24;
+// Well-known indies whose pages show off the recommendations; one is featured per revalidation.
+const SHOWCASE = [413150, 367520, 105600, 1145360, 504230, 646570];
+// Any game works as a starting point, AAA included; recommendations are always indie.
+const EXAMPLES = [[413150, "Stardew Valley"], [1938090, "Call of Duty"], [1245620, "Elden Ring"], [2379780, "Balatro"], [367520, "Hollow Knight"]] as const;
+const pickShowcase = () => SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)];
+
+
+
 
 export const revalidate = 60;
 
@@ -15,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonicalUrl = `${siteUrl}/`;
   const title = "Find Your Next Favorite Indie Game — IndieFindr";
   const description =
-    "Discover indie games on Steam. Search any game, get AI-powered recommendations, and find your next favorite.";
+    "Discover indie games on Steam. Search any game, get indie game recommendations, and find your next favorite.";
   const ogImageUrl = `${siteUrl}/og/home.png`;
 
   return {
@@ -58,60 +67,50 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const supabase = getSupabaseServerClient();
-  const [{ data, error }, pinnedCollections] = await Promise.all([
-    supabase
-      .from("games_new_home")
-      .select("appid, title, header_image")
-      .order("home_bucket", { ascending: true })
-      .order("suggestions_count", { ascending: false })
-      .order("created_at", { ascending: false })
-      .order("appid", { ascending: true })
-      .range(0, PAGE_SIZE - 1),
-    getPinnedHomeCollections(),
-  ]);
+  const games = await getBrowsePage(0);
 
-  const games: GameCardGame[] = error
-    ? []
-    : (data || []).map((g) => ({
-        appid: g.appid,
-        title: g.title,
-        header_image: g.header_image,
-      }));
-
-  if (error) {
-    console.error("Error loading games:", error);
-  }
+  const showcaseId = pickShowcase();
+  const [showcase, showcaseRecs, shelves] = await Promise.all([getGame(showcaseId), getRecommendations(showcaseId), getHomeShelves()]);
 
   return (
-    <main className="flex flex-col gap-8 pt-8">
-      <div className="w-full">
-        <div className="container mx-auto max-w-4xl w-full">
-          <h1 className="text-balance font-semibold tracking-tight text-3xl sm:text-4xl">
-            Find your next favorite indie game
-          </h1>
+    <main className="discovery-page">
+      <section className="home-intro">
+        <div>
+          <h1>Find your next favorite indie game</h1>
+          <p className="lede">Name a game you can&rsquo;t stop thinking about. <span>We&rsquo;ll find the indies that give you that feeling again.</span></p>
+          <p className="examples">Try {EXAMPLES.map(([appid, title], index) => <span key={appid}>
+            <Link href={`/games/${appid}`} prefetch={true}>{title}</Link>{index < EXAMPLES.length - 1 ? ", " : ""}
+          </span>)}</p>
         </div>
-      </div>
-
-      {pinnedCollections.length > 0 && (
-        <GameRow collections={pinnedCollections} />
-      )}
-
-      <div className="flex flex-col gap-4 w-full">
-        <div className="container mx-auto max-w-4xl w-full flex items-center justify-between">
-          <h2 className="font-semibold text-xl">All Games</h2>
-        </div>
-        <div className="container mx-auto max-w-4xl w-full">
-          {games.length === 0 ? (
-            <p className="text-muted-foreground">
-              No games ingested yet. Search for a game above to add your first
-              one.
-            </p>
-          ) : (
-            <GameGrid initialGames={games} />
-          )}
-        </div>
-      </div>
+        {showcase && <div className="showcase">
+          <Link href={`/games/${showcase.appid}`} prefetch={true} className="showcase-source">
+            {showcase.header_image && <Image src={showcase.header_image} alt="" width={460} height={215} priority />}
+            <span>Games like <strong>{showcase.title}</strong></span>
+          </Link>
+          <div className="showcase-recs">
+            {showcaseRecs.slice(0, 3).map(({ game }) => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true} title={game.title}>
+              {game.header_image && <Image src={game.header_image} alt={game.title} width={230} height={108} />}
+            </Link>)}
+          </div>
+        </div>}
+      </section>
+      <Shelf slug="rising" games={shelves.rising} />
+      <Shelf slug="hidden-gems" games={shelves.gems} />
+      {shelves.fresh.length >= 4 && <Shelf slug="new" games={shelves.fresh} />}
+      <section>
+        <ShelfHeading title="Browse all" />
+        {games.length ? <GameGrid initialGames={games} /> : <p className="text-muted-foreground">The catalog is being updated. Please check back soon.</p>}
+      </section>
     </main>
   );
+}
+
+function Shelf({ slug, games }: { slug: ShelfSlug; games: GameCardGame[] }) {
+  if (!games.length) return null;
+  return <section className="shelf">
+    <ShelfHeading title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} />
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
+      {games.map(game => <GameCard key={game.appid} {...game} />)}
+    </div>
+  </section>;
 }

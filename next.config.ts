@@ -4,25 +4,9 @@ const nextConfig: NextConfig = {
   // Externalize steam-user and its dependencies to avoid bundling issues
   // steam-crypto needs to access system.pem file at runtime
   serverExternalPackages: ["steam-user", "@doctormckay/steam-crypto"],
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "shared.akamai.steamstatic.com",
-        pathname: "/store_item_assets/**",
-      },
-      {
-        protocol: "https",
-        hostname: "cdn.cloudflare.steamstatic.com",
-        pathname: "/steam/apps/**",
-      },
-      {
-        protocol: "https",
-        hostname: "cdn.akamai.steamstatic.com",
-        pathname: "/steam/apps/**",
-      },
-    ],
-  },
+  // Steam's CDN already serves right-sized, immutable images (10-year cache); re-optimizing them
+  // only added cold misses per deployment and per-image billing.
+  images: { unoptimized: true },
   async redirects() {
     return [
       {

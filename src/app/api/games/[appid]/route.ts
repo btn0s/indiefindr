@@ -9,6 +9,8 @@ import {
 } from "@/lib/api/responses";
 import { ZodError } from "zod";
 
+export const preferredRegion = "pdx1";
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ appid: string }> }
@@ -25,7 +27,7 @@ export async function GET(
     const appId = parseResult.data;
 
     const { data: game, error } = await supabase
-      .from("games_new")
+      .from("games")
       .select("*")
       .eq("appid", appId)
       .maybeSingle();

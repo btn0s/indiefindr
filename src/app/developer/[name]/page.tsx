@@ -1,7 +1,11 @@
+import { CARD_FIELDS } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { GameCardAsync } from "@/components/GameCardAsync";
+import { GameCard } from "@/components/GameCard";
+
+export const revalidate = 3600;
+export const dynamic = "force-static";
 
 export async function generateMetadata({
   params,
@@ -44,10 +48,11 @@ async function getGamesByDeveloper(developerName: string) {
   const supabase = getSupabaseServerClient();
 
   const { data: games, error } = await supabase
-    .from("games_new")
-    .select("appid, title, header_image")
+    .from("games")
+    .select(CARD_FIELDS)
     .contains("developers", [developerName])
-    .order("created_at", { ascending: false });
+    .eq("is_indie", true)
+    .order("release_date", { ascending: false });
 
   if (error || !games) {
     return [];
@@ -132,7 +137,7 @@ export default async function DeveloperQueryPage({
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {games.map((game) => (
-            <GameCardAsync key={game.appid} appid={game.appid} />
+            <GameCard key={game.appid} {...game} />
           ))}
         </div>
       </main>

@@ -68,3 +68,9 @@ Thumbs.db
 # Supabase local development state
 supabase/.temp/
 .supabase/
+
+/data/
+
+__pycache__/
+*.pyc
+.venv/

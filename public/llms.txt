@@ -1,0 +1,19 @@
+# IndieFindr
+
+> IndieFindr finds indie games similar to any game you already love. Every Steam game has a page listing ten indie games with similar gameplay, themes, and feel, plus discovery shelves for rising, hidden-gem, and new indie releases.
+
+## How to use it
+
+- "Games like X": https://www.indiefindr.gg/games/{Steam app ID}, e.g. [Games like Stardew Valley](https://www.indiefindr.gg/games/413150), [Games like Hollow Knight](https://www.indiefindr.gg/games/367520), [Games like Call of Duty](https://www.indiefindr.gg/games/1938090)
+- Find a Steam app ID by title: https://www.indiefindr.gg/api/games/search?q={title}
+- Each game page includes the source game's details and Steam rating, and its recommendations as a schema.org ItemList.
+
+## Discovery shelves
+
+- [Rising](https://www.indiefindr.gg/discover/rising): breakout indie games from the past year
+- [Hidden gems](https://www.indiefindr.gg/discover/hidden-gems): highly rated indie games with few reviews
+- [New on Steam](https://www.indiefindr.gg/discover/new): indie games released in the last two months
+
+## About the recommendations
+
+Any Steam game can be a starting point, including big-budget games. Recommendations are always indie games: titles tagged indie on Steam that are not published or developed by a major publisher or a studio it owns. Lists come from an offline ranking model built on Steam tags and game descriptions, with a limit on how many megahits each list contains so lesser-known games surface. Ratings are Steam's own review summaries.

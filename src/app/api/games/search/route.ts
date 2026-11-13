@@ -10,24 +10,14 @@ import {
 import { API_CONFIG } from "@/lib/config";
 import { ZodError } from "zod";
 
-type SteamStoreSearchItem = {
-  id: number;
-  name: string;
-  type?: string;
-  tiny_image?: string | null;
-  small_image?: string | null;
-};
-
-type SteamStoreSearchResponse = {
-  items?: SteamStoreSearchItem[];
-};
-
 type DbGameResult = {
   appid: number;
   title: string;
   header_image: string | null;
   rank?: number;
 };
+
+export const preferredRegion = "pdx1";
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     if (ftsError || !ftsGames || ftsGames.length === 0) {
       const { data: ilikeGames, error: ilikeError } = await supabase
-        .from("games_new")
+        .from("games")
         .select("appid, title, header_image")
         .ilike("title", `%${searchQuery}%`)
         .order("title", { ascending: true })
@@ -73,41 +63,6 @@ export async function GET(request: NextRequest) {
 
     if (dbResults.length > 0) {
       return apiSuccess({ db: dbResults, steam: [] });
-    }
-
-    try {
-      const searchUrl = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(searchQuery)}&cc=US&l=en`;
-      const steamResponse = await fetch(searchUrl, {
-        headers: { "User-Agent": "Mozilla/5.0" },
-      });
-
-      if (steamResponse.ok) {
-        const steamData =
-          (await steamResponse.json()) as SteamStoreSearchResponse;
-        const items = Array.isArray(steamData.items) ? steamData.items : [];
-
-        const steamResults = items
-          .filter((item) => {
-            const type = item.type?.toLowerCase() || "";
-            const name = item.name?.toLowerCase() || "";
-            return (
-              type !== "dlc" &&
-              !type.includes("dlc") &&
-              !name.includes("dlc")
-            );
-          })
-          .slice(0, API_CONFIG.SEARCH_STEAM_LIMIT)
-          .map((item) => ({
-            appid: item.id,
-            title: item.name,
-            header_image: item.tiny_image || item.small_image || null,
-            inDatabase: false,
-          }));
-
-        return apiSuccess({ db: [], steam: steamResults });
-      }
-    } catch (steamError) {
-      console.error("Steam search error:", steamError);
     }
 
     return apiSuccess({ db: [], steam: [] });
