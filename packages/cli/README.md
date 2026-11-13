@@ -6,5 +6,5 @@ Requires Node 20+. No account or API key.
 
 Reads the same precomputed indie recommendation slate as the game page. Unrated games remain eligible. No LLM or model inference runs on requests.
 
-Privacy: https://indiefindr.gg/privacy
-Support and connection docs: https://indiefindr.gg/agents
+Privacy: https://www.indiefindr.gg/privacy
+Support and connection docs: https://www.indiefindr.gg/agents
