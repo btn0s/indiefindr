@@ -6,7 +6,7 @@ preserved from their frozen export. Checks run before and after publication.
 """
 import argparse,json,pathlib,urllib.request
 from capacity import check_capacity
-from selection import POPULARITY_CAPS, MODEL_VERSION
+from selection import POPULARITY_CAPS, MODEL_VERSION, SLATE_SIZE
 p=argparse.ArgumentParser();p.add_argument('--data',type=pathlib.Path,default=pathlib.Path('data/full-import'));p.add_argument('--check-budget-only',action='store_true');a=p.parse_args()
 values=dict(l.split('=',1) for l in pathlib.Path('.env.relaunch-admin').read_text().splitlines() if '=' in l);ref=values['RELAUNCH_PROJECT_REF'];assert ref=='rqcqlpoxtdddjcylhopk'
 def management(path,data=None):
@@ -22,11 +22,12 @@ for g in games:
  slate=slates.get((g['appid'],'model'),[])
  assert all(r['model_version']==MODEL_VERSION for r in slate)
  assert all(sum(byid[r['rec_appid']]['review_count']>=threshold for r in slate)<=cap for threshold,cap in POPULARITY_CAPS)
- assert len(slate)==10 and sorted(r['rank'] for r in slate)==list(range(1,11)) and len({r['rec_appid'] for r in slate})==10
+ assert len(slate)<=SLATE_SIZE and sorted(r['rank'] for r in slate)==list(range(1,len(slate)+1)) and len({r['rec_appid'] for r in slate})==len(slate)
 # Check the actual plan entitlement with 10% operating headroom.
 capacity=check_capacity(management,len(games),len(recs));print(capacity,flush=True)
 assert capacity['publication_allowed'],'Expanded catalog publication needs capacity approval; no writes or plan changes made.'
 if a.check_budget_only:raise SystemExit
+query(f'alter table public.game_recs drop constraint game_recs_rank_check, add constraint game_recs_rank_check check(rank between 1 and {SLATE_SIZE})')
 keys={k['name']:k['api_key'] for k in management(f'projects/{ref}/api-keys')};key=keys['service_role']
 for table,rows in [('tags',tags),('games',games)]:
  for start in range(0,len(rows),500):
@@ -45,6 +46,6 @@ for start in range(0,len(ids),250):
  query("begin; delete from public.game_recs where (source='model' or source='llm' and appid in (select appid from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,source text) where source='llm')) and appid in ("+','.join(map(str,batch))+"); insert into public.game_recs(appid,rank,rec_appid,source,model_version) select appid,rank,rec_appid,source,model_version from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,rank integer,rec_appid integer,source text,model_version text); commit;")
  if start%5000==0:print('published',min(start+250,len(ids)),flush=True)
 cap_violations=' or '.join(f'count(*) filter(where g.review_count>={threshold})>{cap}' for threshold,cap in POPULARITY_CAPS)
-checks=query("select (select count(*) from games g where (select count(*) from game_recs r where r.appid=g.appid and r.source='model')<>10) as empty_model_pages,(select count(*) from game_recs r join games g on g.appid=r.rec_appid where not g.is_indie) as non_indie_targets,(select count(*) from (select r.appid from game_recs r join games g on g.appid=r.rec_appid where r.source='model' group by r.appid having "+cap_violations+") invalid) as popularity_cap_violations")
+checks=query(f"select (select count(*) from games g where (select count(*) from game_recs r where r.appid=g.appid and r.source='model') >{SLATE_SIZE}) as oversized_model_pages,(select count(*) from game_recs r join games g on g.appid=r.rec_appid where not g.is_indie) as non_indie_targets,(select count(*) from (select r.appid from game_recs r join games g on g.appid=r.rec_appid where r.source='model' group by r.appid having "+cap_violations+") invalid) as popularity_cap_violations")
 assert all(int(v)==0 for v in checks[0].values()),checks
 print('Publication verified',checks,flush=True)

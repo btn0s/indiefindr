@@ -11,6 +11,7 @@ def check_capacity(management,game_count,rec_count):
  return {'plan':plan,'current_database_bytes':stats['database_bytes'],'conservative_projected_bytes':round(projected),'disk_entitlement_bytes':limit,'operating_budget_bytes':budget,'publication_allowed':projected<budget}
 if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('--source',type=pathlib.Path,required=True);a=p.parse_args()
+ from selection import SLATE_SIZE
  from catalog import is_indie
  rows=json.loads((a.source/'data/catalog.json').read_text())['rows'];tags=json.loads((a.source/'data/steam_tags.json').read_text());eligible={r['appid'] for r in rows if is_indie(r,tags[str(r['appid'])]['tags'])};ids={r['appid'] for r in rows}
  slates=json.loads((a.source/'llm_slates.json').read_text())['slates'];llm_count=sum(len({s['suggested_appid'] for s in slate['suggestions'] if s['suggested_appid'] in eligible and s['suggested_appid']!=slate['source_appid']}) for slate in slates if slate['source_appid'] in ids)
@@ -18,5 +19,5 @@ if __name__=='__main__':
  def management(path,data=None):
   req=urllib.request.Request('https://api.supabase.com/v1/'+path,headers={'Authorization':'Bearer '+values['SUPABASE_ACCESS_TOKEN'],'Content-Type':'application/json'},data=json.dumps(data).encode() if data is not None else None)
   with urllib.request.urlopen(req,timeout=180) as r:return json.load(r)
- report=check_capacity(management,len(rows),len(rows)*10+llm_count);print(json.dumps(report),flush=True)
+ report=check_capacity(management,len(rows),len(rows)*SLATE_SIZE+llm_count);print(json.dumps(report),flush=True)
  if not report['publication_allowed']:raise SystemExit('Capacity approval required before expanded publication; no writes made.')

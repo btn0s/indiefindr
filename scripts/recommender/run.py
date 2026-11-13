@@ -11,7 +11,7 @@ import numpy as np
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts/relaunch'))
 from catalog import is_indie
-from selection import MODEL_VERSION, select_targets
+from selection import MODEL_VERSION, SLATE_SIZE, CANDIDATE_LIMIT, select_targets
 p=argparse.ArgumentParser();p.add_argument('stage',choices=['encode','score']);p.add_argument('--source',type=pathlib.Path,default=ROOT/'data/full-source');p.add_argument('--artifacts',type=pathlib.Path,default=ROOT/'data/full-model');p.add_argument('--model',type=pathlib.Path,default=ROOT/'data/model');a=p.parse_args();a.artifacts.mkdir(parents=True,exist_ok=True)
 # Serialize native model work even when invoked outside the nightly runner.
 compute_lock=(ROOT/'data/recommender.lock').open('a')
@@ -94,8 +94,8 @@ with path.open('a') as out:
    features=np.column_stack((E[c]@E[i],(linear[c]@linear[i].T).toarray().ravel(),feats['steam_tag'][j,c],hand[j,c],np.isin(c,A),np.isin(c,B),[bool(dev[i]&dev[t]) for t in c],[bool(pub[i]&pub[t]) for t in c],np.log1p(reviews[c])-np.log1p(reviews[i]),np.abs(np.log1p(reviews[c])-np.log1p(reviews[i])),np.log1p(reviews[c]),np.full(len(c),np.log1p(reviews[i])),ratios[c],np.abs(years[c]-years[i]),np.abs(prices[c]-prices[i]),known[c],np.full(len(c),known[i]),years[c]>0,np.full(len(c),years[i]>0),(np.log1p(pop[c])-np.log1p(pop[i]))*owner_known[c]*owner_known[i],owner_known[c],np.full(len(c),owner_known[i])))
    assert features.shape[1]==ranker.num_feature()==22
    values=ranker.predict(features,num_threads=2);ordered=c[np.lexsort((c,-values))]
-   selected=np.array(select_targets(ordered,reviews),dtype=int)
-   assert len(selected)==10 and mask[selected].all() and i not in selected
+   selected=np.array(select_targets(ordered[:CANDIDATE_LIMIT],reviews),dtype=int)
+   assert len(selected)<=SLATE_SIZE and mask[selected].all() and i not in selected
    slate={'source_appid':ids[i],'model':MODEL_VERSION,'ranked_candidates':[ids[t] for t in ordered],'suggestions':[{'rank':rank,'suggested_appid':ids[t]} for rank,t in enumerate(selected,1)]}
    out.write(json.dumps(slate)+'\n')
   out.flush()

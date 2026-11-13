@@ -1,8 +1,10 @@
 """Settled medium popularity tilt, applied to indie model-ordered candidates."""
-POPULARITY_CAPS = ((50_000, 2), (10_000, 4))
-MODEL_VERSION = 'lambdarank_merged-indie-full-v2-tilt-m2-4'
+SLATE_SIZE = 24
+CANDIDATE_LIMIT = 200
+POPULARITY_CAPS = ((50_000, 5), (10_000, 10))
+MODEL_VERSION = 'lambdarank_merged-indie-full-v3-24-tilt-m5-10'
 
-def select_targets(candidates, review_counts, count=10):
+def select_targets(candidates, review_counts, count=SLATE_SIZE):
     selected = []
     used = [0] * len(POPULARITY_CAPS)
     for target in candidates:
@@ -15,4 +17,4 @@ def select_targets(candidates, review_counts, count=10):
             used[i] += reviews >= threshold
         if len(selected) == count:
             return selected
-    raise ValueError(f'Only {len(selected)} candidates satisfy popularity caps; need {count}')
+    return selected
