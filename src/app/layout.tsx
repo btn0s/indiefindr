@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg"
   ),
   title: {
-    default: "IndieFindr - Discover Games Like Your Favorites",
+    default: "IndieFindr: Find your next favorite indie game",
     template: "%s",
   },
   description:
@@ -71,15 +71,7 @@ const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "IndieFindr",
-  url: SITE_URL,
-  potentialAction: {
-    "@type": "SearchAction",
-    target: {
-      "@type": "EntryPoint",
-      urlTemplate: `${SITE_URL}/?q={search_term_string}`,
-    },
-    "query-input": "required name=search_term_string",
-  },
+  url: SITE_URL
 };
 
 export default function RootLayout({

@@ -6,7 +6,7 @@ import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
 import { RatingBadge } from "@/components/Rating";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getGame } from "@/lib/catalog";
+import { getGame, getRecommendations } from "@/lib/catalog";
 
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
@@ -33,20 +33,21 @@ export async function generateMetadata({
     return { title: "Game Not Found" };
   }
 
-  const data = await getGame(appId);
+  const [data, recs] = await Promise.all([getGame(appId), getRecommendations(appId)]);
 
   if (!data) {
     return { title: "Game Not Found" };
   }
+  const names = recs.slice(0, 3).map(({ game }) => game.title);
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const canonicalUrl = `${siteUrl}/games/${appId}`;
 
-  const title = `Games like ${data.title}`;
-  const description = data.short_description
-    ? `Discover games similar to ${data.title}. ${data.short_description} Find independent games with similar gameplay, themes, and feel.`
-    : `Find games similar to ${data.title} on Steam. Find independent games with similar gameplay, themes, and feel.`;
+  const title = recs.length ? `Games Like ${data.title}: ${recs.length} Indie Games to Play Next` : `Games Like ${data.title}`;
+  const description = names.length
+    ? `Love ${data.title}? Try ${names.join(", ")}${recs.length > names.length ? ` and ${recs.length - names.length} more` : ""}: indie games with similar gameplay, themes, and feel.`
+    : `Indie games like ${data.title}, with similar gameplay, themes, and feel.`;
 
   return {
     title,
@@ -113,6 +114,19 @@ export default async function GamePage({
     }),
   };
 
+  const recs = await getRecommendations(appId);
+  const recommendationsSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Indie games like ${game.title}`,
+    itemListElement: recs.map(({ game: rec }, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: `${siteUrl}/games/${rec.appid}`,
+      name: rec.title,
+    })),
+  };
+
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -147,6 +161,12 @@ export default async function GamePage({
           __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c"),
         }}
       />
+      {recs.length > 0 && <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(recommendationsSchema).replace(/</g, "\\u003c"),
+        }}
+      />}
       <main className="discovery-page">
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <header className="source-header">

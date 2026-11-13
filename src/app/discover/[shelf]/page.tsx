@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { GameCard } from "@/components/GameCard";
-import { getShelf, SHELVES, type ShelfSlug } from "@/lib/catalog";
+import { getShelf, isShelf, SHELVES } from "@/lib/catalog";
 
 export const revalidate = 3600;
-const isShelf = (slug: string): slug is ShelfSlug => slug in SHELVES;
 export const generateStaticParams = () => Object.keys(SHELVES).map(shelf => ({ shelf }));
 
 export async function generateMetadata({ params }: { params: Promise<{ shelf: string }> }): Promise<Metadata> {

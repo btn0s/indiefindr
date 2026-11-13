@@ -19,7 +19,7 @@ export type RecommendationCard = {
 };
 
 /** Join cards in the same database read as the saved slate. */
-export async function getRecommendations(appid: number): Promise<RecommendationCard[]> {
+export const getRecommendations = cache(async (appid: number): Promise<RecommendationCard[]> => {
   const { data, error } = await getSupabaseServerClient()
     .from("game_recs")
     .select("rank,source,game:games!game_recs_rec_appid_fkey!inner(appid,title,header_image,review_count,review_positive_pct,is_indie)")
@@ -30,7 +30,7 @@ export async function getRecommendations(appid: number): Promise<RecommendationC
   const recs = (data ?? []) as unknown as RecommendationCard[];
   const source = recs.some((rec) => rec.source === "llm") ? "llm" : "model";
   return recs.filter((rec) => rec.source === source);
-}
+});
 
 /** Everything a game card shows, selected the same way everywhere. */
 export const CARD_FIELDS = "appid,title,header_image,review_count,review_positive_pct";
@@ -70,6 +70,7 @@ export const SHELVES = {
   },
 } as const;
 export type ShelfSlug = keyof typeof SHELVES;
+export const isShelf = (slug: string): slug is ShelfSlug => slug in SHELVES;
 
 export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGame[]> {
   const { data, error } = await SHELVES[slug].query(shelfBase()).limit(limit);
