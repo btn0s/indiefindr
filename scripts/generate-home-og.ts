@@ -3,7 +3,7 @@
 /**
  * Build-time OG image generator for the homepage.
  *
- * Creates `public/og/home.png` (1200x630) using real Steam capsule/header images.
+ * Creates `public/og/home.png` (1200x630) from the stored Steam header images of the most-reviewed indies.
  * This avoids runtime DB/remote fetch latency for social crawlers (Twitter/Slack).
  */
 
@@ -26,27 +26,9 @@ const TILE_H = 200;
 const GAP = 16;
 const RADIUS = 18;
 
-const FALLBACK_APPIDS = [
-  413150, // Stardew Valley
-  367520, // Hollow Knight
-  588650, // Dead Cells
-  646570, // Slay the Spire
-  504230, // Celeste
-  1145360, // Hades
-];
-
-type Row = {
-  appid: number;
-  review_count: number;
-};
-
-function steamCapsuleUrl(appid: number) {
-  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/capsule_616x353.jpg`;
-}
-
-function steamHeaderUrl(appid: number) {
-  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
-}
+// Long-lived Steam header URLs, used when the build has no database access.
+const FALLBACK_IMAGES = [413150, 367520, 588650, 646570, 504230, 1145360]
+  .map(appid => `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`);
 
 async function fetchBuffer(url: string, timeoutMs = 2500): Promise<Buffer | null> {
   const controller = new AbortController();
@@ -129,7 +111,7 @@ async function makePlaceholderTilePng(): Promise<Buffer> {
   return sharp(Buffer.from(placeholderTileSvg())).png().toBuffer();
 }
 
-async function getTopAppIds(): Promise<number[]> {
+async function getTopImages(): Promise<string[]> {
   const url =
     process.env.SUPABASE_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -142,42 +124,37 @@ async function getTopAppIds(): Promise<number[]> {
 
   if (!url || !key) {
     console.warn(
-      "[generate-home-og] Missing Supabase env; using fallback appids."
+      "[generate-home-og] Missing Supabase env; using fallback images."
     );
-    return FALLBACK_APPIDS;
+    return FALLBACK_IMAGES;
   }
 
   try {
     const supabase = createClient(url, key, { auth: { persistSession: false } });
     const { data, error } = await supabase
       .from("games")
-      .select("appid, review_count")
+      .select("header_image")
       .eq("is_indie", true)
+      .not("header_image", "is", null)
       .order("review_count", { ascending: false })
       .limit(6);
 
     if (error || !data) {
       console.warn(
-        "[generate-home-og] Supabase query failed; using fallback appids.",
+        "[generate-home-og] Supabase query failed; using fallback images.",
         error?.message
       );
-      return FALLBACK_APPIDS;
+      return FALLBACK_IMAGES;
     }
 
-    const games = data as Row[];
-
-    const ids = games
-      .map((g) => g.appid)
-      .filter((x): x is number => typeof x === "number" && Number.isFinite(x))
-      .slice(0, 6);
-
-    return ids.length === 6 ? ids : FALLBACK_APPIDS;
+    const images = (data as { header_image: string }[]).map(row => row.header_image);
+    return images.length === 6 ? images : FALLBACK_IMAGES;
   } catch (err) {
     console.warn(
-      "[generate-home-og] Unexpected error; using fallback appids.",
+      "[generate-home-og] Unexpected error; using fallback images.",
       err
     );
-    return FALLBACK_APPIDS;
+    return FALLBACK_IMAGES;
   }
 }
 
@@ -185,14 +162,12 @@ async function main() {
   console.log("[generate-home-og] Generating homepage OG image...");
   await fs.mkdir(OUT_DIR, { recursive: true });
 
-  const appIds = await getTopAppIds();
-  console.log("[generate-home-og] Using appids:", appIds.join(", "));
+  const images = await getTopImages();
+  console.log("[generate-home-og] Using images:", images.join(", "));
 
   const tiles: Buffer[] = await Promise.all(
-    appIds.slice(0, 6).map(async (appid) => {
-      const capsule = await fetchBuffer(steamCapsuleUrl(appid), 2200);
-      const header = capsule ? null : await fetchBuffer(steamHeaderUrl(appid), 2200);
-      const img = capsule || header;
+    images.map(async (url) => {
+      const img = await fetchBuffer(url, 2200);
       if (!img) return makePlaceholderTilePng();
       try {
         return await makeTilePngFromImage(img);

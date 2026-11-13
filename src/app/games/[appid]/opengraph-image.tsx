@@ -9,5 +9,5 @@ export const contentType = "image/png";
 
 export default async function Image({ params }: { params: Promise<{ appid: string }> }) {
   const appId = Number((await params).appid);
-  return gameGridImage(Number.isInteger(appId) ? (await getRecommendations(appId)).map(({ game }) => game.appid) : []);
+  return gameGridImage(Number.isInteger(appId) ? (await getRecommendations(appId)).map(({ game }) => game.header_image) : []);
 }
