@@ -13,6 +13,6 @@ export function RatingBadge({ pct, count }: { pct: number | null; count: number 
   if (!label) return null;
   return <div className="rating-badge" title={`${pct}% of ${count.toLocaleString("en-US")} Steam reviews are positive`}>
     <strong>{pct}%</strong>
-    <span><b>{label}</b>{compactCount(count)} Steam reviews</span>
+    <span><b>{label}</b><small>{compactCount(count)} <span className="rating-source">Steam </span>reviews</small></span>
   </div>;
 }

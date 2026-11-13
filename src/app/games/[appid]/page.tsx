@@ -171,9 +171,9 @@ export default async function GamePage({
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <header className="source-header">
             <div className="page-head">
-            <h1 className="page-title">Games like <span itemProp="name">{game.title}</span></h1>
+            <h1 className="page-title"><span className="page-eyebrow">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
             <p className="game-meta">
-              {game.developers?.length > 0 && <span>By {game.developers.join(", ")}</span>}
+              {game.developers?.length > 0 && <span className="meta-by">By {game.developers.join(", ")}</span>}
               {game.release_date && <span>{new Date(game.release_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>}
               {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)}</span>}
             </p>
