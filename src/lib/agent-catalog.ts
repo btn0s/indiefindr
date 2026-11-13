@@ -1,7 +1,7 @@
 import { getGame, getGamePageSlate } from './catalog';
 import { getSupabaseServerClient } from './supabase/server';
 import { steamRating } from './rating';
-const origin='https://indiefindr.gg';
+const origin='https://www.indiefindr.gg';
 export const links=(appid:number)=>({url:`${origin}/games/${appid}`,steam_url:`https://store.steampowered.com/app/${appid}/`});
 export async function searchGames(query:string){
  const db=getSupabaseServerClient();
