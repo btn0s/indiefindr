@@ -23,7 +23,7 @@ export default async function ShelfPage({ params }: { params: Promise<{ shelf: s
       <p className="page-note">{SHELVES[shelf].note}</p>
     </header>
     <div className="game-grid">
-      {games.map((game, index) => <GameCard key={game.appid} {...game} priority={index < 8} />)}
+      {games.map((game, index) => <GameCard key={game.appid} {...game} preload={index < 8} />)}
     </div>
   </main>;
 }

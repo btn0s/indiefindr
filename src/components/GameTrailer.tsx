@@ -29,7 +29,7 @@ export function GameTrailer({ title, trailer, still }: { title: string; trailer:
   }, [trailer]);
   const image = trailer?.poster ?? still;
   return <div className="game-trailer">
-    {image && <Image src={image} alt={`${title} screenshot`} fill priority sizes="(max-width: 900px) 100vw, 870px" className="object-cover" />}
+    {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes="(max-width: 900px) 100vw, 870px" className="object-cover" />}
     {trailer && <video ref={ref} muted={muted} loop playsInline aria-label={`${title} trailer`}
       onPlaying={() => setPlaying(true)} data-playing={playing} />}
     {playing && <button className="trailer-sound" onClick={() => setMuted(value => !value)} aria-label={muted ? "Unmute trailer" : "Mute trailer"}>

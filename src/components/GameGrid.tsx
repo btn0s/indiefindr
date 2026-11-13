@@ -60,11 +60,10 @@ export function GameGrid({ initialGames }: GameGridProps) {
   return (
     <>
       <div className="game-grid">
-        {games.map((game, index) => (
+        {games.map((game) => (
           <GameCard
             key={game.appid}
             {...game}
-            priority={index < 6}
           />
         ))}
       </div>

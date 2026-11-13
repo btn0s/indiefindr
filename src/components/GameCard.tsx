@@ -12,7 +12,8 @@ export interface GameCardProps {
   header_image: string | null;
   review_count?: number;
   review_positive_pct?: number | null;
-  priority?: boolean;
+  /** Above the fold: fetch the art with the page instead of lazily. */
+  preload?: boolean;
   pageAppid?: number;
   position?: number;
 }
@@ -23,7 +24,7 @@ export function GameCard({
   header_image,
   review_count = 0,
   review_positive_pct = null,
-  priority = false,
+  preload = false,
   pageAppid, position = 0,
 }: GameCardProps) {
   const ref=useRef<HTMLAnchorElement>(null);
@@ -39,7 +40,7 @@ export function GameCard({
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
               className="absolute inset-0 w-full h-full object-cover"
-              priority={priority}
+              preload={preload}
             />
           )}
         </div>
