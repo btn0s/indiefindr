@@ -139,14 +139,12 @@
   /* Text tiers: ink for names and headings, body for reading, muted for metadata. */
   --text-body: #3b3b42;
 
-  /* Type scale. */
+  /* Type scale: five sizes. Which text uses which is decided only in the Type roles block below. */
   --type-display: clamp(36px, 4.8vw, 52px);
   --type-title: 32px;
   --type-heading: 20px;
-  --type-body: 16px;
-  --type-ui: 14px;
-  --type-small: 13px;
-  --type-caption: 12px;
+  --type-body: 14px;
+  --type-meta: 13px;
 
   /* Vertical rhythm on a 4px grid. */
   --page-top: 32px;
@@ -159,16 +157,38 @@
 }
 
 body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); }
+/* Type roles. Every piece of text belongs to exactly one role here, and no other rule sets
+   font size, leading, weight or tracking. Colour is a separate choice of three tiers: ink, body, muted. */
+.home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.045em; }
+.page-title, .rating-badge strong { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; }
+.section-heading h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
+/* Lead: heading size at reading weight; the one introductory sentence on a page. */
+.home-intro .lede { font-size: var(--type-heading); line-height: 1.5; }
+/* Body: running text and notes. */
+.source-description, .section-heading p, .page-note, .empty-note, .home-intro .examples, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; }
+/* Label: names and actions. */
+.game-card-title, .search-title, .see-all, .steam-link, .search-cancel, .rating-badge b { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
+/* Meta: facts about a game, captions, the footer. */
+.card-rating, .search-meta, .search-label, .game-meta, .rating-badge > span, .rating-badge small, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+/* Emphasis inside a role keeps its size and gains weight. */
+.card-rating strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
+@media(max-width: 640px) {
+  /* Phones: the rating collapses to one body-size line under the metadata. */
+  .rating-badge strong, .rating-badge > span, .rating-badge b, .rating-badge small { font-size: var(--type-body); line-height: 1.6; letter-spacing: 0; }
+  .rating-badge strong { font-weight: 600; }
+}
+
 .site-shell { min-height: 100vh; background: var(--background); }
 
 /* Header */
 .site-header { background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 40; }
 .site-nav { max-width: 928px; margin: auto; padding: 10px 16px; display: flex; align-items: center; gap: 20px; }
+/* The logo lockup sits outside the text roles: it is the brand mark, not a heading. */
 .wordmark { display: inline-flex; align-items: center; gap: 7px; font-size: 18px; line-height: 27px; font-weight: 700; letter-spacing: -0.03em; white-space: nowrap; }
 .wordmark svg { flex-shrink: 0; }
 .site-search { position: relative; flex: 1; }
 .search-box { display: flex; align-items: center; padding: 0 4px 0 12px; gap: 8px; border: 1px solid var(--border); background: var(--background); border-radius: 8px; }
-.search-box input { width: 100%; min-width: 0; background: transparent; outline: none; font-size: var(--type-ui); padding: 8px 0; }
+.search-box input { width: 100%; min-width: 0; background: transparent; outline: none; padding: 8px 0; }
 .search-box:focus-within { border-color: var(--brand); }
 .search-box button { display: none; }
 .search-results { position: absolute; z-index: 30; width: 100%; top: calc(100% + 8px); border: 1px solid var(--border); border-radius: 10px; background: var(--card); padding: 6px; box-shadow: 0 12px 36px color-mix(in srgb, var(--foreground) 8%, transparent); }
@@ -176,19 +196,19 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .search-art { flex-shrink: 0; width: 92px; aspect-ratio: 460/215; overflow: hidden; border-radius: 4px; background: var(--muted); }
 .search-art img { width: 100%; height: 100%; object-fit: cover; }
 .search-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.search-title { font-size: var(--type-ui); font-weight: 500; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.search-meta { display: flex; gap: 10px; font-size: var(--type-caption); line-height: 1.4; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; }
-.search-meta strong { color: var(--foreground); font-weight: 600; font-variant-numeric: tabular-nums; }
-.search-status { padding: 12px; font-size: var(--type-ui); color: var(--muted-foreground); }
+.search-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-meta { display: flex; gap: 10px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; }
+.search-meta strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+.search-status { padding: 12px; color: var(--muted-foreground); }
 .search-cancel { display: none; }
-.search-label { padding: 6px 6px 4px; font-size: var(--type-caption); font-weight: 500; color: var(--muted-foreground); }
+.search-label { padding: 6px 6px 4px; color: var(--muted-foreground); }
 @media(max-width: 700px) {
   /* 16px stops iOS zooming into the field on focus. */
   .search-box input { font-size: 16px; }
   /* Open search on phones: a full-screen sheet with the field on top and results below. */
   .site-search[data-open=true] { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 1fr; align-content: start; column-gap: 12px; padding: 10px 16px 0; background: var(--background); animation: search-sheet .24s cubic-bezier(.2,.8,.2,1); }
   .site-search[data-open=true] .search-box { background: var(--card); }
-  .site-search[data-open=true] .search-cancel { display: block; font-size: 15px; font-weight: 500; }
+  .site-search[data-open=true] .search-cancel { display: block; }
   .site-search[data-open=true] .search-results { position: static; width: auto; grid-column: 1 / -1; margin: 12px -16px 0; padding: 0 10px calc(16px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; background: none; box-shadow: none; overflow-y: auto; overscroll-behavior: contain; animation: search-rows .28s cubic-bezier(.2,.8,.2,1); }
   html:has(.site-search[data-open=true]) { overflow: hidden; }
 }
@@ -201,24 +221,24 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .discovery-page { max-width: 896px; margin: auto; padding: var(--page-top) 0 64px; }
 .discovery-page > * + * { margin-top: var(--section-gap); }
 .page-head { display: flex; flex-direction: column; gap: 8px; }
-.page-title { font-size: var(--type-title); font-weight: 650; letter-spacing: -0.025em; line-height: 1.15; text-wrap: pretty; }
+.page-title { text-wrap: pretty; }
 .title-lead { color: var(--muted-foreground); }
-.page-note { font-size: var(--type-ui); line-height: 1.5; color: var(--muted-foreground); }
-.empty-note { font-size: var(--type-ui); color: var(--muted-foreground); }
+.page-note { color: var(--muted-foreground); }
+.empty-note { color: var(--muted-foreground); }
 
 /* Home hero */
 .home-intro { padding: 8px 0 0; display: grid; grid-template-columns: 1fr 1.05fr; gap: 40px; align-items: center; }
-.home-intro h1 { font-size: var(--type-display); line-height: 1.05; text-wrap: balance; font-weight: 650; letter-spacing: -0.045em; margin: 0 0 16px; }
-.home-intro .lede { max-width: 26em; font-size: 17px; line-height: 1.55; color: var(--text-body); text-wrap: pretty; }
-.home-intro .examples { margin-top: 16px; font-size: var(--type-ui); color: var(--muted-foreground); text-wrap: balance; }
+.home-intro h1 { text-wrap: balance; margin: 0 0 16px; }
+.home-intro .lede { max-width: 26em; color: var(--text-body); text-wrap: pretty; }
+.home-intro .examples { margin-top: 16px; color: var(--muted-foreground); text-wrap: balance; }
 .home-intro .examples span { white-space: nowrap; }
-.home-intro .examples a { color: var(--foreground); font-weight: 500; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+.home-intro .examples a { color: var(--foreground); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
 .home-intro .examples a:hover { text-decoration-color: currentColor; }
 .showcase { position: relative; padding-bottom: 10%; }
 .showcase-source { position: relative; display: block; width: 100%; border-radius: 14px; overflow: hidden; box-shadow: 0 18px 40px color-mix(in srgb, var(--foreground) 15%, transparent); }
 .showcase-source img { width: 100%; aspect-ratio: 460/215; object-fit: cover; }
-.showcase-source span { position: absolute; left: 12px; top: 12px; padding: 7px 12px; border-radius: 7px; background: color-mix(in srgb, var(--background) 92%, transparent); font-size: var(--type-small); color: var(--muted-foreground); backdrop-filter: blur(6px); }
-.showcase-source strong { color: var(--foreground); font-weight: 650; }
+.showcase-source span { position: absolute; left: 12px; top: 12px; padding: 7px 12px; border-radius: 7px; background: color-mix(in srgb, var(--background) 92%, transparent); color: var(--muted-foreground); backdrop-filter: blur(6px); }
+.showcase-source strong { color: var(--foreground); }
 .showcase-recs { position: absolute; right: -5%; bottom: 0; width: 100%; padding-left: 14%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .showcase-recs a { display: block; border-radius: 9px; overflow: hidden; border: 3px solid var(--background); box-shadow: 0 10px 22px color-mix(in srgb, var(--foreground) 18%, transparent); transition: transform .2s cubic-bezier(.2,.8,.2,1); }
 .showcase-recs a:hover { transform: translateY(-6px); }
@@ -226,9 +246,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 
 /* Section heading: title over a one-line note, optional See all on the right. */
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: var(--heading-gap); }
-.section-heading h2 { font-size: var(--type-heading); font-weight: 600; letter-spacing: -0.015em; line-height: 1.3; }
-.section-heading p { margin-top: 2px; font-size: var(--type-ui); line-height: 1.5; color: var(--muted-foreground); }
-.see-all { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-size: var(--type-ui); font-weight: 500; white-space: nowrap; }
+.section-heading p { margin-top: 2px; color: var(--muted-foreground); }
+.see-all { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .see-all svg { transition: transform .15s ease-out; }
 .see-all:hover svg { transform: translateX(2px); }
 
@@ -238,37 +257,35 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-card { display: block; }
 .game-card:hover .game-card-title { text-decoration: underline; text-underline-offset: 3px; }
 .game-card-art { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 460/215; background: var(--muted); }
-.game-card-title { padding-top: 10px; font-size: var(--type-ui); font-weight: 500; line-height: 1.35; }
-.card-rating { margin-top: 2px; font-size: var(--type-small); line-height: 1.4; color: var(--muted-foreground); }
-.card-rating strong { color: var(--foreground); font-weight: 600; font-variant-numeric: tabular-nums; }
+.game-card-title { padding-top: 10px; }
+.card-rating { margin-top: 2px; color: var(--muted-foreground); }
+.card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 
 /* Game page */
 .source-game { display: flex; flex-direction: column; gap: 20px; padding-bottom: var(--divider-gap); border-bottom: 1px solid var(--border); }
 .discovery-page > .source-game + * { margin-top: var(--divider-gap); }
 .source-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
-.game-meta { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: var(--type-ui); line-height: 1.5; color: var(--muted-foreground); }
+.game-meta { display: flex; flex-wrap: wrap; gap: 2px 16px; color: var(--muted-foreground); }
 .rating-badge { display: flex; align-items: center; gap: 12px; flex-shrink: 0; padding: 10px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
-.rating-badge strong { font-size: var(--type-title); font-weight: 650; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
-.rating-badge > span { display: flex; flex-direction: column; font-size: var(--type-caption); line-height: 1.4; color: var(--muted-foreground); }
-.rating-badge b { font-size: var(--type-ui); font-weight: 600; color: var(--foreground); }
-.rating-badge small { font-size: inherit; }
+.rating-badge strong { font-variant-numeric: tabular-nums; }
+.rating-badge > span { display: flex; flex-direction: column; color: var(--muted-foreground); }
+.rating-badge b { color: var(--foreground); }
 .game-trailer { position: relative; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background: var(--media); }
 .game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
 .game-trailer video[data-playing=true] { opacity: 1; }
 .trailer-sound { position: absolute; right: 12px; bottom: 12px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--media) 65%, transparent); color: #fff; }
-.source-description { max-width: 65ch; font-size: var(--type-ui); line-height: 1.6; color: var(--text-body); text-wrap: pretty; }
+.source-description { max-width: 65ch; color: var(--text-body); text-wrap: pretty; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
-.steam-link { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: var(--type-ui); font-weight: 500; }
+.steam-link { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); }
 .steam-link:hover { background: color-mix(in srgb, var(--primary) 82%, white); }
 @media(max-width: 640px) {
   .source-header { flex-direction: column; align-items: flex-start; gap: 12px; }
   /* Phones: developer gets its own line, so a wrap never strands a separator. */
   .game-meta .meta-by { flex-basis: 100%; }
   /* Phones: the rating is one quiet line of text under the metadata, not a second headline. */
-  .rating-badge { display: block; padding: 0; border: 0; background: none; font-size: var(--type-ui); line-height: 1.5; }
-  .rating-badge strong { font-size: 15px; letter-spacing: 0; margin-right: 6px; }
-  .rating-badge > span { display: inline; font-size: inherit; }
-  .rating-badge b { font-size: inherit; }
+  .rating-badge { display: block; padding: 0; border: 0; background: none; }
+  .rating-badge strong { margin-right: 6px; }
+  .rating-badge > span { display: inline; }
   .rating-badge small::before { content: ", "; }
   .rating-badge .rating-source { display: none; }
   .source-game { gap: 16px; }
@@ -277,7 +294,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 }
 
 /* Footer */
-.site-footer { max-width: 896px; margin: auto; padding: 28px 0 36px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 24px; color: var(--muted-foreground); font-size: var(--type-caption); }
+.site-footer { max-width: 896px; margin: auto; padding: 28px 0 36px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 24px; color: var(--muted-foreground); }
 
-@media(max-width: 700px) { .site-nav { gap: 12px; } .home-intro { grid-template-columns: 1fr; gap: 30px; } .home-intro .lede { font-size: var(--type-body); } .showcase { display: none; } .site-footer { padding: 24px 0; } }
+@media(max-width: 700px) { .site-nav { gap: 12px; } .home-intro { grid-template-columns: 1fr; gap: 30px; } .showcase { display: none; } .site-footer { padding: 24px 0; } }
 @media(max-width: 900px) { .site-footer { margin-inline: 16px; } }
