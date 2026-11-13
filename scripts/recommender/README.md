@@ -1,6 +1,6 @@
 # Offline merged recommender
 
-This is the serving pipeline for the settled flat-tag + fine-tuned BGE-small → LambdaRank model. It never fits new weights or evaluates/selects models. It runs only on the Mac; the Next.js deployment contains none of the model data.
+This is the serving pipeline for the settled flat-tag + fine-tuned BGE-small → LambdaRank model. It never fits new weights or evaluates/selects models. It runs on the devbox Mac, keeping heavy work off bt's Mac; the Next.js deployment contains none of the model data.
 
 `score.py` and `params.json` are copied without edits from the research workspace's handwritten scorer. `run.py` uses its exact features and global score normalization, the saved 22-feature merged LambdaRank, and the saved tag-trained encoder. Tags use the original flattened Steam representation plus linear TF–IDF cosine. Both retrieval lists are restricted to eligible indie games before union and ranking. The top ten use deterministic appid tie-breaking.
 

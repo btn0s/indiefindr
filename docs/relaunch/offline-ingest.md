@@ -1,6 +1,6 @@
 # Offline catalog ingest
 
-The Mac owns acquisition, encoding, ranking, and publication. Next.js only reads the published data and serves cached pages. No LLM APIs, hosted model APIs, or paid Steam services are involved.
+The devbox Mac owns acquisition, encoding, ranking, and publication. Next.js only reads the published data and serves cached pages. No LLM APIs, hosted model APIs, or paid Steam services are involved.
 
 ## Current-catalog coverage fix
 
@@ -34,4 +34,4 @@ Encoding chunks are bound to the encoder SHA and exact source text. Ranking jour
 
 The native scheduler uses an OS-owned file lock and a durable `data/active-run.json` stage manifest. Failed runs resume their completed generation, rather than starting another model run. Before a new encoding run, capacity is checked; a blocked publication can resume directly after approval without recomputing recommendations.
 
-BB script automations have a 15-minute execution ceiling, so the long-running MPS pipeline uses a native macOS LaunchAgent instead of an agent automation. It is scheduled for 03:15 local time, uses background priority, and writes stdout/stderr under `data/nightly/`. It invokes no LLM and never modifies production deployment state.
+BB script automations have a 15-minute execution ceiling, so the long-running MPS pipeline uses a native macOS LaunchAgent instead of an agent automation. The installer schedules 03:15 local time, uses background priority, and writes stdout/stderr under `data/nightly/`. The installer is prepared but not installed yet; its target is devbox, not the user's Mac. It invokes no LLM and never modifies production deployment state.

@@ -6,12 +6,15 @@ Only indie targets enter the two retrieval lists and final stored top-ten.
 """
 import os
 os.environ.update(HF_HUB_OFFLINE='1',TOKENIZERS_PARALLELISM='false',OMP_NUM_THREADS='2',OPENBLAS_NUM_THREADS='2',MKL_NUM_THREADS='2',VECLIB_MAXIMUM_THREADS='2')
-import argparse,hashlib,html,json,pathlib,re,sys
+import argparse,hashlib,html,json,pathlib,re,sys,fcntl
 import numpy as np
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts/relaunch'))
 from catalog import is_indie
 p=argparse.ArgumentParser();p.add_argument('stage',choices=['encode','score']);p.add_argument('--source',type=pathlib.Path,default=ROOT/'data/full-source');p.add_argument('--artifacts',type=pathlib.Path,default=ROOT/'data/full-model');p.add_argument('--model',type=pathlib.Path,default=ROOT/'data/model');a=p.parse_args();a.artifacts.mkdir(parents=True,exist_ok=True)
+# Serialize native model work even when invoked outside the nightly runner.
+compute_lock=(ROOT/'data/recommender.lock').open('a')
+fcntl.flock(compute_lock,fcntl.LOCK_EX)
 rows=sorted(json.loads((a.source/'data/catalog.json').read_text())['rows'],key=lambda r:int(r['appid']))
 enrichment=json.loads((a.source/'data/steam_tags.json').read_text());ids=[int(r['appid']) for r in rows]
 # Frozen training recipe uses raw catalog text plus top-15 actual Steam tags.
