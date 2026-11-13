@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { track } from "@/lib/tracking";
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -41,7 +40,7 @@ export function GameCard({
             />
           )}
         </div>
-        <div className="game-card-title"><span>{title}</span><ArrowUpRight size={16} /></div>
+        <div className="game-card-title"><span>{title}</span></div>
         {explanation && (
           <div className="text-xs text-muted-foreground first-letter:uppercase">
             {explanation}

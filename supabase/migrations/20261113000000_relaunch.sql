@@ -3,6 +3,7 @@ create table public.tags (id integer primary key, name text not null);
 create table public.games (
  appid integer primary key, slug text not null unique, title text not null,
  short_description text, header_image text, release_date date,
+ screenshots text[] not null default '{}', trailers jsonb not null default '[]'::jsonb,
  developers text[] not null default '{}', publishers text[] not null default '{}',
  genres text[] not null default '{}', price_cents integer, is_free boolean not null default false,
  steam_type text, review_count integer not null default 0,

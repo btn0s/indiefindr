@@ -2,7 +2,8 @@
 import datetime,fcntl,json,os,pathlib,subprocess
 ROOT=pathlib.Path(__file__).resolve().parents[2];os.chdir(ROOT)
 os.environ.update(PYTHONDONTWRITEBYTECODE='1',HF_HUB_OFFLINE='1',TOKENIZERS_PARALLELISM='false',OMP_NUM_THREADS='2',OPENBLAS_NUM_THREADS='2',MKL_NUM_THREADS='2',VECLIB_MAXIMUM_THREADS='2',HF_HOME=str(ROOT/'data/huggingface'))
-python=ROOT/'scripts/recommender/.venv/bin/python';pointer=ROOT/'data/active-run.json'
+python=ROOT/'scripts/recommender/.venv/bin/python'
+ranker_python=ROOT/'data/ranker-env/bin/python';pointer=ROOT/'data/active-run.json'
 def save(state):
  tmp=pointer.with_suffix('.tmp');tmp.write_text(json.dumps(state,indent=2));tmp.replace(pointer)
 with (ROOT/'data/ingest.lock').open('a') as lock:
@@ -13,7 +14,9 @@ with (ROOT/'data/ingest.lock').open('a') as lock:
   run_id=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ');run=ROOT/'data/runs'/run_id;run.mkdir(parents=True,exist_ok=True)
   state={'run':str(run),'source':str(run/'source'),'model':str(run/'model'),'import':str(run/'import'),'completed':[],'status':'running'};save(state)
  run=pathlib.Path(state['run']);source=pathlib.Path(state['source']);artifacts=pathlib.Path(state['model']);imports=pathlib.Path(state['import'])
- def execute(script,*args):subprocess.run([str(python),str(ROOT/script),*map(str,args)],check=True)
+ def execute(script,*args):
+  interpreter=ranker_python if script=='scripts/recommender/run.py' and args and args[0]=='score' else python
+  subprocess.run([str(interpreter),str(ROOT/script),*map(str,args)],check=True)
  def stage(name,script,*args):
   if name in state['completed']:return
   state['stage']=name;state['status']='running';save(state)
@@ -30,6 +33,7 @@ with (ROOT/'data/ingest.lock').open('a') as lock:
   stage('score','scripts/recommender/run.py','score','--source',source,'--artifacts',artifacts)
   stage('prepare','scripts/relaunch/prepare.py',source,'--out',imports)
   stage('publish','scripts/relaunch/publish.py','--data',imports)
+  stage('search','scripts/relaunch/publish-search.py','--games',imports/'games.jsonl')
   state['status']='published';state['finished_at']=datetime.datetime.now(datetime.timezone.utc).isoformat();save(state)
   (ROOT/'data/latest-published-run.txt').write_text(str(run)+'\n');(run/'result.json').write_text(json.dumps(state))
  except subprocess.CalledProcessError as error:

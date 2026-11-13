@@ -78,9 +78,9 @@ export default async function Home() {
   return (
     <main className="discovery-page">
       <section className="home-intro">
-        <div><span className="eyebrow">Big feelings. Independent games.</span>
-          <h1>Your next favorite<br /><em>is out there.</em></h1>
-          <p>Start with a game you love. Discover indie games with that same spark—and a little something of their own.</p>
+        <div>
+          <h1>Indie games like<br /><em>your favorites.</em></h1>
+          <p>Search a game you know. Find independent games with similar gameplay, themes, and feel.</p>
         </div>
         <div className="featured-art" aria-label="Discover indie favorites">
           {games.slice(0,2).map(game => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true}>
@@ -89,7 +89,7 @@ export default async function Home() {
         </div>
       </section>
       <section>
-        <div className="section-heading"><h2>A good place to start</h2><span>Indie favorites, endless possibilities</span></div>
+        <div className="section-heading"><h2>A good place to start</h2></div>
         {games.length ? <GameGrid initialGames={games} /> : <p className="text-muted-foreground">The catalog is being updated. Please check back soon.</p>}
       </section>
     </main>

@@ -120,7 +120,7 @@ export default function RootLayout({
         <div className="site-shell">
           <Navbar />
           <div className="px-4 sm:px-7">{children}</div>
-          <footer className="site-footer"><span>indiefindr · For the love of independent games.</span><span>Find something worth playing.</span></footer>
+          <footer className="site-footer"><span>indiefindr</span><span>Game information and media from Steam.</span></footer>
         </div>
 
         <Toaster />
