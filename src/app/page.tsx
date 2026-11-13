@@ -4,10 +4,13 @@ import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameGrid } from "@/components/GameGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
-import { getGame, getRecommendations } from "@/lib/catalog";
+import { getGame, getHomeShelves, getRecommendations } from "@/lib/catalog";
+import { GameCard } from "@/components/GameCard";
 
 // Well-known indies whose pages show off the recommendations; one is featured per revalidation.
 const SHOWCASE = [413150, 367520, 105600, 1145360, 504230, 646570];
+// Any game works as a starting point, AAA included; recommendations are always indie.
+const EXAMPLES = [[413150, "Stardew Valley"], [1938090, "Call of Duty"], [1245620, "Elden Ring"], [2379780, "Balatro"], [367520, "Hollow Knight"]] as const;
 const pickShowcase = () => SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)];
 
 
@@ -81,14 +84,17 @@ export default async function Home() {
   }
 
   const showcaseId = pickShowcase();
-  const [showcase, showcaseRecs] = await Promise.all([getGame(showcaseId), getRecommendations(showcaseId)]);
+  const [showcase, showcaseRecs, shelves] = await Promise.all([getGame(showcaseId), getRecommendations(showcaseId), getHomeShelves()]);
 
   return (
     <main className="discovery-page">
       <section className="home-intro">
         <div>
           <h1>Indie games like<br /><em>your favorites.</em></h1>
-          <p>Search a game you know. Find independent games with similar gameplay, themes, and feel.</p>
+          <p>Start with any game you know. We&rsquo;ll find independent games with similar gameplay, themes, and feel.</p>
+          <p className="examples">Try {EXAMPLES.map(([appid, title], index) => <span key={appid}>
+            <Link href={`/games/${appid}`} prefetch={true}>{title}</Link>{index < EXAMPLES.length - 1 ? ", " : ""}
+          </span>)}</p>
         </div>
         {showcase && <div className="showcase">
           <Link href={`/games/${showcase.appid}`} prefetch={true} className="showcase-source">
@@ -102,10 +108,23 @@ export default async function Home() {
           </div>
         </div>}
       </section>
+      <Shelf title="Rising" note="Breakout indies from the past year" games={shelves.rising} />
+      <Shelf title="Hidden gems" note="Loved by players, still under the radar · new picks daily" games={shelves.gems} />
+      {shelves.fresh.length >= 4 && <Shelf title="New on Steam" note="Released in the last two months" games={shelves.fresh.slice(0, 4)} />}
       <section>
-        <div className="section-heading"><h2>A good place to start</h2></div>
+        <div className="section-heading"><h2>Browse all</h2></div>
         {games.length ? <GameGrid initialGames={games} /> : <p className="text-muted-foreground">The catalog is being updated. Please check back soon.</p>}
       </section>
     </main>
   );
+}
+
+function Shelf({ title, note, games }: { title: string; note: string; games: GameCardGame[] }) {
+  if (!games.length) return null;
+  return <section className="shelf">
+    <div className="section-heading"><h2>{title}</h2><span>{note}</span></div>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
+      {games.map(game => <GameCard key={game.appid} {...game} />)}
+    </div>
+  </section>;
 }
