@@ -76,8 +76,8 @@ export default async function Home() {
     <main className="discovery-page">
       <section className="home-intro">
         <div>
-          <h1>Indie games like<br /><em>your favorites.</em></h1>
-          <p>Start with any game you know. We&rsquo;ll find independent games with similar gameplay, themes, and feel.</p>
+          <h1>Find your next favorite indie game</h1>
+          <p>Start with any game you know. We&rsquo;ll find indie games with similar gameplay, themes, and feel.</p>
           <p className="examples">Try {EXAMPLES.map(([appid, title], index) => <span key={appid}>
             <Link href={`/games/${appid}`} prefetch={true}>{title}</Link>{index < EXAMPLES.length - 1 ? ", " : ""}
           </span>)}</p>
