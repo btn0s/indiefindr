@@ -24,23 +24,10 @@ async function SameDeveloperContent({
     .map((dev) => `developers.cs.{${dev}}`)
     .join(",");
 
-  // Get games and count in parallel
-  const [gamesResult, countResult] = await Promise.all([
-    supabase
-      .from("games")
-      .select("appid, title, header_image")
-      .neq("appid", appId)
-      .eq("is_indie", true)
-      .or(developerFilters)
-      .order("release_date", { ascending: false })
-      .limit(4),
-    supabase
-      .from("games")
-      .select("*", { count: "exact", head: true })
-      .neq("appid", appId)
-      .eq("is_indie", true)
-      .or(developerFilters),
-  ]);
+  const gamesResult = await supabase.from("games")
+    .select("appid, title, header_image")
+    .neq("appid", appId).eq("is_indie", true).or(developerFilters)
+    .order("release_date", { ascending: false }).limit(4);
 
   const games = gamesResult.data;
 

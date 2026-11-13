@@ -14,7 +14,7 @@ Tracking: visible-card impressions, card clicks, Steam clicks, tab session UUID,
 
 SEO: canonical game pages, VideoGame and breadcrumb structured data, llms.txt, sitemap index plus paginated shards. Requests never generate recommendations. Numeric appid routes remain canonical to preserve existing links.
 
-Validation: production build and TypeScript pass; ESLint has zero errors (two existing warnings). Local functional checks passed for home, Stardew Valley, Elden Ring, catalog search, and a test event insertion. Initial Next metadata sitemap returned 404; replaced with explicit sitemap index/shard routes.
+Validation: production build and TypeScript pass; ESLint has zero errors (one existing warning). Deployed game page and final sitemap shard returned HTTP 200 through Vercel CLI authenticated curl. Local functional checks passed for home, Stardew Valley, Elden Ring, catalog search, and a test event insertion. Initial Next metadata sitemap returned 404; replaced with explicit sitemap index/shard routes.
 
 ## Remaining authorized work
 
