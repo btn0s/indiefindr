@@ -2,7 +2,7 @@
 SLATE_SIZE = 24
 CANDIDATE_LIMIT = 200
 POPULARITY_CAPS = ((50_000, 5), (10_000, 10))
-MODEL_VERSION = 'lambdarank_merged-indie-full-v3-24-tilt-m5-10'
+MODEL_VERSION = 'lambdarank_merged-indie-full-v4-clean-24-tilt-m5-10'
 
 def select_targets(candidates, review_counts, count=SLATE_SIZE):
     selected = []

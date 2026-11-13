@@ -30,6 +30,10 @@ with (ROOT/'data/ingest.lock').open('a') as lock:
   (source/'llm_slates.json').write_bytes((ROOT/'data/relaunch-source/llm_slates.json').read_bytes());built.write_text(str(source)+'\n')
   stage('prices','scripts/relaunch/us-prices.py','--source',source)
   if 'encode' not in state['completed']:execute('scripts/relaunch/capacity.py','--source',source)
+  prior_quality=ROOT/'data/latest-review-quality.json'
+  if prior_quality.exists() and not (source/'review-quality.json').exists():(source/'review-quality.json').write_bytes(prior_quality.read_bytes())
+  stage('reviews','scripts/relaunch/check-reviews.py','--source',source,'--refresh')
+  prior_quality.write_bytes((source/'review-quality.json').read_bytes())
   stage('encode','scripts/recommender/run.py','encode','--source',source,'--artifacts',artifacts)
   stage('score','scripts/recommender/run.py','score','--source',source,'--artifacts',artifacts)
   stage('prepare','scripts/relaunch/prepare.py',source,'--out',imports)
