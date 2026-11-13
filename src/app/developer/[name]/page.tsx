@@ -136,8 +136,8 @@ export default async function DeveloperQueryPage({
         </header>
 
         <div className="game-grid">
-          {games.map((game) => (
-            <GameCard key={game.appid} {...game} />
+          {games.map((game, index) => (
+            <GameCard key={game.appid} {...game} preload={index < 8} />
           ))}
         </div>
       </main>

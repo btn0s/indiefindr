@@ -18,7 +18,8 @@ export type RecommendationCard = {
   game: CardGame & { is_indie: boolean };
 };
 
-/** Join cards in the same database read as the saved slate. */
+/** The game's full list: hand-written (LLM) picks first where a game has them, then the model's, without repeats.
+ *  Cards are joined in the same database read. */
 export const getRecommendations = cache(async (appid: number): Promise<RecommendationCard[]> => {
   const { data, error } = await getSupabaseServerClient()
     .from("game_recs")
@@ -28,8 +29,18 @@ export const getRecommendations = cache(async (appid: number): Promise<Recommend
     .order("rank");
   if (error) throw new Error("Recommendations unavailable");
   const recs = (data ?? []) as unknown as RecommendationCard[];
-  const source = recs.some((rec) => rec.source === "llm") ? "llm" : "model";
-  return recs.filter((rec) => rec.source === source);
+  const seen = new Set<number>();
+  return [...recs.filter(rec => rec.source === "llm"), ...recs.filter(rec => rec.source === "model")]
+    .filter(rec => rec.game.appid !== appid && !seen.has(rec.game.appid) && seen.add(rec.game.appid));
+});
+
+/** Up to four more indies from the same developer(s), newest first. */
+export const getDeveloperGames = cache(async (appid: number, developers: string[]): Promise<CardGame[]> => {
+  if (!developers.length) return [];
+  const { data } = await getSupabaseServerClient().from("games").select(CARD_FIELDS)
+    .neq("appid", appid).eq("is_indie", true).or(developers.map(dev => `developers.cs.{${dev}}`).join(","))
+    .order("release_date", { ascending: false }).limit(4);
+  return data ?? [];
 });
 
 /** Everything a game card shows, selected the same way everywhere. */

@@ -6,7 +6,7 @@ import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
 import { RatingBadge } from "@/components/Rating";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getGame, getRecommendations } from "@/lib/catalog";
+import { getDeveloperGames, getGame, getRecommendations } from "@/lib/catalog";
 
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
@@ -114,7 +114,9 @@ export default async function GamePage({
     }),
   };
 
-  const recs = await getRecommendations(appId);
+  const [allRecs, developerGames] = await Promise.all([getRecommendations(appId), getDeveloperGames(appId, game.developers)]);
+  // The developer row sits above the recommendations, so its games aren't repeated below.
+  const recs = allRecs.filter(({ game: rec }) => !developerGames.some(({ appid }) => appid === rec.appid));
   const recommendationsSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -185,8 +187,8 @@ export default async function GamePage({
           <div className="source-game-actions"><SteamLink appid={appId} price={game.is_free ? "Free" : game.price_cents != null ? `$${(game.price_cents / 100).toFixed(2)}` : null} /></div>
           <ShopLinks appid={appId} />
         </article>
-        <SuggestionsSection appId={appId} gameTitle={game.title} />
-        <SameDeveloperSection appId={appId} developers={game.developers} />
+        <SameDeveloperSection developers={game.developers} games={developerGames} />
+        <SuggestionsSection appId={appId} gameTitle={game.title} recs={recs} />
         <AdSlot />
       </main>
     </>

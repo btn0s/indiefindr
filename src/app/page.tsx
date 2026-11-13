@@ -84,17 +84,17 @@ export default async function Home() {
         </div>
         {showcase && <div className="showcase">
           <Link href={`/games/${showcase.appid}`} prefetch={true} className="showcase-source">
-            {showcase.header_image && <Image src={showcase.header_image} alt="" width={460} height={215} priority />}
+            {showcase.header_image && <Image src={showcase.header_image} alt="" width={460} height={215} preload />}
             <span>Games like <strong>{showcase.title}</strong></span>
           </Link>
           <div className="showcase-recs">
             {showcaseRecs.slice(0, 3).map(({ game }) => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true} title={game.title}>
-              {game.header_image && <Image src={game.header_image} alt={game.title} width={230} height={108} />}
+              {game.header_image && <Image src={game.header_image} alt={game.title} width={230} height={108} preload />}
             </Link>)}
           </div>
         </div>}
       </section>
-      <Shelf slug="rising" games={shelves.rising} />
+      <Shelf slug="rising" games={shelves.rising} aboveFold />
       <Shelf slug="hidden-gems" games={shelves.gems} />
       {shelves.fresh.length >= 4 && <Shelf slug="new" games={shelves.fresh} />}
       <section>
@@ -105,12 +105,12 @@ export default async function Home() {
   );
 }
 
-function Shelf({ slug, games }: { slug: ShelfSlug; games: GameCardGame[] }) {
+function Shelf({ slug, games, aboveFold = false }: { slug: ShelfSlug; games: GameCardGame[]; aboveFold?: boolean }) {
   if (!games.length) return null;
   return <section>
     <ShelfHeading title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} />
     <div className="game-grid">
-      {games.map(game => <GameCard key={game.appid} {...game} />)}
+      {games.map((game, index) => <GameCard key={game.appid} {...game} preload={aboveFold && index < 4} />)}
     </div>
   </section>;
 }
