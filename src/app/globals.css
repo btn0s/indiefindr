@@ -153,10 +153,13 @@ body { font-family: var(--font-inter), sans-serif; }
 .discovery-page { max-width: 896px; margin: auto; padding: 28px 0 64px; }
 .home-intro { padding: 24px 0 48px; display: grid; grid-template-columns: 1fr 1.05fr; gap: 40px; align-items: center; }
 .home-intro h1 { font-size: clamp(34px, 4.6vw, 48px); line-height: 1.05; text-wrap: balance; font-weight: 650; letter-spacing: -0.045em; margin: 0 0 16px; }
-.home-intro .examples { margin-top: 14px; font-size: 14px; }
+.home-intro .examples { margin-top: 14px; font-size: 14px; text-wrap: balance; }
+.home-intro .examples span { white-space: nowrap; }
 .home-intro .examples a { color: var(--foreground); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
 .home-intro .examples a:hover { color: var(--brand); text-decoration-color: currentColor; }
 .shelf { margin-bottom: 44px; }
+.home-intro .lede { max-width: 25em; text-wrap: balance; }
+.home-intro .lede span { display: block; margin-top: 2px; }
 .home-intro p { max-width: 360px; font-size: 16px; line-height: 1.6; color: var(--muted-foreground); }
 .showcase { position: relative; padding-bottom: 10%; }
 .showcase-source { position: relative; display: block; width: 100%; border-radius: 14px; overflow: hidden; box-shadow: 0 18px 40px color-mix(in srgb, var(--foreground) 15%, transparent); }
