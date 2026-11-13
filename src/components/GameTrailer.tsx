@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@ui-sdk/react/button";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
@@ -32,8 +33,8 @@ export function GameTrailer({ title, trailer, still }: { title: string; trailer:
     {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes="(max-width: 900px) 100vw, 870px" className="object-cover" />}
     {trailer && <video ref={ref} muted={muted} loop playsInline aria-label={`${title} trailer`}
       onPlaying={() => setPlaying(true)} data-playing={playing} />}
-    {playing && <button className="trailer-sound" onClick={() => setMuted(value => !value)} aria-label={muted ? "Unmute trailer" : "Mute trailer"}>
+    {playing && <Button className="trailer-sound" onClick={() => setMuted(value => !value)} aria-label={muted ? "Unmute trailer" : "Mute trailer"}>
       {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-    </button>}
+    </Button>}
   </div>;
 }

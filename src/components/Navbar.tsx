@@ -1,4 +1,6 @@
 "use client";
+import { Autocomplete, AutocompleteContent, AutocompleteInput, AutocompleteItem, AutocompleteLabel, AutocompleteList } from "@ui-sdk/react/autocomplete";
+import { Button } from "@ui-sdk/react/button";
 import { ArrowUpRight, Search } from "lucide-react";
 import { SwordMark } from "./SwordMark";
 import Link from "next/link";
@@ -8,43 +10,40 @@ import Image from "next/image";
 import { useGameSearch, type SearchDetail } from "@/lib/use-game-search";
 import { steamRating } from "@/lib/rating";
 
-const PHONE = "(max-width: 700px)";
-
 export function Navbar() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
   const { games, details, loading, error, search } = useGameSearch();
-  const close = () => { setOpen(false); (document.activeElement as HTMLElement | null)?.blur(); };
+  const navigate = (value: string) => {
+    const game = games.find(game => String(game.appid) === value || game.title.toLocaleLowerCase() === value.toLocaleLowerCase()) ?? games[0];
+    if (game) { setOpen(false); router.push(`/games/${game.appid}`); }
+  };
   return <header className="site-header"><div className="site-nav">
     <Link href="/" className="wordmark"><SwordMark /><span>indiefindr</span></Link>
-    {/* On phones the open search becomes a full-screen sheet; dismissing the keyboard keeps it open. */}
-    <form className="site-search" data-open={open} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && !matchMedia(PHONE).matches) setOpen(false); }}
-      onSubmit={event => { event.preventDefault(); if (games[active]) { setOpen(false); router.push(`/games/${games[active].appid}`); } }}>
-      <label htmlFor="game-search" className="sr-only">Search games</label>
-      <div className="search-box"><Search size={18} className="text-muted-foreground shrink-0" />
-        <input id="game-search" placeholder="Search games…" value={query} autoComplete="off"
-          role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls="search-results"
-          aria-activedescendant={open && games[active] ? `search-game-${games[active].appid}` : undefined}
-          onFocus={() => { setOpen(true); if (!query) search(""); }} onChange={event => { setQuery(event.target.value); setOpen(true); setActive(0); search(event.target.value); }}
-          onKeyDown={event => {
-            if (event.key === "Escape") close();
-            if (event.key === "ArrowDown" && games.length) { event.preventDefault(); setOpen(true); setActive(index => (index + 1) % games.length); }
-            if (event.key === "ArrowUp" && games.length) { event.preventDefault(); setActive(index => (index - 1 + games.length) % games.length); }
-          }} />
-        <button aria-label="Open selected game"><ArrowUpRight size={18} /></button>
-      </div>
-      {open && <button type="button" className="search-cancel" onClick={() => { close(); setQuery(""); }}>Cancel</button>}
-      {open && <div className="search-results" id="search-results" role="listbox" aria-label={query ? "Games" : "Popular indies"}>
-        {!query && games.length > 0 && <p className="search-label" aria-hidden="true">Popular indies</p>}
-        {games.map((game,index) => <Link key={game.appid} id={`search-game-${game.appid}`} role="option" aria-selected={index === active}
-          href={`/games/${game.appid}`} prefetch={true} onMouseEnter={() => setActive(index)} onClick={() => setOpen(false)}>
-          <SearchRow title={game.title} detail={details.get(game.appid)} />
-        </Link>)}
-        {!games.length && <p role="status" className="search-status">{error || (loading || !query ? "Loading search…" : "No matching games.")}</p>}
-      </div>}
-    </form>
+    <div className="site-search" data-open={open}>
+      <Autocomplete presentation="popover" modal={false} value={query} open={open} filter={false} autoHighlight openOnFocus loop submitOnSelect
+        onOpenChange={setOpen}
+        onValueChange={(value, detail) => { if (detail.reason === "item-press") { navigate(value); return; } setQuery(value); search(value); }}
+        onSubmit={navigate}>
+        <AutocompleteLabel htmlFor="game-search" className="sr-only">Search games</AutocompleteLabel>
+        <div className="search-box"><Search size={18} className="text-muted-foreground shrink-0" />
+          <AutocompleteInput aria-label="Search games" id="game-search" placeholder="Search games…" autoComplete="off" onFocus={() => { if (!query) search(""); }} />
+          <Button aria-label="Open selected game" onClick={() => { if (games[0]) navigate(String(games[0].appid)); }}><ArrowUpRight size={18} /></Button>
+        </div>
+        {open && <Button className="search-cancel" onClick={() => { setOpen(false); setQuery(""); }}>Cancel</Button>}
+        <AutocompleteContent className="search-results" anchor=".site-search" sideOffset={8}>
+          {!query && games.length > 0 && <p className="search-label" aria-hidden="true">Popular indies</p>}
+          <AutocompleteList>
+            {games.map(game => <AutocompleteItem key={game.appid} value={String(game.appid)} label={game.title}
+              render={<Link href={`/games/${game.appid}`} prefetch onClick={() => setOpen(false)} />}>
+              <SearchRow title={game.title} detail={details.get(game.appid)} />
+            </AutocompleteItem>)}
+          </AutocompleteList>
+          {!games.length && <p role="status" className="search-status">{error || (loading || !query ? "Loading search…" : "No matching games.")}</p>}
+        </AutocompleteContent>
+      </Autocomplete>
+    </div>
   </div></header>;
 }
 
