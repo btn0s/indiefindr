@@ -160,23 +160,18 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Type roles. Every piece of text belongs to exactly one role here, and no other rule sets
    font size, leading, weight or tracking. Colour is a separate choice of three tiers: ink, body, muted. */
 .home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.045em; }
-.page-title, .rating-badge strong { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; }
+.page-title { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; }
 .section-heading h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
 /* Lead: heading size at reading weight; the one introductory sentence on a page. */
 .home-intro .lede { font-size: var(--type-heading); line-height: 1.5; }
 /* Body: running text and notes. */
 .source-description, .section-heading p, .page-note, .empty-note, .home-intro .examples, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; }
 /* Label: names and actions. */
-.game-card-title, .search-title, .see-all, .steam-link, .search-cancel, .rating-badge b { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
+.game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
 /* Meta: facts about a game, captions, the footer. */
-.card-rating, .search-meta, .search-label, .game-meta, .rating-badge > span, .rating-badge small, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+.card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
 /* Emphasis inside a role keeps its size and gains weight. */
-.card-rating strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
-@media(max-width: 640px) {
-  /* Phones: the rating collapses to one body-size line under the metadata. */
-  .rating-badge strong, .rating-badge > span, .rating-badge b, .rating-badge small { font-size: var(--type-body); line-height: 1.6; letter-spacing: 0; }
-  .rating-badge strong { font-weight: 600; }
-}
+.card-rating strong, .game-meta strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
 .site-shell { min-height: 100vh; background: var(--background); }
 
@@ -264,12 +259,13 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Game page */
 .source-game { display: flex; flex-direction: column; gap: 20px; padding-bottom: var(--divider-gap); border-bottom: 1px solid var(--border); }
 .discovery-page > .source-game + * { margin-top: var(--divider-gap); }
-.source-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
-.game-meta { display: flex; flex-wrap: wrap; gap: 2px 16px; color: var(--muted-foreground); }
-.rating-badge { display: flex; align-items: center; gap: 12px; flex-shrink: 0; padding: 10px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
-.rating-badge strong { font-variant-numeric: tabular-nums; }
-.rating-badge > span { display: flex; flex-direction: column; color: var(--muted-foreground); }
-.rating-badge b { color: var(--foreground); }
+.source-header { display: block; }
+.game-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 12px; color: var(--muted-foreground); }
+.game-meta > span { display: inline-flex; align-items: baseline; gap: 6px; }
+.game-meta strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+.game-meta .meta-label { color: var(--muted-foreground); }
+.game-meta a { color: var(--foreground); text-underline-offset: 3px; }
+.game-meta a:hover { text-decoration: underline; }
 .game-trailer { position: relative; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background: var(--media); }
 .game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
 .game-trailer video[data-playing=true] { opacity: 1; }
@@ -279,15 +275,6 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .steam-link { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); }
 .steam-link:hover { background: color-mix(in srgb, var(--primary) 82%, white); }
 @media(max-width: 640px) {
-  .source-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-  /* Phones: developer gets its own line, so a wrap never strands a separator. */
-  .game-meta .meta-by { flex-basis: 100%; }
-  /* Phones: the rating is one quiet line of text under the metadata, not a second headline. */
-  .rating-badge { display: block; padding: 0; border: 0; background: none; }
-  .rating-badge strong { margin-right: 6px; }
-  .rating-badge > span { display: inline; }
-  .rating-badge small::before { content: ", "; }
-  .rating-badge .rating-source { display: none; }
   .source-game { gap: 16px; }
   .source-game-actions { width: 100%; }
   .steam-link { width: 100%; justify-content: center; padding-block: 12px; }
