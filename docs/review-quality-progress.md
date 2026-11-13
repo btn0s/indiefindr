@@ -1,6 +1,6 @@
 # Clean-review recommendations: continuation
 
-Branch `btn0s/clean-review-recommendations`, off main. User/parent requested separate PR, do not merge, do not promote production. Metadata PR #48 is separately complete on `btn0s/game-metadata-line`; do not mix branches. Latest selected metadata preview: https://games-graph-f7fp5n7qe-thinkhumanco.vercel.app . Desktop/phone screenshots in BB thread storage `thr_3wc5d53kb8/metadata-comparison/chosen-{desktop,phone}.png`. Parent has links.
+Branch `btn0s/clean-review-recommendations`, off main. User/parent requested separate PR, do not merge, do not promote production. Metadata PR #48 was observed merged under btn0s at 2026-11-13T20:28:39Z (this session did not issue a merge). Its implementation is on `btn0s/game-metadata-line`; do not mix branches. Latest selected metadata preview: https://games-graph-f7fp5n7qe-thinkhumanco.vercel.app . Desktop/phone screenshots in BB thread storage `thr_3wc5d53kb8/metadata-comparison/chosen-{desktop,phone}.png`. Parent has links.
 
 ## Running work
 
@@ -35,7 +35,7 @@ No schema/data publication has happened for this feature yet. Additive migration
 4. Copy completed report to repo docs for review. Apply additive migration only to new project via Management API, then install coherent scripts to devbox (publisher/selection/prepare/run-ingest/refresh summaries/review quality/verify and scorer). Before overwriting main pipeline take a copy; no nightly model work on Mac.
 5. Publish `data/clean-review-import` using updated `publish.py` only after validation. Keep existing capacity check; no paid changes. Preserve media columns (prepared rows omit them, REST upsert retains existing columns). Seed `data/latest-review-quality.json` for nightly comparison. Avoid scheduled nightly overlap by existing ingest lock.
 6. Deploy preview with `vercel deploy --yes --scope thinkhumanco --local-config .vercel/preview.json` (remote build, no local build). New clean fields must exist in DB first. Use authenticated `vercel curl` for functional check.
-7. Open own PR off main, do not merge. Report actual drop/rescue impact, top ten tables/windows and preview. Metadata PR #48 remains independent.
+7. Open own PR off main, do not merge. Report actual drop/rescue impact, top ten tables/windows and preview. Metadata PR #48 remains independent. Fetch/rebase the clean-review branch onto latest main before its PR, since metadata was merged during this backfill.
 
 ## Screenshots / evidence
 
