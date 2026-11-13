@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { GameMedia, type Trailer } from "@/components/GameMedia";
+import { GameTrailer, type Trailer } from "@/components/GameTrailer";
 import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
@@ -147,26 +147,25 @@ export default async function GamePage({
         }}
       />
       <main className="discovery-page">
-        <h1 className="page-title">Games like {game.title}</h1>
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
-          <GameMedia title={game.title} header={game.header_image} screenshots={game.screenshots ?? []}
-            trailers={(Array.isArray(game.trailers) ? game.trailers : []) as Trailer[]} />
-          <div className="source-game-info">
-            {game.short_description && <p className="source-description">{game.short_description}</p>}
-            <dl className="game-facts">
-              {game.developers?.length > 0 && <div><dt>Developer</dt><dd>{game.developers.join(", ")}</dd></div>}
-              {game.release_date && <div><dt>Released</dt><dd>{new Date(game.release_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</dd></div>}
-              {game.genres?.length > 0 && <div><dt>Genres</dt><dd>{game.genres.slice(0, 4).join(", ")}</dd></div>}
-              {game.review_count > 0 && <div><dt>Reviews</dt><dd>{game.review_positive_pct != null && `${game.review_positive_pct}% positive · `}{Number(game.review_count).toLocaleString("en-US")}</dd></div>}
-            </dl>
-            <div className="source-game-actions"><SteamLink appid={appId} />
-              {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)}</span>}
-            </div>
-            <ShopLinks appid={appId} />
+          <header>
+            <h1 className="page-title">Games like <span itemProp="name">{game.title}</span></h1>
+            <p className="game-meta">
+              {game.developers?.length > 0 && <span>By {game.developers.join(", ")}</span>}
+              {game.release_date && <span>{new Date(game.release_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>}
+              {game.review_count > 0 && game.review_positive_pct != null && <span>{game.review_positive_pct}% positive of {Number(game.review_count).toLocaleString("en-US")} reviews</span>}
+            </p>
+          </header>
+          <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}
+            trailer={((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null} />
+          {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
+          <div className="source-game-actions"><SteamLink appid={appId} />
+            {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)}</span>}
           </div>
+          <ShopLinks appid={appId} />
         </article>
         <SuggestionsSection appId={appId} gameTitle={game.title} />
-        <div className="mt-12"><SameDeveloperSection appId={appId} developers={game.developers} /></div>
+        <div className="mt-10"><SameDeveloperSection appId={appId} developers={game.developers} /></div>
         <AdSlot />
       </main>
     </>

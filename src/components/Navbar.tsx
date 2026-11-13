@@ -12,13 +12,13 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const { games, loading, error, search } = useGameSearch();
-  return <header className="site-nav">
+  return <header className="site-header"><div className="site-nav">
     <Link href="/" className="wordmark"><ControllerMark /><span>indiefindr</span></Link>
     <form className="site-search" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
       onSubmit={event => { event.preventDefault(); if (games[active]) { setOpen(false); router.push(`/games/${games[active].appid}`); } }}>
       <label htmlFor="game-search" className="sr-only">Search games</label>
       <div className="search-box"><Search size={18} className="text-muted-foreground shrink-0" />
-        <input id="game-search" placeholder="Search any game…" value={query} autoComplete="off"
+        <input id="game-search" placeholder="Search games…" value={query} autoComplete="off"
           role="combobox" aria-autocomplete="list" aria-expanded={open && !!query} aria-controls="search-results"
           aria-activedescendant={open && games[active] ? `search-game-${games[active].appid}` : undefined}
           onFocus={() => setOpen(true)} onChange={event => { setQuery(event.target.value); setOpen(true); setActive(0); search(event.target.value); }}
@@ -35,5 +35,5 @@ export function Navbar() {
         {!games.length && <p role="status" className="p-3 text-sm text-muted-foreground">{error || (loading ? "Loading search…" : "No matching games.")}</p>}
       </div>}
     </form>
-  </header>;
+  </div></header>;
 }
