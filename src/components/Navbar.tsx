@@ -25,9 +25,9 @@ export function Navbar() {
       <label htmlFor="game-search" className="sr-only">Search games</label>
       <div className="search-box"><Search size={18} className="text-muted-foreground shrink-0" />
         <input id="game-search" placeholder="Search games…" value={query} autoComplete="off"
-          role="combobox" aria-autocomplete="list" aria-expanded={open && !!query} aria-controls="search-results"
+          role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls="search-results"
           aria-activedescendant={open && games[active] ? `search-game-${games[active].appid}` : undefined}
-          onFocus={() => setOpen(true)} onChange={event => { setQuery(event.target.value); setOpen(true); setActive(0); search(event.target.value); }}
+          onFocus={() => { setOpen(true); if (!query) search(""); }} onChange={event => { setQuery(event.target.value); setOpen(true); setActive(0); search(event.target.value); }}
           onKeyDown={event => {
             if (event.key === "Escape") close();
             if (event.key === "ArrowDown" && games.length) { event.preventDefault(); setOpen(true); setActive(index => (index + 1) % games.length); }
@@ -35,14 +35,14 @@ export function Navbar() {
           }} />
         <button aria-label="Open selected game"><ArrowUpRight size={18} /></button>
       </div>
-      {open && <button type="button" className="search-cancel" onClick={() => { close(); setQuery(""); search(""); }}>Cancel</button>}
-      {open && !query && <p className="search-hint">Type a game you love.</p>}
-      {open && query && <div className="search-results" id="search-results" role="listbox" aria-label="Games">
+      {open && <button type="button" className="search-cancel" onClick={() => { close(); setQuery(""); }}>Cancel</button>}
+      {open && <div className="search-results" id="search-results" role="listbox" aria-label={query ? "Games" : "Popular indies"}>
+        {!query && games.length > 0 && <p className="search-label" aria-hidden="true">Popular indies</p>}
         {games.map((game,index) => <Link key={game.appid} id={`search-game-${game.appid}`} role="option" aria-selected={index === active}
           href={`/games/${game.appid}`} prefetch={true} onMouseEnter={() => setActive(index)} onClick={() => setOpen(false)}>
           <SearchRow title={game.title} detail={details.get(game.appid)} />
         </Link>)}
-        {!games.length && <p role="status" className="search-status">{error || (loading ? "Loading search…" : "No matching games.")}</p>}
+        {!games.length && <p role="status" className="search-status">{error || (loading || !query ? "Loading search…" : "No matching games.")}</p>}
       </div>}
     </form>
   </div></header>;
