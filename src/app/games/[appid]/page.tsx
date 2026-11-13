@@ -1,3 +1,4 @@
+import { WebMCP } from "@/components/WebMCP";
 import { notFound } from "next/navigation";
 import { GameTrailer, type Trailer } from "@/components/GameTrailer";
 import type { Metadata } from "next";
@@ -6,7 +7,7 @@ import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
 import { GameMetadata } from "@/components/GameMetadata";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getDeveloperGames, getGame, getRecommendations } from "@/lib/catalog";
+import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
 
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
@@ -114,9 +115,7 @@ export default async function GamePage({
     }),
   };
 
-  const [allRecs, developerGames] = await Promise.all([getRecommendations(appId), getDeveloperGames(appId, game.developers)]);
-  // The developer row sits above the recommendations, so its games aren't repeated below.
-  const recs = allRecs.filter(({ game: rec }) => !developerGames.some(({ appid }) => appid === rec.appid));
+  const { recs, developerGames } = await getGamePageSlate(appId, game.developers);
   const recommendationsSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -169,6 +168,7 @@ export default async function GamePage({
           __html: JSON.stringify(recommendationsSchema).replace(/</g, "\\u003c"),
         }}
       />}
+      <WebMCP />
       <main className="discovery-page">
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <header className="source-header">

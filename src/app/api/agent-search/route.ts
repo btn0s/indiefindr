@@ -1,0 +1,2 @@
+import { searchGames } from '@/lib/agent-catalog';
+export async function GET(request:Request){const q=new URL(request.url).searchParams.get('q')?.trim();if(!q||q.length>200)return Response.json({error:'Supply q with 1–200 characters.'},{status:400});try{return Response.json({games:await searchGames(q)},{headers:{'Cache-Control':'public, s-maxage=3600'}});}catch{return Response.json({error:'Search unavailable. Retry shortly.'},{status:503});}}
