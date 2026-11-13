@@ -11,7 +11,7 @@ for r in rows:
  slug=re.sub(r'[^a-z0-9]+','-',unicodedata.normalize('NFKD',r['title']).encode('ascii','ignore').decode().lower()).strip('-') or 'game'
  games.append(dict(appid=r['appid'],slug=f'{slug}-{r["appid"]}',title=r['title'],short_description=r.get('short_description'),header_image=r.get('header_image'),release_date=r.get('steam_release_date'),developers=r.get('developers') or [],publishers=pub,genres=genre,price_cents=(r.get('price_overview') or {}).get('final'),is_free=bool(r.get('is_free')),steam_type=r.get('steam_type'),review_count=pop.get('review_count') or 0,review_positive_pct=round(pop['percent_positive']) if pop.get('percent_positive') is not None else None,tag_ids=ids,is_indie=indie,updated_at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
 byid={g['appid']:g for g in games};recs=[];empty={}
-for source,slates in ([] if a.catalog_only else [('model',[json.loads(l) for l in (a.source/'slates_indie.jsonl').open()]),('llm',json.loads((a.source/'llm_slates.json').read_text())['slates'])]):
+for source,slates in ([] if a.catalog_only else [('model',(json.loads(l) for l in (a.source/'slates_indie.jsonl').open())),('llm',json.loads((a.source/'llm_slates.json').read_text())['slates'])]):
  empty[source]=0
  for slate in slates:
   rank=0;seen=set()
