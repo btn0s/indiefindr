@@ -1,6 +1,7 @@
 """Capacity-checked atomic model replacement; verify archived LLM rows unchanged."""
 import fcntl
 import argparse,collections,itertools,json,pathlib,urllib.request,urllib.error,ssl,time
+from model_assertions import verify_model_slates
 from capacity import check_capacity,assert_physical_headroom
 from selection import MODEL_VERSION,SLATE_SIZE,POPULARITY_CAPS
 p=argparse.ArgumentParser();p.add_argument('--slates',type=pathlib.Path,required=True);a=p.parse_args()
@@ -51,8 +52,6 @@ query('vacuum (analyze) public.game_recs')
 after=llm();assert before==after,(before,after)
 actual=query("select n,count(*) as games from (select g.appid,count(r.appid) n from games g left join game_recs r on r.appid=g.appid and r.source='model' group by g.appid) s group by n")
 assert {int(r['n']):int(r['games']) for r in actual}==dict(hist),actual
-caps=' or '.join(f'count(*) filter(where g.review_count>={threshold})>{cap}' for threshold,cap in POPULARITY_CAPS)
-checks=query("select (select count(*) from game_recs r join games g on g.appid=r.rec_appid where r.source='model' and not g.is_indie) non_indie_targets,(select count(*) from (select r.appid from game_recs r join games g on g.appid=r.rec_appid where r.source='model' group by r.appid having "+caps+") s) cap_violations")
-assert all(int(x)==0 for x in checks[0].values()),checks
+checks=verify_model_slates(query)
 report={'games':len(ids),'model_rows':total,'llm_rows':int(after['rows']),'total_rows':total+int(after['rows']),'slate_histogram':dict(hist),'short_slates':sum(n for size,n in hist.items() if size<SLATE_SIZE),'llm_preserved':before==after,'checks':checks,'capacity':capacity}
 pathlib.Path('data/slates-24-publication.json').write_text(json.dumps(report,indent=2));print(json.dumps(report),flush=True)

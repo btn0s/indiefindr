@@ -5,6 +5,7 @@ transactions so a page's stored slate is never partially updated. LLM lists are
 preserved from their frozen export. Checks run before and after publication.
 """
 import argparse,json,pathlib,urllib.request
+from model_assertions import verify_model_slates
 from capacity import check_capacity,assert_physical_headroom
 from selection import POPULARITY_CAPS, MODEL_VERSION, SLATE_SIZE
 p=argparse.ArgumentParser();p.add_argument('--data',type=pathlib.Path,default=pathlib.Path('data/full-import'));p.add_argument('--check-budget-only',action='store_true');a=p.parse_args()
@@ -46,7 +47,5 @@ for start in range(0,len(ids),100):
  data=json.dumps(records).replace("'","''")
  query("begin; delete from public.game_recs where (source='model' or source='llm' and appid in (select appid from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,source text) where source='llm')) and appid in ("+','.join(map(str,batch))+"); insert into public.game_recs(appid,rank,rec_appid,source,model_version) select appid,rank,rec_appid,source,model_version from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,rank integer,rec_appid integer,source text,model_version text); commit;")
  if start%5000==0:print('published',min(start+100,len(ids)),flush=True)
-cap_violations=' or '.join(f'count(*) filter(where g.review_count>={threshold})>{cap}' for threshold,cap in POPULARITY_CAPS)
-checks=query(f"select (select count(*) from games g where (select count(*) from game_recs r where r.appid=g.appid and r.source='model') >{SLATE_SIZE}) as oversized_model_pages,(select count(*) from game_recs r join games g on g.appid=r.rec_appid where not g.is_indie) as non_indie_targets,(select count(*) from (select r.appid from game_recs r join games g on g.appid=r.rec_appid where r.source='model' group by r.appid having "+cap_violations+") invalid) as popularity_cap_violations")
-assert all(int(v)==0 for v in checks[0].values()),checks
+checks=verify_model_slates(query,{appid:len(slates.get((appid,'model'),[])) for appid in byid})
 print('Publication verified',checks,flush=True)
