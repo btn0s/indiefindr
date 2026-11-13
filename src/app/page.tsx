@@ -10,7 +10,7 @@ import { GameCard } from "@/components/GameCard";
 // Well-known indies whose pages show off the recommendations; one is featured per revalidation.
 const SHOWCASE = [413150, 367520, 105600, 1145360, 504230, 646570];
 // Any game works as a starting point, AAA included; recommendations are always indie.
-const EXAMPLES = [[413150, "Stardew Valley"], [1938090, "Call of Duty"], [1245620, "Elden Ring"], [2379780, "Balatro"], [367520, "Hollow Knight"]] as const;
+const EXAMPLES = [[413150, "Stardew Valley"], [367520, "Hollow Knight"], [2379780, "Balatro"]] as const;
 const pickShowcase = () => SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)];
 
 
