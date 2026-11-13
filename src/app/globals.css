@@ -177,6 +177,8 @@ body { font-family: var(--font-inter), sans-serif; }
 .game-card:hover .game-card-title { text-decoration: underline; text-underline-offset: 3px; }
 .game-card-art { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 460/215; background: var(--muted); }
 .game-card-title { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0 0; font-size: 14px; font-weight: 500; line-height: 1.35; }
+.card-rating { margin-top: 2px; font-size: 12.5px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-rating strong { color: var(--foreground); font-weight: 600; font-variant-numeric: tabular-nums; }
 .game-card-title svg { flex-shrink: 0; color: var(--muted-foreground); margin-top: 2px; }
 .steam-link { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 7px; background: var(--primary); color: var(--primary-foreground); font-size: 14px; font-weight: 500; }
 .steam-link:hover { background: color-mix(in srgb, var(--primary) 82%, white); }
@@ -185,6 +187,12 @@ body { font-family: var(--font-inter), sans-serif; }
 
 .page-title { font-size: 26px; font-weight: 600; letter-spacing: -.02em; line-height: 1.2; text-wrap: balance; }
 .source-game { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; }
+.source-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+.rating-badge { display: flex; align-items: center; gap: 12px; flex-shrink: 0; padding: 10px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.rating-badge strong { font-size: 28px; font-weight: 650; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.rating-badge span { display: flex; flex-direction: column; font-size: 12px; line-height: 1.35; color: var(--muted-foreground); }
+.rating-badge b { font-size: 14px; font-weight: 600; color: var(--foreground); }
+@media(max-width:640px) { .source-header { flex-direction: column; align-items: flex-start; gap: 14px; } }
 .game-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 4px; font-size: 14px; color: var(--muted-foreground); }
 .game-trailer { position: relative; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background: var(--media); }
 .game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
+import { RatingBadge } from "@/components/Rating";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGame } from "@/lib/catalog";
 
@@ -148,14 +149,16 @@ export default async function GamePage({
       />
       <main className="discovery-page">
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
-          <header>
+          <header className="source-header">
+            <div>
             <h1 className="page-title">Games like <span itemProp="name">{game.title}</span></h1>
             <p className="game-meta">
               {game.developers?.length > 0 && <span>By {game.developers.join(", ")}</span>}
               {game.release_date && <span>{new Date(game.release_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>}
-              {game.review_count > 0 && game.review_positive_pct != null && <span>{game.review_positive_pct}% positive of {Number(game.review_count).toLocaleString("en-US")} reviews</span>}
               {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)}</span>}
             </p>
+            </div>
+            <RatingBadge pct={game.review_positive_pct} count={game.review_count} />
           </header>
           <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}
             trailer={((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null} />

@@ -1,10 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameGrid } from "@/components/GameGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
-import { getGame, getHomeShelves, getRecommendations, SHELVES, type ShelfSlug } from "@/lib/catalog";
+import { getBrowsePage, getGame, getHomeShelves, getRecommendations, SHELVES, type ShelfSlug } from "@/lib/catalog";
 import { ShelfHeading } from "@/components/ShelfHeading";
 import { GameCard } from "@/components/GameCard";
 
@@ -16,7 +15,6 @@ const pickShowcase = () => SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)]
 
 
 
-const PAGE_SIZE = 24;
 
 export const revalidate = 60;
 
@@ -69,20 +67,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase.from("games").select("appid, title, header_image").eq("is_indie", true).order("review_count", { ascending: false }).order("appid").range(0, PAGE_SIZE - 1);
-
-  const games: GameCardGame[] = error
-    ? []
-    : (data || []).map((g) => ({
-        appid: g.appid,
-        title: g.title,
-        header_image: g.header_image,
-      }));
-
-  if (error) {
-    console.error("Error loading games:", error);
-  }
+  const games = await getBrowsePage(0);
 
   const showcaseId = pickShowcase();
   const [showcase, showcaseRecs, shelves] = await Promise.all([getGame(showcaseId), getRecommendations(showcaseId), getHomeShelves()]);

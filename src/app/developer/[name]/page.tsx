@@ -1,3 +1,4 @@
+import { CARD_FIELDS } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -48,7 +49,7 @@ async function getGamesByDeveloper(developerName: string) {
 
   const { data: games, error } = await supabase
     .from("games")
-    .select("appid, title, header_image")
+    .select(CARD_FIELDS)
     .contains("developers", [developerName])
     .eq("is_indie", true)
     .order("release_date", { ascending: false });

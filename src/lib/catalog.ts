@@ -15,14 +15,14 @@ export const getGame = cache(async (appid: number) => {
 export type RecommendationCard = {
   rank: number;
   source: "llm" | "model";
-  game: { appid: number; title: string; header_image: string | null; is_indie: boolean };
+  game: CardGame & { is_indie: boolean };
 };
 
 /** Join cards in the same database read as the saved slate. */
 export async function getRecommendations(appid: number): Promise<RecommendationCard[]> {
   const { data, error } = await getSupabaseServerClient()
     .from("game_recs")
-    .select("rank,source,game:games!game_recs_rec_appid_fkey!inner(appid,title,header_image,is_indie)")
+    .select("rank,source,game:games!game_recs_rec_appid_fkey!inner(appid,title,header_image,review_count,review_positive_pct,is_indie)")
     .eq("appid", appid)
     .eq("game.is_indie", true)
     .order("rank");
@@ -32,8 +32,11 @@ export async function getRecommendations(appid: number): Promise<RecommendationC
   return recs.filter((rec) => rec.source === source);
 }
 
-type ShelfGame = { appid: number; title: string; header_image: string | null };
-const SHELF_FIELDS = "appid,title,header_image";
+/** Everything a game card shows, selected the same way everywhere. */
+export const CARD_FIELDS = "appid,title,header_image,review_count,review_positive_pct";
+export type CardGame = { appid: number; title: string; header_image: string | null; review_count: number; review_positive_pct: number | null };
+type ShelfGame = CardGame;
+const SHELF_FIELDS = CARD_FIELDS;
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
 /** Same order for everyone on a given day, different the next day. */
@@ -78,4 +81,14 @@ export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGam
 export async function getHomeShelves() {
   const [rising, gems, fresh] = await Promise.all([getShelf("rising", 8), getShelf("hidden-gems", 240), getShelf("new", 4)]);
   return { rising, gems: dailyPick(gems, 8), fresh };
+}
+
+export const BROWSE_PAGE_SIZE = 24;
+
+/** "Browse all": every indie game, most-reviewed first. */
+export async function getBrowsePage(offset: number): Promise<CardGame[]> {
+  const { data, error } = await getSupabaseServerClient().from("games").select(CARD_FIELDS).eq("is_indie", true)
+    .order("review_count", { ascending: false }).order("appid").range(offset, offset + BROWSE_PAGE_SIZE - 1);
+  if (error) throw new Error("Catalog unavailable");
+  return data;
 }

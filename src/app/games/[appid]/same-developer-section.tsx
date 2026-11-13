@@ -1,3 +1,4 @@
+import { CARD_FIELDS } from "@/lib/catalog";
 import { Suspense } from "react";
 import { ShelfHeading } from "@/components/ShelfHeading";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -25,7 +26,7 @@ async function SameDeveloperContent({
     .join(",");
 
   const gamesResult = await supabase.from("games")
-    .select("appid, title, header_image")
+    .select(CARD_FIELDS)
     .neq("appid", appId).eq("is_indie", true).or(developerFilters)
     .order("release_date", { ascending: false }).limit(4);
 
@@ -35,11 +36,7 @@ async function SameDeveloperContent({
     return null;
   }
 
-  const gameCards: GameCardGame[] = games.map((g) => ({
-    appid: g.appid,
-    title: g.title,
-    header_image: g.header_image,
-  }));
+  const gameCards: GameCardGame[] = games;
 
   return (
     <section>

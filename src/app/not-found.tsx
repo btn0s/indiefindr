@@ -1,30 +1,8 @@
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameGrid } from "@/components/GameGrid";
-import type { GameCardGame } from "@/lib/supabase/types";
-
-const PAGE_SIZE = 24;
+import { getBrowsePage } from "@/lib/catalog";
 
 export default async function NotFound() {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("games")
-    .select("appid, title, header_image")
-    .eq("is_indie", true)
-    .order("review_count", { ascending: false })
-    .order("appid")
-    .range(0, PAGE_SIZE - 1);
-
-  const games: GameCardGame[] = error
-    ? []
-    : (data || []).map((g) => ({
-        appid: g.appid,
-        title: g.title,
-        header_image: g.header_image,
-      }));
-
-  if (error) {
-    console.error("Error loading games:", error);
-  }
+  const games = await getBrowsePage(0);
 
   return (
     <main className="container mx-auto max-w-4xl py-6 sm:py-8 flex flex-col gap-6">
@@ -42,7 +20,7 @@ export default async function NotFound() {
         <h2 className="text-lg font-semibold">Discover Games</h2>
         {games.length === 0 ? (
           <p className="text-muted-foreground">
-            No games yet. Search for a game above to add your first one.
+            The catalog is being updated. Please check back soon.
           </p>
         ) : (
           <GameGrid initialGames={games} />

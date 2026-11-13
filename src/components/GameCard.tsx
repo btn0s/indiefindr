@@ -4,11 +4,14 @@ import { useEffect, useRef } from "react";
 import { track } from "@/lib/tracking";
 import Link from "next/link";
 import Image from "next/image";
+import { CardRating } from "./Rating";
 
 export interface GameCardProps {
   appid: number;
   title: string;
   header_image: string | null;
+  review_count?: number;
+  review_positive_pct?: number | null;
   explanation?: string;
   priority?: boolean;
   pageAppid?: number;
@@ -19,6 +22,8 @@ export function GameCard({
   appid,
   title,
   header_image,
+  review_count = 0,
+  review_positive_pct = null,
   explanation,
   priority = false,
   pageAppid, position = 0,
@@ -41,6 +46,7 @@ export function GameCard({
           )}
         </div>
         <div className="game-card-title"><span>{title}</span></div>
+        <CardRating pct={review_positive_pct} count={review_count} />
         {explanation && (
           <div className="text-xs text-muted-foreground first-letter:uppercase">
             {explanation}
