@@ -1,5 +1,6 @@
 """Save final database counts and the size of the public uploaded search index."""
 import gzip
+import hashlib
 import json
 import pathlib
 import urllib.request
@@ -24,13 +25,16 @@ request = urllib.request.Request(f'https://api.supabase.com/v1/projects/{ref}/da
     data=json.dumps({'query': sql}).encode())
 with urllib.request.urlopen(request, timeout=180) as response:
     report = json.load(response)[0]
-with urllib.request.urlopen(f'https://{ref}.supabase.co/storage/v1/object/public/search/titles.json', timeout=120) as response:
+search=json.loads((ROOT/'data/search-publication.json').read_text())
+with urllib.request.urlopen(search['url']+'?v='+search['sha256'], timeout=120) as response:
     body = response.read()
+assert hashlib.sha256(body).hexdigest()==search['sha256'],'Uploaded search content does not match publication'
 report.update(index_games=len(json.loads(body)['games']), index_bytes=len(body), index_gzip_bytes=len(gzip.compress(body)))
 prices=json.loads((ROOT/'data/steam-full/us-prices.json').read_text())
 request.data=json.dumps({'query':'select appid,price_cents from public.games where appid in (2868840,3321460,2878710,382110,2864560,774181)'}).encode()
 with urllib.request.urlopen(request,timeout=180) as response:
     samples=json.load(response)
+assert len(samples)==6,samples
 for sample in samples:
     assert sample['price_cents']==(prices[str(sample['appid'])] or {}).get('final'),sample
 report['verified_us_price_examples']=samples
