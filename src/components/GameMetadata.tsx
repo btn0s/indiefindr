@@ -16,7 +16,7 @@ export function GameMetadata({ game }: { game: MetadataGame }) {
   const hasDate = date && !Number.isNaN(date.getTime());
   if (!rating && !game.review_count && !hasDate && !game.developers.length) return null;
   return <div className="game-meta">
-    {rating && <span className="meta-score" data-sentiment={game.review_positive_pct! >= 70 ? "positive" : "neutral"} title="Steam user reviews"><span className="meta-label">Reviews</span><strong>{game.review_positive_pct}%</strong> {rating}</span>}
+    {rating && <span className="meta-score" title="Steam user reviews"><strong>{game.review_positive_pct}%</strong> {rating}</span>}
     {game.review_count > 0 && <span>{compactCount(game.review_count)} reviews</span>}
     {hasDate && <span><span className="meta-label">Released</span><time dateTime={game.release_date!}>{date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</time></span>}
     {game.developers.map(developer => <span key={developer}><span className="meta-label">Developer</span><Link href={game.is_indie ? `/developer/${encodeURIComponent(developer)}` : `https://store.steampowered.com/search/?developer=${encodeURIComponent(developer)}`}>{developer}</Link></span>)}
