@@ -6,7 +6,7 @@ export async function SuggestionsSection({ appId, gameTitle }: { appId: number; 
   const slate = await getRecommendations(appId);
   return (
     <section>
-      <ShelfHeading title={`Indie games like ${gameTitle}`} />
+      <ShelfHeading title="Indie games to play next" note={`Picked to match ${gameTitle} on gameplay, themes, and feel.`} />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
         {slate.map(({ game, rank }) => (
           <GameCard key={game.appid} {...game} pageAppid={appId} position={rank} />
