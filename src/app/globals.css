@@ -293,6 +293,23 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .steam-link { width: 100%; justify-content: center; padding-block: 12px; }
 }
 
+/* Art placeholder: while a cover loads, if it fails, or when a game has none, the sword sits centred in the frame
+   with a slow sheen. It paints behind the frame's content, so the art covers it as soon as it arrives. A failed image
+   gets the same placeholder drawn over its broken-image icon (browsers render ::before/::after only on broken images). */
+:where(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) { position: relative; isolation: isolate; background: var(--art-bg); --art-bg: var(--muted); --art-ink: #d3d3d9; --art-sheen: #e4e4e9; }
+.game-trailer { --art-bg: var(--media); --art-ink: #1e1e23; --art-sheen: #2e2e35; }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer)::before, :is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%224.4%204.6%2015%2015%22%3E%3Cpath%20d%3D%22M12.7057%2017.9728L14.0299%2016.6487L10.7377%2013.3567L7.4396%2010.0586L6.11553%2011.3827L7.33348%2014.3331L4.85938%2017.8014L5.52604%2018.4681L6.19271%2019.1347L9.66681%2016.6487L12.7057%2017.9728Z%22/%3E%3Cpath%20d%3D%22M19%209.04753L13.6686%2014.3789L12.1159%2012.8262L15.5358%209.40755L14.5925%208.46419L11.1732%2011.8835L9.62109%2010.3314L14.9525%205H19V9.04753Z%22/%3E%3C/svg%3E") center / auto clamp(14px, 34%, 64px) no-repeat;
+  background: linear-gradient(100deg, var(--art-ink) 40%, var(--art-sheen) 50%, var(--art-ink) 60%) 0 0 / 300% 100%;
+  animation: art-sheen 1.6s linear infinite;
+}
+:is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img { color: transparent; }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img::before { content: ""; position: absolute; inset: 0; background: var(--art-bg); }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img::after { z-index: auto; }
+@keyframes art-sheen { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media(prefers-reduced-motion: reduce) { :is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer)::before, :is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img::after { animation: none; } }
+
 /* Footer */
 .site-footer { max-width: 896px; margin: auto; padding: 28px 0 36px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 24px; color: var(--muted-foreground); }
 
