@@ -151,7 +151,7 @@ async function getTopAppIds(): Promise<number[]> {
   try {
     const supabase = createClient(url, key, { auth: { persistSession: false } });
     const { data, error } = await supabase
-      .from("games_new")
+      .from("games")
       .select("appid, suggested_game_appids, created_at")
       .limit(60);
 

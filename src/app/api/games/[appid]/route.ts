@@ -25,7 +25,7 @@ export async function GET(
     const appId = parseResult.data;
 
     const { data: game, error } = await supabase
-      .from("games_new")
+      .from("games")
       .select("*")
       .eq("appid", appId)
       .maybeSingle();

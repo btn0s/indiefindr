@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { GameGrid } from "@/components/GameGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
-import { getPinnedHomeCollections } from "@/lib/collections";
-import { GameRow } from "@/components/GameRow";
+
+
 
 const PAGE_SIZE = 24;
 
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonicalUrl = `${siteUrl}/`;
   const title = "Find Your Next Favorite Indie Game — IndieFindr";
   const description =
-    "Discover indie games on Steam. Search any game, get AI-powered recommendations, and find your next favorite.";
+    "Discover indie games on Steam. Search any game, get indie game recommendations, and find your next favorite.";
   const ogImageUrl = `${siteUrl}/og/home.png`;
 
   return {
@@ -59,17 +59,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
   const supabase = getSupabaseServerClient();
-  const [{ data, error }, pinnedCollections] = await Promise.all([
-    supabase
-      .from("games_new_home")
-      .select("appid, title, header_image")
-      .order("home_bucket", { ascending: true })
-      .order("suggestions_count", { ascending: false })
-      .order("created_at", { ascending: false })
-      .order("appid", { ascending: true })
-      .range(0, PAGE_SIZE - 1),
-    getPinnedHomeCollections(),
-  ]);
+  const { data, error } = await supabase.from("games").select("appid, title, header_image").eq("is_indie", true).order("review_count", { ascending: false }).order("appid").range(0, PAGE_SIZE - 1);
 
   const games: GameCardGame[] = error
     ? []
@@ -93,10 +83,6 @@ export default async function Home() {
         </div>
       </div>
 
-      {pinnedCollections.length > 0 && (
-        <GameRow collections={pinnedCollections} />
-      )}
-
       <div className="flex flex-col gap-4 w-full">
         <div className="container mx-auto max-w-4xl w-full flex items-center justify-between">
           <h2 className="font-semibold text-xl">All Games</h2>
@@ -104,8 +90,7 @@ export default async function Home() {
         <div className="container mx-auto max-w-4xl w-full">
           {games.length === 0 ? (
             <p className="text-muted-foreground">
-              No games ingested yet. Search for a game above to add your first
-              one.
+              The catalog is being updated. Please check back soon.
             </p>
           ) : (
             <GameGrid initialGames={games} />

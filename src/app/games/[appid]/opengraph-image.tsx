@@ -103,17 +103,10 @@ export default async function Image({
     return placeholderGridImage();
   }
 
-  const { data: suggestions } = await supabase
-    .from("game_suggestions")
-    .select("suggested_appid")
-    .eq("source_appid", appId)
-    .limit(6);
-
-  if (!suggestions || suggestions.length === 0) {
-    return placeholderGridImage();
-  }
-
-  const suggestedAppIds = suggestions.map((s) => s.suggested_appid);
+  const { data: suggestions } = await supabase.from("game_recs").select("rec_appid,source,rank").eq("appid",appId).order("rank");
+  const source=suggestions?.some(r=>r.source==='llm')?'llm':'model';
+  const suggestedAppIds=(suggestions||[]).filter(r=>r.source===source).slice(0,6).map(r=>r.rec_appid);
+  if (!suggestedAppIds.length) return placeholderGridImage();
 
   const coverDataUrls = await Promise.all(
     suggestedAppIds.map(async (id) => {

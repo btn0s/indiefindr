@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowUpRight } from "lucide-react";
+import { SteamLink } from "@/components/SteamLink";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getOrFetchGame } from "@/lib/actions/games";
 import { GameVideo } from "@/components/GameVideo";
@@ -22,7 +22,7 @@ export async function generateMetadata({
   // Lightweight metadata fetch - just get title
   const supabase = getSupabaseServerClient();
   const { data } = await supabase
-    .from("games_new")
+    .from("games")
     .select("title, short_description")
     .eq("appid", appId)
     .maybeSingle();
@@ -37,8 +37,8 @@ export async function generateMetadata({
 
   const title = `Games like ${data.title}`;
   const description = data.short_description
-    ? `Discover games similar to ${data.title}. ${data.short_description} Get AI-powered recommendations with explanations.`
-    : `Find games similar to ${data.title} on Steam. Get AI-powered recommendations with explanations.`;
+    ? `Discover games similar to ${data.title}. ${data.short_description} Get indie game recommendations with explanations.`
+    : `Find games similar to ${data.title} on Steam. Get indie game recommendations with explanations.`;
 
   return {
     title,
@@ -148,7 +148,7 @@ export default async function GamePage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(videoGameSchema),
+          __html: JSON.stringify(videoGameSchema).replace(/</g, "\\u003c"),
         }}
       />
       {videoObjectSchema && (
@@ -162,7 +162,7 @@ export default async function GamePage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbSchema),
+          __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c"),
         }}
       />
       <main className="container mx-auto max-w-4xl py-6 sm:py-8 flex flex-col gap-6">
@@ -192,15 +192,7 @@ export default async function GamePage({
               <p className="text-muted-foreground">{game.short_description}</p>
             )}
 
-            <a
-              href={`https://store.steampowered.com/app/${appId}/`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-fit inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-primary-foreground bg-gradient-to-b from-primary/90 to-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),inset_0_-1px_0_0_rgba(0,0,0,0.2),0_1px_2px_rgba(0,0,0,0.2)] border border-primary/80 hover:from-primary hover:to-primary/90 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] active:translate-y-px transition-all"
-            >
-              View on Steam
-              <ArrowUpRight className="size-4" />
-            </a>
+            <SteamLink appid={appId} />
           </div>
         </article>
 

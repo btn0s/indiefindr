@@ -68,3 +68,5 @@ Thumbs.db
 # Supabase local development state
 supabase/.temp/
 .supabase/
+
+/data/

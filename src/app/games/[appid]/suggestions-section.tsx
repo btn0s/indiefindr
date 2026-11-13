@@ -1,129 +1,13 @@
-import { Suspense } from "react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { suggestGames } from "@/lib/suggest";
-import { SUGGESTION_CONFIG } from "@/lib/config";
-import { GameCardAsync } from "@/components/GameCardAsync";
 import { GameCard } from "@/components/GameCard";
 
-type Suggestion = {
-  suggested_appid: number;
-  reason: string;
-};
-
-async function getSuggestions(appId: number): Promise<Suggestion[]> {
-  const supabase = getSupabaseServerClient();
-  const { data } = await supabase
-    .from("game_suggestions")
-    .select("suggested_appid, reason")
-    .eq("source_appid", appId);
-
-  return data ?? [];
-}
-
-async function ensureSuggestions(appId: number): Promise<Suggestion[]> {
-  const existing = await getSuggestions(appId);
-  if (existing.length > 0) return existing;
-
-  const result = await suggestGames(appId, SUGGESTION_CONFIG.TARGET_SUGGESTION_COUNT);
-  if (result.suggestions.length === 0) return [];
-
-  const supabase = getSupabaseServerClient();
-  const rows = result.suggestions.map((s) => ({
-    source_appid: appId,
-    suggested_appid: s.appId,
-    reason: s.explanation,
-  }));
-
-  const { error } = await supabase.from("game_suggestions").insert(rows);
-  if (error) {
-    console.error("[SUGGESTIONS] Failed to write suggestions:", error.message);
-    return result.suggestions.map((s) => ({
-      suggested_appid: s.appId,
-      reason: s.explanation,
-    }));
-  }
-
-  return rows.map((r) => ({
-    suggested_appid: r.suggested_appid,
-    reason: r.reason,
-  }));
-}
-
-async function SuggestionsContent({ appId }: { appId: number }) {
-  const suggestions = await ensureSuggestions(appId);
-
-  if (suggestions.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No similar games found in the catalog yet.
-      </p>
-    );
-  }
-
-  const suggestedAppIds = suggestions.map((s) => s.suggested_appid);
-  const supabase = getSupabaseServerClient();
-  const { data: games } = await supabase
-    .from("games_new")
-    .select("appid, title, header_image")
-    .in("appid", suggestedAppIds);
-
-  const gamesMap = new Map(
-    (games || []).map((g) => [
-      g.appid,
-      { appid: g.appid, title: g.title, header_image: g.header_image },
-    ])
-  );
-
-  const suggestedGameData = suggestions.map((s) => ({
-    appid: s.suggested_appid,
-    reason: s.reason,
-    game: gamesMap.get(s.suggested_appid) || null,
-  }));
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      {suggestedGameData.map((s) =>
-        s.game ? (
-          <GameCard
-            key={s.appid}
-            appid={s.game.appid}
-            title={s.game.title}
-            header_image={s.game.header_image}
-            explanation={s.reason}
-          />
-        ) : (
-          <GameCardAsync
-            key={s.appid}
-            appid={s.appid}
-            explanation={s.reason}
-          />
-        )
-      )}
-    </div>
-  );
-}
-
-function SuggestionsSkeleton() {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i}>
-          <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam animate-pulse" />
-          <div className="h-4 w-3/4 bg-muted rounded animate-pulse mb-1" />
-          <div className="h-3 w-1/2 bg-muted rounded animate-pulse" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export function SuggestionsSection({ appId, gameTitle }: { appId: number; gameTitle: string }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Games like {gameTitle}</h2>
-      <Suspense fallback={<SuggestionsSkeleton />}>
-        <SuggestionsContent appId={appId} />
-      </Suspense>
-    </div>
-  );
+export async function SuggestionsSection({appId,gameTitle}:{appId:number;gameTitle:string}) {
+ const db=getSupabaseServerClient();
+ const {data:recs,error}=await db.from("game_recs").select("rec_appid,rank,source").eq("appid",appId).order("rank");
+ if(error) throw new Error("Recommendations unavailable");
+ const source=recs?.some(r=>r.source==='llm')?'llm':'model';
+ const slate=(recs||[]).filter(r=>r.source===source);
+ const {data:games}=slate.length ? await db.from('games').select('appid,title,header_image').in('appid',slate.map(r=>r.rec_appid)).eq('is_indie',true) : {data:[]};
+ const byid=new Map((games||[]).map(g=>[g.appid,g]));
+ return <section className="flex flex-col gap-3"><h2 className="text-lg font-semibold">Indie games like {gameTitle}</h2><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">{slate.map(r=>{const g=byid.get(r.rec_appid);return g ? <GameCard key={g.appid} {...g} pageAppid={appId} position={r.rank}/> : null;})}</div>{!slate.length && <p>Recommendations are being prepared for this game.</p>}</section>;
 }

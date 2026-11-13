@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { track } from "@/lib/tracking";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -9,6 +11,8 @@ export interface GameCardProps {
   header_image: string | null;
   explanation?: string;
   priority?: boolean;
+  pageAppid?: number;
+  position?: number;
 }
 
 export function GameCard({
@@ -17,9 +21,12 @@ export function GameCard({
   header_image,
   explanation,
   priority = false,
+  pageAppid, position = 0,
 }: GameCardProps) {
+  const ref=useRef<HTMLAnchorElement>(null);
+  useEffect(()=>{if(!ref.current)return;const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){track('impression',pageAppid??null,appid,position);observer.disconnect();}},{threshold:0.5});observer.observe(ref.current);return ()=>observer.disconnect();},[appid,pageAppid,position]);
   return (
-    <Link href={`/games/${appid}`} className="block" prefetch={false}>
+    <Link ref={ref} onClick={()=>track('click_card',pageAppid??null,appid,position)} href={`/games/${appid}`} className="block" prefetch={false}>
       <div>
         <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam">
           {header_image && (

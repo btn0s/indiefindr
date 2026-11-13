@@ -18,6 +18,8 @@ export function getSupabaseServiceClient(): SupabaseClient {
     );
   }
 
+  if (supabaseUrl !== "https://rqcqlpoxtdddjcylhopk.supabase.co") throw new Error("Only the relaunch database is allowed");
+
   cachedServiceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,

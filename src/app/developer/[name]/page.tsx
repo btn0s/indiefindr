@@ -44,10 +44,10 @@ async function getGamesByDeveloper(developerName: string) {
   const supabase = getSupabaseServerClient();
 
   const { data: games, error } = await supabase
-    .from("games_new")
+    .from("games")
     .select("appid, title, header_image")
     .contains("developers", [developerName])
-    .order("created_at", { ascending: false });
+    .order("release_date", { ascending: false });
 
   if (error || !games) {
     return [];

@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description:
-    "Find games like your favorites. Discover similar indie games on Steam with AI-powered recommendations and explanations.",
+    "Find games like your favorites. Discover similar indie games on Steam with indie game recommendations and explanations.",
   openGraph: {
     siteName: "IndieFindr",
     locale: "en_US",
@@ -60,7 +60,7 @@ const organizationSchema = {
   url: SITE_URL,
   logo: `${SITE_URL}/icon.svg`,
   description:
-    "Discover indie games on Steam with AI-powered recommendations",
+    "Discover indie games on Steam with indie game recommendations",
 };
 
 const websiteSchema = {

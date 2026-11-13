@@ -7,12 +7,11 @@ const PAGE_SIZE = 24;
 export default async function NotFound() {
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
-    .from("games_new_home")
+    .from("games")
     .select("appid, title, header_image")
-    .order("home_bucket", { ascending: true })
-    .order("suggestions_count", { ascending: false })
-    .order("created_at", { ascending: false })
-    .order("appid", { ascending: true })
+    .eq("is_indie", true)
+    .order("review_count", { ascending: false })
+    .order("appid")
     .range(0, PAGE_SIZE - 1);
 
   const games: GameCardGame[] = error

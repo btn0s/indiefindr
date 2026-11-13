@@ -1,0 +1,9 @@
+# IndieFindr
+Discover indie games similar to games you already enjoy.
+
+- Game pages: https://www.indiefindr.gg/games/{Steam app ID}
+- Search: https://www.indiefindr.gg/api/games/search?q={title}
+
+Any Steam game may have a page. Recommendations contain only indie games,
+selected from stored editorial-era lists or an offline ranking model.
+No recommendations are generated during a page request.
