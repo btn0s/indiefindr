@@ -1,8 +1,10 @@
 """Resumable, rate-limited histogram enrichment on the offline ingest host."""
-import argparse,datetime,json,pathlib,time,threading,urllib.request,urllib.error
+import argparse,datetime,json,pathlib,time,threading,urllib.request,urllib.error,fcntl
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from review_quality import analyze,rated_low,VERSION
 p=argparse.ArgumentParser();p.add_argument('--source',type=pathlib.Path,required=True);p.add_argument('--cache',type=pathlib.Path,default=pathlib.Path('data/review-histograms'));p.add_argument('--refresh',action='store_true');p.add_argument('--workers',type=int,default=4);p.add_argument('--interval',type=float,default=.5);a=p.parse_args();a.cache.mkdir(parents=True,exist_ok=True)
+fetch_lock=(a.cache/'fetch.lock').open('a')
+fcntl.flock(fetch_lock,fcntl.LOCK_EX)
 tags=json.loads((a.source/'data/steam_tags.json').read_text());output=a.source/'review-quality.json'
 previous=json.loads(output.read_text()) if output.exists() else {};results={};pending=[]
 now=datetime.datetime.now(datetime.timezone.utc);today=now.date().isoformat()
@@ -30,7 +32,6 @@ def fetch(job):
    try:
     request=urllib.request.Request(f'https://store.steampowered.com/appreviewhistogram/{int(key)}?l=english&review_score_preference=0',headers={'User-Agent':'indiefindr-offline/1.0'})
     with urllib.request.urlopen(request,timeout=45) as response:payload=json.load(response)
-    analyze(payload,score)
     cached=dict(version=VERSION,checked_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),payload=payload);save(path,cached);break
    except (urllib.error.URLError,TimeoutError,ValueError) as error:
     wait=min(300,2**(attempt+2))
@@ -40,7 +41,9 @@ def fetch(job):
      with lock:cooldown=max(cooldown,time.monotonic()+wait)
     if attempt==6:return key,None
     time.sleep(wait)
- result=analyze(cached['payload'],score);result.update(checked_at=cached['checked_at'],default_score=score)
+ try:result=analyze(cached['payload'],score)
+ except ValueError as error:result=dict(clean_score=score,bomb_windows=[],unavailable=str(error),detector_version=VERSION)
+ result.update(checked_at=cached['checked_at'],default_score=score)
  return key,result
 failures=[]
 with ThreadPoolExecutor(max_workers=max(1,min(a.workers,4))) as pool:

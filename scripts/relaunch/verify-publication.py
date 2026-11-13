@@ -12,6 +12,8 @@ report=query("select count(*) as games,count(*) filter(where is_indie) as indie_
 recs=query(f"with slates as (select appid,count(*) as rows,count(*) filter(where source='model') as model_rows,count(*) filter(where source='llm') as llm_rows from public.game_recs group by appid) select sum(rows) as rec_rows,sum(model_rows) as model_rows,sum(llm_rows) as llm_rows,count(*) filter(where llm_rows>0) as llm_slates,count(*) filter(where model_rows={SLATE_SIZE}) as valid_model_slates from slates")[0]
 report.update(recs);report['invalid_model_slates']=report['games']-report.pop('valid_model_slates')
 report.update(query("select count(*) as non_indie_targets from public.game_recs r join public.games g on g.appid=r.rec_appid where not g.is_indie")[0])
+report.update(query("select count(*) as low_score_targets from public.game_recs r join public.games g on r.rec_appid=g.appid where g.review_count>=10 and coalesce(g.clean_score,g.review_positive_pct)<70")[0])
+assert report['low_score_targets']==0,report
 search=json.loads((ROOT/'data/search-publication.json').read_text())
 with urllib.request.urlopen(search['url']+'?v='+search['sha256'],timeout=120) as response:body=response.read()
 assert hashlib.sha256(body).hexdigest()==search['sha256'],'Uploaded search content does not match publication'

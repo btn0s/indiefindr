@@ -15,6 +15,11 @@ class ReviewQuality(unittest.TestCase):
   self.assertTrue(eligible(dict(review_count=10,review_positive_pct=70)))
   self.assertFalse(eligible(dict(review_count=10,review_positive_pct=69)))
   self.assertTrue(eligible(dict(review_count=100,review_positive_pct=50,clean_score=91)))
+ def test_months_have_actual_duration(self):
+  data=dict(success=1,results=dict(rollup_type='month',recent=[],rollups=[dict(date=1706745600,recommendations_up=100,recommendations_down=29)]))
+  result=analyze(data,50)
+  self.assertEqual(result['total_down'],29)
+  self.assertEqual(result['median_daily_down'],1)
  def test_no_data_does_not_rescue(self):
   self.assertEqual(analyze(dict(success=1,results={}),42)['clean_score'],42)
  def test_overlap_is_counted_once(self):
