@@ -27,6 +27,9 @@ if not pointer.exists():
     tmp = pointer.with_suffix('.tmp')
     tmp.write_text(json.dumps(state, indent=2))
     tmp.replace(pointer)
-subprocess.run([str(python), str(ROOT / 'scripts/relaunch/run-ingest.py')], cwd=ROOT, check=True)
+state=json.loads(pointer.read_text())
+if state['status']!='published':
+    assert state['source']==str(source),'Another generation owns the ingest manifest'
+    subprocess.run([str(python), str(ROOT / 'scripts/relaunch/run-ingest.py')], cwd=ROOT, check=True)
 subprocess.run([str(python), str(ROOT / 'scripts/relaunch/install-nightly.py')], cwd=ROOT, check=True)
 print('Full expansion published; nightly installed', flush=True)
