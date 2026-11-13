@@ -1,5 +1,5 @@
 """Publish a compact public title index for browser-worker search."""
-import argparse,json,pathlib,urllib.request,urllib.error
+import argparse,gzip,hashlib,json,pathlib,urllib.request,urllib.error
 p=argparse.ArgumentParser();p.add_argument('--games',type=pathlib.Path,required=True);a=p.parse_args()
 v=dict(l.split('=',1) for l in pathlib.Path('.env.relaunch-admin').read_text().splitlines() if '=' in l);ref=v['RELAUNCH_PROJECT_REF'];assert ref=='rqcqlpoxtdddjcylhopk'
 r=urllib.request.Request(f'https://api.supabase.com/v1/projects/{ref}/api-keys',headers={'Authorization':'Bearer '+v['SUPABASE_ACCESS_TOKEN']})
@@ -13,6 +13,12 @@ except urllib.error.HTTPError as error:
  with urllib.request.urlopen(req) as r:r.read()
 rows=[json.loads(l) for l in a.games.open()];rows.sort(key=lambda g:(-g['review_count'],g['appid']))
 body=json.dumps({'games':[[g['appid'],g['title']] for g in rows]},ensure_ascii=False,separators=(',',':')).encode()
+if len(gzip.compress(body))>3_000_000:
+ rows=[g for g in rows if g['review_count']>0]
+ body=json.dumps({'games':[[g['appid'],g['title']] for g in rows]},ensure_ascii=False,separators=(',',':')).encode()
+ print('Index exceeded 3 MB gzipped; trimmed to games with reviews',flush=True)
 req=urllib.request.Request(base+'/object/search/titles.json',headers={**headers,'x-upsert':'true','cache-control':'max-age=3600'},data=body,method='POST')
 with urllib.request.urlopen(req,timeout=120) as r:r.read()
-print({'searchable_games':len(rows),'bytes':len(body),'url':f'{base}/object/public/search/titles.json'})
+report={'searchable_games':len(rows),'bytes':len(body),'gzip_bytes':len(gzip.compress(body)),'url':f'{base}/object/public/search/titles.json','sha256':hashlib.sha256(body).hexdigest()}
+pathlib.Path('data/search-publication.json').write_text(json.dumps(report,indent=2))
+print(report)

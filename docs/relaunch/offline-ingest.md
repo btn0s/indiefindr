@@ -8,7 +8,7 @@ All 25,555 existing source games have exactly ten distinct indie model targets. 
 
 ## Full acquisition
 
-Steam currently returns 200,338 game app IDs, rather than the approximately 122k from the handoff. `steam-catalog.py` fetches the entire game list through `IStoreService/GetAppList`, then obtains tags, review counts, descriptions, publishers, developers, assets, prices, and release data in 100-app batches through `IStoreBrowseService/GetItems`.
+The normalized full catalog contains 200,896 games, including preserved legacy pages; the approximately 122k handoff count is obsolete. `steam-catalog.py` fetches the entire game list through `IStoreService/GetAppList`, then obtains tags, review counts, descriptions, publishers, developers, assets, prices, and release data in 100-app batches through `IStoreBrowseService/GetItems`.
 
 Genre IDs require `include_extra_details`; they are in `extra_details.links_and_info.genreids`. Existing batches from the initial fetch are supplemented with these details instead of refetching descriptions/assets. Complete responses are versioned on disk. Four I/O workers share a four-request/second limit, respect Retry-After, and retry transient failures. Failed refreshes retain the pending app IDs so a retry cannot lose metadata changes.
 
@@ -24,7 +24,7 @@ scripts/relaunch/rebuild.sh
 
 The pipeline creates a generation directory, acquires and normalizes metadata, encodes with MPS, ranks offline, validates every source's ten recommendations, and publishes only to `rqcqlpoxtdddjcylhopk`. Metadata and scoring stages are sequential. CPU scoring uses two threads. Only one ingest may run at a time.
 
-Publication checks the current organization's plan and database size. It refuses the upload if a conservative projection exceeds the Free entitlement with operating headroom. It cannot upgrade the plan or make purchases. If capacity requires paid hosting, bt must approve the exact quoted plan before any change. The last published catalog remains available when an offline generation fails.
+Publication checks the current organization's plan and database size. It refuses the upload if a conservative projection exceeds 90% of the plan entitlement: 500 MB on Free or 8 GB on the approved Pro/Micro project. Paid plans are checked, never bypassed. See https://supabase.com/docs/guides/platform/billing-on-supabase. It cannot upgrade the plan or make purchases. If capacity requires paid hosting, bt must approve the exact quoted plan before any change. The last published catalog remains available when an offline generation fails.
 
 ## Reproduction and provenance
 
@@ -34,4 +34,10 @@ Encoding chunks are bound to the encoder SHA and exact source text. Ranking jour
 
 The native scheduler uses an OS-owned file lock and a durable `data/active-run.json` stage manifest. Failed runs resume their completed generation, rather than starting another model run. Before a new encoding run, capacity is checked; a blocked publication can resume directly after approval without recomputing recommendations.
 
-BB script automations have a 15-minute execution ceiling, so the long-running MPS pipeline uses a native macOS LaunchAgent instead of an agent automation. The installer schedules 03:15 local time, uses background priority, and writes stdout/stderr under `data/nightly/`. The installer is prepared but not installed yet; its target is devbox, not the user's Mac. It invokes no LLM and never modifies production deployment state.
+BB script automations have a 15-minute execution ceiling, so the long-running MPS pipeline uses a native macOS LaunchAgent instead of an agent automation. The installer schedules 03:15 local time, uses background priority, and writes stdout/stderr under `data/nightly/`. The job is installed and loaded on devbox at `/Users/bot/Library/LaunchAgents/gg.indiefindr.offline-ingest.plist`, with working directory `/Users/bot/dev/indiefindr-relaunch`; it is not installed on the user's Mac. It invokes no LLM and never modifies production deployment state.
+
+The nightly generation enriches media after publication and then updates `search/titles.json`. Media batches are keyed by the requested app IDs so catalog reorderings cannot reuse an unrelated batch. Search reports raw and gzip sizes and trims to reviewed games if the complete index exceeds 3 MB gzipped.
+
+Target selection uses `scripts/relaunch/selection.py`: after indie masking and model ordering, allow at most two targets with ≥50,000 reviews and at most four with ≥10,000, counting the first tier toward the second. Skip capped candidates in order until exactly ten remain. Model slates record `lambdarank_merged-indie-full-v2-tilt-m2-4` and persist the complete ordered candidate IDs. Developers and major-owned studios are checked alongside publishers.
+
+Public prices come exclusively from batched US Steam `appdetails?cc=us&filters=price_overview`, acquired by `us-prices.py` for all normalized IDs, including preserved legacy pages. Daily batch caches are resumable. Preparation rejects foreign currencies and never falls back to a legacy or bundle price; unavailable US prices are null. Normalization clears carried-over legacy prices. The acquisition is a locked nightly stage; no per-request Steam calls are involved.

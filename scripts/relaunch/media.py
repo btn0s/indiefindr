@@ -1,5 +1,5 @@
 """Offline media enrichment. Store normalized URLs, never the raw Steam blob."""
-import argparse,json,pathlib,time,urllib.request
+import argparse,hashlib,json,pathlib,time,urllib.request
 import requests
 ASSETS='https://shared.akamai.steamstatic.com/store_item_assets/'
 VIDEO='https://video.akamai.steamstatic.com/store_trailers/'
@@ -22,11 +22,12 @@ if __name__=='__main__':
  def query(sql):
   req=urllib.request.Request(f'https://api.supabase.com/v1/projects/{ref}/database/query',headers={'Authorization':'Bearer '+values['SUPABASE_ACCESS_TOKEN'],'Content-Type':'application/json'},data=json.dumps({'query':sql}).encode())
   with urllib.request.urlopen(req,timeout=120) as r:return json.load(r)
- games=query(f'select appid from public.games order by review_count desc limit {max(1,min(a.top,250000))}')
+ games=query(f'select appid from public.games order by review_count desc,appid limit {max(1,min(a.top,250000))}')
  output=pathlib.Path('data/media-batches');output.mkdir(exist_ok=True)
  for start in range(0,len(games),100):
   batch=games[start:start+100];q={'ids':batch,'context':{'language':'english','country_code':'US','steam_realm':1},'data_request':{'include_screenshots':True,'include_trailers':True}}
-  path=output/(str(start)+'.json')
+  digest=hashlib.sha256(json.dumps(batch,sort_keys=True).encode()).hexdigest()
+  path=output/(digest+'.json')
   if path.exists():response=json.loads(path.read_text())
   else:
    for attempt in range(6):
@@ -34,7 +35,7 @@ if __name__=='__main__':
     if r.status_code==429 or r.status_code>=500:time.sleep(min(60,2**attempt));continue
     r.raise_for_status();response=r.json();break
    else:raise RuntimeError('Steam media retry budget exhausted')
-   path.write_text(json.dumps(response))
+   tmp=path.with_suffix('.tmp');tmp.write_text(json.dumps(response));tmp.replace(path)
   rows=[normalized_media(i) for i in response.get('response',{}).get('store_items',[]) if i.get('success')==1]
   data=json.dumps(rows).replace("'","''")
   query("update public.games g set screenshots=r.screenshots,trailers=r.trailers from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,screenshots text[],trailers jsonb) where g.appid=r.appid")
