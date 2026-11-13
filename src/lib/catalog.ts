@@ -104,3 +104,8 @@ export async function getBrowsePage(offset: number): Promise<CardGame[]> {
   if (error) throw new Error("Catalog unavailable");
   return data;
 }
+
+export const getGamePageSlate = cache(async (appid: number, developers: string[]) => {
+  const [all, developerGames] = await Promise.all([getRecommendations(appid), getDeveloperGames(appid, developers)]);
+  return { developerGames, recs: all.filter(rec => !developerGames.some(game => game.appid === rec.game.appid)) };
+});

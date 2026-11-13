@@ -1,0 +1,2 @@
+import { gameDetails } from '@/lib/agent-catalog';
+export async function GET(_:Request,{params}:{params:Promise<{appid:string}>}){const {appid}=await params;if(!/^\d+$/.test(appid))return Response.json({error:'Use a numeric Steam appid.'},{status:400});try{const game=await gameDetails(Number(appid));return Response.json(game??{error:'Game not found. Check the Steam appid.'},{status:game?200:404,headers:{'Cache-Control':'public, s-maxage=3600'}});}catch{return Response.json({error:'Catalog unavailable. Retry shortly.'},{status:503});}}

@@ -1,0 +1,1 @@
+{"name":"indiefindr","version":"0.1.0","description":"Indie game recommendations from indiefindr.gg","type":"module","bin":{"indiefindr":"bin.mjs"},"engines":{"node":">=20"},"files":["bin.mjs","README.md"],"license":"MIT","repository":{"type":"git","url":"https://github.com/btn0s/indiefindr.git","directory":"packages/cli"}}
