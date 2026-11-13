@@ -260,10 +260,10 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .source-game { display: flex; flex-direction: column; gap: 20px; padding-bottom: var(--divider-gap); border-bottom: 1px solid var(--border); }
 .discovery-page > .source-game + * { margin-top: var(--divider-gap); }
 .source-header { display: block; }
-.game-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted-foreground); }
-.game-meta > span { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); }
+.game-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 12px; color: var(--muted-foreground); }
+.game-meta > span { display: inline-flex; align-items: baseline; gap: 6px; }
 .game-meta strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
-.game-meta .meta-score[data-sentiment="positive"] { background: color-mix(in srgb, #5b9b70 8%, var(--background)); border-color: color-mix(in srgb, #5b9b70 24%, var(--border)); }
+.game-meta .meta-label { color: var(--muted-foreground); }
 .game-meta a { color: var(--foreground); text-underline-offset: 3px; }
 .game-meta a:hover { text-decoration: underline; }
 .game-trailer { position: relative; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background: var(--media); }
