@@ -1,6 +1,6 @@
 # Relaunch checkpoint — 2026-11-13
 
-Phase 1 preview: https://games-graph-p0vpp725t-thinkhumanco.vercel.app
+Phase 1 preview: https://games-graph-ovtpgp3ua-thinkhumanco.vercel.app
 
 Fresh Free Supabase project: `rqcqlpoxtdddjcylhopk`, `indiefindr-relaunch`, cirqplus organization, us-west-2. The existing archive's organization is Pro; creating there would incur compute charges, so it was not used. The existing free organization was verified before creation. No plan upgrades or paid services were purchased.
 
@@ -35,3 +35,9 @@ Steam UTM links need no affiliate signup and do not pay commission; they provide
 ## Rebuild current-catalog model slates
 
 The saved top-200 array is copied into ignored `data/relaunch-source/` and indexed by the appid-sorted catalog. `indie-slates.py` preserves the saved merged LambdaRank ordering and applies eligibility before taking ten. `replace-model-recs.py` atomically replaces model rows per source batch, preserving LLM rows. It refuses writes to any other project and asserts coverage after loading. No model fitting or encoder inference is needed for this step.
+
+## Page navigation fix
+
+The original preview rendered game pages dynamically, queried the seed separately for metadata and content, fetched recommendation IDs and cards sequentially, and explicitly disabled card-link prefetching. Game pages now use ISR (one hour), prerender the most-reviewed 100 sources during build, and prefetch full routes from visible cards. Metadata and page content share a React-cached catalog lookup. Recommendation cards use a single PostgREST relationship join. Server functions use `pdx1`, alongside the database's Oregon region. Developer pages also cache their output and reuse already-fetched card fields.
+
+Vercel's build confirms 100 prerendered game paths. An authenticated deployed request to Stardew Valley returned `x-nextjs-prerender: 1`, `x-vercel-cache: PRERENDER`, and complete recommendation HTML. These are cache correctness checks, not latency benchmarks. First visits to uncached long-tail pages still need a render; subsequent visits use the static page cache. Search and event ingestion remain server operations.
