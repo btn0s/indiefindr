@@ -170,7 +170,7 @@ export default async function GamePage({
       <main className="discovery-page">
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <header className="source-header">
-            <div>
+            <div className="page-head">
             <h1 className="page-title">Games like <span itemProp="name">{game.title}</span></h1>
             <p className="game-meta">
               {game.developers?.length > 0 && <span>By {game.developers.join(", ")}</span>}
@@ -187,7 +187,7 @@ export default async function GamePage({
           <ShopLinks appid={appId} />
         </article>
         <SuggestionsSection appId={appId} gameTitle={game.title} />
-        <div className="mt-10"><SameDeveloperSection appId={appId} developers={game.developers} /></div>
+        <SameDeveloperSection appId={appId} developers={game.developers} />
         <AdSlot />
       </main>
     </>

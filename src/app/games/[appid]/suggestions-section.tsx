@@ -6,13 +6,13 @@ export async function SuggestionsSection({ appId, gameTitle }: { appId: number; 
   const slate = await getRecommendations(appId);
   return (
     <section>
-      <ShelfHeading title={`Indie games like ${gameTitle}`} />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
+      <ShelfHeading title="Indie games to play next" note={`Picked to match ${gameTitle} on gameplay, themes, and feel.`} />
+      <div className="game-grid">
         {slate.map(({ game, rank }) => (
           <GameCard key={game.appid} {...game} pageAppid={appId} position={rank} />
         ))}
       </div>
-      {!slate.length && <p>Recommendations are being prepared for this game.</p>}
+      {!slate.length && <p className="empty-note">Recommendations are being prepared for this game.</p>}
     </section>
   );
 }

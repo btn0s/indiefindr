@@ -12,7 +12,6 @@ export interface GameCardProps {
   header_image: string | null;
   review_count?: number;
   review_positive_pct?: number | null;
-  explanation?: string;
   priority?: boolean;
   pageAppid?: number;
   position?: number;
@@ -24,7 +23,6 @@ export function GameCard({
   header_image,
   review_count = 0,
   review_positive_pct = null,
-  explanation,
   priority = false,
   pageAppid, position = 0,
 }: GameCardProps) {
@@ -47,30 +45,7 @@ export function GameCard({
         </div>
         <div className="game-card-title"><span>{title}</span></div>
         <CardRating pct={review_positive_pct} count={review_count} />
-        {explanation && (
-          <div className="text-xs text-muted-foreground first-letter:uppercase">
-            {explanation}
-          </div>
-        )}
       </div>
     </Link>
-  );
-}
-
-export function GameCardNotFound({ explanation }: { explanation?: string }) {
-  return (
-    <div>
-      <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam flex items-center justify-center">
-        <span className="text-xs text-muted-foreground">Game not found</span>
-      </div>
-      <div className="font-medium text-sm text-muted-foreground">
-        Unknown Game
-      </div>
-      {explanation && (
-        <div className="text-xs text-muted-foreground first-letter:uppercase">
-          {explanation}
-        </div>
-      )}
-    </div>
   );
 }

@@ -42,7 +42,7 @@ async function SameDeveloperContent({
     <section>
       <ShelfHeading title={`More from ${developers.length === 1 ? developers[0] : "these developers"}`}
         href={developers.length === 1 ? `/developer/${encodeURIComponent(developers[0])}` : undefined} />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
+      <div className="game-grid">
         {gameCards.map((game) => <GameCard key={game.appid} {...game} />)}
       </div>
     </section>
@@ -51,21 +51,12 @@ async function SameDeveloperContent({
 
 function SameDeveloperSkeleton() {
   return (
-    <div className="flex flex-col gap-4 w-full">
-      <div className="container mx-auto max-w-4xl w-full flex flex-col gap-1">
-        <div className="h-7 w-64 bg-muted rounded animate-pulse" />
+    <section aria-hidden="true">
+      <div className="section-heading"><div className="h-6 w-56 rounded bg-muted animate-pulse" /></div>
+      <div className="game-grid">
+        {Array.from({ length: 4 }).map((_, i) => <div key={i} className="game-card-art animate-pulse" />)}
       </div>
-      <div className="container mx-auto max-w-4xl w-full">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i}>
-              <div className="relative w-full mb-2 overflow-hidden rounded-md bg-muted aspect-steam animate-pulse" />
-              <div className="h-4 w-3/4 bg-muted rounded animate-pulse mb-1" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    </section>
   );
 }
 
