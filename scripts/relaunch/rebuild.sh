@@ -23,6 +23,7 @@ fi
 "$python_bin" scripts/relaunch/normalize-steam.py --out "$run_dir/source" "${previous_args[@]}"
 cp data/relaunch-source/llm_slates.json "$run_dir/source/llm_slates.json"
 printf '%s\n' "$run_dir/source" > data/latest-built-source.txt
+"$python_bin" scripts/relaunch/capacity.py --source "$run_dir/source"
 "$python_bin" scripts/recommender/run.py encode --source "$run_dir/source" --artifacts "$run_dir/model"
 "$python_bin" scripts/recommender/run.py score --source "$run_dir/source" --artifacts "$run_dir/model"
 "$python_bin" scripts/relaunch/prepare.py "$run_dir/source" --out "$run_dir/import"

@@ -58,7 +58,7 @@ def year(r):
  match=re.search(r'(?:19|20)\d{2}',str(r.get('steam_release_date') or r.get('release_date') or ''));return int(match[0]) if match else 0
 years=np.array([year(r) for r in rows]);prices=np.array([(r.get('price_overview') or {}).get('initial',0)/100 for r in rows])
 def owners(value):
- nums=re.findall(r'[\d,]+',str(value or ''));nums=[float(n.replace(',','')) for n in nums];return sum(nums)/len(nums) if nums else 0
+ nums=re.findall(r'[\d,]+',str(value or ''));nums=[float(n.replace(',','')) for n in nums];return sum(nums[:2])/len(nums[:2]) if nums else 0
 pop=np.array([owners(enrichment[str(i)]['popularity'].get('owners')) for i in ids]);owner_known=np.array([bool(enrichment[str(i)]['popularity'].get('owners')) for i in ids])
 def top(scores,k=200):
  # Exact score selection, deterministic appid tie-break including the boundary.
