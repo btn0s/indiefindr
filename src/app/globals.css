@@ -130,11 +130,11 @@
 }
 /* IndieFindr: a quiet frame that lets the games bring the color. */
 :root {
-  /* Neutral frame so the game art carries the color; one warm accent for focus and selection. */
+  /* Ink on neutral: the game art carries all the color. */
   --background: #f7f7f8; --foreground: #131316; --card: #ffffff; --popover: #ffffff;
   --muted: #ececef; --muted-foreground: #6b6b75; --border: #e3e3e8; --input: #e3e3e8;
-  --primary: #131316; --primary-foreground: #ffffff; --ring: #ff4d2e;
-  --brand: #ff4d2e; --media: #0d0d0f; --radius: 0.9rem;
+  --primary: #131316; --primary-foreground: #ffffff; --ring: #131316;
+  --brand: var(--foreground); --media: #0d0d0f; --radius: 0.9rem;
 }
 body { font-family: var(--font-inter), sans-serif; }
 .site-shell { min-height: 100vh; background: var(--background); }
@@ -172,7 +172,7 @@ body { font-family: var(--font-inter), sans-serif; }
 .section-heading h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
 .section-heading span { color: var(--muted-foreground); font-size: 13px; }
 .game-card { display: block; background: transparent; border: none; padding: 0; }
-.game-card:hover .game-card-title { color: var(--brand); }
+.game-card:hover .game-card-title { text-decoration: underline; text-underline-offset: 3px; }
 .game-card-art { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 460/215; background: var(--muted); }
 .game-card-title { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0 0; font-size: 14px; font-weight: 500; line-height: 1.35; }
 .game-card-title svg { flex-shrink: 0; color: var(--muted-foreground); margin-top: 2px; }
