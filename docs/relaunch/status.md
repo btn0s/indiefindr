@@ -4,7 +4,7 @@ Phase 1 preview: https://games-graph-p0vpp725t-thinkhumanco.vercel.app
 
 Fresh Free Supabase project: `rqcqlpoxtdddjcylhopk`, `indiefindr-relaunch`, cirqplus organization, us-west-2. The existing archive's organization is Pro; creating there would incur compute charges, so it was not used. The existing free organization was verified before creation. No plan upgrades or paid services were purchased.
 
-Loaded 25,555 games, 446 tags, and 260,221 recommendation rows. 18,785 games meet the settled indie rule. Major publisher names are normalized before matching. The original top-ten slates are filtered to indie targets without substituting a different ranking model: 786 model-only source slates become empty. All 8,648 LLM source slates retain eligible recommendations. Complete ten-game coverage requires reranking with the indie eligibility mask during the expanded offline run.
+Loaded 25,555 games, 446 tags, and 327,809 recommendation rows. 18,785 games meet the settled indie rule. Major publisher names are normalized before matching. The merged model's saved score-ordered top-200 candidates are filtered with the indie mask before selecting ten. All 25,555 games now have exactly ten distinct indie model recommendations (255,550 model rows), and all 8,648 LLM source slates remain preserved (72,259 rows). Database assertions confirm zero missing model pages and zero non-indie targets. The original 786 empty model slates are fixed. Saved candidate SHA-256: `28d0d87e5eb1ef16702cf1a0f799eeb5e17bd11e5d0d7e10f0a3dce7252684cc`.
 
 The app reads stored lists only, preferring LLM whenever present. Missing games return 404, without Steam fetching or database inserts. Search uses the loaded catalog. Retired collection/trainer routes, submit route, locks, rate limits, and generation code are archived outside the application. Migration history is preserved outside the active migrations directory; the fresh project has one migration. Raw Steam payloads remain outside the database.
 
@@ -31,3 +31,7 @@ Validation: production build and TypeScript pass; ESLint has zero errors (one ex
 4. [Google AdSense](https://adsense.google.com/start/): submit indiefindr.gg after the production site is restored; account/site approval and publisher/slot IDs are required. Ads remain off until approved.
 
 Steam UTM links need no affiliate signup and do not pay commission; they provide publisher-side attribution ([Steamworks documentation](https://partner.steamgames.com/doc/marketing/utm_analytics)). Affiliate acceptance and earnings are not guaranteed. No signups were submitted on bt's behalf.
+
+## Rebuild current-catalog model slates
+
+The saved top-200 array is copied into ignored `data/relaunch-source/` and indexed by the appid-sorted catalog. `indie-slates.py` preserves the saved merged LambdaRank ordering and applies eligibility before taking ten. `replace-model-recs.py` atomically replaces model rows per source batch, preserving LLM rows. It refuses writes to any other project and asserts coverage after loading. No model fitting or encoder inference is needed for this step.
