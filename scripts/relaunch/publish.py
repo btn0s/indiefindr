@@ -6,6 +6,7 @@ preserved from their frozen export. Checks run before and after publication.
 """
 import argparse,json,pathlib,urllib.request
 from capacity import check_capacity
+from selection import POPULARITY_CAPS, MODEL_VERSION
 p=argparse.ArgumentParser();p.add_argument('--data',type=pathlib.Path,default=pathlib.Path('data/full-import'));p.add_argument('--check-budget-only',action='store_true');a=p.parse_args()
 values=dict(l.split('=',1) for l in pathlib.Path('.env.relaunch-admin').read_text().splitlines() if '=' in l);ref=values['RELAUNCH_PROJECT_REF'];assert ref=='rqcqlpoxtdddjcylhopk'
 def management(path,data=None):
@@ -19,9 +20,10 @@ for r in recs:
  slates.setdefault((r['appid'],r['source']),[]).append(r)
 for g in games:
  slate=slates.get((g['appid'],'model'),[])
+ assert all(r['model_version']==MODEL_VERSION for r in slate)
+ assert all(sum(byid[r['rec_appid']]['review_count']>=threshold for r in slate)<=cap for threshold,cap in POPULARITY_CAPS)
  assert len(slate)==10 and sorted(r['rank'] for r in slate)==list(range(1,11)) and len({r['rec_appid'] for r in slate})==10
-# Capacity guard: stay inside Free's 500 MB entitlement unless the plan is
-# explicitly upgraded with bt's approval outside this program.
+# Check the actual plan entitlement with 10% operating headroom.
 capacity=check_capacity(management,len(games),len(recs));print(capacity,flush=True)
 assert capacity['publication_allowed'],'Expanded catalog publication needs capacity approval; no writes or plan changes made.'
 if a.check_budget_only:raise SystemExit
@@ -34,12 +36,15 @@ for table,rows in [('tags',tags),('games',games)]:
   except urllib.error.HTTPError as e:
    print(e.read().decode()[:1000]);raise SystemExit(1)
  print('loaded',table,len(rows),flush=True)
+# Keep eligible archived suggestions, but remove targets invalidated by ownership changes.
+query("delete from public.game_recs r using public.games g where r.rec_appid=g.appid and r.source='llm' and not g.is_indie")
 ids=sorted(byid)
 for start in range(0,len(ids),250):
  batch=ids[start:start+250];records=[r for appid in batch for source in ['model','llm'] for r in slates.get((appid,source),[])]
  data=json.dumps(records).replace("'","''")
- query("begin; delete from public.game_recs where appid in ("+','.join(map(str,batch))+"); insert into public.game_recs(appid,rank,rec_appid,source,model_version) select appid,rank,rec_appid,source,model_version from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,rank integer,rec_appid integer,source text,model_version text); commit;")
+ query("begin; delete from public.game_recs where (source='model' or source='llm' and appid in (select appid from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,source text) where source='llm')) and appid in ("+','.join(map(str,batch))+"); insert into public.game_recs(appid,rank,rec_appid,source,model_version) select appid,rank,rec_appid,source,model_version from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,rank integer,rec_appid integer,source text,model_version text); commit;")
  if start%5000==0:print('published',min(start+250,len(ids)),flush=True)
-checks=query("select (select count(*) from games g where not exists(select 1 from game_recs r where r.appid=g.appid and r.source='model')) as empty_model_pages,(select count(*) from game_recs r join games g on g.appid=r.rec_appid where not g.is_indie) as non_indie_targets")
+cap_violations=' or '.join(f'count(*) filter(where g.review_count>={threshold})>{cap}' for threshold,cap in POPULARITY_CAPS)
+checks=query("select (select count(*) from games g where (select count(*) from game_recs r where r.appid=g.appid and r.source='model')<>10) as empty_model_pages,(select count(*) from game_recs r join games g on g.appid=r.rec_appid where not g.is_indie) as non_indie_targets,(select count(*) from (select r.appid from game_recs r join games g on g.appid=r.rec_appid where r.source='model' group by r.appid having "+cap_violations+") invalid) as popularity_cap_violations")
 assert all(int(v)==0 for v in checks[0].values()),checks
 print('Publication verified',checks,flush=True)
