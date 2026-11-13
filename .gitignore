@@ -74,3 +74,5 @@ supabase/.temp/
 __pycache__/
 *.pyc
 .venv/
+
+/src/lib/mcp-app-html.ts
