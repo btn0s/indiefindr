@@ -154,14 +154,13 @@ export default async function GamePage({
               {game.developers?.length > 0 && <span>By {game.developers.join(", ")}</span>}
               {game.release_date && <span>{new Date(game.release_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>}
               {game.review_count > 0 && game.review_positive_pct != null && <span>{game.review_positive_pct}% positive of {Number(game.review_count).toLocaleString("en-US")} reviews</span>}
+              {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)}</span>}
             </p>
           </header>
           <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}
             trailer={((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null} />
           {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
-          <div className="source-game-actions"><SteamLink appid={appId} />
-            {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)}</span>}
-          </div>
+          <div className="source-game-actions"><SteamLink appid={appId} /></div>
           <ShopLinks appid={appId} />
         </article>
         <SuggestionsSection appId={appId} gameTitle={game.title} />
