@@ -12,6 +12,8 @@ export function useGameSearch() {
   const cache = useRef(new Map<string, SearchGame[]>());
   const lastQuery = useRef("");
   const requested = useRef(new Set<number>());
+  // The title index is several megabytes, so it downloads the first time someone searches, not on every page view.
+  const loaded = useRef(false);
   const [games, setGames] = useState<SearchGame[]>([]);
   const [details, setDetails] = useState<Map<number, SearchDetail>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -40,8 +42,7 @@ export function useGameSearch() {
         show(data.games);
       }
     };
-    engine.postMessage({ type: "load", url: "https://rqcqlpoxtdddjcylhopk.supabase.co/storage/v1/object/public/search/titles.json" });
-    return () => { engine.terminate(); worker.current = null; };
+    return () => { engine.terminate(); worker.current = null; loaded.current = false; };
   }, [show]);
 
   // The empty search shows the most-reviewed indies, with their row details in the same query.
@@ -59,6 +60,10 @@ export function useGameSearch() {
   }, [show]);
 
   const search = useCallback((query: string) => {
+    if (!loaded.current && worker.current) {
+      loaded.current = true;
+      worker.current.postMessage({ type: "load", url: "https://rqcqlpoxtdddjcylhopk.supabase.co/storage/v1/object/public/search/titles.json" });
+    }
     const key = query.trim().toLowerCase();
     lastQuery.current = key;
     const id = ++sequence.current;
