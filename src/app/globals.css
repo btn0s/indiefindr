@@ -205,8 +205,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: var(--heading-gap); }
 .section-heading h2 { font-size: var(--type-heading); font-weight: 600; letter-spacing: -0.015em; line-height: 1.3; }
 .section-heading p { margin-top: 2px; font-size: var(--type-ui); line-height: 1.5; color: var(--muted-foreground); }
-.see-all { flex-shrink: 0; font-size: var(--type-ui); font-weight: 500; white-space: nowrap; }
-.see-all:hover { text-decoration: underline; text-underline-offset: 3px; }
+.see-all { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-size: var(--type-ui); font-weight: 500; white-space: nowrap; }
+.see-all svg { transition: transform .15s ease-out; }
+.see-all:hover svg { transform: translateX(2px); }
 
 /* Cards */
 .game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; }
