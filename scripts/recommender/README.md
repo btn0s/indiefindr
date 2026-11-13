@@ -19,3 +19,5 @@ Raw Steam responses stay on disk. Genre IDs come from `extra_details.links_and_i
 A capacity check refuses publication if the conservative projected size exceeds 90% of the plan's disk entitlement (8 GB on the approved Pro/Micro project). It never purchases anything, upgrades an organization, or changes production. A failed generation leaves the last published recommendations serving.
 
 The nightly generation enriches media after publication and then updates `search/titles.json`. Media batches are keyed by the requested app IDs so catalog reorderings cannot reuse an unrelated batch. Search reports raw and gzip sizes and trims to reviewed games if the complete index exceeds 3 MB gzipped.
+
+Target selection uses `scripts/relaunch/selection.py`: after indie masking and model ordering, allow at most two targets with ≥50,000 reviews and at most four with ≥10,000, counting the first tier toward the second. Skip capped candidates in order until exactly ten remain. Model slates record `lambdarank_merged-indie-full-v2-tilt-m2-4` and persist the complete ordered candidate IDs. Developers and major-owned studios are checked alongside publishers.

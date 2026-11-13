@@ -10,12 +10,12 @@ import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 source = ROOT / 'data/full-source'
-artifacts = ROOT / 'data/full-model'
+artifacts = ROOT / 'data/full-model-tilt'
 pointer = ROOT / 'data/active-run.json'
 python = ROOT / 'scripts/recommender/.venv/bin/python'
 while not (source / 'slates_indie.jsonl').exists():
     processes = subprocess.check_output(['ps', '-axo', 'command'], text=True)
-    if 'run.py score --source data/full-source --artifacts data/full-model' not in processes:
+    if 'run.py score --source data/full-source --artifacts data/full-model-tilt' not in processes:
         raise SystemExit('Existing scorer stopped without a finished slate file; inspect full-ranking.log')
     time.sleep(30)
 if not pointer.exists():
