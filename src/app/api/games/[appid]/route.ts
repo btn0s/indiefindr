@@ -9,6 +9,8 @@ import {
 } from "@/lib/api/responses";
 import { ZodError } from "zod";
 
+export const preferredRegion = "pdx1";
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ appid: string }> }

@@ -1,4 +1,4 @@
-import { getOrFetchGame } from "@/lib/actions/games";
+import { getGame } from "@/lib/catalog";
 import { GameCard, GameCardNotFound } from "./GameCard";
 
 interface GameCardAsyncProps {
@@ -12,7 +12,7 @@ export async function GameCardAsync({
   explanation,
   priority = false,
 }: GameCardAsyncProps) {
-  const game = await getOrFetchGame(appid);
+  const game = await getGame(appid);
 
   if (!game) {
     return <GameCardNotFound explanation={explanation} />;

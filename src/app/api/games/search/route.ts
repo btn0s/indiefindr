@@ -17,6 +17,8 @@ type DbGameResult = {
   rank?: number;
 };
 
+export const preferredRegion = "pdx1";
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = getSupabaseServerClient();

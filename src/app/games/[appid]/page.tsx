@@ -2,10 +2,20 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { SteamLink } from "@/components/SteamLink";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getOrFetchGame } from "@/lib/actions/games";
-import { GameVideo } from "@/components/GameVideo";
+import { getGame } from "@/lib/catalog";
+
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
+
+// Popular pages are built ahead of time; other catalog pages are cached on demand.
+export const revalidate = 3600;
+export const dynamic = "force-static";
+export async function generateStaticParams() {
+  const { data, error } = await getSupabaseServerClient().from("games")
+    .select("appid").order("review_count", { ascending: false }).limit(100);
+  if (error) throw new Error("Catalog unavailable");
+  return (data ?? []).map(game => ({ appid: String(game.appid) }));
+}
 
 export async function generateMetadata({
   params,
@@ -19,13 +29,7 @@ export async function generateMetadata({
     return { title: "Game Not Found" };
   }
 
-  // Lightweight metadata fetch - just get title
-  const supabase = getSupabaseServerClient();
-  const { data } = await supabase
-    .from("games")
-    .select("title, short_description")
-    .eq("appid", appId)
-    .maybeSingle();
+  const data = await getGame(appId);
 
   if (!data) {
     return { title: "Game Not Found" };
@@ -75,7 +79,7 @@ export default async function GamePage({
   }
 
   // Only fetch critical game data - suggestions load separately via Suspense
-  const game = await getOrFetchGame(appId);
+  const game = await getGame(appId);
 
   if (!game) {
     notFound();
@@ -104,19 +108,6 @@ export default async function GamePage({
       datePublished: game.release_date,
     }),
   };
-
-  const videoObjectSchema =
-    game.videos.length > 0
-      ? {
-          "@context": "https://schema.org",
-          "@type": "VideoObject",
-          name: `${game.title} - Trailer`,
-          description: game.short_description || `Trailer for ${game.title}`,
-          thumbnailUrl: game.header_image || undefined,
-          uploadDate: game.release_date || undefined,
-          contentUrl: game.videos[0],
-        }
-      : null;
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -151,14 +142,7 @@ export default async function GamePage({
           __html: JSON.stringify(videoGameSchema).replace(/</g, "\\u003c"),
         }}
       />
-      {videoObjectSchema && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(videoObjectSchema),
-          }}
-        />
-      )}
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -177,17 +161,6 @@ export default async function GamePage({
                 {game.release_date && <span>{game.release_date}</span>}
               </div>
             </div>
-            {game.videos.length > 0 && (
-              <div className="w-full aspect-video">
-                <GameVideo
-                  videos={game.videos}
-                  headerImage={game.header_image}
-                  alt={game.title}
-                  className="w-full h-full"
-                  autoPlay
-                />
-              </div>
-            )}
             {game.short_description && (
               <p className="text-muted-foreground">{game.short_description}</p>
             )}

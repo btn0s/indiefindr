@@ -3,24 +3,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 
-export type GameData = {
-  appid: number;
-  title: string;
-  short_description: string | null;
-  videos: string[];
-  header_image: string | null;
-  developers: string[];
-  release_date: string | null;
-};
-
-/** Request paths only read the preloaded catalog. */
-export async function getOrFetchGame(appId: number): Promise<GameData | null> {
- const { data, error } = await getSupabaseServerClient().from("games")
- .select("appid,title,short_description,header_image,developers,release_date").eq("appid",appId).maybeSingle();
- if(error) throw new Error("Catalog unavailable");
- return data ? {...data, videos: []} : null;
-}
-
 const PAGE_SIZE = 24;
 
 export type HomeGame = {

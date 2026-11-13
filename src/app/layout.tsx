@@ -9,6 +9,8 @@ import { ScrollToTopOnNavigation } from "@/components/ScrollToTopOnNavigation";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
+export const preferredRegion = "pdx1";
+
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
