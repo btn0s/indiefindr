@@ -202,7 +202,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .discovery-page > * + * { margin-top: var(--section-gap); }
 .page-head { display: flex; flex-direction: column; gap: 8px; }
 .page-title { font-size: var(--type-title); font-weight: 650; letter-spacing: -0.025em; line-height: 1.15; text-wrap: pretty; }
-.page-eyebrow { display: block; margin-bottom: 4px; font-size: var(--type-ui); font-weight: 500; letter-spacing: 0; line-height: 1.4; color: var(--muted-foreground); }
+.title-lead { color: var(--muted-foreground); }
 .page-note { font-size: var(--type-ui); line-height: 1.5; color: var(--muted-foreground); }
 .empty-note { font-size: var(--type-ui); color: var(--muted-foreground); }
 
@@ -256,7 +256,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
 .game-trailer video[data-playing=true] { opacity: 1; }
 .trailer-sound { position: absolute; right: 12px; bottom: 12px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--media) 65%, transparent); color: #fff; }
-.source-description { max-width: 65ch; font-size: var(--type-body); line-height: 1.6; color: var(--text-body); text-wrap: pretty; }
+.source-description { max-width: 65ch; font-size: var(--type-ui); line-height: 1.6; color: var(--text-body); text-wrap: pretty; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
 .steam-link { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: var(--type-ui); font-weight: 500; }
 .steam-link:hover { background: color-mix(in srgb, var(--primary) 82%, white); }
@@ -272,7 +272,6 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .rating-badge small::before { content: ", "; }
   .rating-badge .rating-source { display: none; }
   .source-game { gap: 16px; }
-  .source-description { font-size: 15px; }
   .source-game-actions { width: 100%; }
   .steam-link { width: 100%; justify-content: center; padding-block: 12px; }
 }

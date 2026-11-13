@@ -171,11 +171,10 @@ export default async function GamePage({
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <header className="source-header">
             <div className="page-head">
-            <h1 className="page-title"><span className="page-eyebrow">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
+            <h1 className="page-title"><span className="title-lead">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
             <p className="game-meta">
               {game.developers?.length > 0 && <span className="meta-by">By {game.developers.join(", ")}</span>}
               {game.release_date && <span>{new Date(game.release_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>}
-              {game.is_free ? <span>Free to play</span> : game.price_cents != null && <span>${(game.price_cents / 100).toFixed(2)}</span>}
             </p>
             </div>
             <RatingBadge pct={game.review_positive_pct} count={game.review_count} />
@@ -183,7 +182,7 @@ export default async function GamePage({
           <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}
             trailer={((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null} />
           {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
-          <div className="source-game-actions"><SteamLink appid={appId} /></div>
+          <div className="source-game-actions"><SteamLink appid={appId} price={game.is_free ? "Free" : game.price_cents != null ? `$${(game.price_cents / 100).toFixed(2)}` : null} /></div>
           <ShopLinks appid={appId} />
         </article>
         <SuggestionsSection appId={appId} gameTitle={game.title} />
