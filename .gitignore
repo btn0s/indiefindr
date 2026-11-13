@@ -70,3 +70,7 @@ supabase/.temp/
 .supabase/
 
 /data/
+
+__pycache__/
+*.pyc
+.venv/

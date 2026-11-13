@@ -1,7 +1,7 @@
 {
   "name": "indiefindr",
   "version": "0.1.0",
-  "description": "Discover indie games through AI-powered recommendations that understand tone, vibe, and gameplay feel",
+  "description": "Discover indie games through precomputed recommendations",
   "repository": {
     "type": "git",
     "url": "https://github.com/btn0s/indiefindr.git"
@@ -11,14 +11,13 @@
     "game-discovery",
     "steam",
     "recommendations",
-    "ai",
     "nextjs"
   ],
   "license": "MIT",
   "author": "btn0s",
   "private": false,
   "scripts": {
-    "dev": "(supabase start || true) && next dev",
+    "dev": "next dev",
     "supabase:env": "bash scripts/setup-local-env.sh",
     "prebuild": "tsx scripts/generate-home-og.ts",
     "build": "next build",

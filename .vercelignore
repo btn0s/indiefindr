@@ -2,3 +2,5 @@ data
 archive
 .env*
 .git
+scripts/recommender
+scripts/relaunch
