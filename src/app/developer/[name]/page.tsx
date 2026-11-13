@@ -127,15 +127,15 @@ export default async function DeveloperQueryPage({
           __html: JSON.stringify(itemListSchema),
         }}
       />
-      <main className="container mx-auto max-w-4xl py-6 sm:py-8 flex flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Games by {developerName}</h1>
-          <p className="text-muted-foreground">
-            {games.length} {games.length === 1 ? "game" : "games"} found
+      <main className="discovery-page">
+        <header className="page-head">
+          <h1 className="page-title">Games by {developerName}</h1>
+          <p className="page-note">
+            {games.length} {games.length === 1 ? "game" : "games"} in the catalog
           </p>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="game-grid">
           {games.map((game) => (
             <GameCard key={game.appid} {...game} />
           ))}

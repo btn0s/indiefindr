@@ -99,7 +99,7 @@ export default async function Home() {
       {shelves.fresh.length >= 4 && <Shelf slug="new" games={shelves.fresh} />}
       <section>
         <ShelfHeading title="Browse all" />
-        {games.length ? <GameGrid initialGames={games} /> : <p className="text-muted-foreground">The catalog is being updated. Please check back soon.</p>}
+        {games.length ? <GameGrid initialGames={games} /> : <p className="empty-note">The catalog is being updated. Please check back soon.</p>}
       </section>
     </main>
   );
@@ -107,9 +107,9 @@ export default async function Home() {
 
 function Shelf({ slug, games }: { slug: ShelfSlug; games: GameCardGame[] }) {
   if (!games.length) return null;
-  return <section className="shelf">
+  return <section>
     <ShelfHeading title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} />
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-6">
+    <div className="game-grid">
       {games.map(game => <GameCard key={game.appid} {...game} />)}
     </div>
   </section>;
