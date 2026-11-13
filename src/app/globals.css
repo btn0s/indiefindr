@@ -202,7 +202,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .discovery-page { max-width: 896px; margin: auto; padding: var(--page-top) 0 64px; }
 .discovery-page > * + * { margin-top: var(--section-gap); }
 .page-head { display: flex; flex-direction: column; gap: 8px; }
-.page-title { font-size: var(--type-title); font-weight: 650; letter-spacing: -0.025em; line-height: 1.15; text-wrap: balance; }
+.page-title { font-size: var(--type-title); font-weight: 650; letter-spacing: -0.025em; line-height: 1.15; text-wrap: pretty; }
+.page-eyebrow { display: block; margin-bottom: 4px; font-size: var(--type-ui); font-weight: 500; letter-spacing: 0; line-height: 1.4; color: var(--muted-foreground); }
 .page-note { font-size: var(--type-ui); line-height: 1.5; color: var(--muted-foreground); }
 .empty-note { font-size: var(--type-ui); color: var(--muted-foreground); }
 
@@ -250,8 +251,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-meta span + span::before { content: "·"; margin: 0 8px; }
 .rating-badge { display: flex; align-items: center; gap: 12px; flex-shrink: 0; padding: 10px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
 .rating-badge strong { font-size: var(--type-title); font-weight: 650; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
-.rating-badge span { display: flex; flex-direction: column; font-size: var(--type-caption); line-height: 1.4; color: var(--muted-foreground); }
+.rating-badge > span { display: flex; flex-direction: column; font-size: var(--type-caption); line-height: 1.4; color: var(--muted-foreground); }
 .rating-badge b { font-size: var(--type-ui); font-weight: 600; color: var(--foreground); }
+.rating-badge small { font-size: inherit; }
 .game-trailer { position: relative; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background: var(--media); }
 .game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
 .game-trailer video[data-playing=true] { opacity: 1; }
@@ -262,7 +264,16 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .steam-link:hover { background: color-mix(in srgb, var(--primary) 82%, white); }
 @media(max-width: 640px) {
   .source-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .rating-badge { padding: 0; border: 0; background: none; gap: 10px; }
+  /* Phones: developer gets its own line, so a wrap never strands a separator. */
+  .game-meta .meta-by { flex-basis: 100%; }
+  .game-meta .meta-by + span::before { content: none; }
+  /* Phones: the rating is one quiet line of text under the metadata, not a second headline. */
+  .rating-badge { display: block; padding: 0; border: 0; background: none; font-size: var(--type-ui); line-height: 1.5; }
+  .rating-badge strong { font-size: 15px; letter-spacing: 0; margin-right: 6px; }
+  .rating-badge > span { display: inline; font-size: inherit; }
+  .rating-badge b { font-size: inherit; }
+  .rating-badge small::before { content: "·"; margin: 0 6px; }
+  .rating-badge .rating-source { display: none; }
   .source-game { gap: 16px; }
   .source-description { font-size: 15px; }
   .source-game-actions { width: 100%; }
