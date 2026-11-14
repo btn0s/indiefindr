@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { heroImage, type HeroFields } from "@/lib/hero";
 import { CardRating } from "./Rating";
-import { CardLink, CardMorph } from "./CardLink";
+import { CardLink } from "./CardLink";
 
 export interface GameCardProps extends HeroFields {
   appid: number;
@@ -14,7 +14,7 @@ export interface GameCardProps extends HeroFields {
   position?: number;
 }
 
-/** Renders on the server; only the link (prefetch and intent) and the morph names are client code. */
+/** Renders on the server; only the link (prefetch and intent) and the morph names (card-morph.ts) are client code. */
 export function GameCard({
   appid, title, header_image, hero_poster, hero_still,
   review_count = 0, review_positive_pct = null,
@@ -24,13 +24,13 @@ export function GameCard({
     <CardLink appid={appid} hero={heroImage({ hero_poster, hero_still, header_image })} className="game-card"
       data-appid={appid} data-position={position}>
       <div>
-        <CardMorph appid={appid}>
-          <div className="game-card-art">
-            {header_image && <Image src={header_image} alt={title} fill unoptimized className="object-cover" preload={preload} />}
-          </div>
-        </CardMorph>
-        <div className="game-card-title"><span>{title}</span></div>
-        <CardRating pct={review_positive_pct} count={review_count} />
+        <div className="game-card-art">
+          {header_image && <Image src={header_image} alt={title} fill unoptimized className="object-cover" preload={preload} />}
+        </div>
+        <div className="game-card-text">
+          <div className="game-card-title"><span>{title}</span></div>
+          <CardRating pct={review_positive_pct} count={review_count} />
+        </div>
       </div>
     </CardLink>
   );

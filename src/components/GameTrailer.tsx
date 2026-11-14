@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { preconnect } from "react-dom";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { HERO_SIZES } from "@/lib/hero";
+import { trailerPlaying } from "@/lib/card-morph";
 
 export type Trailer = { title: string; url: string; poster: string | null };
 
@@ -87,10 +88,14 @@ export function GameTrailer({ title, trailer, image, base }: {
 
   return <div className="game-trailer" onKeyDown={event => { if (loaded && event.key.toLowerCase() === "k") togglePause(); }}>
     {base && base !== image && <Image src={base} alt="" fill unoptimized className="object-cover" />}
-    {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes={HERO_SIZES} className="object-cover"
-      onLoad={() => setHeroPainted(true)} onError={() => setHeroPainted(true)} />}
-    {trailer && <video ref={ref} muted={muted} loop playsInline aria-label={`${title} trailer`}
-      onLoadedData={() => setLoaded(true)} onPlaying={() => setPlaying(true)} data-playing={playing} />}
+    {/* Everything over the card's own art (base) moves as one layer, so a card morph can hold or drop it as a whole
+        (globals.css, data-cover-hold and data-pulling; card-morph.ts). */}
+    <div className="cover-layer">
+      {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes={HERO_SIZES} className="object-cover"
+        onLoad={() => setHeroPainted(true)} onError={() => setHeroPainted(true)} />}
+      {trailer && <video ref={ref} muted={muted} loop playsInline aria-label={`${title} trailer`}
+        onLoadedData={() => setLoaded(true)} onPlaying={() => { setPlaying(true); trailerPlaying(); }} data-playing={playing} />}
+    </div>
     {loaded && <div className="trailer-controls">
       <Button className="trailer-button" onClick={togglePause} aria-label={paused ? "Play trailer" : "Pause trailer"} data-on={paused || undefined}>
         <Pause size={16} className="icon-off" aria-hidden="true" /><Play size={16} className="icon-on" aria-hidden="true" />

@@ -9,6 +9,7 @@ import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
 import { GameFacts } from "@/components/GameFacts";
 import { ScreenshotStrip } from "@/components/ScreenshotStrip";
+import { SwipeDismiss } from "@/components/SwipeDismiss";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
 
@@ -173,22 +174,27 @@ export default async function GamePage({
         }}
       />}
       <WebMCP />
-      {/* Opened from a card, the page slides in from the right; its cover morphs out of the card's art (CardLink).
-          Replacing its loading skeleton, it fades in. */}
-      <ViewTransition default="none" enter={{ "nav-forward": "slide-from-right", default: "page-in" }}
-        exit={{ "nav-forward": "slide-to-left", default: "none" }}>
+      {/* Opened from a card, the card expands into the page: its surface into the sheet, its art into the cover, while
+          the page it came from recedes; the content rises in as the sheet lands (globals.css). Back plays it in reverse
+          (HistoryTransition). Arriving any other way, the page fades in. */}
+      <ViewTransition default="none" enter={{ "card-open": "none", "card-close": "none", default: "page-in" }}>
       <main className="discovery-page">
+        {/* What an opened card expands into, and Back shrinks into the card again: the page's surface, the size of the
+            viewport on phones and of the content column on desktop. Only a card transition (card-morph.ts) shows it. */}
+        <div className="page-sheet" aria-hidden />
+        <SwipeDismiss />
         {/* Cover hero: the trailer (its poster or still until it plays) as a framed plate on the page, whole and unfaded.
             On desktop the title, facts, blurb and Steam button sit beside it; on phones, beneath it. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
-          <ViewTransition name={`art-${appId}`} share="art-morph" default="none">
-            <GameTrailer title={game.title} trailer={trailer} base={game.header_image}
-              image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
-          </ViewTransition>
+          <GameTrailer title={game.title} trailer={trailer} base={game.header_image}
+            image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
           <div className="source-info">
             <header className="source-header">
-              <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
-              <GameFacts game={game} />
+              {/* The card's title and score morph into this block (card-morph.ts). */}
+              <div className="source-head">
+                <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
+                <GameFacts game={game} />
+              </div>
               {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
             </header>
             <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>
