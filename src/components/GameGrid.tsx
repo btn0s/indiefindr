@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { GameCard } from "./GameCard";
-import { Spinner } from "@/components/ui/spinner";
+import { CardSkeleton } from "./CardSkeleton";
 import { loadMoreGames } from "@/lib/actions/games";
 import type { GameCardGame } from "@/lib/supabase/types";
 
@@ -66,12 +66,10 @@ export function GameGrid({ initialGames }: GameGridProps) {
             {...game}
           />
         ))}
+        {/* The next page holds its place as cards, so nothing below jumps when it lands. */}
+        {isPending && Array.from({ length: 4 }, (_, index) => <CardSkeleton key={index} />)}
       </div>
-      {hasMore && (
-        <div ref={loaderRef} className="flex justify-center py-8">
-          {isPending && <Spinner />}
-        </div>
-      )}
+      {hasMore && <div ref={loaderRef} aria-hidden="true" className="h-px" />}
     </>
   );
 }

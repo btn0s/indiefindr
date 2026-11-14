@@ -152,16 +152,46 @@
   --section-gap: 56px;
   --heading-gap: 16px;
   --divider-gap: 40px;
+
+  /* Radius scale. Nested corners stay concentric: inner radius = outer radius - padding. */
+  --radius-xs: 4px; --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px;
+
+  /* Motion. Enters and hovers ease out hard and settle; presses are quick; exits are shorter than enters. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-press: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --duration-press: 120ms; --duration-hover: 200ms; --duration-enter: 180ms; --duration-exit: 110ms;
+
+  /* Depth, tinted with the ink colour. Every raised thing uses a tight contact shadow under a soft ambient one. */
+  --ink-rgb: 19 19 22;
+  --hairline: inset 0 0 0 1px rgb(var(--ink-rgb) / .08);
+  --sheen: inset 0 1px 0 rgb(255 255 255 / .16);
+  --shadow-card: 0 1px 1px rgb(var(--ink-rgb) / .06), 0 4px 10px -4px rgb(var(--ink-rgb) / .14);
+  --shadow-card-hover: 0 1px 2px rgb(var(--ink-rgb) / .08), 0 14px 26px -10px rgb(var(--ink-rgb) / .28);
+  --shadow-raised: 0 1px 1px rgb(var(--ink-rgb) / .08), 0 2px 4px -1px rgb(var(--ink-rgb) / .10);
+  --shadow-popover: 0 0 0 1px rgb(var(--ink-rgb) / .06), 0 4px 8px -2px rgb(var(--ink-rgb) / .06), 0 18px 40px -8px rgb(var(--ink-rgb) / .18);
+  --shadow-inset: inset 0 1px 2px rgb(var(--ink-rgb) / .07);
 }
 @media(max-width: 700px) {
   :root { --type-title: 26px; --type-heading: 18px; --page-top: 20px; --section-gap: 40px; --divider-gap: 28px; }
 }
 
 body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); }
+code, pre, kbd { font-family: var(--font-geist-mono), ui-monospace, monospace; }
+/* Pinch zoom stays; double-tap zoom goes, so taps land without the 300ms wait. Our own :active states replace the grey tap flash. */
+html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; text-size-adjust: 100%; }
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+::selection { background: rgb(var(--ink-rgb) / .14); }
+/* One focus ring for everything: ink, 2px, offset from the edge. Keyboard only; a mouse click never draws it. */
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+:focus:not(:focus-visible) { outline: none; }
+a:focus-visible { border-radius: var(--radius-xs); }
+/* Big grounds carry a faint paper grain; cards and the header sit on top of it, clean. */
+.site-shell { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .075 0 0 0 0 .075 0 0 0 0 .086 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") var(--background); }
 /* Type roles. Every piece of text belongs to exactly one role here, and no other rule sets
    font size, leading, weight or tracking. Colour is a separate choice of three tiers: ink, body, muted. */
-.home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.045em; }
-.page-title { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; }
+.home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.032em; }
+.page-title { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.02em; }
 .section-heading h2, .agent-docs h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
 /* Lead: heading size at reading weight; the one introductory sentence on a page. */
 .home-intro .lede { font-size: var(--type-heading); line-height: 1.5; }
@@ -174,23 +204,35 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Emphasis inside a role keeps its size and gains weight. */
 .card-rating strong, .game-meta strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
-.site-shell { min-height: 100vh; background: var(--background); }
+.site-shell { min-height: 100vh; }
 
-/* Header */
-.site-header { background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 40; }
+/* Header: frosted, so the page slides under it. The blur lives on ::before, because backdrop-filter on the header itself
+   would trap the phone search sheet's position: fixed inside the header. */
+.site-header { border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 40; }
+.site-header::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--card) 84%, transparent); -webkit-backdrop-filter: saturate(1.8) blur(14px); backdrop-filter: saturate(1.8) blur(14px); }
 .site-nav { max-width: 928px; margin: auto; padding: 10px 16px; display: flex; align-items: center; gap: 20px; }
 /* The logo lockup sits outside the text roles: it is the brand mark, not a heading. */
 .wordmark { display: inline-flex; align-items: center; gap: 7px; font-size: 18px; line-height: 27px; font-weight: 700; letter-spacing: -0.03em; white-space: nowrap; }
 .wordmark svg { flex-shrink: 0; }
 .site-search { position: relative; flex: 1; }
-.search-box { display: flex; align-items: center; padding: 0 4px 0 12px; gap: 8px; border: 1px solid var(--border); background: var(--background); border-radius: 8px; }
-.search-box input { width: 100%; min-width: 0; background: transparent; outline: none; padding: 8px 0; }
-.search-box:focus-within { border-color: var(--brand); }
+/* The field sits inset into the header: a hairline, a soft inner shadow, and a crisp ink ring once focused. */
+.search-box { display: flex; align-items: center; padding: 0 4px 0 12px; gap: 8px; border: 1px solid var(--border); background: var(--background); border-radius: var(--radius-md); box-shadow: var(--shadow-inset); transition: border-color var(--duration-hover) ease, box-shadow var(--duration-hover) ease, background-color var(--duration-hover) ease; }
+.search-box input { width: 100%; min-width: 0; min-height: 38px; background: transparent; outline: none; padding: 8px 0; }
+.search-box input::placeholder { color: var(--muted-foreground); }
+.search-box:focus-within { border-color: var(--brand); background: var(--card); box-shadow: var(--shadow-inset), 0 0 0 3px rgb(var(--ink-rgb) / .08); }
+.search-box svg { margin-top: 1px; }
 .search-box button { display: none; }
-.search-results { z-index: 30; width: var(--anchor-width); margin: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--card); padding: 6px; box-shadow: 0 12px 36px color-mix(in srgb, var(--foreground) 8%, transparent); }
-.search-results a { display: flex; align-items: center; gap: 12px; padding: 6px; border-radius: 8px; }
-.search-art { flex-shrink: 0; width: 92px; aspect-ratio: 460/215; overflow: hidden; border-radius: 4px; background: var(--muted); }
+.search-results { z-index: 30; width: var(--anchor-width); max-height: min(560px, var(--available-height)); overflow-y: auto; overscroll-behavior: contain; margin: 0; border-radius: var(--radius-lg); background: var(--card); padding: 6px; box-shadow: var(--shadow-popover); }
+/* Rows are concentric with the panel: 12px corner minus 6px padding. */
+.search-results a { display: flex; align-items: center; gap: 12px; padding: 6px; border-radius: var(--radius-sm); }
+.search-art { flex-shrink: 0; width: 92px; aspect-ratio: 460/215; overflow: hidden; border-radius: var(--radius-xs); background: var(--muted); }
 .search-art img { width: 100%; height: 100%; object-fit: cover; }
+/* Desktop: the panel grows out of the field. Scale and fade from the anchor, out faster than in. Phones get the sheet below. */
+@media (min-width: 701px) {
+  .search-results { transform-origin: var(--transform-origin); transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out); }
+  .search-results[data-starting-style] { opacity: 0; transform: scale(.97); }
+  .search-results[data-ending-style] { opacity: 0; transform: scale(.98); transition-duration: var(--duration-exit); }
+}
 .search-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .search-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .search-meta { display: flex; gap: 10px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; }
@@ -202,112 +244,202 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   /* 16px stops iOS zooming into the field on focus. */
   .search-box input { font-size: 16px; }
   /* Open search on phones: a full-screen sheet with the field on top and results below. */
-  .site-search[data-open=true] { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 1fr; align-content: start; column-gap: 12px; padding: 10px 16px 0; background: var(--background); animation: search-sheet .24s cubic-bezier(.2,.8,.2,1); }
+  .site-search[data-open=true] { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 1fr; align-content: start; column-gap: 12px; padding: 10px 16px 0; background: var(--background); animation: search-sheet .22s var(--ease-out); }
   .site-search[data-open=true] .search-box { background: var(--card); }
-  .site-search[data-open=true] .search-cancel { display: block; }
-  .site-search[data-open=true] .search-results { position: fixed !important; inset: 60px 0 0 !important; width: 100%; grid-column: 1 / -1; margin: 12px -16px 0; padding: 0 10px calc(16px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; background: none; box-shadow: none; overflow-y: auto; overscroll-behavior: contain; animation: search-rows .28s cubic-bezier(.2,.8,.2,1); }
+  /* A 44px target around the word, with the extra space taken back by negative margin so the text stays put. */
+  .site-search[data-open=true] .search-cancel { display: block; min-height: 44px; padding: 0 8px; margin-right: -8px; border-radius: var(--radius-md); }
+  .site-search[data-open=true] .search-cancel:active { opacity: .6; }
+  .site-search[data-open=true] .search-results { position: fixed !important; inset: 60px 0 0 !important; width: 100%; max-height: none; grid-column: 1 / -1; margin: 12px -16px 0; padding: 0 10px calc(16px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; background: none; box-shadow: none; overflow-y: auto; overscroll-behavior: contain; animation: search-rows .26s var(--ease-out); }
   html:has(.site-search[data-open=true]) { overflow: hidden; }
 }
 @keyframes search-sheet { from { opacity: 0; transform: translateY(-6px); } }
 @keyframes search-rows { from { opacity: 0; transform: translateY(8px); } }
-@media(prefers-reduced-motion: reduce) { .site-search[data-open=true], .site-search[data-open=true] .search-results { animation: none; } }
-.search-results a:hover, .search-results a[data-highlighted] { background: var(--muted); }
+@media(prefers-reduced-motion: reduce) {
+  .site-search[data-open=true], .site-search[data-open=true] .search-results { animation-name: fade-in; }
+  .search-results[data-starting-style], .search-results[data-ending-style] { transform: none; }
+}
+@keyframes fade-in { from { opacity: 0; } }
+/* The highlight follows the pointer and the arrow keys exactly, with no transition: it changes dozens of times a minute. */
+.search-results a[data-highlighted] { background: var(--muted); }
+@media (hover: hover) and (pointer: fine) { .search-results a:hover { background: var(--muted); } }
+.search-results a:active { background: color-mix(in srgb, var(--muted) 70%, var(--border)); }
 
 /* Page frame: every page opens with a title block, then sections a fixed gap apart. */
 .discovery-page { max-width: 896px; margin: auto; padding: var(--page-top) 0 64px; }
 .discovery-page > * + * { margin-top: var(--section-gap); }
 .page-head { display: flex; flex-direction: column; gap: 8px; }
-.page-title { text-wrap: pretty; }
 .title-lead { color: var(--muted-foreground); }
-.page-note { color: var(--muted-foreground); }
-.empty-note { color: var(--muted-foreground); }
+.page-note { color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+/* Empty states: a quiet inset tray with the sword, so a missing list still reads as a place, not a gap. */
+.empty-note { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 24px; border-radius: var(--radius-lg); background: rgb(var(--ink-rgb) / .025); box-shadow: var(--shadow-inset), var(--hairline); color: var(--muted-foreground); text-align: center; }
+.empty-note svg { color: #d3d3d9; }
+
+/* Buttons: small physical objects. A gentle top-lit gradient, a 1px highlight on the top edge, a soft shadow under the
+   bottom edge. Pressing sinks it: the shadow collapses into the surface and the face drops 1px and scales a hair. */
+.button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 16px; border-radius: var(--radius-md); white-space: nowrap; font-weight: 500; cursor: pointer; user-select: none; transition: transform var(--duration-press) var(--ease-press), box-shadow var(--duration-press) var(--ease-press), background-color var(--duration-hover) ease, filter var(--duration-hover) ease; }
+.button svg { flex-shrink: 0; }
+.button-primary { color: var(--primary-foreground); background: linear-gradient(to bottom, #34343b, #18181c 55%, #131316); box-shadow: 0 0 0 1px #131316, inset 0 1px 0 rgb(255 255 255 / .16), 0 1px 1px rgb(var(--ink-rgb) / .18), 0 3px 6px -2px rgb(var(--ink-rgb) / .30); }
+.button-secondary { color: var(--foreground); background: linear-gradient(to bottom, #ffffff, #f6f6f8); box-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .10), inset 0 1px 0 #ffffff, 0 1px 1px rgb(var(--ink-rgb) / .06), 0 2px 4px -2px rgb(var(--ink-rgb) / .10); }
+@media (hover: hover) and (pointer: fine) {
+  .button-primary:hover { filter: brightness(1.18); }
+  .button-secondary:hover { background: linear-gradient(to bottom, #ffffff, #f1f1f4); }
+}
+.button:active { transform: translateY(1px) scale(.97); }
+.button-primary:active { box-shadow: 0 0 0 1px #131316, inset 0 1px 2px rgb(0 0 0 / .35), 0 0 0 rgb(var(--ink-rgb) / 0), 0 0 0 0 rgb(var(--ink-rgb) / 0); filter: none; }
+.button-secondary:active { box-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .12), inset 0 1px 2px rgb(var(--ink-rgb) / .10), 0 0 0 rgb(var(--ink-rgb) / 0), 0 0 0 0 rgb(var(--ink-rgb) / 0); background: #f3f3f5; }
+.button:focus-visible { outline-offset: 3px; }
 
 /* Home hero */
 .home-intro { padding: 8px 0 0; display: grid; grid-template-columns: 1fr 1.05fr; gap: 40px; align-items: center; }
-.home-intro h1 { text-wrap: balance; margin: 0 0 16px; }
-.home-intro .lede { max-width: 26em; color: var(--text-body); text-wrap: pretty; }
+.home-intro h1 { margin: 0 0 16px; }
+.home-intro .lede { max-width: 26em; color: var(--text-body); }
 .home-intro .examples { margin-top: 16px; color: var(--muted-foreground); text-wrap: balance; }
 .home-intro .examples span { white-space: nowrap; }
-.home-intro .examples a { color: var(--foreground); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
-.home-intro .examples a:hover { text-decoration-color: currentColor; }
+.home-intro .examples a { color: var(--foreground); text-decoration: underline; text-decoration-color: var(--border); text-decoration-thickness: 1.5px; text-underline-offset: 3px; transition: text-decoration-color var(--duration-hover) ease; }
+@media (hover: hover) and (pointer: fine) { .home-intro .examples a:hover { text-decoration-color: currentColor; } }
 .showcase { position: relative; padding-bottom: 10%; }
-.showcase-source { position: relative; display: block; width: 100%; border-radius: 14px; overflow: hidden; box-shadow: 0 18px 40px color-mix(in srgb, var(--foreground) 15%, transparent); }
+.showcase-source { position: relative; display: block; width: 100%; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 1px 2px rgb(var(--ink-rgb) / .10), 0 24px 48px -16px rgb(var(--ink-rgb) / .30); transition: transform var(--duration-press) var(--ease-press); }
+.showcase-source:active { transform: scale(.99); }
 .showcase-source img { width: 100%; aspect-ratio: 460/215; object-fit: cover; }
-.showcase-source span { position: absolute; left: 12px; top: 12px; padding: 7px 12px; border-radius: 7px; background: color-mix(in srgb, var(--background) 92%, transparent); color: var(--muted-foreground); backdrop-filter: blur(6px); }
+/* An enamel pill: frosted white, lit from the top edge, sitting just above the art. */
+.showcase-source span { position: absolute; z-index: 2; left: 12px; top: 12px; padding: 6px 11px; border-radius: var(--radius-md); background: rgb(255 255 255 / .86); color: var(--muted-foreground); -webkit-backdrop-filter: blur(8px) saturate(1.6); backdrop-filter: blur(8px) saturate(1.6); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgb(var(--ink-rgb) / .06), 0 1px 2px rgb(var(--ink-rgb) / .12), 0 4px 10px -4px rgb(var(--ink-rgb) / .20); }
 .showcase-source strong { color: var(--foreground); }
 .showcase-recs { position: absolute; right: -5%; bottom: 0; width: 100%; padding-left: 14%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.showcase-recs a { display: block; border-radius: 9px; overflow: hidden; border: 3px solid var(--background); box-shadow: 0 10px 22px color-mix(in srgb, var(--foreground) 18%, transparent); transition: transform .2s cubic-bezier(.2,.8,.2,1); }
-.showcase-recs a:hover { transform: translateY(-6px); }
+/* The link stays still and catches the pointer; the tile inside it lifts. Lifting the hovered element itself would
+   slide it out from under the cursor at its bottom edge and flicker. */
+.showcase-recs a { display: block; border-radius: var(--radius-md); }
+.showcase-tile { display: block; border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 0 0 3px var(--background), 0 1px 2px 3px rgb(var(--ink-rgb) / .08), 0 12px 24px -6px rgb(var(--ink-rgb) / .28); transition: transform var(--duration-hover) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { .showcase-recs a:hover .showcase-tile { transform: translateY(-4px); } }
+.showcase-recs a:active .showcase-tile { transform: scale(.97); transition-duration: var(--duration-press); }
 .showcase-recs img { width: 100%; aspect-ratio: 460/215; object-fit: cover; }
 
 /* Section heading: title over a one-line note, optional See all on the right. */
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: var(--heading-gap); }
 .section-heading p { margin-top: 2px; color: var(--muted-foreground); }
-.see-all { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.see-all svg { transition: transform .15s ease-out; }
-.see-all:hover svg { transform: translateX(2px); }
+/* See all: a 44px target, with the padding taken back by negative margin so it lines up with the heading. */
+.see-all { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; min-height: 44px; padding: 0 8px; margin: -12px -8px -12px 0; border-radius: var(--radius-md); }
+.see-all svg { margin-top: 1px; transition: transform var(--duration-hover) var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { .see-all:hover svg { transform: translateX(2px); } }
+.see-all:active { opacity: .6; }
 
-/* Cards */
+/* Cards read as real objects: the art frame has a contact shadow under a soft ambient one, a hairline inner edge,
+   and a faint sheen across its top. Hover deepens the shadow and eases the art in; the frame never moves or resizes.
+   A press shrinks the whole card a touch. */
 .game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; }
 @media(min-width: 768px) { .game-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.game-card { display: block; }
-.game-card:hover .game-card-title { text-decoration: underline; text-underline-offset: 3px; }
-.game-card-art { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 460/215; background: var(--muted); }
-.game-card-title { padding-top: 10px; }
+.game-card { display: block; border-radius: var(--radius-md); }
+.game-card:focus-visible { outline-offset: 4px; }
+.game-card > div { transition: transform var(--duration-press) var(--ease-press); }
+.game-card:active > div { transform: scale(.97); }
+.game-card-art { position: relative; overflow: hidden; border-radius: var(--radius-md); aspect-ratio: 460/215; background: var(--muted); box-shadow: var(--shadow-card); transition: box-shadow var(--duration-hover) var(--ease-out); }
+.game-card-art img { transition: opacity var(--duration-hover) var(--ease-out), transform 320ms var(--ease-out); }
+.game-card-title { padding-top: 10px; text-decoration-line: underline; text-decoration-color: transparent; text-decoration-thickness: 1.5px; text-underline-offset: 3px; transition: text-decoration-color var(--duration-hover) ease; }
+@media (hover: hover) and (pointer: fine) {
+  .game-card:hover .game-card-art { box-shadow: var(--shadow-card-hover); }
+  .game-card:hover .game-card-art img { transform: scale(1.035); }
+  .game-card:hover .game-card-title { text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); }
+}
 .card-rating { margin-top: 2px; color: var(--muted-foreground); }
 .card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+.card-skeleton .skeleton-art { aspect-ratio: 460/215; border-radius: var(--radius-md); }
+.card-skeleton .skeleton-line { height: 14px; margin-top: 13px; width: 72%; }
+.card-skeleton .skeleton-line + .skeleton-line { height: 12px; margin-top: 9px; width: 54%; }
+
+/* Skeletons match the layout they stand in for, so nothing jumps when the content arrives. The light passes over
+   them on transform only, so it never repaints. */
+.skeleton { position: relative; overflow: hidden; border-radius: var(--radius-xs); background: var(--muted); }
+.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .55), transparent); transform: translateX(-100%); animation: skeleton 1.5s var(--ease-press) infinite; }
+@keyframes skeleton { to { transform: translateX(100%); } }
+@media(prefers-reduced-motion: reduce) { .skeleton::after { animation: none; opacity: 0; } }
 
 /* Game page */
 .source-game { display: flex; flex-direction: column; gap: 20px; padding-bottom: var(--divider-gap); border-bottom: 1px solid var(--border); }
 .discovery-page > .source-game + * { margin-top: var(--divider-gap); }
 .source-header { display: block; }
-.game-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 12px; color: var(--muted-foreground); }
+.game-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .game-meta > span { display: inline-flex; align-items: baseline; gap: 6px; }
-.game-meta strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+.game-meta strong { color: var(--foreground); }
 .game-meta .meta-label { color: var(--muted-foreground); }
-.game-meta a { color: var(--foreground); text-underline-offset: 3px; }
-.game-meta a:hover { text-decoration: underline; }
-.game-trailer { position: relative; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background: var(--media); }
-.game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
+.game-meta a { color: var(--foreground); text-decoration-line: underline; text-decoration-color: var(--border); text-decoration-thickness: 1.5px; text-underline-offset: 3px; transition: text-decoration-color var(--duration-hover) ease; }
+@media (hover: hover) and (pointer: fine) { .game-meta a:hover { text-decoration-color: currentColor; } }
+.game-trailer { position: relative; aspect-ratio: 16/9; overflow: hidden; border-radius: var(--radius-lg); background: var(--media); box-shadow: 0 1px 2px rgb(var(--ink-rgb) / .10), 0 16px 36px -18px rgb(var(--ink-rgb) / .45); }
+.game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s var(--ease-out); }
 .game-trailer video[data-playing=true] { opacity: 1; }
-.trailer-sound { position: absolute; right: 12px; bottom: 12px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--media) 65%, transparent); color: #fff; }
-.source-description { max-width: 65ch; color: var(--text-body); text-wrap: pretty; }
+/* Smoked glass, lit on its top edge. 36px to look at, 44px to hit. */
+.trailer-sound { position: absolute; z-index: 2; right: 12px; bottom: 12px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: #fff; background: rgb(13 13 15 / .52); -webkit-backdrop-filter: blur(10px) saturate(1.4); backdrop-filter: blur(10px) saturate(1.4); box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), inset 0 0 0 1px rgb(255 255 255 / .08), 0 1px 3px rgb(0 0 0 / .30); cursor: pointer; transition: transform var(--duration-press) var(--ease-press), background-color var(--duration-hover) ease; }
+.trailer-sound::before { content: ""; position: absolute; inset: -4px; border-radius: 50%; }
+@media (hover: hover) and (pointer: fine) { .trailer-sound:hover { background: rgb(13 13 15 / .68); } }
+.trailer-sound:active { transform: scale(.92); }
+.trailer-sound:focus-visible { outline-color: #fff; }
+.source-description { max-width: 65ch; color: var(--text-body); }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
-.steam-link { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); }
-.steam-link:hover { background: color-mix(in srgb, var(--primary) 82%, white); }
 @media(max-width: 640px) {
   .source-game { gap: 16px; }
   .source-game-actions { width: 100%; }
-  .steam-link { width: 100%; justify-content: center; padding-block: 12px; }
+  .steam-link { width: 100%; min-height: 46px; }
 }
 
-/* Art placeholder: while a cover loads, if it fails, or when a game has none, the sword sits centred in the frame
-   with a slow sheen. It paints behind the frame's content, so the art covers it as soon as it arrives. A failed image
-   gets the same placeholder drawn over its broken-image icon (browsers render ::before/::after only on broken images). */
-:where(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) { position: relative; isolation: isolate; background: var(--art-bg); --art-bg: var(--muted); --art-ink: #d3d3d9; --art-sheen: #e4e4e9; }
+/* Art: while a cover loads, if it fails, or when a game has none, the sword sits centred in the frame with a slow
+   sheen. It paints behind the frame's content, so the art covers it as soon as it arrives. A failed image gets the same
+   placeholder drawn over its broken-image icon (browsers render ::before/::after only on broken images). Once the art
+   has loaded the sheen stops, so dozens of covered placeholders don't keep repainting. */
+:where(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) { position: relative; isolation: isolate; background: var(--art-bg); --art-bg: var(--muted); --art-ink: #d3d3d9; --art-sheen: #e4e4e9; }
 .game-trailer { --art-bg: var(--media); --art-ink: #1e1e23; --art-sheen: #2e2e35; }
-:is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer)::before, :is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img::after {
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer)::before, :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::after {
   content: ""; position: absolute; inset: 0; z-index: -1;
   mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%224.4%204.6%2015%2015%22%3E%3Cpath%20d%3D%22M12.7057%2017.9728L14.0299%2016.6487L10.7377%2013.3567L7.4396%2010.0586L6.11553%2011.3827L7.33348%2014.3331L4.85938%2017.8014L5.52604%2018.4681L6.19271%2019.1347L9.66681%2016.6487L12.7057%2017.9728Z%22/%3E%3Cpath%20d%3D%22M19%209.04753L13.6686%2014.3789L12.1159%2012.8262L15.5358%209.40755L14.5925%208.46419L11.1732%2011.8835L9.62109%2010.3314L14.9525%205H19V9.04753Z%22/%3E%3C/svg%3E") center / auto clamp(14px, 34%, 64px) no-repeat;
   background: linear-gradient(100deg, var(--art-ink) 40%, var(--art-sheen) 50%, var(--art-ink) 60%) 0 0 / 300% 100%;
   animation: art-sheen 1.6s linear infinite;
 }
-:is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img { color: transparent; }
-:is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img::before { content: ""; position: absolute; inset: 0; background: var(--art-bg); }
-:is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img::after { z-index: auto; }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img { color: transparent; }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::before { content: ""; position: absolute; inset: 0; background: var(--art-bg); }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::after { z-index: auto; }
 @keyframes art-sheen { from { background-position: 100% 0; } to { background-position: 0 0; } }
-@media(prefers-reduced-motion: reduce) { :is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer)::before, :is(.game-card-art, .search-art, .showcase-source, .showcase-recs a, .game-trailer) img::after { animation: none; } }
+@media(prefers-reduced-motion: reduce) { :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer)::before, :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::after { animation: none; } }
+/* The glass over the art: a hairline inner edge, so light covers don't bleed into the page, and a faint top sheen. */
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile)::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; pointer-events: none; box-shadow: var(--hairline), var(--sheen); background: linear-gradient(to bottom, rgb(255 255 255 / .07), transparent 38%); }
+/* Art fades up once it has loaded, instead of painting in top to bottom. The script in the document head (layout.tsx)
+   reveals each image as it loads, and stops the placeholder sheen behind it; without that script nothing is hidden. */
+:root[data-art-fade] :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img { opacity: 0; }
+:is(.search-art, .showcase-source, .showcase-tile, .game-trailer) img { transition: opacity var(--duration-hover) var(--ease-out); }
 
-/* Footer */
-.site-footer { max-width: 896px; margin: auto; padding: 28px 0 36px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 24px; color: var(--muted-foreground); }
+/* Footer: links on the left, attribution on the right. */
+.site-footer { max-width: 896px; margin: auto; padding: 28px 0 36px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; color: var(--muted-foreground); }
+.site-footer nav { display: flex; gap: 4px 20px; flex-wrap: wrap; }
+.site-footer a { display: inline-flex; align-items: center; min-height: 32px; transition: color var(--duration-hover) ease; }
+@media (hover: hover) and (pointer: fine) { .site-footer a:hover { color: var(--foreground); } }
 
-@media(max-width: 700px) { .site-nav { gap: 12px; } .home-intro { grid-template-columns: 1fr; gap: 30px; } .showcase { display: none; } .site-footer { padding: 24px 0; } }
+@media(max-width: 700px) { .site-nav { gap: 12px; } .home-intro { grid-template-columns: 1fr; gap: 30px; } .showcase { display: none; } .site-footer { padding: 20px 0 28px; flex-direction: column; align-items: flex-start; } }
 @media(max-width: 900px) { .site-footer { margin-inline: 16px; } }
 
 .agent-docs { display: flex; flex-direction: column; gap: 20px; margin-top: 24px; }
-.agent-docs pre { overflow-x: auto; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+.agent-docs h2 { margin-top: 12px; color: var(--foreground); }
+/* Inline code is a small embossed chip; blocks are inset trays with a copy button. */
+.agent-docs :not(pre) > code { padding: 1px 5px; border-radius: var(--radius-xs); background: var(--card); box-shadow: 0 0 0 1px rgb(var(--ink-rgb) / .08), 0 1px 0 rgb(var(--ink-rgb) / .06); font-size: .92em; white-space: nowrap; }
+.code-block { position: relative; }
+.agent-docs pre { overflow-x: auto; padding: 16px 56px 16px 16px; border-radius: var(--radius-md); background: var(--card); box-shadow: var(--hairline), var(--shadow-inset); font-size: 13px; line-height: 1.6; scrollbar-width: thin; }
+.copy-button { position: absolute; top: 8px; right: 8px; width: 32px; min-height: 32px; padding: 0; color: var(--muted-foreground); }
+.copy-button::before { content: ""; position: absolute; inset: -6px; }
+.copy-button svg { position: absolute; transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out), filter var(--duration-enter) var(--ease-out); }
+.copy-button[data-copied] { color: var(--foreground); }
+.copy-button .copy-check, .copy-button[data-copied] .copy-icon { opacity: 0; transform: scale(.6); filter: blur(2px); }
+.copy-button[data-copied] .copy-check { opacity: 1; transform: none; filter: none; }
+@media(prefers-reduced-motion: reduce) { .copy-button svg { transform: none !important; filter: none !important; } }
 .agent-docs a { text-decoration: underline; text-underline-offset: 3px; }
 
 .review-quality-note { margin-top: 12px; max-width: 80ch; color: var(--muted-foreground); }
 .review-quality-note a { text-decoration: underline; text-underline-offset: 3px; }
 .review-bombed-label { margin-inline-start: 12px; color: var(--muted-foreground); white-space: nowrap; }
+
+/* Page skeleton pieces, sized to the type roles they replace. */
+.skeleton-title { height: calc(var(--type-title) * 1.15); width: min(440px, 80%); border-radius: var(--radius-sm); }
+.skeleton-meta { height: 14px; width: min(520px, 90%); margin-top: 16px; }
+.skeleton-note { height: 14px; width: min(320px, 70%); margin-top: 6px; }
+.skeleton-heading { height: calc(var(--type-heading) * 1.1); width: 220px; border-radius: var(--radius-sm); }
+.skeleton-trailer { aspect-ratio: 16/9; border-radius: var(--radius-lg); }
+.skeleton-text { display: flex; flex-direction: column; gap: 10px; max-width: 65ch; padding-block: 4px; }
+.skeleton-text .skeleton { height: 13px; }
+.skeleton-text .skeleton:last-child { width: 60%; }
+.skeleton-button { height: 40px; width: 168px; border-radius: var(--radius-md); }
+@media(max-width: 640px) { .skeleton-button { width: 100%; height: 46px; } }

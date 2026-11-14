@@ -21,10 +21,11 @@ const OUT_FILE = path.join(OUT_DIR, "home.png");
 const WIDTH = 1200;
 const HEIGHT = 630;
 
-const TILE_W = 350;
-const TILE_H = 200;
+// Same tile shape as src/lib/og-grid.tsx: Steam's 460:215 header, so printed titles aren't cropped.
+const TILE_W = 360;
+const TILE_H = 168;
 const GAP = 16;
-const RADIUS = 18;
+const RADIUS = 14;
 
 // Long-lived Steam header URLs, used when the build has no database access.
 const FALLBACK_IMAGES = [413150, 367520, 588650, 646570, 504230, 1145360]
