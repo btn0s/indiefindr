@@ -1,0 +1,725 @@
+[
+  {
+    "appid": 740250,
+    "title": "Neos VR",
+    "label": "decline",
+    "window_start": "2023-08-01",
+    "window_end": "2023-10-31",
+    "cause": "The Solirax management dispute ended development: lead developer Frooxius resigned in April 2023 and the team left to build Resonite (Steam early access October 2023), leaving Neos effectively abandoned.",
+    "sources": [
+      "https://en.wikipedia.org/wiki/NeosVR",
+      "https://ryanschultz.com/2023/10/13/",
+      "https://uploadvr.com/resonite-vr-steam-early-access",
+      "https://roadtovr.com/neos-vr-spiritual-successor-resonite-reveal-steamvr/"
+    ],
+    "note": "Histogram: ~75-85% positive 2021 to Jul 2023, then 10% Aug, 7% Sep, 1% Oct 2023, and 10-30% ever since. No Steam off-topic flag; sustained drop confirms decline."
+  },
+  {
+    "appid": 496240,
+    "title": "Onward",
+    "label": "decline",
+    "window_start": "2020-07-30",
+    "window_end": "2020-08-31",
+    "cause": "The PC v1.8 update cut graphical fidelity to enable Quest cross-play, prompting a wave of negative reviews and an offered rollback to v1.7.",
+    "sources": [
+      "https://uploadvr.com/onward-pc-1-8-update-issues/",
+      "https://uploadvr.com/onward-pc-downgrade/",
+      "https://techraptor.net/gaming/news/onward-just-received-massive-downgrade"
+    ],
+    "note": "Hard case: in-game cause but partial recovery. Histogram: 85-90% before, Jul 2020 41%, Aug 2020 25%, back to 70-78% in 2021."
+  },
+  {
+    "appid": 496240,
+    "title": "Onward",
+    "label": "decline",
+    "window_start": "2022-10-18",
+    "window_end": "2022-11-30",
+    "cause": "Downpour announced removal of access to the legacy v1.7 build from 27 October 2022 and shipped update 1.9 on a new backend with server problems.",
+    "sources": [
+      "https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/6402455182524210909",
+      "https://steamcommunity.com/app/496240/discussions/0/3722818378192191269",
+      "https://www.uploadvr.com/meta-ceases-onward-development-merges-downpour-into-camouflaj/"
+    ],
+    "note": "Histogram: Oct 2022 23%, Nov 24%, 32-51% through mid-2023, ~50-70% since. Meta ended development in June 2025. Sources for the 2022 event are the developer announcement and Steam forum, not press."
+  },
+  {
+    "appid": 567380,
+    "title": "Heartbound",
+    "label": "bomb",
+    "window_start": "2025-01-01",
+    "window_end": "2025-07-31",
+    "cause": "Players review-bombed Heartbound over developer Thor 'Pirate Software' controversies, culminating in his Stop Killing Games stance in mid-2025.",
+    "sources": [
+      "https://www.gamepressure.com/newsroom/inside-the-stop-killing-games-debate-pirate-software-apologizes-t/z28118",
+      "https://www.sportskeeda.com/us/streamers/pirate-software-stop-killing-games-controversy-timeline-events",
+      "https://jamtest.dexerto.com/twitch/pirate-software-leaves-ludwigs-game-company-over-stop-killing-games-controversy-3222241"
+    ],
+    "note": "Hard case: off-topic developer controversy (Pirate Software / Stop Killing Games, Jan 2025 incident) but sentiment never recovered; some reviews also cite stalled early access. Histogram: 92-100% until mid-2024, Nov 2024 66%, Jan 2025 33%, Jul 2025 8%, 6-29% since."
+  },
+  {
+    "appid": 49520,
+    "title": "Borderlands 2",
+    "label": "bomb",
+    "window_start": "2019-04-03",
+    "window_end": "2019-04-15",
+    "cause": "Fans bombed older Borderlands games after Borderlands 3 was announced as a timed Epic Games Store exclusive.",
+    "sources": [
+      "https://www.gamespot.com/articles/borderlands-games-getting-review-bombed-over-borde/1100-6466036/",
+      "https://www.pcgamesn.com/borderlands-review-bomb",
+      "https://shacknews.com/article/111025/borderlands-fans-review-bombing-series-on-steam-over-egs-deal"
+    ],
+    "note": "Steam off-topic event 2019-04-03 to 2019-04-15. Apr 2019 54%, 88-98% afterwards."
+  },
+  {
+    "appid": 49520,
+    "title": "Borderlands 2",
+    "label": "bomb",
+    "window_start": "2025-05-22",
+    "window_end": "2025-06-30",
+    "cause": "Players bombed the game during its free giveaway over a Take-Two EULA and privacy-policy backlash.",
+    "sources": [
+      "https://www.pcgamer.com/games/fps/borderlands-2-is-free-to-keep-on-steam-and-its-getting-review-bombed-at-the-same-time-because-of-uh-the-eula",
+      "https://www.gamesradar.com/games/borderlands/borderlands-games-are-still-being-review-bombed-on-steam-following-take-two-terms-of-service-backlash-but-modders-say-the-main-clause-everyones-freaking-out-about-was-already-there"
+    ],
+    "note": "Histogram: May 2025 23%, Jun 12%, Jul 67%, then 84-92%."
+  },
+  {
+    "appid": 261640,
+    "title": "Borderlands: The Pre-Sequel",
+    "label": "bomb",
+    "window_start": "2019-04-03",
+    "window_end": "2019-04-15",
+    "cause": "Fans bombed older Borderlands games after Borderlands 3 was announced as a timed Epic Games Store exclusive.",
+    "sources": [
+      "https://www.gamespot.com/articles/borderlands-games-getting-review-bombed-over-borde/1100-6466036/",
+      "https://www.pcgamesn.com/borderlands-review-bomb",
+      "https://shacknews.com/article/111025/borderlands-fans-review-bombing-series-on-steam-over-egs-deal"
+    ],
+    "note": "Steam off-topic event 2019-04-03 to 2019-04-15. Apr 2019 41% vs ~76% baseline, then recovered. A second dip in Apr-Jun 2025 (Take-Two EULA) also recovered."
+  },
+  {
+    "appid": 286690,
+    "title": "Metro 2033 Redux",
+    "label": "bomb",
+    "window_start": "2019-01-28",
+    "window_end": "2019-02-28",
+    "cause": "Players bombed earlier Metro games after Metro Exodus was made a timed Epic Games Store exclusive weeks before launch.",
+    "sources": [
+      "https://pcgamer.com/metro-review-bomb-steam",
+      "https://pcgamesn.com/metro-exodus/metro-2033-last-light-review-bomb",
+      "https://shacknews.com/article/109661/metro-series-review-bombed-on-steam-after-exodus-goes-epic-exclusive",
+      "https://techraptor.net/gaming/news/metro-last-light-and-metro-2033-review-bombed-for-epic-exclusivity"
+    ],
+    "note": "No Steam event in histogram. Jan 2019 37%, Feb 44%, then 83-94%."
+  },
+  {
+    "appid": 287390,
+    "title": "Metro: Last Light Redux",
+    "label": "bomb",
+    "window_start": "2019-01-28",
+    "window_end": "2019-02-28",
+    "cause": "Players bombed earlier Metro games after Metro Exodus was made a timed Epic Games Store exclusive weeks before launch.",
+    "sources": [
+      "https://pcgamer.com/metro-review-bomb-steam",
+      "https://pcgamesn.com/metro-exodus/metro-2033-last-light-review-bomb",
+      "https://shacknews.com/article/109661/metro-series-review-bombed-on-steam-after-exodus-goes-epic-exclusive",
+      "https://techraptor.net/gaming/news/metro-last-light-and-metro-2033-review-bombed-for-epic-exclusivity"
+    ],
+    "note": "No Steam event in histogram. Jan 2019 36%, Feb 45%, then 83-94%."
+  },
+  {
+    "appid": 383870,
+    "title": "Firewatch",
+    "label": "bomb",
+    "window_start": "2017-09-11",
+    "window_end": "2017-10-15",
+    "cause": "PewDiePie fans bombed Firewatch after Campo Santo issued a DMCA takedown of his videos following his use of a racial slur on stream.",
+    "sources": [
+      "https://www.pcgamer.com/firewatch-is-getting-review-bombed-on-steam",
+      "https://www.kitguru.net/gaming/damien-cox/firewatch-bombarded-with-negative-reviews-after-pewdiepie-controversy/",
+      "https://dailydot.com/parsec/firewatch-reviews-steam-campo-santo-pewdiepie"
+    ],
+    "note": "Sep 2017 51% (2,296 reviews), Oct 81%, Nov 94%."
+  },
+  {
+    "appid": 214950,
+    "title": "Total War: ROME II - Emperor Edition",
+    "label": "bomb",
+    "window_start": "2018-09-22",
+    "window_end": "2018-10-18",
+    "cause": "Culture-war backlash over female generals appearing in the campaign, amplified by a developer's comments to players.",
+    "sources": [
+      "https://pcgamer.com/total-war-rome-2-is-getting-review-bombed-on-steam-because-of-women-generals",
+      "https://kotaku.com/total-war-game-gets-review-bombed-on-steam-over-women-g-1829283785",
+      "https://www.techspot.com/news/76606-total-war-rome-2-gets-review-bombed-over.html"
+    ],
+    "note": "Steam off-topic event 2018-09-22 to 2018-10-18. Sep 25%, Oct 38%, Nov 90%."
+  },
+  {
+    "appid": 203770,
+    "title": "Crusader Kings II",
+    "label": "bomb",
+    "window_start": "2017-06-01",
+    "window_end": "2017-06-30",
+    "cause": "Players protested Paradox's regional price increases with negative reviews until Paradox rolled the prices back.",
+    "sources": [
+      "https://www.computerbase.de/2017-06/steam-bewertungen-protest/",
+      "https://www.keengamer.com/articles/news/paradox-raises-prices-gamers-lower-review-scores/",
+      "https://mcvuk.com/business-news/paradox-rolls-back-price-increases-after-fan-anger/"
+    ],
+    "note": "Jun 2017 52% vs ~88% baseline; 72-82% afterwards (partial recovery, monthly resolution only)."
+  },
+  {
+    "appid": 203770,
+    "title": "Crusader Kings II",
+    "label": "bomb",
+    "window_start": "2025-02-14",
+    "window_end": "2025-03-31",
+    "cause": "Chinese players bombed Paradox titles over a Hearts of Iron IV alternate-history British India path shown in a 13 February 2025 dev diary.",
+    "sources": [
+      "https://www.gamepressure.com/newsroom/paradox-games-under-fire-review-bombing-from-chinese-players-hits/zd799d"
+    ],
+    "note": "Steam off-topic event 2025-02-14 to 2025-03-31 (same wave flagged on Stellaris and Hearts of Iron IV). Feb 50%, Mar 64%, Apr 83%."
+  },
+  {
+    "appid": 394360,
+    "title": "Hearts of Iron IV",
+    "label": "bomb",
+    "window_start": "2026-09-23",
+    "window_end": "2026-10-14",
+    "cause": "Turkish players bombed Paradox games after an Ataturk avatar was banned on the official Hearts of Iron IV Discord.",
+    "sources": [
+      "https://ixbt.games/en/news/2026/09/24/tureckie-fanaty-obrusili-reiting-hearts-of-iron-iv-v-steam-desiatki-tysiac-negativnyx-obzorov-iz-za-odnoi-blokirovki.html",
+      "https://tr.euronews.com/2026/09/24/unlu-oyun-platformu-ataturk-portresini-engelledi-boykot-hareketi-basladi",
+      "https://www.gamemeca.com/en/view.php?gid=1781123",
+      "https://www.donanimhaber.com/paradox-ataturk-krizi-buyuyor-steam-yorumlari-kaldirdi--210890"
+    ],
+    "note": "Recent; recovery only partial so far. Steam off-topic event 2026-09-23 to 2026-10-14. Sep 2026 5% (42,618 reviews), Oct 56%, Nov 72% vs ~87% baseline. Crusader Kings II, Stellaris and Cities: Skylines II were also flagged in the same wave."
+  },
+  {
+    "appid": 271590,
+    "title": "Grand Theft Auto V Legacy",
+    "label": "bomb",
+    "window_start": "2017-06-14",
+    "window_end": "2017-07-15",
+    "cause": "Players protested Take-Two's cease-and-desist against the OpenIV modding tool.",
+    "sources": [
+      "https://www.thesixthaxis.com/2017/06/17/grand-theft-auto-vs-recent-steam-reviews-hit-overwhelmingly-negative-over-openiv-modding-ban/",
+      "https://techpowerup.com/234495/gta-v-is-slammed-with-a-swarm-of-negative-reviews-following-mod-tool-shutdown",
+      "https://www.gamepressure.com/newsroom/players-massively-down-voting-gta-v-on-steam-after-take-two-shuts/zd4c6"
+    ],
+    "note": "Jun 2017 26% (46,617 reviews), Jul 67%, then 71-80%."
+  },
+  {
+    "appid": 72850,
+    "title": "The Elder Scrolls V: Skyrim",
+    "label": "bomb",
+    "window_start": "2015-04-23",
+    "window_end": "2015-05-05",
+    "cause": "Players protested Valve and Bethesda's paid-mods program on the Steam Workshop, which was reversed within days.",
+    "sources": [
+      "https://www.pcworld.com/article/427130/days-later-steam-community-is-still-in-an-uproar-over-paid-mods-debacle.html",
+      "https://www.engadget.com/2015/04/27/valve-reverses-skyrim-mod-payments/",
+      "https://pcgamesn.com/history-of-steam-review-bombing"
+    ],
+    "note": "Apr 2015 59% (10,249 reviews), May 97%."
+  },
+  {
+    "appid": 553850,
+    "title": "HELLDIVERS 2",
+    "label": "bomb",
+    "window_start": "2024-05-03",
+    "window_end": "2024-05-31",
+    "cause": "Players protested Sony's requirement to link a PlayStation Network account on PC, which Sony reversed days later.",
+    "sources": [
+      "https://www.pushsquare.com/news/2024/05/helldivers-2-psn-requirement-backtracked-on-pc-after-brutal-review-bombing-campaign",
+      "https://www.techspot.com/news/102878-sony-cancels-psn-account-linking-requirement-helldivers-2.html",
+      "https://pcgamer.com/games/third-person-shooter/steam-review-bombing-is-gamings-most-powerful-method-of-protest-3-takeaways-from-helldivers-2s-weekend-meltdown"
+    ],
+    "note": "May 2024 33% (343k reviews), Jun 82%, then 84-94%."
+  },
+  {
+    "appid": 220200,
+    "title": "Kerbal Space Program",
+    "label": "bomb",
+    "window_start": "2017-10-05",
+    "window_end": "2017-10-31",
+    "cause": "Chinese players bombed the game over an offensive phrase found in its Chinese translation.",
+    "sources": [
+      "https://pcgamesn.com/kerbal-space-program/ksp-review-bombing-chinese-translation",
+      "https://shacknews.com/article/101667/chinese-phrase-results-in-review-bombing-of-kerbal-space-program",
+      "https://automaton-media.com/articles/newsjp/20171012-55897/"
+    ],
+    "note": "Oct 2017 59%, then recovered."
+  },
+  {
+    "appid": 220200,
+    "title": "Kerbal Space Program",
+    "label": "bomb",
+    "window_start": "2018-05-01",
+    "window_end": "2018-06-30",
+    "cause": "Players protested Take-Two's new EULA and privacy policy amid spyware (Red Shell) accusations.",
+    "sources": [
+      "https://www.gamestar.de/artikel/kerbal-space-program-spyware-vorwuerfe-neue-softwarelizenz-bringt-spieler-auf-die-palme,3329796.html",
+      "https://forum.kerbalspaceprogram.com/topic/172119-updated-terms-notice-privacy-policy/page/34"
+    ],
+    "note": "Slow burn: Apr 2018 60%, May 36%, Jun 50%, Jul-Aug 71-72%, 97% in 2019."
+  },
+  {
+    "appid": 578080,
+    "title": "PUBG: BATTLEGROUNDS",
+    "label": "bomb",
+    "window_start": "2017-09-29",
+    "window_end": "2017-10-31",
+    "cause": "Chinese players bombed the game over in-game VPN advertisements and demands for a Chinese-only server region.",
+    "sources": [
+      "https://www.pcgamer.com/pubg-hit-with-stream-of-negative-reviews-following-chinese-in-game-ads",
+      "https://www.techspot.com/news/71236-pubg-bombed-over-20000-negative-steam-reviews-chinese.html",
+      "https://www.pcgamesinsider.biz/news/66205/playerunknowns-battlegrounds-faces-review-bombing-from-chinese-audience/"
+    ],
+    "note": "Hard case: noisy early-access baseline and partly in-game grievances. Sep 2017 59%, Oct 37%, Nov 67%."
+  },
+  {
+    "appid": 555220,
+    "title": "Detention",
+    "label": "bomb",
+    "window_start": "2019-02-01",
+    "window_end": "2019-02-28",
+    "cause": "Chinese players bombed Red Candle's earlier game over a Winnie-the-Pooh / Xi Jinping talisman found in Devotion.",
+    "sources": [
+      "https://www.pcgamer.com/devotion-review-bombed-by-chinese-steam-users-over-winnie-the-pooh-meme",
+      "https://kotaku.com/1832882323",
+      "https://www.gamedeveloper.com/game-platforms/devs-pull-i-devotion-i-from-steam-following-review-bombing-spree"
+    ],
+    "note": "Indie case. Steam off-topic event 2019-02-01 to 2019-02-28. Feb 35%, Mar 95%."
+  },
+  {
+    "appid": 252950,
+    "title": "Rocket League",
+    "label": "bomb",
+    "window_start": "2019-05-01",
+    "window_end": "2019-05-10",
+    "cause": "Players bombed the game after Epic Games acquired developer Psyonix.",
+    "sources": [
+      "https://pcgamer.com/rocket-league-is-getting-review-bombed-because-epic-bought-psyonix",
+      "https://www.videogameschronicle.com/news/valve-tackles-rocket-league-review-bombing/",
+      "https://techraptor.net/content/rocket-league-review-bombed-following-epic-games-acquisition-of-psyonix"
+    ],
+    "note": "Steam off-topic event 2019-05-01 to 2019-05-10. May 40%, Jun 95%."
+  },
+  {
+    "appid": 782330,
+    "title": "DOOM Eternal",
+    "label": "bomb",
+    "window_start": "2020-05-14",
+    "window_end": "2020-05-31",
+    "cause": "Players protested Denuvo anti-cheat being added in Update 1, which id Software later removed.",
+    "sources": [
+      "https://techpowerup.com/267294/doom-eternal-review-bombed-on-steam-after-denuvo-anti-cheat-inclusion-in-update-1",
+      "https://www.thefpsreview.com/2020/05/17/doom-eternal-review-bombed-over-new-denuvo-anti-cheat-players-claim-it-makes-the-game-unplayable"
+    ],
+    "note": "Hard case: DRM/anti-cheat is borderline in-game, but the burst was short and reversed. May 2020 69%, Jun 89%."
+  },
+  {
+    "appid": 232090,
+    "title": "Killing Floor 2",
+    "label": "bomb",
+    "window_start": "2021-09-05",
+    "window_end": "2021-09-18",
+    "cause": "Players bombed Tripwire's games after company president John Gibson tweeted support for Texas's abortion ban.",
+    "sources": [
+      "https://pcgamer.com/partner-studio-ends-contracts-with-tripwire-over-company-presidents-support-for-abortion-ban",
+      "https://www.pcgamer.com/tripwire-ceo-steps-down-following-comments-on-texas-abortion-ban",
+      "https://techraptor.net/gaming/news/tripwire-president-provokes-controversy-by-supporting-texas-abortion-law"
+    ],
+    "note": "Steam off-topic event 2021-09-05 to 2021-09-18. Sep 2021 53%, Oct 86%. Press covers the controversy; the review-score effect is confirmed by the Steam flag and histogram."
+  },
+  {
+    "appid": 381210,
+    "title": "Dead by Daylight",
+    "label": "bomb",
+    "window_start": "2026-11-01",
+    "window_end": "2026-11-14",
+    "cause": "Players bombed the game after Behaviour gifted streamer TheBurntPeanut all DLC and then revoked it; Valve marked the reviews off-topic.",
+    "sources": [
+      "https://www.dexerto.com/dead-by-daylight/valve-hides-dead-by-daylight-review-bomb-after-theburntpeanut-fallout-3425653/",
+      "https://kotaku.com/dead-by-daylight-faces-backlash-on-all-sides-after-apologizing-for-gifting-theburntpeanut-all-content-2000752335"
+    ],
+    "note": "Recent; recovery not yet observable. Steam off-topic event from 2026-11-01. Nov 2026 38% so far."
+  },
+  {
+    "appid": 617830,
+    "title": "SUPERHOT VR",
+    "label": "bomb",
+    "window_start": "2021-07-21",
+    "window_end": "2021-09-18",
+    "cause": "Players bombed the game after the developers removed self-harm scenes from it.",
+    "sources": [
+      "https://pcgamer.com/superhot-vr-gets-review-bombed-following-the-removal-of-self-harm-scenes",
+      "https://kotaku.com/superhot-game-gets-review-bombed-after-removing-depicti-1847352470",
+      "https://www.gamepressure.com/newsroom/superhot-vr-review-bombed-after-devs-removed-controversial-conten/zf3660"
+    ],
+    "note": "Hard case: content removal in the game; partial recovery. Steam off-topic event 2021-07-21 to 2021-09-18. Jul 16%, Aug 35%, then 60-82% vs 85-90% baseline."
+  },
+  {
+    "appid": 292030,
+    "title": "The Witcher 3: Wild Hunt",
+    "label": "bomb",
+    "window_start": "2022-03-03",
+    "window_end": "2022-03-17",
+    "cause": "Russian-speaking players bombed CD Projekt games after the company halted sales in Russia and Belarus.",
+    "sources": [
+      "https://techraptor.net/gaming/news/witcher-3-cyberpunk-2077-review-bomb-underway",
+      "https://www.axios.com/2022/03/03/cdprojekt-witcher-russia-game-sales"
+    ],
+    "note": "Steam off-topic event 2022-03-03 to 2022-03-17. Mar 2022 58%, then 90-95%."
+  },
+  {
+    "appid": 1091500,
+    "title": "Cyberpunk 2077",
+    "label": "bomb",
+    "window_start": "2022-03-03",
+    "window_end": "2022-03-08",
+    "cause": "Russian-speaking players bombed CD Projekt games after the company halted sales in Russia and Belarus.",
+    "sources": [
+      "https://www.thegamer.com/cyberpunk-2077-review-bomb-steam-ukraine/",
+      "https://techraptor.net/gaming/news/witcher-3-cyberpunk-2077-review-bomb-underway",
+      "https://sportskeeda.com/esports/news-has-nothing-game-cyberpunk-2077-gets-review-bombed-stopping-operations-russia"
+    ],
+    "note": "Steam off-topic event 2022-03-03 to 2022-03-08. Mar 2022 51%, Apr 82%."
+  },
+  {
+    "appid": 236390,
+    "title": "War Thunder",
+    "label": "bomb",
+    "window_start": "2023-05-20",
+    "window_end": "2023-07-03",
+    "cause": "Players ran an organised review-bomb campaign against planned economy and progression changes; Steam marked it as off-topic activity.",
+    "sources": [
+      "https://pcgamer.com/war-thunder-fans-organise-extraordinary-review-bombing-campaign-over-reverted-economy-changes-studio-pleads-if-your-goal-is-not-to-hurt-the-game-please-use-other-less-destructive-ways",
+      "https://gameworldobserver.com/2023/05/24/war-thunder-review-bombing-monetization-economy-gaijin",
+      "https://www.wepc.com/news/steam-hides-recent-war-thunder-reviews-amid-economy-scandal/",
+      "https://www.pcgamesn.com/war-thunder/review-bombs"
+    ],
+    "note": "Hard case: in-game economy cause, but Steam flagged it and sentiment recovered. May 2023 7% (124k reviews), Jun 36%, then 63-76% vs ~77% baseline."
+  },
+  {
+    "appid": 2868840,
+    "title": "Slay the Spire 2",
+    "label": "bomb",
+    "window_start": "2026-05-06",
+    "window_end": "2026-05-13",
+    "cause": "Culture-war review bomb over Anita Sarkeesian's consultant credit on the game.",
+    "sources": [
+      "https://kotaku.com/slay-the-spire-2-is-getting-review-bombed-again-this-time-because-of-chuds-2000693961",
+      "https://opencritic.com/news/30830/slay-the-spire-2-review-bombed-over-anita-sarkeesians-consultancy-work",
+      "https://comicbook.com/gaming/news/steam-pc-game-review-bombed-slay-the-spire-2/"
+    ],
+    "note": "Weekly histogram. Steam off-topic event 2026-05-06 to 2026-05-13; ~78-84% by Nov 2026. Earlier Mar-Apr 2026 balance-patch backlash (21-45% weekly, in-game) is a separate, unlabelled dip."
+  },
+  {
+    "appid": 1144200,
+    "title": "Ready or Not",
+    "label": "bomb",
+    "window_start": "2025-06-28",
+    "window_end": "2025-07-31",
+    "cause": "Players bombed the game after Void Interactive censored content ahead of the console launch to meet platform standards.",
+    "sources": [
+      "https://pcgamer.com/games/fps/the-censorship-is-a-step-too-far-ready-or-not-is-getting-review-bombed-after-developers-sanitise-the-game-to-adhere-to-stricter-console-standards",
+      "https://www.pcgamesn.com/ready-or-not/void-interactive-statement",
+      "https://www.pcgamer.com/games/fps/ready-or-nots-review-bomb-campaign-may-have-been-short-lived-as-player-count-subsequently-doubles-on-steam-and-it-tops-playstations-pre-order-list"
+    ],
+    "note": "Hard case: in-game content change driven by console certification policy; sentiment recovered. Jun 2025 57%, Jul 27% (31,825 reviews), 88% in 2026."
+  },
+  {
+    "appid": 954850,
+    "title": "Kerbal Space Program 2",
+    "label": "decline",
+    "window_start": "2024-05-01",
+    "window_end": "2024-05-31",
+    "cause": "Take-Two closed developer Intercept Games, effectively ending development of the early-access game.",
+    "sources": [
+      "https://www.pcgamer.com/games/sim/kerbal-space-program-fans-react-with-anger-over-intercept-games-closure-and-you-know-what-that-means-review-bombing-on-steam",
+      "https://dexerto.com/gaming/kerbal-space-program-2-review-bombed-after-take-two-shuts-down-developer-2684379"
+    ],
+    "note": "Press calls it a review bomb, but it is abandonment and sentiment never recovered: 61-79% before, May 2024 6%, 5-18% since."
+  },
+  {
+    "appid": 949230,
+    "title": "Cities: Skylines II",
+    "label": "decline",
+    "window_start": "2024-02-01",
+    "window_end": "2024-04-30",
+    "cause": "Players turned on the game over its weak base state and the low-content Beach Properties DLC, which Paradox refunded.",
+    "sources": [
+      "https://pcgamer.com/games/sim/paradox-apologizes-for-latest-cities-skylines-2-boondoggle-will-give-refunds-for-the-beach-properties-dlc-we-hope-we-can-regain-your-trust-going-forward",
+      "https://kotaku.com/city-skylines-2-beachfront-properties-dlc-refund-steam-1851422206"
+    ],
+    "note": "Launch Oct 2023 55%; Feb 2024 33%, Mar 28%, Apr 31%; ~50% afterwards. Separate Steam off-topic event 2026-09-23 to 2026-09-28 (Ataturk wave) is not this window."
+  },
+  {
+    "appid": 2357570,
+    "title": "Overwatch",
+    "label": "decline",
+    "window_start": "2023-08-10",
+    "window_end": "2023-09-30",
+    "cause": "Overwatch 2's Steam launch drew a flood of negative reviews over free-to-play monetisation and the cancelled PvE mode.",
+    "sources": [
+      "https://Gamespot.com/articles/overwatch-2-on-steam-has-overwhelmingly-negative-reviews/1100-6516805/",
+      "https://windowscentral.com/gaming/overwatch-2-is-currently-the-lowest-rated-game-launch-of-2023-on-steam",
+      "https://gameworldobserver.com/2023/08/11/overwatch-2-worst-steam-release-2023-negative-reviews",
+      "https://mezha.media/en/2023/08/14/most-of-the-100-000-negative-reviews-for-overwatch-2-were-written-by-chinese-players"
+    ],
+    "note": "Hard case: many reviews were Chinese-language, linked to Blizzard's China exit (off-topic component), but the in-game grievances dominated and sentiment stayed low. Aug 2023 10% (178k reviews), ~35% through 2024, 56% in 2026."
+  },
+  {
+    "appid": 1517290,
+    "title": "Battlefield 2042",
+    "label": "decline",
+    "window_start": "2021-11-12",
+    "window_end": "2022-05-31",
+    "cause": "A buggy, content-light launch and removed series features drove sustained negative reviews.",
+    "sources": [
+      "https://pcgamer.com/battlefield-2042-immediately-has-thousands-of-negative-reviews-on-steam",
+      "https://gamesradar.com/battlefield-2042-is-now-one-of-steams-most-poorly-reviewed-games-ever",
+      "https://www.nme.com/news/battlefield-2042-launch-marred-by-thousands-of-negative-steam-reviews-3100034"
+    ],
+    "note": "Hard case: bad launch with partial recovery much later. Nov 2021 35%, Jan-May 2022 13-26%, ~60% later."
+  },
+  {
+    "appid": 1272080,
+    "title": "PAYDAY 3",
+    "label": "decline",
+    "window_start": "2023-09-21",
+    "window_end": "2024-05-31",
+    "cause": "Always-online matchmaking servers failed at launch and the game's content and progression disappointed players.",
+    "sources": [
+      "https://www.pcgamer.com/payday-3-nebula-server-errors",
+      "https://videogameschronicle.com/news/payday-3-studio-looking-to-remove-always-online-requirement-as-server-issues-plague-launch",
+      "https://opencritic.com/news/6804/payday-3-now-has-mostly-positive-reviews-on-steam"
+    ],
+    "note": "Bad launch with no prior baseline, later partial recovery. Sep 2023 35%, Feb-May 2024 19-27%, 61% in 2025, 69% in 2026."
+  },
+  {
+    "appid": 730,
+    "title": "Counter-Strike 2",
+    "label": "decline",
+    "window_start": "2023-09-27",
+    "window_end": "2023-10-31",
+    "cause": "Counter-Strike 2 replaced CS:GO on the same store page with missing modes, removed features and bugs.",
+    "sources": [
+      "https://www.kitguru.net/gaming/matthew-wilson/counter-strike-2-sees-spike-in-negative-reviews-following-bugs-and-csgo-removal/",
+      "https://80.lv/articles/counter-strike-2-s-recent-reviews-on-steam-shifted-to-mixed",
+      "https://www.nme.com/news/counter-strike-2-players-criticise-missing-csgo-game-modes-3507697"
+    ],
+    "note": "90-92% before; Sep 2023 79%, Oct 62%; 73-82% afterwards."
+  },
+  {
+    "appid": 275850,
+    "title": "No Man's Sky",
+    "label": "decline",
+    "window_start": "2016-08-12",
+    "window_end": "2016-10-31",
+    "cause": "The launch fell far short of pre-release promises, with missing features and performance problems.",
+    "sources": [
+      "https://www.gamesradar.com/no-mans-sky-steam-reviews-have-recovered-to-mostly-positive-after-5-years",
+      "https://www.pcgamesn.com/no-mans-sky/steam-reviews",
+      "https://wccftech.com/no-mans-sky-finally-reaches-very-positive-overall-user-review-rating-on-steam-8-years-after-disastrous-launch/"
+    ],
+    "note": "Hard case: bad launch then real recovery through updates. Aug 2016 47%, Sep 31%, Oct 32%; 82% by 2018, 90%+ from 2020."
+  },
+  {
+    "appid": 218620,
+    "title": "PAYDAY 2",
+    "label": "decline",
+    "window_start": "2015-10-15",
+    "window_end": "2015-11-30",
+    "cause": "Overkill added Black Market safes and paid drills (microtransactions) despite earlier promises not to.",
+    "sources": [
+      "https://pcgamer.com/payday-2-gets-microtransactions-despite-devs-saying-it-wouldnt",
+      "https://eteknix.com/microtransactions-dramatically-alter-payday-2-user-reviews",
+      "https://pcgamer.com/payday-2-is-ditching-microtransactions"
+    ],
+    "note": "Hard case: monetisation decline that later recovered after microtransactions were removed in 2016. Oct 2015 39% (14,518 reviews), Nov 66%, 79-84% in 2016, ~94% by 2019."
+  },
+  {
+    "appid": 232810,
+    "title": "Godus",
+    "label": "decline",
+    "window_start": "2014-08-01",
+    "window_end": "2015-02-28",
+    "cause": "22cans stalled PC development and broke promises to backers, including the Curiosity winner's prize.",
+    "sources": [
+      "https://www.gamespot.com/articles/curiosity-winner-once-promised-a-life-changing-pri/1100-6425241/",
+      "https://en.wikipedia.org/wiki/Godus",
+      "https://pcgamer.com/godus-is-deadus-peter-molyneuxs-controversial-godus-games-are-finally-being-taken-off-steam"
+    ],
+    "note": "Gradual decline: 51% in 2013, 27% by Aug 2014, 11% in Feb 2015, stayed low."
+  },
+  {
+    "appid": 246090,
+    "title": "Spacebase DF-9",
+    "label": "decline",
+    "window_start": "2014-09-19",
+    "window_end": "2014-10-31",
+    "cause": "Double Fine ended early-access development and shipped an unfinished 1.0.",
+    "sources": [
+      "https://www.pcgamer.com/tim-schafer-explains-spacebase-df-9s-v1-0-release",
+      "https://kotaku.com/double-fine-struggles-show-the-problems-with-steam-earl-1637669234",
+      "https://www.gamingonlinux.com/2014/09/doublefine-ceasing-spacebase-df9-development-releasing-code-for-modders"
+    ],
+    "note": "44-64% through early 2014; Sep 2014 13%, Oct 5%; 5-20% since."
+  },
+  {
+    "appid": 273350,
+    "title": "Evolve Stage 2",
+    "label": "decline",
+    "window_start": "2015-02-10",
+    "window_end": "2015-03-31",
+    "cause": "Evolve launched with about $136 of paid DLC, drawing heavy criticism of its monetisation.",
+    "sources": [
+      "https://gamesbeat.com/gamers-slam-evolve-in-steam-user-reviews-for-its-day-one-dlc/",
+      "https://www.pcworld.com/article/431811/evolve-launches-with-136-in-paid-dlc-available-ignoring-gamers-dlc-concerns.html",
+      "https://mcvuk.com/development-news/turtle-rock-turns-evolve-free-to-play-to-get-the-magic-back-after-dlc-shitstorm/"
+    ],
+    "note": "Pre-launch 89%; Feb 2015 74%, then 54-61%. Small review counts after 2016."
+  },
+  {
+    "appid": 1240440,
+    "title": "Halo Infinite",
+    "label": "decline",
+    "window_start": "2022-03-01",
+    "window_end": "2022-09-30",
+    "cause": "A long content drought followed by the cancellation of split-screen co-op turned players against the game.",
+    "sources": [
+      "https://www.purexbox.com/news/2022/09/halo-infinite-review-bombed-on-steam-after-recent-developer-update",
+      "https://Gamespot.com/articles/halo-infinites-split-screen-co-op-has-been-canceled-as-studio-focuses-on-live-service/1100-6507042/"
+    ],
+    "note": "Nov 2021 80%; 48-50% from Mar 2022; Sep 2022 21% after the co-op cancellation; ~60% later."
+  },
+  {
+    "appid": 583950,
+    "title": "Artifact Classic",
+    "label": "decline",
+    "window_start": "2018-11-28",
+    "window_end": "2019-03-31",
+    "cause": "Players rejected the game's paid card-economy monetisation and the player base collapsed until Valve paused development.",
+    "sources": [
+      "https://www.pcgamesn.com/artifact/steam-player-numbers",
+      "https://www.pcgamer.com/valve-wants-a-do-over-with-artifact",
+      "https://www.gamerevolution.com/news/486511-artifact-player-count"
+    ],
+    "note": "Nov 2018 59%, Dec 42%, 18-33% through 2019."
+  },
+  {
+    "appid": 594650,
+    "title": "Hunt: Showdown 1896",
+    "label": "decline",
+    "window_start": "2024-08-15",
+    "window_end": "2024-09-30",
+    "cause": "The 1896 engine update brought a disliked UI redesign and performance problems.",
+    "sources": [
+      "https://www.pcgamer.com/games/fps/hunt-showdown-enjoys-highest-ever-player-count-after-1896-update-but-player-complaints-about-ui-are-pushing-down-its-steam-review-score-ive-never-seen-such-a-bizarre-reaction-to-so-much-amazing-content",
+      "https://gameworldobserver.com/2024/08/16/hunt-showdown-breaks-its-ccu-record-with-over-60k-concurrent-players-but-user-reviews-drop-to-mostly-negative",
+      "https://www.gamerevolution.com/games/978285-hunt-showdown-1896-steam-reviews-negative-pc"
+    ],
+    "note": "~75% before; Aug 2024 33%, then 43-44%; 59-72% later."
+  },
+  {
+    "appid": 438100,
+    "title": "VRChat",
+    "label": "decline",
+    "window_start": "2022-07-25",
+    "window_end": "2022-08-31",
+    "cause": "VRChat added Easy Anti-Cheat, breaking client mods that many players relied on, including accessibility mods.",
+    "sources": [
+      "https://www.pcgamer.com/vrchat-is-being-review-bombed-to-hell-and-back-after-anti-cheat-announcement",
+      "https://www.dazeddigital.com/science-tech/article/56662/1/why-thousands-of-users-are-abandoning-the-worlds-most-popular-vr-game",
+      "https://roadtovr.com/?p=171177"
+    ],
+    "note": "Hard case: in-game change that press called a review bomb; mostly recovered. ~89% before; Jul 2022 15%, Aug 30%; 79-83% from late 2022."
+  },
+  {
+    "appid": 1818750,
+    "title": "MultiVersus",
+    "label": "decline",
+    "window_start": "2024-05-28",
+    "window_end": "2024-07-31",
+    "cause": "The full relaunch drew criticism for heavy grind and monetisation, and the game was later shut down.",
+    "sources": [
+      "https://pcgamer.com/games/fighting/multiversus-relaunch-attracts-over-110k-concurrent-players-on-steam",
+      "https://80.lv/articles/multiversus-comes-back-but-players-don-t-seem-happy-with-changes",
+      "https://www.avclub.com/multiversus-shut-down-cancelled"
+    ],
+    "note": "2022 beta 87%; relaunch May 2024 55%, then 43-58%."
+  },
+  {
+    "appid": 424370,
+    "title": "Wolcen: Lords of Mayhem",
+    "label": "decline",
+    "window_start": "2020-02-13",
+    "window_end": "2020-03-31",
+    "cause": "The 1.0 launch was plagued by server failures, crashes, bugs and exploits.",
+    "sources": [
+      "https://www.pcgamer.com/wolcen-players-are-getting-fed-up-with-all-of-its-game-crashing-bugs-glitches-and-exploits",
+      "https://www.pcgamer.com/crippling-server-issues-are-getting-in-the-way-of-wolcen-lords-of-mayhems-big-launch",
+      "https://gamespot.com/articles/wolcen-lords-of-mayhem-officially-launches-on-stea/1100-6473727/"
+    ],
+    "note": "Early access ~85%; Feb 2020 52%; ~50-60% since."
+  },
+  {
+    "appid": 289650,
+    "title": "Assassin's Creed Unity",
+    "label": "positive_bomb",
+    "window_start": "2019-04-17",
+    "window_end": "2019-04-30",
+    "cause": "After the Notre-Dame fire, Ubisoft gave the game away and players posted positive reviews in tribute.",
+    "sources": [
+      "https://www.pcgamer.com/assassins-creed-unity-gets-reverse-review-bombed-following-ubisofts-notre-dame-support",
+      "https://gameinformer.com/2019/04/19/assassins-creed-unity-is-getting-reverse-review-bombed-with-positivity",
+      "https://www.gamereactor.eu/valve-not-really-sure-what-to-do-on-ac-unity-review-bomb/"
+    ],
+    "note": "Apr 2019 89% (892 reviews) vs 63-67% before; May 71%."
+  },
+  {
+    "appid": 211820,
+    "title": "Starbound",
+    "label": "positive_bomb",
+    "window_start": "2019-06-21",
+    "window_end": "2019-07-10",
+    "cause": "A Steam Summer Sale 2019 event quirk let players earn event points from in-game actions, driving a flood of low-effort positive reviews.",
+    "sources": [
+      "https://steamcommunity.com/app/211820/discussions/0/1643178512748418047"
+    ],
+    "note": "Source is a Steam forum thread, not press. Steam off-topic event 2019-06-21 to 2019-07-10. Jun 98% (9,444 reviews), Jul 98% (26,817) vs ~85% and ~300 reviews/month."
+  },
+  {
+    "appid": 1817230,
+    "title": "Hi-Fi RUSH",
+    "label": "positive_bomb",
+    "window_start": "2024-05-07",
+    "window_end": "2024-05-31",
+    "cause": "Fans posted positive reviews in support of Tango Gameworks and in protest after Microsoft closed the studio.",
+    "sources": [
+      "https://www.windowscentral.com/gaming/hi-fi-rush-is-getting-positively-review-bombed-on-steam-after-microsoft-killed-its-studio",
+      "https://www.purexbox.com/news/2024/05/hi-fi-rush-is-currently-being-reverse-review-bombed-on-steam",
+      "https://videogamer.com/news/hi-fi-rush-gets-the-reverse-helldivers-2-treatment-following-microsoft-closing-tango-gameworks",
+      "https://progameguides.com/hi-fi-rush/hi-fi-rush-gets-review-bombed-with-perfect-scores-on-steam-now-xboxs-highest-rated-game-at-97/"
+    ],
+    "note": "May 2024 99% (3,116 reviews) vs ~93% and ~300/month: mostly a volume spike, small ratio shift."
+  },
+  {
+    "appid": 1091500,
+    "title": "Cyberpunk 2077",
+    "label": "positive_bomb",
+    "window_start": "2022-09-13",
+    "window_end": "2022-10-31",
+    "cause": "The Cyberpunk: Edgerunners anime brought a surge of returning players and positive reviews.",
+    "sources": [
+      "https://www.engadget.com/cyberpunk-2077-edgerunners-popularity-spike-161756943.html",
+      "https://gamedeveloper.com/business/-i-cyberpunk-2077-i-gets-player-increase-on-steam-after-i-edgerunners-i-anime",
+      "https://www.pcgamesn.com/cyberpunk-2077/steam-reviews-very-positive"
+    ],
+    "note": "Hard case: modest ratio shift (Sep 2022 87% on 15k reviews vs ~84% on ~3.8k); overlaps the 1.6 patch, so partly in-game."
+  }
+]
