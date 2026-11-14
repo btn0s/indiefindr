@@ -620,7 +620,7 @@ html { touch-action: manipulation; }
 
 /* Game page: the game card. Phones give it a portrait frame so the art has room above the type; desktop runs it wide
    with the type at the bottom left and the Steam button bottom right. */
-.source-game { display: flex; flex-direction: column; gap: 20px; }
+.source-game { display: flex; flex-direction: column; align-items: stretch; gap: 20px; }
 .source-card { position: relative; isolation: isolate; overflow: hidden; border-radius: var(--object-radius); background: var(--media); box-shadow: var(--object-shadow); }
 .source-card .game-trailer { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; box-shadow: none; }
 .source-card .game-trailer::after { border-radius: 0; box-shadow: none;
@@ -653,7 +653,7 @@ html { touch-action: manipulation; }
 @media (max-width: 700px) {
   /* On a phone the trio is three equal cells, always on one row. */
   .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) { flex: 1 1 0; min-width: 0; padding-inline: 12px; }
-  .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) .fact-value { white-space: nowrap; overflow-wrap: normal; }
+  .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) :is(.fact-value, .fact-label) { white-space: nowrap; overflow-wrap: normal; }
   .source-card .game-facts li[data-fact=score] { padding-left: 0; }
 }
 /* The action: a white pill on the scrim. */
