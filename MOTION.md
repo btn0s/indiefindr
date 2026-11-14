@@ -145,7 +145,7 @@ One ladder of four durations, three curves and three springs. The springs reuse 
 | **glide** | 0.40 / 0 | Lightbox open, page swipe, and (as `--ease-glide`) the search morph | WWDC23 "when unsure, bounce 0"; Carbon slow-01 / M3 "slow for full-screen" |
 | **release** | 0.40 / 0.15 | Settling back after a drag that didn't dismiss; rubber band at the ends | SwiftUI `.snappy` base bounce 0.15; Rauno: a thrown object keeps its momentum |
 
-The springs live once, as CSS custom properties beside the durations (`--spring-snap: 0.24 0`, etc.). `ScreenshotViewer` reads them on mount instead of declaring its own constants, so there's a single source of truth.
+The springs live once, as CSS custom properties beside the durations (`--spring-snap: 0.24 0`, etc.). `ScreenshotViewer` reads them on mount instead of declaring its own constants, so there's a single source of truth. It steps each flight ahead with them (starting from whatever velocity it inherits) and plays the result as Web Animations keyframes, so open, close and paging run on the compositor; only a finger is followed from script.
 
 Rules that come with the family:
 - **Exits take one step down from their enter** (M3).
