@@ -64,7 +64,11 @@ export function GameTrailer({ title, trailer, image }: { title: string; trailer:
       visibility.disconnect();
       document.removeEventListener("visibilitychange", sync);
       hls?.destroy();
+      // Pausing alone leaves a native HLS stream buffering; dropping the source stops the download. The effect sets it
+      // again if the page comes back.
       video.pause();
+      video.removeAttribute("src");
+      video.load();
     };
   }, [trailer, heroPainted]);
 

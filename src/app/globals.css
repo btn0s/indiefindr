@@ -215,9 +215,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .site-search[data-open=true] .search-results { position: fixed !important; inset: calc(60px + env(safe-area-inset-top)) 0 0 !important; width: 100%; grid-column: 1 / -1; margin: 12px -16px 0; padding: 0 10px calc(16px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; background: none; box-shadow: none; overflow-y: auto; overscroll-behavior: contain; }
   html:has(.site-search[data-open=true]) { overflow: hidden; }
 }
-/* The highlight follows the pointer and arrow keys exactly, with no transition. */
+/* One highlight, following the arrow keys and the moving pointer exactly, with no transition. The autocomplete moves it
+   on pointermove, so rows shifting under a resting cursor don't take it from the keyboard; a :hover style would. */
 .search-results a[data-highlighted] { background: var(--muted); }
-@media (hover: hover) and (pointer: fine) { .search-results a:hover { background: var(--muted); } }
 
 /* Page frame: every page opens with a title block, then sections a fixed gap apart. */
 .discovery-page { max-width: 896px; margin: auto; padding: var(--page-top) 0 64px; }
