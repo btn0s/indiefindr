@@ -140,8 +140,10 @@ export function ride(types: readonly string[]) {
     clipPath: `inset(${(sheet.y - main.y) / k}px ${(main.x + main.w - sheet.x - s.w) / k}px ${(main.y + main.h - sheet.y - s.h) / k}px ${(sheet.x - main.x) / k}px round ${radius})`,
   });
   const frames = [at(card, css.getPropertyValue("--card-radius")), at(sheet, css.getPropertyValue("--page-radius"))];
+  // No fill: it runs exactly as long as the transition, and a filled effect targets the pseudo-element by name, so it
+  // would carry over onto the next transition's page.
   root().animate(opening ? frames : frames.reverse(), {
-    duration: ms(css.getPropertyValue("--vt-duration")), easing: css.getPropertyValue("--vt-ease").trim(), fill: "both",
+    duration: ms(css.getPropertyValue("--vt-duration")), easing: css.getPropertyValue("--vt-ease").trim(),
     pseudoElement: opening ? "::view-transition-new(page-arrive)" : "::view-transition-old(page-leave)",
   });
 }
