@@ -9,13 +9,15 @@ export const thumbSrc = (src: string) => src.replace(/(\/ss_[0-9a-f]+)\.jpg/, "$
 
 // Motion. Every moving value is a spring, so any of them can be retargeted mid-flight and keeps its velocity: a tap
 // while it opens sends it back, a finger catches it, a release hands the finger's speed to the spring that takes over.
+// The springs are the site's motion tokens (globals.css, MOTION.md): glide opens and pages, snap closes (one progress
+// spring, release pose to thumbnail, so everything lands together without a tail) and fades under reduced motion,
+// release (letGo here) settles back after a drag that didn't dismiss.
 type Feel = { duration: number; bounce: number };
-const OPEN: Feel = { duration: 0.44, bounce: 0.08 };
-// Closing runs on one progress spring, release pose to thumbnail, so everything lands together without a tail.
-const CLOSE: Feel = { duration: 0.24, bounce: 0 };
-const PAGE: Feel = { duration: 0.4, bounce: 0 };
-const SETTLE: Feel = { duration: 0.34, bounce: 0.12 }; // back into place after a drag that didn't dismiss
-const FADE: Feel = { duration: 0.24, bounce: 0 }; // reduced motion: the viewer only fades
+/** Reads a `--spring-*` token, written as "duration bounce". */
+function feel(from: Element, token: string): Feel {
+  const [duration, bounce] = getComputedStyle(from).getPropertyValue(token).trim().split(/\s+/).map(Number);
+  return { duration, bounce };
+}
 const GAP = 24; // between shots while swiping
 const RECEDE = 0.04; // how far the page shrinks back behind the open viewer
 const SHRINK = 0.5; // how small a shot gets dragged down a whole screen
@@ -87,6 +89,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
 
   useLayoutEffect(() => {
     const box = dialog.current!, layer = backdrop.current!, row = track.current!;
+    const glide = feel(box, "--spring-glide"), snap = feel(box, "--spring-snap"), letGo = feel(box, "--spring-release");
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const fine = matchMedia("(pointer: fine)").matches;
     const shell = document.querySelector<HTMLElement>(".site-shell");
@@ -254,22 +257,22 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       fallback = false;
       setPhase("closing");
       keepInStrip(current);
-      aim(trackX, -current * stride, CLOSE);
-      if (reduce) { aim(shade, 0, FADE); kick(); return; }
+      aim(trackX, -current * stride, snap);
+      if (reduce) { aim(shade, 0, snap); kick(); return; }
       const from: Pose = { x: pose.x.x, y: pose.y.x, s: pose.s.x, cx: pose.cx.x, cy: pose.cy.x, r: pose.r.x };
       const to = closeTarget(), f = fits[current];
       const dx = to.x + f.w * to.s / 2 - (from.x + f.w * from.s / 2), dy = to.y + f.h * to.s / 2 - (from.y + f.h * from.s / 2);
       const distance = Math.hypot(dx, dy, f.w * (to.s - from.s));
       const v0 = distance > 1 ? clamp((velocity.x * dx + velocity.y * dy) / (dx * dx + dy * dy || 1), 0, 10) : 0;
       land = { t: spring(0), from, shade: shade.x, rest: 1 / Math.max(1, distance) };
-      aim(land.t, 1, CLOSE, v0);
+      aim(land.t, 1, snap, v0);
       kick();
     };
     const reopen = () => {
       land = null;
       setPhase("opening");
-      setPose(fitPose(), OPEN);
-      aim(shade, 1, reduce ? FADE : OPEN);
+      setPose(fitPose(), glide);
+      aim(shade, 1, reduce ? snap : glide);
       kick();
     };
     const restore = () => {
@@ -298,9 +301,9 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       const to = clamp(current + direction, 0, n - 1);
       if (to === current) {
         // A nudge against the end, so the key visibly did something.
-        if (!reduce) aim(trackX, -current * stride, SETTLE, -direction * 700);
+        if (!reduce) aim(trackX, -current * stride, letGo, -direction * 700);
       } else if (reduce) jump(trackX, -to * stride);
-      else aim(trackX, -to * stride, PAGE);
+      else aim(trackX, -to * stride, glide);
       show(to);
       render();
       kick();
@@ -348,7 +351,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
           drag.s0 = pose.s.x; drag.b0 = shade.x;
           drag.ax = (event.clientX - pageLeft() - pose.x.x) / pose.s.x;
           drag.ay = (event.clientY - pose.y.x) / pose.s.x;
-          for (const key of ["cx", "cy", "r"] as const) aim(pose[key], 0, SETTLE);
+          for (const key of ["cx", "cy", "r"] as const) aim(pose[key], 0, letGo);
         }
       }
       if (drag.mode === "pan") {
@@ -379,7 +382,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         const page = current;
         const inside = trackX.x <= 0 && trackX.x >= -(n - 1) * stride;
         const to = clamp(Math.round(-(trackX.x + v.x * PROJECT) / stride), Math.max(0, page - 1), Math.min(n - 1, page + 1));
-        aim(trackX, -to * stride, PAGE, inside ? v.x * 1000 : 0);
+        aim(trackX, -to * stride, glide, inside ? v.x * 1000 : 0);
         show(to);
         kick();
         return;
@@ -392,8 +395,8 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         pose.y.v = vy;
         pose.s.v = dy > 0 ? -d.s0 * SHRINK * vy / H : 0;
         setPhase("opening");
-        setPose(fitPose(), SETTLE);
-        aim(shade, 1, SETTLE);
+        setPose(fitPose(), letGo);
+        aim(shade, 1, letGo);
         kick();
       }
     };
@@ -443,8 +446,8 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
     jump(shade, 0);
     setPhase("opening");
     render();
-    setPose(fitPose(), OPEN);
-    aim(shade, 1, reduce ? FADE : OPEN);
+    setPose(fitPose(), glide);
+    aim(shade, 1, reduce ? snap : glide);
     kick();
 
     controls.current = {

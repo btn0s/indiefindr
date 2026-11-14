@@ -1,6 +1,5 @@
 @layer ui-sdk;
 @import "tailwindcss";
-@import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -162,12 +161,21 @@
   --heading-gap: 16px;
   --divider-gap: 40px;
 
-  /* Motion. One ease-out that never overshoots. Presses go in fast and come back a touch slower; exits beat enters. */
+  /* Motion: one family (MOTION.md). Four durations, each ~1.5x the last; an exit takes one step down from its enter,
+     a press goes in at xs and comes back at s. */
+  --duration-xs: 100ms; --duration-s: 160ms; --duration-m: 240ms; --duration-l: 400ms;
+  --delay-beat: var(--duration-s); /* before pending feedback shows, so an instant result never flashes it */
+  --loop: 1.6s; /* one period for every loading loop, so they move in step side by side */
+  /* Enters, exits, presses, hovers, fades: an ease-out that never overshoots. Something already on screen changing size
+     in place: ease-in-out. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --duration-press: 100ms; --duration-release: 160ms; --duration-hover: 200ms;
-  --duration-enter: 180ms; --duration-exit: 110ms; --duration-morph: 260ms; --duration-morph-back: 200ms;
-  /* Route changes: short, so a prefetched page never feels held back by its own entrance. The search morph keeps
-     --duration-morph. */
+  --ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+  /* Springs as duration and bounce (SwiftUI, Motion). The screenshot viewer runs them live with the finger's velocity;
+     --ease-glide is the glide spring sampled for CSS, played over --duration-l, for full-screen morphs.
+     snap: closing into place, fades. glide: opening, paging, full-screen morphs. release: settling after a let-go. */
+  --spring-snap: 0.24 0; --spring-glide: 0.4 0; --spring-release: 0.4 0.15;
+  --ease-glide: linear(0, 0.0003 0.4%, 0.0027 1.2%, 0.0093 2.3%, 0.0222 3.6%, 0.0426 5.1%, 0.0712 6.9%, 0.1079 8.8%, 0.1522 10.9%, 0.2032 13.1%, 0.2593 15.6%, 0.3192 18.1%, 0.3812 20.8%, 0.4438 23.7%, 0.5055 26.6%, 0.5652 29.8%, 0.6218 33%, 0.6746 36.3%, 0.7231 39.8%, 0.7669 43.4%, 0.8061 47.1%, 0.8406 51%, 0.8706 54.9%, 0.8964 59%, 0.9183 63.1%, 0.9368 67.4%, 0.9522 71.7%, 0.9649 76.2%, 0.9753 80.8%, 0.9837 85.4%, 0.9904 90.2%, 0.9958 95%, 1);
+  /* The card morph's own timing, owned by the card expansion (#69). */
   --duration-route: 170ms;
 }
 @media(max-width: 700px) {
@@ -276,7 +284,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .showcase-recs { position: absolute; right: -5%; bottom: 0; width: 100%; padding-left: 14%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .showcase-recs a { display: block; border-radius: 9px; }
 /* The link stays still and holds the pointer; the tile inside it lifts, so it can't slide out from under the cursor. */
-.showcase-tile { display: block; border-radius: 9px; overflow: hidden; border: 3px solid var(--background); box-shadow: 0 10px 22px color-mix(in srgb, var(--foreground) 18%, transparent); transition: transform var(--duration-hover) var(--ease-out); }
+.showcase-tile { display: block; border-radius: 9px; overflow: hidden; border: 3px solid var(--background); box-shadow: 0 10px 22px color-mix(in srgb, var(--foreground) 18%, transparent); transition: transform var(--duration-s) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .showcase-recs a:hover .showcase-tile { transform: translateY(-6px); } }
 .showcase-recs img { width: 100%; aspect-ratio: 460/215; object-fit: cover; }
 
@@ -286,7 +294,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .section-heading > div { min-width: 0; }
 .section-heading p { margin-top: 2px; color: var(--muted-foreground); }
 .see-all { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; }
-.see-all svg { transition: transform .15s ease-out; }
+.see-all svg { transition: transform var(--duration-s) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .see-all:hover svg { transform: translateX(2px); } }
 
 /* Cards */
@@ -339,13 +347,13 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 @media (min-width: 1000px) { .source-header .page-title [itemprop=name] { font-size: 40px; line-height: 1.08; } }
 .source-header .source-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; margin-top: 2px; }
 @media (max-width: 700px) { .source-header .source-description { -webkit-line-clamp: 3; } }
-.game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
+.game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--duration-l) var(--ease-out); }
 .game-trailer video[data-playing=true] { opacity: 1; }
 .trailer-controls { position: absolute; z-index: 2; right: 12px; top: 12px; display: flex; gap: 8px; }
 .trailer-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgb(0 0 0 / .38); backdrop-filter: blur(12px); color: #fff; }
 .trailer-button::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 /* Each button holds both icons; the state crossfades between them (same swap as the copy button). */
-.trailer-button svg { position: absolute; transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out), filter var(--duration-enter) var(--ease-out); }
+.trailer-button svg { position: absolute; transition: opacity var(--duration-s) var(--ease-out), transform var(--duration-s) var(--ease-out), filter var(--duration-s) var(--ease-out); }
 .trailer-button .icon-on, .trailer-button[data-on] .icon-off { opacity: 0; transform: scale(.6); filter: blur(2px); }
 .trailer-button[data-on] .icon-on { opacity: 1; transform: none; filter: none; }
 @media(prefers-reduced-motion: reduce) { .trailer-button svg { transform: none !important; filter: none !important; } }
@@ -379,19 +387,19 @@ html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable;
 .viewer-backdrop { position: absolute; inset: 0; background: #000; opacity: 0; }
 .viewer-track, .viewer-page { position: absolute; inset: 0; }
 /* While a shot is picked up or flying home, the others step out of the way. */
-.viewer-page { transition: opacity .15s ease; }
+.viewer-page { transition: opacity var(--duration-s) var(--ease-out); }
 .screenshot-viewer:is([data-phase=dragging], [data-phase=closing]) .viewer-page:not([data-current]) { opacity: 0; }
 .viewer-shot { position: absolute; top: 0; left: 0; transform-origin: 0 0; background: rgb(255 255 255 / .06); }
 .viewer-shot img { object-fit: cover; pointer-events: none; }
-.viewer-shot .viewer-full { object-fit: contain; opacity: 0; transition: opacity .25s ease; }
+.viewer-shot .viewer-full { object-fit: contain; opacity: 0; transition: opacity var(--duration-m) var(--ease-out); }
 .viewer-shot[data-shown] .viewer-full { opacity: 1; }
 /* The shot being viewed leaves an empty slot in the strip, as it would if it had been lifted out. */
 .screenshot-strip button[data-viewing] img { visibility: hidden; }
 .viewer-button { position: absolute; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
   background: rgb(255 255 255 / .14); color: #fff; cursor: pointer; opacity: 0; pointer-events: none;
-  transition: opacity .12s ease, background-color .15s ease, scale .15s ease-out; }
-.viewer-button:active { scale: .94; }
-.screenshot-viewer[data-phase=open] .viewer-close { opacity: 1; pointer-events: auto; transition-duration: .2s, .15s, .15s; }
+  transition: opacity var(--duration-xs) var(--ease-out), background-color var(--duration-s) var(--ease-out), scale var(--duration-s) var(--ease-out); }
+.viewer-button:active { scale: .92; transition-duration: var(--duration-xs); }
+.screenshot-viewer[data-phase=open] .viewer-close { opacity: 1; pointer-events: auto; transition-duration: var(--duration-s); }
 .viewer-close { top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); }
 .viewer-prev, .viewer-next { top: 50%; translate: 0 -50%; }
 .viewer-prev { left: 16px; } .viewer-next { right: 16px; }
@@ -400,7 +408,7 @@ html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable;
 @media (hover: hover) and (pointer: fine) {
   .viewer-button:hover { background: rgb(255 255 255 / .24); }
   .screenshot-viewer[data-phase=open]:is([data-pointer], :has(.viewer-nav:focus-visible)) .viewer-nav:not([aria-disabled=true]) {
-    opacity: 1; pointer-events: auto; transition-duration: .2s, .15s, .15s; }
+    opacity: 1; pointer-events: auto; transition-duration: var(--duration-s); }
 }
 .viewer-button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media(max-width: 640px) {
@@ -417,7 +425,7 @@ html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable;
   content: ""; position: absolute; inset: 0; z-index: -1;
   mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%224.4%204.6%2015%2015%22%3E%3Cpath%20d%3D%22M12.7057%2017.9728L14.0299%2016.6487L10.7377%2013.3567L7.4396%2010.0586L6.11553%2011.3827L7.33348%2014.3331L4.85938%2017.8014L5.52604%2018.4681L6.19271%2019.1347L9.66681%2016.6487L12.7057%2017.9728Z%22/%3E%3Cpath%20d%3D%22M19%209.04753L13.6686%2014.3789L12.1159%2012.8262L15.5358%209.40755L14.5925%208.46419L11.1732%2011.8835L9.62109%2010.3314L14.9525%205H19V9.04753Z%22/%3E%3C/svg%3E") center / auto clamp(14px, 34%, 64px) no-repeat;
   background: linear-gradient(100deg, var(--art-ink) 40%, var(--art-sheen) 50%, var(--art-ink) 60%) 0 0 / 300% 100%;
-  animation: art-sheen 1.6s linear infinite;
+  animation: art-sheen var(--loop) linear infinite;
 }
 :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img { color: transparent; }
 :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::before { content: ""; position: absolute; inset: 0; background: var(--art-bg); }
@@ -441,7 +449,7 @@ code, pre { font-family: var(--font-geist-mono), ui-monospace, monospace; }
 .copy-button { position: absolute; top: 8px; right: 8px; width: 32px; min-height: 32px; padding: 0; color: var(--muted-foreground); }
 .copy-button::before { content: ""; position: absolute; inset: -6px; }
 /* The copy icon crossfades to a check and back. */
-.copy-button svg { position: absolute; transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out); }
+.copy-button svg { position: absolute; transition: opacity var(--duration-s) var(--ease-out), transform var(--duration-s) var(--ease-out); }
 .copy-button[data-copied] { color: var(--foreground); }
 .copy-button .copy-check, .copy-button[data-copied] .copy-icon { opacity: 0; transform: scale(.6); }
 .copy-button[data-copied] .copy-check { opacity: 1; transform: none; }
@@ -467,16 +475,16 @@ html { touch-action: manipulation; }
 /* Presses. A plain scale-down, in fast and back a touch slower on an ease-out that never overshoots. Elements with
    their own press drop iOS's grey tap flash, which would otherwise flash on top of it. */
 :is(.button, .game-card, .showcase-source, .showcase-recs a, .trailer-button, .search-results a, .wordmark, .see-all, .search-cancel) { -webkit-tap-highlight-color: transparent; }
-.game-card > div, .showcase-source, .showcase-tile, .trailer-button { transition: transform var(--duration-release) var(--ease-out); }
-.showcase-source:active { transform: scale(.98); transition-duration: var(--duration-press); }
-.game-card:active > div, .showcase-recs a:active .showcase-tile { transform: scale(.97); transition-duration: var(--duration-press); }
-.trailer-button:active { transform: scale(.92); transition-duration: var(--duration-press); }
+.game-card > div, .showcase-source, .showcase-tile, .trailer-button { transition: transform var(--duration-s) var(--ease-out); }
+.showcase-source:active { transform: scale(.97); transition-duration: var(--duration-xs); }
+.game-card:active > div, .showcase-recs a:active .showcase-tile { transform: scale(.97); transition-duration: var(--duration-xs); }
+.trailer-button:active { transform: scale(.92); transition-duration: var(--duration-xs); }
 .see-all:active, .search-cancel:active, .wordmark:active, .home-intro .examples a:active, .site-footer a:active, .game-facts a:active { opacity: .6; }
 .search-results a:active { background: var(--muted); }
 
 /* Buttons. The primary (the Steam button) is the one physical object on the site: top-lit, a highlight on its top
    edge and a shadow under it; a press sinks it. Secondary buttons are flat: white, a hairline, a tint on press. */
-.button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 16px; border-radius: 8px; white-space: nowrap; font-weight: 500; cursor: pointer; user-select: none; transition: transform var(--duration-release) var(--ease-out), box-shadow var(--duration-release) var(--ease-out), background-color var(--duration-hover) var(--ease-out), filter var(--duration-hover) var(--ease-out); }
+.button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 16px; border-radius: 8px; white-space: nowrap; font-weight: 500; cursor: pointer; user-select: none; transition: transform var(--duration-s) var(--ease-out), box-shadow var(--duration-s) var(--ease-out), background-color var(--duration-s) var(--ease-out), filter var(--duration-s) var(--ease-out); }
 .button svg { flex-shrink: 0; }
 .button-primary { color: var(--primary-foreground); background: linear-gradient(to bottom, #34343b, #18181c 55%, #131316); box-shadow: 0 0 0 1px #131316, inset 0 1px 0 rgb(255 255 255 / .16), 0 1px 1px rgb(19 19 22 / .18), 0 3px 6px -2px rgb(19 19 22 / .30); }
 .button-secondary { color: var(--foreground); background: var(--card); box-shadow: 0 0 0 1px var(--border); }
@@ -484,7 +492,7 @@ html { touch-action: manipulation; }
   .button-primary:hover { filter: brightness(1.18); }
   .button-secondary:hover { background: #f4f4f6; }
 }
-.button:active { transform: scale(.97); transition-duration: var(--duration-press); }
+.button:active { transform: scale(.97); transition-duration: var(--duration-xs); }
 .button-primary:active { box-shadow: 0 0 0 1px #131316, inset 0 1px 2px rgb(0 0 0 / .35), 0 0 0 rgb(19 19 22 / 0), 0 0 0 0 rgb(19 19 22 / 0); filter: none; }
 .button-secondary:active { background: #ededf0; }
 .button:focus-visible { outline-offset: 3px; }
@@ -492,9 +500,9 @@ html { touch-action: manipulation; }
 
 /* Desktop search: the panel grows out of the field, and goes faster than it came. */
 @media (min-width: 701px) {
-  .search-results { transform-origin: var(--transform-origin); transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out), height 120ms var(--ease-out); }
+  .search-results { transform-origin: var(--transform-origin); transition: opacity var(--duration-s) var(--ease-out), transform var(--duration-s) var(--ease-out), height var(--duration-s) var(--ease-in-out); }
   .search-results[data-starting-style] { opacity: 0; transform: scale(.97); }
-  .search-results[data-ending-style] { opacity: 0; transform: scale(.98); transition-duration: var(--duration-exit); }
+  .search-results[data-ending-style] { opacity: 0; transform: scale(.98); transition-duration: var(--duration-xs); }
   /* Opened with / or ⌘K: there at once. Keyboard-invoked panels don't animate in. */
   .search-results[data-instant] { transition-property: height; }
   /* The panel's height follows its rows (Navbar.tsx followHeight), so a change in the result count glides, not jumps. */
@@ -502,13 +510,13 @@ html { touch-action: manipulation; }
   .search-panel { padding: 6px; }
 }
 
-/* The field's icon: a spinner replaces the glass while a submitted search waits for its page, after 120ms so an instant
+/* The field's icon: a spinner replaces the glass while a submitted search waits for its page, after a beat so an instant
    navigation never shows it. */
 .search-icon { display: grid; flex-shrink: 0; }
 .search-icon > svg { grid-area: 1 / 1; }
 .search-icon > svg:last-child { opacity: 0; }
-.search-box[data-pending] .search-icon > svg:first-child { animation: icon-out var(--duration-exit) 120ms var(--ease-out) forwards; }
-.search-box[data-pending] .search-icon > svg:last-child { animation: icon-in var(--duration-enter) 120ms var(--ease-out) forwards, icon-spin .8s linear infinite; }
+.search-box[data-pending] .search-icon > svg:first-child { animation: icon-out var(--duration-xs) var(--delay-beat) var(--ease-out) forwards; }
+.search-box[data-pending] .search-icon > svg:last-child { animation: icon-in var(--duration-s) var(--delay-beat) var(--ease-out) forwards, icon-spin .8s linear infinite; }
 @keyframes icon-in { to { opacity: 1; } }
 @keyframes icon-out { to { opacity: 0; } }
 @keyframes icon-spin { to { rotate: 1turn; } }
@@ -522,7 +530,7 @@ html { touch-action: manipulation; }
 .search-title:has(mark) { color: color-mix(in srgb, var(--foreground) 62%, transparent); }
 .search-title mark { background: none; color: var(--foreground); }
 /* A card whose page is still on the way dims its art, after a beat. */
-.game-card:has(> [data-link-pending]) .game-card-art { animation: pending-dim var(--duration-enter) 120ms var(--ease-out) forwards; }
+.game-card:has(> [data-link-pending]) .game-card-art { animation: pending-dim var(--duration-s) var(--delay-beat) var(--ease-out) forwards; }
 @keyframes pending-dim { to { opacity: .6; } }
 
 /* Phone search: opening and closing run as a React view transition typed search-open / search-close (Navbar.tsx). The field's frame morphs from the header
@@ -536,14 +544,14 @@ html { touch-action: manipulation; }
   /* The view transition carries the results out. Left to itself, the closing popover would re-anchor under the header. */
   html:not(:has(.site-search[data-open=true])) .search-results { display: none; }
 }
-:root:active-view-transition-type(search-open) { --vt-duration: var(--duration-morph); }
-:root:active-view-transition-type(search-close) { --vt-duration: var(--duration-morph-back); }
-::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--vt-duration, var(--duration-route)); animation-timing-function: var(--ease-out); }
+:root:active-view-transition-type(search-open) { --vt-duration: var(--duration-l); --vt-ease: var(--ease-glide); }
+:root:active-view-transition-type(search-close) { --vt-duration: var(--duration-m); }
+::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--vt-duration, var(--duration-route)); animation-timing-function: var(--vt-ease, var(--ease-out)); }
 ::view-transition-old(search-input), ::view-transition-new(search-input) { height: 100%; width: auto; object-fit: none; object-position: left center; }
 /* The takeover fades in over a still page and fades back out over it, so the two never cross-dissolve into a ghost. */
 :root:is(:active-view-transition-type(search-open), :active-view-transition-type(search-close))::view-transition-old(root),
 :root:is(:active-view-transition-type(search-open), :active-view-transition-type(search-close))::view-transition-new(root) { animation: none; }
-:root:active-view-transition-type(search-open)::view-transition-new(root) { animation: fade-in var(--vt-duration) var(--ease-out); }
+:root:active-view-transition-type(search-open)::view-transition-new(root) { animation: fade-in var(--vt-duration) var(--vt-ease, var(--ease-out)); }
 :root:active-view-transition-type(search-close)::view-transition-old(root) { z-index: 1; animation: fade-out var(--vt-duration) var(--ease-out) both; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes fade-out { to { opacity: 0; } }
@@ -567,14 +575,14 @@ html { touch-action: manipulation; }
 ::view-transition-group(.art-morph) { animation-duration: var(--duration-route); animation-timing-function: var(--ease-out); }
 ::view-transition-old(.art-morph), ::view-transition-new(.art-morph) { height: 100%; object-fit: cover; }
 ::view-transition-new(.slide-from-right) { animation: fade-in var(--duration-route) var(--ease-out) both, slide-in-right var(--duration-route) var(--ease-out) both; }
-::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-exit) var(--ease-out) both, slide-out-left var(--duration-route) var(--ease-out) both; }
-::view-transition-new(.page-in) { animation: fade-in var(--duration-enter) var(--ease-out) both; }
-::view-transition-old(.skeleton-out) { animation: fade-out var(--duration-exit) var(--ease-out) both; }
+::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-xs) var(--ease-out) both, slide-out-left var(--duration-route) var(--ease-out) both; }
+::view-transition-new(.page-in) { animation: fade-in var(--duration-s) var(--ease-out) both; }
+::view-transition-old(.skeleton-out) { animation: fade-out var(--duration-xs) var(--ease-out) both; }
 @keyframes slide-in-right { from { translate: 24px 0; } }
 @keyframes slide-out-left { to { translate: -24px 0; } }
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-new(.slide-from-right) { animation: fade-in var(--duration-enter) var(--ease-out) both; }
-  ::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-exit) var(--ease-out) both; }
+  ::view-transition-new(.slide-from-right) { animation: fade-in var(--duration-s) var(--ease-out) both; }
+  ::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-xs) var(--ease-out) both; }
 }
 
 /* Empty states: the sword over a short note, centred, so a missing list reads as a place, not a gap. */
@@ -584,11 +592,11 @@ html { touch-action: manipulation; }
 /* Art fades up once it has loaded instead of painting in top to bottom. The head script in layout.tsx reveals each
    image as it loads and stops the placeholder sheen behind it; without that script nothing is hidden. */
 :root[data-art-fade] :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img { opacity: 0; }
-:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img { transition: opacity var(--duration-hover) var(--ease-out); }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img { transition: opacity var(--duration-m) var(--ease-out); }
 
 /* Skeletons match the layout they stand in for, so nothing jumps when the content arrives. */
 .skeleton { position: relative; overflow: hidden; border-radius: 4px; background: var(--muted); }
-.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .55), transparent); transform: translateX(-100%); animation: skeleton 1.5s ease-in-out infinite; }
+.skeleton::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .55), transparent); transform: translateX(-100%); animation: skeleton var(--loop) linear infinite; }
 @keyframes skeleton { to { transform: translateX(100%); } }
 @media(prefers-reduced-motion: reduce) { .skeleton::after { animation: none; opacity: 0; } }
 .card-skeleton .skeleton-art { aspect-ratio: 460/215; border-radius: 6px; }
