@@ -5,6 +5,7 @@ transactions so a page's stored slate is never partially updated. LLM lists are
 preserved from their frozen export. Checks run before and after publication.
 """
 import argparse,json,pathlib,urllib.request
+from review_quality import eligible
 from model_assertions import verify_model_slates
 from capacity import check_capacity,assert_physical_headroom
 from selection import POPULARITY_CAPS, MODEL_VERSION, SLATE_SIZE
@@ -17,7 +18,7 @@ def query(sql):return management(f'projects/{ref}/database/query',{'query':sql})
 def read(table):return [json.loads(l) for l in (a.data/(table+'.jsonl')).open()]
 games=read('games');recs=read('game_recs');tags=read('tags');byid={g['appid']:g for g in games};slates={}
 for r in recs:
- assert r['appid'] in byid and byid[r['rec_appid']]['is_indie'] and r['appid']!=r['rec_appid']
+ assert r['appid'] in byid and byid[r['rec_appid']]['is_indie'] and eligible(byid[r['rec_appid']]) and r['appid']!=r['rec_appid']
  slates.setdefault((r['appid'],r['source']),[]).append(r)
 for g in games:
  slate=slates.get((g['appid'],'model'),[])
@@ -39,7 +40,7 @@ for table,rows in [('tags',tags),('games',games)]:
    print(e.read().decode()[:1000]);raise SystemExit(1)
  print('loaded',table,len(rows),flush=True)
 # Keep eligible archived suggestions, but remove targets invalidated by ownership changes.
-query("delete from public.game_recs r using public.games g where r.rec_appid=g.appid and r.source='llm' and not g.is_indie")
+query("delete from public.game_recs r using public.games g where r.rec_appid=g.appid and r.source='llm' and (not g.is_indie or (g.review_count>=10 and coalesce(g.clean_score,g.review_positive_pct)<70))")
 ids=sorted(byid)
 for start in range(0,len(ids),100):
  assert_physical_headroom(management,capacity['operating_budget_bytes'])

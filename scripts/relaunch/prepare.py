@@ -3,7 +3,7 @@ import argparse,json,pathlib,re,unicodedata,datetime
 p=argparse.ArgumentParser();p.add_argument('source',type=pathlib.Path);p.add_argument('--prices',type=pathlib.Path,default=pathlib.Path('data/steam-full/us-prices.json'));p.add_argument('--catalog-only',action='store_true');p.add_argument('--out',type=pathlib.Path,default=pathlib.Path('data/relaunch'));a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 from catalog import is_indie
 from review_quality import eligible
-from selection import MODEL_VERSION, select_targets
+from selection import MODEL_VERSION, SLATE_SIZE, select_targets
 quality=json.loads((a.source/"review-quality.json").read_text())
 assert json.loads((a.source/"review-quality-status.json").read_text())["complete"], "Finish histogram checks before preparation"
 prices=json.loads(a.prices.read_text())
@@ -37,8 +37,9 @@ for source,slates in ([] if a.catalog_only else [('model',model_slates.values())
    targets=[]
    for target in [s['suggested_appid'] for s in slate['suggestions']]+candidates:
     if allowed(target,appid) and target not in targets:targets.append(target)
-    if len(targets)==10:break
-   assert len(targets)==10, f'Insufficient eligible candidates for {appid}'
+    if len(targets)==SLATE_SIZE:break
+   assert len(targets)>=10, f'Insufficient eligible candidates for {appid}'
+  assert len(targets)>=10, f'Insufficient eligible candidates for {appid}'
   for rank,target in enumerate(targets,1):
    recs.append(dict(appid=appid,rank=rank,rec_appid=target,source=source,model_version=MODEL_VERSION if source=='model' else 'llm-archive-20260615-clean-v1'))
   empty[source]+=not targets

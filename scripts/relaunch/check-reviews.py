@@ -23,7 +23,7 @@ def save(path,value):
 def fetch(job):
  global next_request,cooldown
  key,score,old=job;path=a.cache/(key+'.json');cached=json.loads(path.read_text()) if path.exists() else None
- valid=cached and cached.get('version')==VERSION and (not a.refresh or cached['checked_at'][:10]==today)
+ valid=cached and isinstance(cached.get('payload'),dict) and (not a.refresh or cached['checked_at'][:10]==today)
  if not valid:
   for attempt in range(7):
    with lock:

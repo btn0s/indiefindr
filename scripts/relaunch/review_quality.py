@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 DAY = 86400
 PACIFIC = ZoneInfo('America/Los_Angeles')
-VERSION = 'steam-review-spikes-v1'
+VERSION = 'steam-review-spikes-v2-negative-dominant'
 
 
 def rated_low(score, count):
@@ -21,8 +21,10 @@ def rated_low(score, count):
 def eligible(game):
     if game.get('review_count', 0) < 10 or game.get('review_positive_pct') is None:
         return True
-    score = game.get('clean_score')
-    return (score if score is not None else game['review_positive_pct']) >= 70
+    if game['review_positive_pct'] >= 70:
+        return True
+    windows = game.get('bomb_windows') or []
+    return game.get('clean_score') is not None and game['clean_score'] >= 70 and bool(windows) and all(w.get('down', 0) > w.get('up', 0) for w in windows)
 
 
 def analyze(payload, default_score):
@@ -83,6 +85,7 @@ def analyze(payload, default_score):
             w = windows[-1];w['end_ts'] = b['end'];w['up'] += b['up'];w['down'] += b['down'];w['resolution'] = w['resolution'] if w['resolution'] == b['resolution'] else 'mixed'
         else:
             windows.append(dict(start_ts=b['start'], end_ts=b['end'], up=b['up'], down=b['down'], resolution=b['resolution']))
+    windows = [w for w in windows if w['down'] > w['up']]
     for w in windows:
         w['start'] = datetime.fromtimestamp(w['start_ts'], PACIFIC).date().isoformat()
         w['end'] = datetime.fromtimestamp(w['end_ts'] - DAY, PACIFIC).date().isoformat()

@@ -20,7 +20,7 @@ fcntl.flock(compute_lock,fcntl.LOCK_EX)
 rows=sorted(json.loads((a.source/'data/catalog.json').read_text())['rows'],key=lambda r:int(r['appid']))
 enrichment=json.loads((a.source/'data/steam_tags.json').read_text());ids=[int(r['appid']) for r in rows]
 quality=json.loads((a.source/'review-quality.json').read_text())
-allowed=np.array([eligible(dict(review_count=enrichment[str(i)]['popularity'].get('review_count') or 0,review_positive_pct=enrichment[str(i)]['popularity'].get('percent_positive'),clean_score=quality[str(i)]['clean_score'])) for i in ids])
+allowed=np.array([eligible(dict(review_count=enrichment[str(i)]['popularity'].get('review_count') or 0,review_positive_pct=enrichment[str(i)]['popularity'].get('percent_positive'),clean_score=quality[str(i)]['clean_score'],bomb_windows=quality[str(i)]['bomb_windows'])) for i in ids])
 # Frozen training recipe uses raw catalog text plus top-15 actual Steam tags.
 def clean(text):return html.unescape(re.sub('<[^>]+>',' ',str(text or ''))).strip()
 def text(row):
@@ -71,7 +71,7 @@ def top(scores,k=200):
  # Exact score selection, deterministic appid tie-break including the boundary.
  chosen=np.argpartition(-scores,k-1)[:k];cut=scores[chosen].min();head=np.flatnonzero(scores>cut);ties=np.flatnonzero(scores==cut)[:k-len(head)];chosen=np.r_[head,ties];return chosen[np.lexsort((chosen,-scores[chosen]))]
 path=a.artifacts/'slates.progress.jsonl';manifest=a.artifacts/'scoring-inputs.json'
-inputs={str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in [a.source/'data/catalog.json',a.source/'data/steam_tags.json',a.model/'ranker.txt',a.artifacts/'ids.json',ROOT/'scripts/relaunch/catalog.py',ROOT/'scripts/relaunch/selection.py',pathlib.Path(__file__)]}
+inputs={str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in [a.source/'data/catalog.json',a.source/'data/steam_tags.json',a.source/'review-quality.json',ROOT/'scripts/relaunch/review_quality.py',a.model/'ranker.txt',a.artifacts/'ids.json',ROOT/'scripts/relaunch/catalog.py',ROOT/'scripts/relaunch/selection.py',pathlib.Path(__file__)]}
 if manifest.exists():assert json.loads(manifest.read_text())==inputs,'Dataset changed; use a new artifacts directory'
 else:manifest.write_text(json.dumps(inputs))
 done=set()

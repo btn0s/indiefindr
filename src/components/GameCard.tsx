@@ -4,9 +4,10 @@ import { useEffect, useRef } from "react";
 import { track } from "@/lib/tracking";
 import Link from "next/link";
 import Image from "next/image";
+import { isRescued, type ReviewQuality } from "@/lib/review-quality";
 import { CardRating } from "./Rating";
 
-export interface GameCardProps {
+export interface GameCardProps extends ReviewQuality {
   appid: number;
   title: string;
   header_image: string | null;
@@ -24,6 +25,7 @@ export function GameCard({
   header_image,
   review_count = 0,
   review_positive_pct = null,
+  clean_score, bomb_windows,
   preload = false,
   pageAppid, position = 0,
 }: GameCardProps) {
@@ -45,7 +47,7 @@ export function GameCard({
           )}
         </div>
         <div className="game-card-title"><span>{title}</span></div>
-        <CardRating pct={review_positive_pct} count={review_count} />
+        <CardRating pct={review_positive_pct} count={review_count} rescued={isRescued({ review_positive_pct, review_count, clean_score, bomb_windows })} />
       </div>
     </Link>
   );

@@ -2,11 +2,23 @@
 import json,pathlib,unittest
 from review_quality import analyze,eligible,rated_low
 class ReviewQuality(unittest.TestCase):
- def test_big_walk(self):
+ def test_positive_dominant_spikes_are_not_bombs(self):
   result=analyze(json.loads((pathlib.Path(__file__).parent/'fixtures/big-walk-20261113.json').read_text()),91)
-  self.assertTrue(any(w['start']=='2026-11-09' and w['end']=='2026-11-11' for w in result['bomb_windows']))
-  window=next(w for w in result['bomb_windows'] if w['start']=='2026-11-09')
-  self.assertEqual((window['up'],window['down']),(426+652+547,366+130+51))
+  self.assertFalse(any(w['start']=='2026-11-09' for w in result['bomb_windows']))
+ def test_negative_dominant_window(self):
+  rows=[dict(date=i*86400,recommendations_up=10,recommendations_down=1) for i in range(20)]
+  rows[-1].update(recommendations_up=20,recommendations_down=100)
+  result=analyze(dict(success=1,results=dict(recent=rows)),60)
+  self.assertEqual(len(result['bomb_windows']),1)
+  self.assertEqual(result['bomb_windows'][0]['down'],100)
+  self.assertGreater(result['clean_score'],70)
+ def test_dominance_is_checked_after_adjacent_bins_merge(self):
+  rows=[dict(date=i*86400,recommendations_up=10,recommendations_down=1) for i in range(20)]
+  rows[-2].update(recommendations_up=200,recommendations_down=50)
+  rows[-1].update(recommendations_up=1,recommendations_down=100)
+  result=analyze(dict(success=1,results=dict(recent=rows)),60)
+  self.assertEqual(result['bomb_windows'],[])
+  self.assertEqual(result['clean_score'],60)
  def test_unrated_stays(self):
   for count in [0,1,9]:
    self.assertTrue(eligible(dict(review_count=count,review_positive_pct=0,clean_score=0)))
@@ -14,7 +26,7 @@ class ReviewQuality(unittest.TestCase):
  def test_score_threshold(self):
   self.assertTrue(eligible(dict(review_count=10,review_positive_pct=70)))
   self.assertFalse(eligible(dict(review_count=10,review_positive_pct=69)))
-  self.assertTrue(eligible(dict(review_count=100,review_positive_pct=50,clean_score=91)))
+  self.assertTrue(eligible(dict(review_count=100,review_positive_pct=50,clean_score=91,bomb_windows=[dict(up=1,down=100)])))
  def test_months_have_actual_duration(self):
   data=dict(success=1,results=dict(rollup_type='month',recent=[],rollups=[dict(date=1706745600,recommendations_up=100,recommendations_down=29)]))
   result=analyze(data,50)

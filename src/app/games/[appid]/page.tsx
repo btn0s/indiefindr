@@ -1,4 +1,5 @@
 import { WebMCP } from "@/components/WebMCP";
+import { ReviewQualityNote } from "@/components/ReviewQualityNote";
 import { notFound } from "next/navigation";
 import { GameTrailer, type Trailer } from "@/components/GameTrailer";
 import type { Metadata } from "next";
@@ -175,6 +176,7 @@ export default async function GamePage({
             <div className="page-head">
             <h1 className="page-title"><span className="title-lead">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
             <GameMetadata game={game} />
+            <ReviewQualityNote game={game} />
             </div>
           </header>
           <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}

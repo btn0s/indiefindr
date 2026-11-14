@@ -170,7 +170,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Label: names and actions. */
 .game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
 /* Meta: facts about a game, captions, the footer. */
-.card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+.review-quality-note, .card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
 /* Emphasis inside a role keeps its size and gains weight. */
 .card-rating strong, .game-meta strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
@@ -307,3 +307,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .agent-docs { display: flex; flex-direction: column; gap: 20px; margin-top: 24px; }
 .agent-docs pre { overflow-x: auto; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
 .agent-docs a { text-decoration: underline; text-underline-offset: 3px; }
+
+.review-quality-note { margin-top: 12px; max-width: 80ch; color: var(--muted-foreground); }
+.review-quality-note a { text-decoration: underline; text-underline-offset: 3px; }
+.review-bombed-label { margin-inline-start: 12px; color: var(--muted-foreground); white-space: nowrap; }
