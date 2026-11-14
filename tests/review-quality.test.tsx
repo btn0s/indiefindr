@@ -58,10 +58,24 @@ test("shows both scores, accessible periods and a neutral learn-more link", asyn
       }}
     />,
   );
+  fireEvent.click(screen.getByRole("button", { name: "Learn more" }));
+  expect(
+    screen
+      .getByRole("dialog", { hidden: true })
+      .getAttribute("aria-labelledby"),
+  ).toBeTruthy();
+  expect(
+    screen
+      .getByRole("dialog", { hidden: true })
+      .getAttribute("aria-describedby"),
+  ).toBeTruthy();
   expect(screen.getByText("60%")).toBeTruthy();
-  expect(screen.getByText("91%")).toBeTruthy();
+  expect(screen.getAllByText("91%")).toHaveLength(2);
   const agent = createAgent();
-  const bar = screen.getByRole("button", { name: /Jan 2025: 10 positive/ });
+  const bar = screen.getByRole("button", {
+    name: /Jan 2025: 10 positive/,
+    hidden: true,
+  });
   fireEvent.keyDown(document, { key: "Tab" });
   await act(async () => {
     bar.focus();
@@ -88,12 +102,21 @@ test("shows both scores, accessible periods and a neutral learn-more link", asyn
       .find((e) => e.hasAttribute("data-open"));
     expect(tooltip?.textContent).toContain("100 negative");
   });
-  const link = screen.getByRole("link", { name: "Learn more ↗" });
+  const link = screen.getByRole("link", {
+    name: "Search for more about this ↗",
+    hidden: true,
+  });
   expect(link.getAttribute("target")).toBe("_blank");
   expect(link.getAttribute("rel")).toContain("noopener");
   expect(link.getAttribute("href")).toBe(
     "https://www.google.com/search?q=" +
       encodeURIComponent("Example & Game review bombing"),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Close", hidden: true }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("dialog", { hidden: true }).hasAttribute("data-closed"),
+    ).toBe(true),
   );
 });
 test("preserves Steam label on rescued cards with spaced disclosure", () => {
