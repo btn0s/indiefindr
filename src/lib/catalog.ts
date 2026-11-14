@@ -27,6 +27,7 @@ export const getRecommendations = cache(async (appid: number): Promise<Recommend
     .select("rank,source,game:games!game_recs_rec_appid_fkey!inner(appid,title,header_image,review_count,review_positive_pct,is_indie,clean_score,bomb_windows,checked_at)")
     .eq("appid", appid)
     .eq("game.is_indie", true)
+    .eq("game.is_companion", false)
     .order("rank");
   if (error) throw new Error("Recommendations unavailable");
   const recs = (data ?? []) as unknown as RecommendationCard[];
@@ -40,7 +41,7 @@ export const getRecommendations = cache(async (appid: number): Promise<Recommend
 export const getDeveloperGames = cache(async (appid: number, developers: string[]): Promise<CardGame[]> => {
   if (!developers.length) return [];
   const { data } = await getSupabaseServerClient().from("games").select(CARD_FIELDS)
-    .neq("appid", appid).eq("is_indie", true).or(developers.map(dev => `developers.cs.{${dev}}`).join(","))
+    .neq("appid", appid).eq("is_indie", true).eq("is_companion", false).or(developers.map(dev => `developers.cs.{${dev}}`).join(","))
     .order("release_date", { ascending: false }).limit(4);
   return (data ?? []).filter(recommendationEligible);
 });
@@ -62,9 +63,10 @@ function dailyPick<T>(items: T[], count: number): T[] {
 }
 
 /** Discovery shelves boost indies that still need it: indie+ games (lifetime reviews past the pipeline's
- *  notoriety line) stay searchable and recommendable but never appear here, nor do Steam adult-only titles. */
+ *  notoriety line) stay searchable and recommendable but never appear here, nor do Steam adult-only titles or
+ *  companion apps (demos, prologues, DLC, soundtracks; scripts/relaunch/catalog.py). */
 const shelfBase = () => getSupabaseServerClient().from("games").select(SHELF_FIELDS)
-  .eq("is_indie", true).eq("indie_plus", false).eq("is_adult", false);
+  .eq("is_indie", true).eq("indie_plus", false).eq("is_adult", false).eq("is_companion", false);
 type ShelfQuery = ReturnType<typeof shelfBase>;
 
 /** Discovery shelves: one definition drives both the home preview and the shelf's own page. */
@@ -92,7 +94,8 @@ export const SHELVES = {
   },
   new: {
     title: "New on Steam", note: "Released in the last two months",
-    query: (q: ShelfQuery) => q.gte("release_date", daysAgo(60)).lte("release_date", daysAgo(0)).gte("review_count", 10)
+    // Same quality bar as Rising: 30+ reviews so the score means something, 80%+ positive.
+    query: (q: ShelfQuery) => q.gte("release_date", daysAgo(60)).lte("release_date", daysAgo(0)).gte("review_count", 30).gte("review_positive_pct", 80)
       .order("release_date", { ascending: false }).order("review_count", { ascending: false }),
   },
 } as const;
@@ -128,9 +131,9 @@ export async function getHomeShelves() {
 
 export const BROWSE_PAGE_SIZE = 24;
 
-/** "Browse all": every indie game, most-reviewed first. */
+/** "Browse all": every indie game (no companion apps), most-reviewed first. */
 export async function getBrowsePage(offset: number): Promise<CardGame[]> {
-  const { data, error } = await getSupabaseServerClient().from("games").select(CARD_FIELDS).eq("is_indie", true)
+  const { data, error } = await getSupabaseServerClient().from("games").select(CARD_FIELDS).eq("is_indie", true).eq("is_companion", false)
     .order("review_count", { ascending: false }).order("appid").range(offset, offset + BROWSE_PAGE_SIZE - 1);
   if (error) throw new Error("Catalog unavailable");
   return data;
