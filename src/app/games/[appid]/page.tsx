@@ -9,7 +9,6 @@ import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
 import { GameFacts } from "@/components/GameFacts";
 import { ScreenshotStrip } from "@/components/ScreenshotStrip";
-import { SwipeDismiss } from "@/components/SwipeDismiss";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
 
@@ -182,7 +181,6 @@ export default async function GamePage({
         {/* What an opened card expands into, and Back shrinks into the card again: the page's surface, the size of the
             viewport on phones and of the content column on desktop. Only a card transition (card-morph.ts) shows it. */}
         <div className="page-sheet" aria-hidden />
-        <SwipeDismiss />
         {/* Cover hero: the trailer (its poster or still until it plays) as a framed plate on the page, whole and unfaded.
             On desktop the title, facts, blurb and Steam button sit beside it; on phones, beneath it. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">

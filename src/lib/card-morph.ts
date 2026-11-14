@@ -95,7 +95,14 @@ export function onEntryChange(type: string, from: number, to: number) {
   enter(null);
 }
 
-/** How long the next close takes: a flick hands its speed to the spring (SwipeDismiss). Reset when it ends. */
+/** The card the current page was opened from, if it has one to close back into (PagePull dismisses then, and refreshes
+ *  otherwise). */
+export function cardToReturnTo(): Morph | null {
+  const index = (window as Window & { navigation?: { currentEntry: { index: number } | null } }).navigation?.currentEntry?.index;
+  return index == null ? null : byEntry.get(index) ?? null;
+}
+
+/** How long the next close takes: a flick hands its speed to the spring (PagePull). Reset when it ends. */
 export function setCloseDuration(ms: number) {
   root().style.setProperty("--duration-close", `${Math.round(ms)}ms`);
 }
