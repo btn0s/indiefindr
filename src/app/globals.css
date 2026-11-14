@@ -135,7 +135,7 @@
   --background: #f7f7f8; --foreground: #131316; --card: #ffffff; --popover: #ffffff;
   --muted: #ececef; --muted-foreground: #6b6b75; --border: #e3e3e8; --input: #e3e3e8;
   --primary: #131316; --primary-foreground: #ffffff; --ring: #131316;
-  --warning: #9a6a20; --warning-foreground: #71501d; --warning-muted: color-mix(in srgb, var(--warning) 8%, var(--card)); --warning-border: color-mix(in srgb, var(--warning) 25%, var(--border)); --pill-radius: 4px;
+  --positive: #357f65; --negative: #bc5a5c;
   --brand: var(--foreground); --media: #0d0d0f; --radius: 0.9rem;
 
   /* Text tiers: ink for names and headings, body for reading, muted for metadata. */
@@ -163,17 +163,17 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    font size, leading, weight or tracking. Colour is a separate choice of three tiers: ink, body, muted. */
 .home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.045em; }
 .page-title { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; }
-.section-heading h2, .agent-docs h2, .review-dialog h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
+.section-heading h2, .agent-docs h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
 /* Lead: heading size at reading weight; the one introductory sentence on a page. */
 .home-intro .lede { font-size: var(--type-heading); line-height: 1.5; }
 /* Body: running text and notes. */
-.source-description, .section-heading p, .page-note, .empty-note, .home-intro .examples, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; }
+.source-description, .review-story-lead, .section-heading p, .page-note, .empty-note, .home-intro .examples, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; }
 /* Label: names and actions. */
 .game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
 /* Meta: facts about a game, captions, the footer. */
-.review-score-pair p, .review-history figcaption, .review-history-caption, .review-dialog-explanation, .review-dialog-footer, .review-dialog-game, .review-tooltip, .card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+.review-ledger, .review-chart, .review-story-foot, .review-tooltip, .card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
 /* Emphasis inside a role keeps its size and gains weight. */
-.card-rating strong, .game-meta strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
+.card-rating strong, .game-meta strong, .review-ledger tfoot, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
 .site-shell { min-height: 100vh; background: var(--background); }
 
@@ -257,6 +257,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-card-title { padding-top: 10px; }
 .card-rating { margin-top: 2px; color: var(--muted-foreground); }
 .card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+.card-adjusted { display: block; }
 
 /* Game page */
 .source-game { display: flex; flex-direction: column; gap: 20px; padding-bottom: var(--divider-gap); border-bottom: 1px solid var(--border); }
@@ -309,109 +310,76 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .agent-docs pre { overflow-x: auto; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
 .agent-docs a { text-decoration: underline; text-underline-offset: 3px; }
 
-
-
-
-.review-score-pair strong { font-size: 48px; line-height: 1; font-weight: 650; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
-.history-axis-label, .history-window-point { font-size: 11px; line-height: 16px; }
-.clean-score-badge { font-size: 11px; line-height: 1.5; font-weight: 600; }
-.meta-rating-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 100%; }
+/* Review-bombed games: the score shown is the adjusted one. The note under it opens the story in place:
+   what happened, how players rated it before, during and after, and the histogram as proof. */
 .meta-score { white-space: nowrap; }
-.review-banner { position: relative; display: grid; grid-template-columns: 32px minmax(180px,1fr) 192px auto auto; align-items: center; gap: 16px; padding: 16px; min-height: 80px; margin-top: 8px; border: 1px solid var(--warning-border); border-radius: var(--radius); background: var(--warning-muted); font-variant-numeric: tabular-nums; }
-.review-banner-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; background: color-mix(in srgb,var(--warning) 14%,var(--card)); color: var(--warning-foreground); }
-.review-banner-heading { display: flex; flex-direction: column; gap: 4px; }
-.review-banner-heading strong { font-size: var(--type-body); font-weight: 600; }
-.review-banner-heading > span { font-size: 11px; line-height: 16px; color: var(--muted-foreground); white-space: nowrap; }
-.review-banner-chart { width: 192px; height: 44px; overflow: hidden; }
-.review-banner-scores { white-space: nowrap; }
-.review-banner-scores > div { display: flex; align-items: center; gap: 8px; font-size: 18px; line-height: 24px; }
-.review-banner-scores > div > span { color: var(--muted-foreground); }
-.review-banner-scores > span { display: block; font-size: 11px; line-height: 16px; color: var(--muted-foreground); }
-.review-banner-button { padding: 8px 12px; border: 1px solid var(--warning-border); border-radius: 8px; background: var(--card); white-space: nowrap; font-size: 12px; line-height: 20px; cursor: pointer; }
-.review-banner-button::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); }
-.review-banner:hover { border-color: var(--warning); }
-.review-banner:has(:focus-visible) { outline: 2px solid var(--ring); outline-offset: 3px; }
-.review-dialog-close:focus-visible, .review-dialog-x:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
-.review-score-pair { display: grid; grid-template-columns: 136px 24px 1fr; align-items: start; gap: 16px; padding: 24px 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
-.review-score-pair p { text-wrap: balance; margin-top: 8px; color: var(--muted-foreground); }
-.review-score-steam, .review-score-steam strong { color: var(--muted-foreground); }
-.review-score-steam p span { margin-left: 8px; color: var(--text-body); }
-.review-score-adjusted { color: var(--foreground); }
-.review-score-arrow { color: var(--muted-foreground); margin-top: 12px; }
-.review-history figcaption { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--muted-foreground); }
-.review-history figcaption > span:first-child { color: var(--text-body); }
-.review-history-key { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.review-history-key i { display: inline-block; width: 8px; height: 8px; border-radius: 1px; }
-.positive-key { background: #357f65; }.negative-key { background: #bc5a5c; }
-.review-history-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; margin-top: 16px; }
-.review-history-plot { position: relative; width: 100%; min-width: 620px; height: 252px; }
-.review-history-plot svg { display: block; width: 100%; height: 252px; }
-.history-positive { fill: #357f65; }.history-negative { fill: #bc5a5c; }
-.history-grid { stroke: var(--muted); }.history-axis { stroke: color-mix(in srgb, var(--foreground) 35%, var(--border)); }
-.history-axis-label { color: var(--muted-foreground); position: absolute; pointer-events: none; font-variant-numeric: tabular-nums; }
-.history-y-label { left: 0; width: 32px; text-align: right; transform: translateY(-50%); }
-.history-year { top: 232px; }
-.bomb-band { fill: var(--warning); fill-opacity: .18; stroke: var(--warning); stroke-opacity: .4; stroke-width: 1; }
-.history-point { position: absolute; top: 56px; height: 156px; padding: 0; background: transparent; border: 0; cursor: crosshair; }
-.history-window-point { position: absolute; top: 12px; width: 112px; min-height: 40px; padding: 4px; transform: translateX(-50%); background: var(--warning-muted); border: 1px solid var(--warning-border); border-radius: var(--pill-radius); color: var(--warning-foreground); cursor: help; display: flex; flex-direction: column; align-items: center; }
-.history-point:hover, .history-point:focus-visible { background: #00000008; outline: 2px solid var(--muted-foreground); outline-offset: -1px; }
-.history-window-point:focus-visible { outline: 2px solid var(--warning); outline-offset: 2px; }
-.review-tooltip { max-width: 280px; margin: 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--foreground); box-shadow: var(--shadow-md); }
-.review-history-caption { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 8px; color: var(--muted-foreground); }
-.review-history-caption > span:first-child { display: flex; align-items: center; gap: 8px; }
-.review-history-caption i { width: 8px; height: 8px; background: color-mix(in srgb, var(--warning) 18%, var(--card)); border: 1px solid var(--warning-border); }
-.review-scroll-hint { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.review-history-unavailable { padding: 32px 0; color: var(--muted-foreground); }
-.clean-score-badge { display: inline-block; margin-inline-start: 8px; padding: 1px 5px; border-radius: 4px; border: 1px solid #c5dbcf; background: #f0f7f3; color: #365f49; white-space: nowrap; }
-.review-dialog-backdrop { position: fixed; inset: 0; background: #16171f66; transition: opacity 180ms cubic-bezier(.22,1,.36,1); }
-.review-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(760px, calc(100vw - 48px)); max-height: calc(100dvh - 48px); padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--foreground); display: grid; grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden; box-shadow: var(--shadow-xl); transition: opacity 180ms cubic-bezier(.22,1,.36,1), scale 180ms cubic-bezier(.22,1,.36,1); }
-.review-dialog:is([data-starting-style],[data-ending-style]) { opacity: 0; scale: .98; }
-.review-dialog-backdrop:is([data-starting-style],[data-ending-style]) { opacity: 0; }
-.review-dialog-header { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 24px 0 32px; background: var(--card); }
-.review-dialog-game { color: var(--muted-foreground); margin-top: 4px; }
-.review-dialog-x { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; margin-top: -8px; border-radius: 8px; color: var(--muted-foreground); cursor: pointer; }
-.review-dialog-x:hover { background: var(--muted); color: var(--foreground); }
-.review-sheet-handle { display: none; }
-.review-dialog-body { padding: 0 32px 24px; overflow-y: auto; min-height: 0; overscroll-behavior-y: contain; }
-.review-dialog-explanation { color: var(--muted-foreground); margin-top: 24px; }
-.review-dialog-footer { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 16px 24px 16px 32px; border-top: 1px solid var(--border); background: var(--card); }
-.review-dialog-footer a { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; color: var(--foreground); text-decoration: underline; text-underline-offset: 4px; }
-.review-dialog-footer a:hover { text-decoration-thickness: 2px; }
-.review-external-arrow { transform: rotate(-45deg); }
-.review-dialog-close { cursor: pointer; min-height: 40px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
-.review-dialog-close:hover { background: var(--background); }
-@media(max-width:640px) {
- .review-history-plot { width: 960px; }
- .review-score-pair { gap: 16px; }
- .review-score-pair strong { font-size: 40px; }
- .review-score-steam p span { display: block; margin-left: 0; }
- .review-history-caption { gap: 8px; }
- .review-dialog { top: auto; bottom: 0; left: 0; transform: none; width: 100vw; max-height: 90dvh; max-width: 100vw; border-radius: var(--radius) var(--radius) 0 0; transition-property: opacity, translate; }
- .review-dialog:is([data-starting-style],[data-ending-style]) { scale: 1; translate: 0 12px; }
- .review-dialog-header { padding: 24px 16px 0 24px; }
- .review-dialog-body { padding: 0 24px 24px; }
- .review-dialog-footer { padding: 16px 16px max(16px, env(safe-area-inset-bottom)) 24px; }
- .review-sheet-handle { display: block; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 32px; height: 4px; border-radius: 4px; background: var(--border); }
-}
-@media(prefers-reduced-motion:reduce) {
- .review-dialog, .review-dialog-backdrop { transition: none; }
-}
+.game-meta > .review-story-note { display: block; flex-basis: 100%; margin-top: -4px; }
+.review-story-trigger { position: relative; display: inline-block; padding: 0; border: 0; background: none; color: var(--muted-foreground); font: inherit; text-align: left; cursor: pointer; }
+.review-story-trigger::before { content: ""; position: absolute; inset: -12px -6px; }
+.review-story-trigger > span { text-decoration: underline dotted color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; }
+.review-story-trigger:hover { color: var(--foreground); }
+.review-story-trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 2px; }
+.review-story-trigger svg { display: inline; margin-left: 4px; vertical-align: -2px; transition: rotate var(--story-duration) var(--story-ease); }
+.review-story-trigger[data-open] svg { rotate: 180deg; }
+.review-story { --story-duration: 320ms; --story-ease: cubic-bezier(.2, 0, 0, 1); }
+.review-story-panel { height: var(--collapsible-panel-height); overflow: hidden; transition: height var(--story-duration) var(--story-ease); }
+.review-story-panel:is([data-starting-style], [data-ending-style]) { height: 0; }
+.review-story-body { display: flex; flex-direction: column; gap: 24px; margin-top: 16px; padding: 20px 0 8px; border-top: 1px solid var(--border); transition: opacity var(--story-duration) var(--story-ease); }
+.review-story-panel[data-ending-style] { transition-duration: 220ms; }
+.review-story-panel[data-ending-style] .review-story-body { opacity: 0; transition-duration: 160ms; }
+@starting-style { .review-story-body { opacity: 0; } }
+.review-story-lead { max-width: 60ch; color: var(--foreground); text-wrap: balance; }
 
-@media(max-width:800px) and (min-width:641px) {
- .review-banner { grid-template-columns: 32px minmax(180px,1fr) 100px auto; gap: 8px; }
- .review-banner-chart { width: 100px; }
- .review-banner-button { grid-column: 2 / 5; justify-self: end; }
+.review-ledger { width: 100%; max-width: 480px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.review-ledger th, .review-ledger td { padding: 6px 0; text-align: left; font-weight: inherit; vertical-align: baseline; }
+.review-ledger td { width: 88px; text-align: right; }
+.review-ledger thead th { padding-top: 0; color: var(--muted-foreground); }
+.review-ledger thead th + th { text-align: right; }
+.review-ledger tbody tr { border-top: 1px solid var(--border); }
+.review-ledger th span { display: inline-block; margin-left: 8px; color: var(--muted-foreground); white-space: nowrap; }
+.review-ledger tbody th, .review-ledger tbody td { color: var(--text-body); }
+.review-ledger [data-kind=bomb] :is(th, td) { color: var(--muted-foreground); }
+.review-ledger tfoot tr { border-top: 1px solid var(--foreground); }
+.review-ledger tfoot :is(th, td) { padding-top: 8px; color: var(--foreground); }
+
+.review-chart figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; color: var(--muted-foreground); }
+.review-chart figcaption > span:first-child { color: var(--text-body); }
+.review-chart-key { display: flex; gap: 14px; }
+.review-chart-key span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 1px; background: var(--key); }
+.review-chart-key [data-key=positive] { --key: var(--positive); }
+.review-chart-key [data-key=negative] { --key: var(--negative); }
+.review-chart-key [data-key=left-out]::before { background: var(--band); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 22%, transparent); }
+.review-chart { --band: color-mix(in srgb, var(--foreground) 8%, transparent); }
+.review-chart-plot { position: relative; height: 136px; margin-top: 32px; }
+.review-chart-plot svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; }
+.review-chart-up { fill: var(--positive); }
+.review-chart-down { fill: var(--negative); }
+.review-chart-axis { stroke: color-mix(in srgb, var(--foreground) 40%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.review-chart-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
+.review-chart-band { position: absolute; top: -6px; bottom: -6px; background: var(--band); }
+.review-chart-band > span + span { display: none; }
+.review-chart-band > span { position: absolute; bottom: 100%; left: 50%; translate: -50% 0; padding-bottom: 4px; color: var(--text-body); white-space: nowrap; }
+.review-chart-tick { position: absolute; right: 0; translate: 0 -100%; padding-bottom: 1px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; text-shadow: 0 0 3px var(--background), 0 0 3px var(--background); pointer-events: none; }
+.review-chart-tick + .review-chart-tick { translate: 0 0; padding: 1px 0 0; }
+.review-chart-years { position: relative; height: 20px; margin-top: 10px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.review-chart-years span { position: absolute; top: 0; padding-left: 4px; border-left: 1px solid var(--border); line-height: 20px; }
+
+.review-story-foot { max-width: 60ch; color: var(--muted-foreground); }
+.review-story-foot a { display: inline-flex; align-items: center; gap: 2px; color: var(--foreground); text-decoration: underline; text-underline-offset: 3px; }
+.review-story-foot a:hover { text-decoration-thickness: 2px; }
+
+@media(max-width: 640px) {
+  .game-meta:has(.review-story-note) > * { order: 2; }
+  .game-meta > .meta-score { order: 0; }
+  .game-meta > .review-story-note { order: 1; margin-bottom: 4px; }
+  .review-chart-plot { height: 112px; }
+  .review-chart-years :is([data-minor], [data-end]) { display: none; }
+  .review-ledger tfoot th span { display: block; margin-left: 0; }
+  .review-chart-band > span:first-child { display: none; }
+  .review-chart-band > span + span { display: block; }
+  .review-ledger td { width: 64px; }
 }
-@media(max-width:640px) {
- .review-banner { grid-template-columns: 24px 1fr auto; gap: 2px 8px; padding: 6px 8px; min-height: 0; }
- .review-banner-icon { width: 24px; height: 24px; border-radius: 6px; }
- .review-banner-heading { grid-column: 2 / 4; gap: 0; }
- .review-banner-heading strong { line-height: 16px; }
- .review-banner-heading > span { line-height: 14px; }
- .review-banner-chart { grid-column: 1 / 4; width: 100%; height: 36px; }
- .review-banner-scores { grid-column: 1 / 3; }
- .review-banner-scores > div { font-size: 16px; line-height: 20px; }
- .review-banner-scores > span { white-space: nowrap; line-height: 12px; }
- .review-banner-button { grid-column: 3; padding: 6px 8px; }
- .review-score-pair { grid-template-columns: 1fr 24px 1fr; }
+@media(prefers-reduced-motion: reduce) {
+  .review-story-panel, .review-story-body, .review-story-trigger svg { transition: none; }
 }
+.review-tooltip { max-width: 280px; margin: 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--foreground); box-shadow: var(--shadow-md); }

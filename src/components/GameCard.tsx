@@ -5,7 +5,12 @@ import { track } from "@/lib/tracking";
 import Link from "next/link";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@ui-sdk/react/tooltip";
-import { isRescued, type ReviewQuality } from "@/lib/review-quality";
+import {
+  adjustedNote,
+  bombSpans,
+  shownScore,
+  type ReviewQuality,
+} from "@/lib/review-quality";
 import { CardRating } from "./Rating";
 
 export interface GameCardProps extends ReviewQuality {
@@ -47,7 +52,7 @@ export function GameCard({
     observer.observe(ref.current);
     return () => observer.disconnect();
   }, [appid, pageAppid, position]);
-  const rescued = isRescued({
+  const { pct, rescued } = shownScore({
     review_positive_pct,
     review_count,
     clean_score,
@@ -71,10 +76,9 @@ export function GameCard({
         <span>{title}</span>
       </div>
       <CardRating
-        pct={review_positive_pct}
+        pct={pct}
         count={review_count}
-        rescued={rescued}
-        cleanScore={clean_score}
+        bombs={rescued ? bombSpans(bomb_windows).length : 0}
       />
     </div>
   );
@@ -92,8 +96,7 @@ export function GameCard({
     <Tooltip delay={150}>
       <TooltipTrigger render={link}>{content}</TooltipTrigger>
       <TooltipContent className="review-tooltip">
-        {clean_score?.toLocaleString("en-US", { maximumFractionDigits: 1 })}%
-        positive outside detected review-bomb periods. Steam rating:{" "}
+        {adjustedNote(bombSpans(bomb_windows))}. Steam shows{" "}
         {review_positive_pct}%.
       </TooltipContent>
     </Tooltip>
