@@ -320,9 +320,11 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .source-info { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .source-header { display: flex; flex-direction: column; gap: 12px; }
 /* Facts: one line of text, a dot between each fact; a fact that wraps takes its dot along. */
-.game-facts { display: flex; flex-wrap: wrap; row-gap: 2px; color: var(--muted-foreground); }
+/* Every fact carries its dot in front, and the list starts one dot-width left of its box and clips there: whichever
+   fact starts a line has its dot cut off, so no line begins with one. */
+.game-facts { display: flex; flex-wrap: wrap; row-gap: 2px; margin-inline-start: -18px; overflow: hidden; color: var(--muted-foreground); }
 .game-facts li { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
-.game-facts li + li::before { content: "·"; margin-inline: 7px; color: #b4b4bc; }
+.game-facts li::before { content: "·"; flex: 0 0 18px; margin-inline-end: -4px; text-align: center; color: #b4b4bc; }
 .game-facts strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 .game-facts a { color: var(--foreground); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
