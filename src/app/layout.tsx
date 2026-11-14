@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Navbar } from "@/components/Navbar";
+import { getPopularIndies } from "@/lib/catalog";
 
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -78,7 +79,7 @@ const websiteSchema = {
   url: SITE_URL
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -87,14 +88,9 @@ export default function RootLayout({
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: ART_FADE }} />
-        <link
-          rel="preconnect"
-          href="https://cdn.akamai.steamstatic.com"
-        />
-        <link
-          rel="dns-prefetch"
-          href="https://cdn.akamai.steamstatic.com"
-        />
+        {/* Every store image (headers, screenshots, trailer posters) is served from this host. */}
+        <link rel="preconnect" href="https://shared.akamai.steamstatic.com" />
+        <link rel="dns-prefetch" href="https://shared.akamai.steamstatic.com" />
       </head>
       <body
         className={`${geistMono.variable} antialiased`}
@@ -113,7 +109,7 @@ export default function RootLayout({
         />
         <div className="site-shell">
           <a href="#content" className="skip-link">Skip to content</a>
-          <Navbar />
+          <Navbar popular={await getPopularIndies()} />
           <div id="content" className="px-4 sm:px-7">{children}</div>
           <footer className="site-footer">
             <nav aria-label="Footer"><Link href="/agents">Agent access</Link><Link href="/privacy">Privacy</Link></nav>

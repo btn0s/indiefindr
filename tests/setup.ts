@@ -9,3 +9,6 @@ document.elementFromPoint = () => null;
 document.elementsFromPoint = () => [];
 globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
 afterEach(cleanup);
+// jsdom has no matchMedia; the header asks it whether search opens as the phone takeover.
+window.matchMedia ??= (query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {},
+  addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false });

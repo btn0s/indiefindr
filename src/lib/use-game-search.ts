@@ -1,22 +1,24 @@
 "use client";
-import { POPULAR_INDIES } from "./popular-indies";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type SearchGame = { appid: number; title: string };
 /** What a result row shows beyond its title. The title index stays small; the visible rows fetch this. */
 export type SearchDetail = { appid: number; header_image: string | null; release_date: string | null; review_positive_pct: number | null; review_count: number };
+/** A curated empty-state pick, read on the server (catalog.ts getPopularIndies). */
+export type PopularPick = SearchDetail & { title: string };
 
-export function useGameSearch() {
+/** `popular` is the empty state, already complete, so opening search shows it at once. */
+export function useGameSearch(popular: PopularPick[]) {
   const worker = useRef<Worker | null>(null);
   const sequence = useRef(0);
-  const cache = useRef(new Map<string, SearchGame[]>());
+  const cache = useRef(new Map<string, SearchGame[]>([["", popular.map(({ appid, title }) => ({ appid, title }))]]));
   const lastQuery = useRef("");
-  const requested = useRef(new Set<number>());
+  const requested = useRef(new Set<number>(popular.map(pick => pick.appid)));
   // The title index is several megabytes, so it downloads the first time someone searches, not on every page view.
   const loaded = useRef(false);
   const [games, setGames] = useState<SearchGame[]>([]);
-  const [details, setDetails] = useState<Map<number, SearchDetail>>(new Map());
+  const [details, setDetails] = useState(() => new Map<number, SearchDetail>(popular.map(pick => [pick.appid, pick])));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -46,20 +48,6 @@ export function useGameSearch() {
     return () => { engine.terminate(); worker.current = null; loaded.current = false; };
   }, [show]);
 
-  // Curated empty-state picks load their artwork and ratings in one catalog lookup.
-  const loadPopular = useCallback(async (id: number) => {
-    const { data } = await getSupabaseBrowserClient().from("games")
-      .select("appid,title,header_image,release_date,review_positive_pct,review_count")
-      .in("appid", POPULAR_INDIES.map(game => game.appid))
-      .returns<(SearchDetail & { title: string })[]>();
-    const rows = POPULAR_INDIES.flatMap(pick => { const game = data?.find(row => row.appid === pick.appid); return game ? [game] : []; });
-    rows.forEach(row => requested.current.add(row.appid));
-    setDetails(previous => new Map([...previous, ...rows.map(row => [row.appid, row] as const)]));
-    const popular = rows.map(({ appid, title }) => ({ appid, title }));
-    cache.current.set("", popular);
-    if (id === sequence.current) show(popular);
-  }, [show]);
-
   const search = useCallback((query: string) => {
     if (!loaded.current && worker.current) {
       loaded.current = true;
@@ -71,10 +59,9 @@ export function useGameSearch() {
     const cached = cache.current.get(key);
     if (cached) return show(cached);
     setLoading(true);
-    if (!key) return void loadPopular(id);
     // Keep the previous rows on screen until the new ones arrive, so typing doesn't flash an empty list.
     worker.current?.postMessage({ type: "search", query: key, id });
-  }, [show, loadPopular]);
+  }, [show]);
 
   return { games, details, loading, error, search };
 }

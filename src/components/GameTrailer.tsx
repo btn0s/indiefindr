@@ -2,39 +2,92 @@
 import { Button } from "@ui-sdk/react/button";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { preconnect } from "react-dom";
+import { Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { HERO_SIZES } from "@/lib/hero";
 
 export type Trailer = { title: string; url: string; poster: string | null };
 
-/** Muted, looping trailer that starts on its own; reduced-motion visitors and games without trailers see the still. */
-export function GameTrailer({ title, trailer, still }: { title: string; trailer: Trailer | null; still: string | null }) {
+// An explicit pause holds for the rest of the visit: the next game page starts paused too.
+const PAUSED_KEY = "indiefindr-trailer-paused";
+const saveData = () => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+
+/** The hero: a muted, looping trailer over its still. The stream starts only after the still has painted, when the
+ *  browser is idle, so it never competes with the page's first images. It plays only while on screen and the tab is
+ *  visible, and not at all for reduced motion or Save-Data, which keep the still. */
+export function GameTrailer({ title, trailer, image }: { title: string; trailer: Trailer | null; image: string | null }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [heroPainted, setHeroPainted] = useState(!image);
+  const [loaded, setLoaded] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(true);
+  const userPaused = useRef(false);
+  const inView = useRef(true);
+  if (trailer) preconnect("https://video.akamai.steamstatic.com");
+
+  const sync = () => {
+    const video = ref.current;
+    if (!video?.currentSrc && !video?.src) return;
+    if (!userPaused.current && inView.current && !document.hidden) void video.play().catch(() => {});
+    else video.pause();
+  };
+
   useEffect(() => {
     const video = ref.current;
-    if (!video || !trailer || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!video || !trailer || !heroPainted || matchMedia("(prefers-reduced-motion: reduce)").matches || saveData()) return;
+    userPaused.current = sessionStorage.getItem(PAUSED_KEY) === "1";
+    setPaused(userPaused.current);
     let hls: { destroy(): void } | undefined;
     let disposed = false;
-    const play = () => { void video.play().catch(() => {}); };
-    if (video.canPlayType("application/vnd.apple.mpegurl")) { video.src = trailer.url; play(); }
-    else import("hls.js").then(({ default: Hls }) => {
-      if (disposed || !Hls.isSupported()) return;
-      const player = new Hls({ capLevelToPlayerSize: true });
-      hls = player;
-      player.loadSource(trailer.url);
-      player.attachMedia(video);
-      player.on(Hls.Events.MANIFEST_PARSED, play);
-    });
-    return () => { disposed = true; hls?.destroy(); };
-  }, [trailer]);
-  const image = trailer?.poster ?? still;
-  return <div className="game-trailer">
-    {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes="(max-width: 900px) 100vw, 870px" className="object-cover" />}
+    const start = () => {
+      if (video.canPlayType("application/vnd.apple.mpegurl")) { video.src = trailer.url; sync(); return; }
+      void import("hls.js").then(({ default: Hls }) => {
+        if (disposed || !Hls.isSupported()) return;
+        const player = new Hls({ capLevelToPlayerSize: true });
+        hls = player;
+        player.loadSource(trailer.url);
+        player.attachMedia(video);
+        player.on(Hls.Events.MANIFEST_PARSED, sync);
+      });
+    };
+    // Not every Safari has requestIdleCallback; a short timeout stands in.
+    const onIdle = window.requestIdleCallback as typeof requestIdleCallback | undefined;
+    const idle = onIdle ? onIdle(start, { timeout: 1000 }) : window.setTimeout(start, 200);
+    const visibility = new IntersectionObserver(([entry]) => { inView.current = entry.isIntersecting; sync(); }, { threshold: 0.25 });
+    visibility.observe(video);
+    document.addEventListener("visibilitychange", sync);
+    // Also runs when the route is kept but hidden after navigating away (Cache Components): stop, don't play unseen.
+    return () => {
+      disposed = true;
+      if (onIdle) cancelIdleCallback(idle); else clearTimeout(idle);
+      visibility.disconnect();
+      document.removeEventListener("visibilitychange", sync);
+      hls?.destroy();
+      video.pause();
+    };
+  }, [trailer, heroPainted]);
+
+  const togglePause = () => {
+    const next = !paused;
+    userPaused.current = next;
+    setPaused(next);
+    if (next) sessionStorage.setItem(PAUSED_KEY, "1"); else sessionStorage.removeItem(PAUSED_KEY);
+    sync();
+  };
+
+  return <div className="game-trailer" onKeyDown={event => { if (loaded && event.key.toLowerCase() === "k") togglePause(); }}>
+    {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes={HERO_SIZES} className="object-cover"
+      onLoad={() => setHeroPainted(true)} onError={() => setHeroPainted(true)} />}
     {trailer && <video ref={ref} muted={muted} loop playsInline aria-label={`${title} trailer`}
-      onPlaying={() => setPlaying(true)} data-playing={playing} />}
-    {playing && <Button className="trailer-sound" onClick={() => setMuted(value => !value)} aria-label={muted ? "Unmute trailer" : "Mute trailer"}>
-      {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-    </Button>}
+      onLoadedData={() => setLoaded(true)} onPlaying={() => setPlaying(true)} data-playing={playing} />}
+    {loaded && <div className="trailer-controls">
+      <Button className="trailer-button" onClick={togglePause} aria-label={paused ? "Play trailer" : "Pause trailer"} data-on={paused || undefined}>
+        <Pause size={16} className="icon-off" aria-hidden="true" /><Play size={16} className="icon-on" aria-hidden="true" />
+      </Button>
+      <Button className="trailer-button" onClick={() => setMuted(value => !value)} aria-label={muted ? "Unmute trailer" : "Mute trailer"} data-on={muted || undefined}>
+        <Volume2 size={16} className="icon-off" aria-hidden="true" /><VolumeX size={16} className="icon-on" aria-hidden="true" />
+      </Button>
+    </div>}
   </div>;
 }
