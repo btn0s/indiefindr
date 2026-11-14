@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Navbar } from "@/components/Navbar";
-import { HistoryTransition } from "@/components/HistoryTransition";
 import { getPopularIndies } from "@/lib/catalog";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -26,14 +25,14 @@ const geistMono = Geist_Mono({
   preload: false,
 });
 
-// Lets art fade up once it has loaded (see globals.css), and plays the first page's entrance (card-morph.ts). It runs in the head, before any image starts, so it doesn't
+// Lets art fade up once it has loaded (see globals.css). It runs in the head, before any image starts, so it doesn't
 // wait for hydration. Each loaded URL gets a rule in its own stylesheet instead of an attribute on the <img>, which
 // React owns; a cover that's already loaded then shows at once on the next page, with no fade. A failed image gets no
 // rule and keeps its placeholder. It listens on document because element load events never reach window. An image
 // that finished before its load event could be seen (Safari, a preloaded or cached one) is caught once the page has parsed.
 // The empty touchstart listener is what makes iOS Safari apply :active while a finger is down; without one, a press
 // only flashes on release, which reads as a bounce.
-const ART_FADE = `(function(){var d=document,s=new CSSStyleSheet,seen={};d.adoptedStyleSheets=d.adoptedStyleSheets.concat(s);d.documentElement.dataset.artFade="";d.documentElement.dataset.entering="page";function show(t){var u=t.tagName==="IMG"&&t.getAttribute("src");if(!u||seen[u])return;seen[u]=1;u='[src="'+CSS.escape(u)+'"]';s.insertRule("img"+u+"{opacity:1!important}");s.insertRule(":has(>img"+u+")::before{animation:none!important}")}d.addEventListener("load",function(e){show(e.target)},true);d.addEventListener("DOMContentLoaded",function(){for(var i=0,m=d.images;i<m.length;i++)if(m[i].complete&&m[i].naturalWidth)show(m[i])});d.addEventListener("touchstart",function(){},{passive:true})})()`;
+const ART_FADE = `(function(){var d=document,s=new CSSStyleSheet,seen={};d.adoptedStyleSheets=d.adoptedStyleSheets.concat(s);d.documentElement.dataset.artFade="";function show(t){var u=t.tagName==="IMG"&&t.getAttribute("src");if(!u||seen[u])return;seen[u]=1;u='[src="'+CSS.escape(u)+'"]';s.insertRule("img"+u+"{opacity:1!important}");s.insertRule(":has(>img"+u+")::before{animation:none!important}")}d.addEventListener("load",function(e){show(e.target)},true);d.addEventListener("DOMContentLoaded",function(){for(var i=0,m=d.images;i<m.length;i++)if(m[i].complete&&m[i].naturalWidth)show(m[i])});d.addEventListener("touchstart",function(){},{passive:true})})()`;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 
@@ -119,7 +118,6 @@ export default async function RootLayout({
           </footer>
         </div>
 
-        <HistoryTransition />
         <Toaster />
         <Analytics />
         <SpeedInsights />

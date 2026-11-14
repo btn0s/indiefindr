@@ -495,10 +495,9 @@ html { touch-action: manipulation; }
    their own press drop iOS's grey tap flash, which would otherwise flash on top of it. */
 :is(.button, .game-card, .showcase-source, .showcase-recs a, .trailer-button, .search-results a, .wordmark, .see-all, .search-cancel) { -webkit-tap-highlight-color: transparent; }
 .showcase-source, .showcase-tile, .trailer-button { transition: transform var(--duration-s) var(--ease-out); }
-/* Cards press like App Store cards: in on a quick spring, out on the release spring with a hair of bounce. The card
-   being opened holds its press (data-opening, card-morph.ts), so the expansion starts from the pressed card. */
+/* Cards press like App Store cards: in on a quick spring, out on the release spring with a hair of bounce. */
 .game-card > div { transition: transform var(--duration-l) var(--ease-release); }
-.game-card:active > div, .game-card[data-opening] > div { transform: scale(.97); transition: transform var(--duration-s) var(--ease-glide); }
+.game-card:active > div { transform: scale(.97); transition: transform var(--duration-s) var(--ease-glide); }
 .showcase-source:active { transform: scale(.97); transition-duration: var(--duration-xs); }
 .showcase-recs a:active .showcase-tile { transform: scale(.97); transition-duration: var(--duration-xs); }
 .trailer-button:active { transform: scale(.92); transition-duration: var(--duration-xs); }
@@ -587,152 +586,6 @@ html { touch-action: manipulation; }
   ::view-transition-new(search-results):only-child { animation-name: -ua-view-transition-fade-in; }
   ::view-transition-old(search-results):only-child { animation-name: -ua-view-transition-fade-out; }
   .search-results[data-starting-style], .search-results[data-ending-style] { transform: none; }
-}
-
-/* Card to game page, App Store style (CardLink, HistoryTransition, games/[appid]/page.tsx). The opened card is one
-   object: its surface expands into the page's sheet (the viewport on phones, the content column on desktop) as its
-   radius squares off, and its art grows into the cover, one snapshot cropped like the cover throughout. The page it
-   came from recedes and dims instead of fading. The new page's content rises in, staggered, as the sheet lands; nothing
-   waits under the card. Back is the same in reverse, quicker. Both run on a near-critically damped spring (damping
-   ratio 0.88: a hair of settle). The site header stays put above it all, and the page stays clickable throughout.
-
-   card-morph.ts names the one card and game page being navigated (sheet, art, text), at navigation time and for that
-   transition only, so a game on both pages never morphs unasked. The rest is named here, for these two transitions: React
-   leaves anything outside a <ViewTransition> live under the transition, and a route revealed by the router doesn't
-   run its inner boundaries' enter animations. The page being left carries data-leaving (markLeavingPage). */
-:root {
-  --duration-open: var(--duration-l); --duration-close: var(--duration-m); --card-radius: 6px; --page-radius: 0px;
-}
-@media (min-width: 1000px) { :root { --page-radius: 16px; } }
-.source-head { display: flex; flex-direction: column; gap: inherit; }
-/* Arriving from a card, the cover shows the card's own art (the store header, underneath) until the trailer is playing,
-   then crossfades straight to it: one change, not art, then poster, then video (card-morph.ts releaseCover). Held, the
-   video skips its own fade, so the layer's is the only one. */
-:root[data-cover-hold] .game-trailer > img + .cover-layer { opacity: 0; }
-:root[data-cover-hold] .game-trailer > img + .cover-layer video { transition: none; }
-/* Pulled down to dismiss (SwipeDismiss), the cover turns back into the card's art as the page starts to shrink, so it
-   lands in the card showing what the shelf shows; let go short of dismissing and the trailer comes back. */
-.cover-layer { position: absolute; inset: 0; transition: opacity 250ms var(--ease-out); }
-:root[data-pulling=""] .game-trailer > img + .cover-layer { opacity: 0; }
-/* Every view transition has an end that can be heard, even one where nothing else moves on the backdrop (card-morph.ts
-   clears the card's names then). */
-::view-transition { pointer-events: none; animation: settle var(--vt-duration, var(--duration-m)) both; }
-@keyframes settle {}
-.card-cue { position: fixed; top: 0; left: 0; width: 1px; height: 1px; pointer-events: none; }
-::view-transition-group(.card-cue) { display: none; }
-.page-sheet { position: fixed; inset: 0; z-index: -1; background: var(--background); pointer-events: none; }
-@media (min-width: 701px) { .page-sheet { inset: 0 max(0px, calc(50% - 448px)); } }
-.discovery-page > .page-sheet + * { margin-top: 0; }
-::view-transition-new(.page-in) { animation: fade-in var(--duration-s) var(--ease-out) both; }
-::view-transition-old(.skeleton-out) { animation: fade-out var(--duration-xs) var(--ease-out) both; }
-:root:active-view-transition-type(card-open) { --vt-duration: var(--duration-open); --vt-ease: var(--ease-glide); }
-:root:active-view-transition-type(card-close) { --vt-duration: var(--duration-close); --vt-ease: var(--ease-glide); }
-:root:active-view-transition-type(card-open, card-close) {
-  .site-header { view-transition-name: site-header; }
-  main[data-leaving] { view-transition-name: page-leave; }
-  main:not([data-leaving]) { view-transition-name: page-arrive; }
-  /* One stacking order both ways (left alone, a group only one side has lands on top): the pages, the sheet, the art,
-     the content, the header. */
-  &::view-transition-group(page-leave), &::view-transition-group(page-arrive) { z-index: 0; }
-  &::view-transition-group(.sheet) { z-index: 1; }
-  &::view-transition-group(.art) { z-index: 2; }
-  &::view-transition-group(.text) { z-index: 3; }
-  &::view-transition-group(.sink) { z-index: 3; }
-  &::view-transition-group(site-header), &::view-transition-group(search-field), &::view-transition-group(search-icon),
-  &::view-transition-group(search-input) { z-index: 4; }
-}
-/* Closing, the page content goes first, in one quick fade (no reverse stagger). Opening, it arrives through the
-   entrance below, on the live page. */
-:root:active-view-transition-type(card-close) main[data-leaving] :is(.source-header > :not(.source-head), .source-game-actions, .shop-links, .screenshot-strip, .suggestions-section) {
-  view-transition-name: match-element; view-transition-class: sink;
-}
-/* The sheet is a flat surface and the art crops like the cover, so both fill the morphing frame, clipped to it (a
-   transition image paints its cover overflow otherwise, so a page-tall sheet in a card-sized frame spills past it). */
-::view-transition-old(.sheet), ::view-transition-new(.sheet), ::view-transition-old(.art), ::view-transition-new(.art) {
-  height: 100%; object-fit: cover; overflow: clip; }
-::view-transition-old(page-leave), ::view-transition-new(page-arrive) { transform-origin: 50% var(--page-origin-y, 50vh); }
-@media (prefers-reduced-motion: no-preference) {
-  /* Opening. Only the destination's art and surface are drawn (the card's own text would stretch), so there is never a
-     double image. The backdrop dims with the receding page. */
-  :root:active-view-transition-type(card-open) {
-    &::view-transition { animation: backdrop-dim var(--duration-open) var(--ease-glide) both; }
-    &::view-transition-old(.sheet), &::view-transition-old(.art) { display: none; }
-    &::view-transition-new(.sheet) { animation: square-off var(--duration-open) var(--ease-glide) both, lift var(--duration-open) ease-in-out both; }
-    &::view-transition-new(.art) { animation: art-open var(--duration-open) var(--ease-glide) both; }
-    /* The card's title and score ride the card and hand over to the page's title and facts on the way up. */
-    &::view-transition-old(.text) { animation: fade-out calc(var(--duration-open) * .3) var(--ease-out) both; }
-    &::view-transition-new(.text) { animation: fade-in calc(var(--duration-open) * .35) var(--ease-out) calc(var(--duration-open) * .15) both; }
-    &::view-transition-old(page-leave) { animation: recede var(--duration-open) var(--ease-glide) both; }
-    &::view-transition-new(page-arrive) { animation: fade-in calc(var(--duration-open) * .25) var(--ease-out) calc(var(--duration-open) * .75) both; }
-  }
-  /* Closing. The content goes first, the sheet and cover shrink into the card's slot, the card's text returns as they
-     land, and the page underneath comes back up. */
-  ::view-transition-old(.sink) { animation: fade-out var(--duration-xs) var(--ease-out) both; }
-  :root:active-view-transition-type(card-close) {
-    &::view-transition { animation: backdrop-dim var(--duration-close) var(--ease-glide) reverse both; }
-    &::view-transition-new(.sheet) { animation: fade-in 120ms var(--ease-out) calc(var(--duration-close) * .6) both; }
-    &::view-transition-old(.sheet) { animation: round-in var(--duration-close) var(--ease-glide) both, lift var(--duration-close) ease-in-out both; }
-    /* The cover turns back into the card's own art as the shrink starts, so the card lands showing what the shelf
-       shows. */
-    &::view-transition-old(.art) { animation: art-close var(--duration-close) var(--ease-glide) both, fade-out calc(var(--duration-close) * .4) var(--ease-out) both; }
-    &::view-transition-new(.art) { animation: art-close var(--duration-close) var(--ease-glide) both, fade-in calc(var(--duration-close) * .4) var(--ease-out) both; }
-    /* Overlapping, so the shrinking card always carries a title. */
-    &::view-transition-old(.text) { animation: fade-out calc(var(--duration-close) * .5) var(--ease-out) both; }
-    &::view-transition-new(.text) { animation: fade-in calc(var(--duration-close) * .4) var(--ease-out) calc(var(--duration-close) * .25) both; }
-    &::view-transition-old(page-leave) { animation: fade-out var(--duration-xs) var(--ease-out) both; }
-    &::view-transition-new(page-arrive) { animation: return var(--duration-close) var(--ease-glide) both; }
-  }
-}
-/* The game page's entrance: everything under the cover fades up together as one block, the same 12px in the same
-   direction, with no stagger, over --duration-m on --ease-out.
-   Opened from a card, it plays inside the card's view transition, from when the card has visibly landed (the glide is
-   over 80% of the way there by 50%). Each piece is its own transition group with the same animation, since the rest of
-   the arriving page has to wait to show until the card covers it. The title travelled with the card, so it stays put.
-   Any other arrival plays it on the live page, title included (card-morph.ts, data-entering). Reduced motion fades. */
-:root { --enter-land: calc(var(--duration-open) * .5); }
-:root:active-view-transition-type(card-open) main:not([data-leaving]) :is(.source-header > :not(.source-head), .source-game-actions, .screenshot-strip, .shop-links, .suggestions-section) {
-  view-transition-name: match-element; view-transition-class: enter; }
-:root:active-view-transition-type(card-open) {
-  &::view-transition-group(.enter) { z-index: 3; }
-  &::view-transition-new(.enter) { animation: enter-up var(--duration-m) var(--ease-out) var(--enter-land) both; }
-}
-:root[data-entering=page] main:not([data-leaving]) :is(.source-head, .source-header > :not(.source-head), .source-game-actions, .screenshot-strip, .shop-links, .suggestions-section) {
-  animation: enter-up var(--duration-m) var(--ease-out) both; }
-@keyframes enter-up { from { opacity: 0; translate: 0 12px; } }
-@media (prefers-reduced-motion: reduce) {
-  :root[data-entering] main:not([data-leaving]) :is(.source-head, .source-header > *, .source-game-actions, .screenshot-strip, .shop-links, .suggestions-section) {
-    animation-name: enter-fade !important; }
-  :root:active-view-transition-type(card-open)::view-transition-new(.enter) { animation-name: enter-fade; }
-}
-@keyframes enter-fade { from { opacity: 0; } }
-
-/* Pulling a game page down to dismiss it (SwipeDismiss): the page shrinks toward its card on its sheet, corners
-   rounding, over a dimming page; let go short of the threshold and it springs back. */
-:root[data-pulling] {
-  --pull-dim: color-mix(in srgb, #000 calc(var(--pull, 0) * 14%), var(--background));
-  .site-shell { background: var(--pull-dim); }
-  main:has(> .page-sheet) { transform-origin: var(--pull-origin); translate: 0 var(--pull-y, 0);
-    scale: calc(1 - var(--pull, 0) * .2);
-    /* The page's own edges round with its sheet, so it reads as one card in the hand. */
-    clip-path: inset(calc(-1 * var(--page-top)) calc(50% - 50vw) 0 round calc(var(--pull, 0) * 40px)); }
-  main > .page-sheet { position: absolute; inset: 0 calc(50% - 50vw) auto; height: 125lvh; border-radius: calc(var(--pull, 0) * 40px);
-    box-shadow: 0 12px 48px rgb(0 0 0 / calc(var(--pull, 0) * .4)); }
-}
-:root[data-pulling=release] main:has(> .page-sheet) { transition: translate var(--duration-close) var(--ease-glide), scale var(--duration-close) var(--ease-glide); }
-/* The card's art lands as the plate (and the plate shrinks back into the card's art): its own radius, not the page's. */
-@keyframes art-open { from { border-radius: var(--card-radius); } to { border-radius: var(--plate-radius); } }
-@keyframes art-close { from { border-radius: var(--plate-radius); } to { border-radius: var(--card-radius); } }
-@keyframes square-off { from { border-radius: var(--card-radius); } to { border-radius: var(--page-radius); } }
-@keyframes round-in { from { border-radius: var(--page-radius); } to { border-radius: var(--card-radius); } }
-/* In flight the card lifts off the page under it; on the ground it has no shadow. */
-@keyframes lift { 0%, 100% { box-shadow: 0 0 0 rgb(0 0 0 / 0); } 45% { box-shadow: 0 18px 50px rgb(0 0 0 / .18); } }
-@keyframes recede { to { transform: scale(.94); filter: brightness(.86); } }
-@keyframes return { from { transform: scale(.94); filter: brightness(.86); } }
-@keyframes backdrop-dim { from { background: var(--background); } to { background: color-mix(in srgb, #000 14%, var(--background)); } }
-@media (prefers-reduced-motion: reduce) {
-  /* A plain, quick crossfade: everything is already in place; the card's own text and surface don't ghost over it. */
-  :root:active-view-transition-type(card-open, card-close) { --vt-duration: var(--duration-s); --vt-ease: var(--ease-out); }
-  ::view-transition-old(.sheet), ::view-transition-new(.sheet) { display: none; }
 }
 
 /* Empty states: the sword over a short note, centred, so a missing list reads as a place, not a gap. */
