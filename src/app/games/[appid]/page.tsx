@@ -194,7 +194,7 @@ export default async function GamePage({
           <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>
           <ShopLinks appid={appId} />
         </article>
-        <SuggestionsSection appId={appId} gameTitle={game.title} recs={recs} />
+        <SuggestionsSection appId={appId} recs={recs} />
         <SameDeveloperSection developers={game.developers} games={developerGames} />
         <AdSlot />
       </main>
