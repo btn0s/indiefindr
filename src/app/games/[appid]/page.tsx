@@ -9,6 +9,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
 import { GameFacts } from "@/components/GameFacts";
+import { ScreenshotStrip } from "@/components/ScreenshotStrip";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
 
@@ -191,6 +192,7 @@ export default async function GamePage({
             <ReviewQualityNote game={game} />
             {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
           </header>
+          <ScreenshotStrip title={game.title} screenshots={game.screenshots ?? []} />
           <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>
           <ShopLinks appid={appId} />
         </article>

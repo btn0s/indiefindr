@@ -183,6 +183,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    running text never does. */
 .home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.045em; text-wrap: balance; }
 .page-title { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere; }
+/* The game page's name is its display line: the size of the home headline, at the title's tracking. */
+.source-header .page-title [itemprop=name] { font-size: var(--type-display); line-height: 1.05; letter-spacing: -0.025em; }
 .section-heading h2, .agent-docs h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; overflow-wrap: anywhere; }
 /* Lead: heading size at reading weight; the one introductory sentence on a page. */
 .home-intro .lede { font-size: var(--type-heading); line-height: 1.5; text-wrap: pretty; max-width: var(--measure-lede); }
@@ -318,7 +320,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-trailer { position: relative; aspect-ratio: 16/9; max-height: 50vh; width: 100%; overflow: hidden; border-radius: 12px 12px 0 0; background: var(--media); }
 .game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--background) 30%, transparent) 62%, color-mix(in srgb, var(--background) 78%, transparent) 78%, var(--background) 92%); }
-.source-header { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 10px; margin-top: -76px; }
+.source-header { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 12px; margin-top: -76px; }
+/* More air around the facts row than between the other lines. */
+.source-header .game-facts { margin-block: 6px 2px; }
 /* Below 1000px the cover runs edge to edge under the header. Wider, it bleeds 40px past the content column on each
    side, so the title and facts sit inset from the art's edge instead of flush with it. */
 @media (max-width: 999px) {
@@ -347,8 +351,36 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .trailer-button .icon-on, .trailer-button[data-on] .icon-off { opacity: 0; transform: scale(.6); filter: blur(2px); }
 .trailer-button[data-on] .icon-on { opacity: 1; transform: none; filter: none; }
 @media(prefers-reduced-motion: reduce) { .trailer-button svg { transform: none !important; filter: none !important; } }
-.source-description { color: var(--text-body); }
+.source-description { color: #55555e; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
+/* Screenshots: a row that scrolls and snaps inside itself; on phones it runs to the screen edges. */
+.screenshot-strip { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.screenshot-strip::-webkit-scrollbar { display: none; }
+.screenshot-strip li { flex: 0 0 clamp(220px, 32%, 288px); scroll-snap-align: start; }
+.screenshot-strip button { display: block; width: 100%; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; background: var(--muted); }
+/* A hairline edge, so pale shots don't melt into the page. */
+.screenshot-strip img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid rgb(0 0 0 / .07); outline-offset: -1px; border-radius: inherit; }
+/* Phones have the 16px page gutter (layout.tsx px-4). */
+@media (max-width: 639px) {
+  .screenshot-strip { margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; }
+  .screenshot-strip li { flex-basis: 72%; }
+}
+@media (hover: hover) and (pointer: fine) { .screenshot-strip button:hover img { opacity: .85; } }
+.screenshot-strip button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* The viewer: full screen on black, one shot per page of a snapping track (swipe, arrows), tap anywhere or Esc to close. */
+.screenshot-viewer { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #000; color: #fff; overflow: hidden; }
+.screenshot-viewer::backdrop { background: #000; }
+html:has(.screenshot-viewer[open]) { overflow: hidden; }
+.screenshot-track { display: flex; height: 100%; overflow-x: auto; overscroll-behavior: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.screenshot-track::-webkit-scrollbar { display: none; }
+.screenshot-track figure { position: relative; flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; }
+.screenshot-track img { object-fit: contain; }
+.viewer-button { position: absolute; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: rgb(255 255 255 / .14); color: #fff; }
+.viewer-close { top: calc(12px + env(safe-area-inset-top)); right: 12px; }
+.viewer-prev, .viewer-next { top: 50%; translate: 0 -50%; }
+.viewer-prev { left: 12px; } .viewer-next { right: 12px; }
+@media (hover: none) { .viewer-prev, .viewer-next { display: none; } }
+.viewer-button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media(max-width: 640px) {
   .source-game { gap: 16px; }
   .source-game-actions { width: 100%; }
