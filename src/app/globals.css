@@ -310,7 +310,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 
 /* Game page */
-/* Plate: the cover is an object on the page, whole and unfaded, with a soft edge and shadow. On desktop the title,
+/* Plate: the cover is an object on the page, whole and unfaded, with a hairline edge. On desktop the title,
    facts, blurb and Steam button sit beside it, centred on it; below 1000px they follow it. The screenshots run under
    both. A section gap, not a rule, separates the recommendations. */
 .source-game { display: flex; flex-direction: column; gap: 20px; }
@@ -327,9 +327,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-facts strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 .game-facts a { color: var(--foreground); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
-/* The plate: 16:9, a 16px radius (14px on phones), a hairline inside its edge and a shadow that lifts it off the page. */
-.game-trailer { position: relative; aspect-ratio: 16/9; width: 100%; overflow: hidden; border-radius: 16px; background: var(--media);
-  box-shadow: 0 1px 2px rgb(19 19 22 / .06), 0 18px 40px -18px rgb(19 19 22 / .32); }
+/* The plate: 16:9, a 16px radius (14px on phones) and a hairline inside its edge. */
+.game-trailer { position: relative; aspect-ratio: 16/9; width: 100%; overflow: hidden; border-radius: 16px; background: var(--media); }
 .game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .08); pointer-events: none; }
 @media (max-width: 700px) { .game-trailer { border-radius: 14px; } }
 /* Hierarchy from size and weight, both in full foreground: a small lead line, then the title. Beside the plate the
