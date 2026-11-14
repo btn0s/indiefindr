@@ -2,6 +2,10 @@
 import argparse,json,pathlib,re,unicodedata,datetime
 p=argparse.ArgumentParser();p.add_argument('source',type=pathlib.Path);p.add_argument('--prices',type=pathlib.Path,default=pathlib.Path('data/steam-full/us-prices.json'));p.add_argument('--catalog-only',action='store_true');p.add_argument('--out',type=pathlib.Path,default=pathlib.Path('data/relaunch'));a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 from catalog import is_indie
+from review_quality import eligible
+from selection import MODEL_VERSION, SLATE_SIZE, select_targets
+quality=json.loads((a.source/"review-quality.json").read_text())
+assert json.loads((a.source/"review-quality-status.json").read_text())["complete"], "Finish histogram checks before preparation"
 prices=json.loads(a.prices.read_text())
 assert all(price is None or price.get('currency')=='USD' for price in prices.values()),'Only canonical US prices may be published'
 tag_names=json.loads((a.source/'data/steam_tag_names.json').read_text())['response']['tags']
@@ -12,16 +16,33 @@ for r in rows:
  indie=is_indie(r,t.get('tags',[]))
  slug=re.sub(r'[^a-z0-9]+','-',unicodedata.normalize('NFKD',r['title']).encode('ascii','ignore').decode().lower()).strip('-') or 'game'
  games.append(dict(appid=r['appid'],slug=f'{slug}-{r["appid"]}',title=r['title'],short_description=r.get('short_description'),header_image=r.get('header_image'),release_date=r.get('steam_release_date'),developers=r.get('developers') or [],publishers=pub,genres=genre,price_cents=(prices[str(r['appid'])] or {}).get('final'),is_free=bool(r.get('is_free')),steam_type=r.get('steam_type'),review_count=pop.get('review_count') or 0,review_positive_pct=round(pop['percent_positive']) if pop.get('percent_positive') is not None else None,tag_ids=ids,is_indie=indie,updated_at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
+for game in games:
+ q=quality.get(str(game['appid']))
+ assert q is not None, f"Missing review quality for {game['appid']}"
+ game.update(clean_score=q['clean_score'],bomb_windows=q['bomb_windows'],checked_at=q['checked_at'])
 byid={g['appid']:g for g in games};recs=[];empty={}
-for source,slates in ([] if a.catalog_only else [('model',(json.loads(l) for l in (a.source/'slates_indie.jsonl').open())),('llm',json.loads((a.source/'llm_slates.json').read_text())['slates'])]):
+review_counts={g['appid']:g['review_count'] for g in games}
+model_slates={s['source_appid']:s for s in (json.loads(l) for l in (a.source/'slates_indie.jsonl').open())} if not a.catalog_only else {}
+def allowed(target, source):
+ return target != source and target in byid and byid[target]['is_indie'] and eligible(byid[target])
+for source,slates in ([] if a.catalog_only else [('model',model_slates.values()),('llm',json.loads((a.source/'llm_slates.json').read_text())['slates'])]):
  empty[source]=0
  for slate in slates:
-  rank=0;seen=set()
-  for s in slate['suggestions']:
-   target=s['suggested_appid']
-   if target in seen or target==slate['source_appid'] or not byid.get(target,{}).get('is_indie'):continue
-   seen.add(target);rank+=1;recs.append(dict(appid=slate['source_appid'],rank=rank,rec_appid=target,source=source,model_version=slate.get('model','lambdarank_merged-indie-20261113') if source=='model' else 'llm-archive-20260615'))
-  empty[source]+=rank==0
+  appid=slate['source_appid']
+  if appid not in byid:continue
+  candidates=model_slates[appid]['ranked_candidates']
+  if source=='model':
+   targets=select_targets([t for t in candidates if allowed(t,appid)],review_counts)
+  else:
+   targets=[]
+   for target in [s['suggested_appid'] for s in slate['suggestions']]+candidates:
+    if allowed(target,appid) and target not in targets:targets.append(target)
+    if len(targets)==SLATE_SIZE:break
+   assert len(targets)>=10, f'Insufficient eligible candidates for {appid}'
+  assert len(targets)>=10, f'Insufficient eligible candidates for {appid}'
+  for rank,target in enumerate(targets,1):
+   recs.append(dict(appid=appid,rank=rank,rec_appid=target,source=source,model_version=MODEL_VERSION if source=='model' else 'llm-archive-20260615-clean-v1'))
+  empty[source]+=not targets
 for name,data in [('games',games),('game_recs',recs),('tags',[{'id':t['tagid'],'name':t['name']} for t in json.loads((a.source/'data/steam_tag_names.json').read_text())['response']['tags']])]:
  with (a.out/(name+'.jsonl')).open('w') as f:
   for row in data:f.write(json.dumps(row)+'\n')

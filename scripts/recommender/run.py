@@ -11,13 +11,16 @@ import numpy as np
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts/relaunch'))
 from catalog import is_indie
-from selection import MODEL_VERSION, SLATE_SIZE, CANDIDATE_LIMIT, select_targets
+from review_quality import eligible
+from selection import MODEL_VERSION, SLATE_SIZE, select_targets
 p=argparse.ArgumentParser();p.add_argument('stage',choices=['encode','score']);p.add_argument('--source',type=pathlib.Path,default=ROOT/'data/full-source');p.add_argument('--artifacts',type=pathlib.Path,default=ROOT/'data/full-model');p.add_argument('--model',type=pathlib.Path,default=ROOT/'data/model');a=p.parse_args();a.artifacts.mkdir(parents=True,exist_ok=True)
 # Serialize native model work even when invoked outside the nightly runner.
 compute_lock=(ROOT/'data/recommender.lock').open('a')
 fcntl.flock(compute_lock,fcntl.LOCK_EX)
 rows=sorted(json.loads((a.source/'data/catalog.json').read_text())['rows'],key=lambda r:int(r['appid']))
 enrichment=json.loads((a.source/'data/steam_tags.json').read_text());ids=[int(r['appid']) for r in rows]
+quality=json.loads((a.source/'review-quality.json').read_text())
+allowed=np.array([eligible(dict(review_count=enrichment[str(i)]['popularity'].get('review_count') or 0,review_positive_pct=enrichment[str(i)]['popularity'].get('percent_positive'),clean_score=quality[str(i)]['clean_score'],bomb_windows=quality[str(i)]['bomb_windows'])) for i in ids])
 # Frozen training recipe uses raw catalog text plus top-15 actual Steam tags.
 def clean(text):return html.unescape(re.sub('<[^>]+>',' ',str(text or ''))).strip()
 def text(row):
@@ -68,7 +71,7 @@ def top(scores,k=200):
  # Exact score selection, deterministic appid tie-break including the boundary.
  chosen=np.argpartition(-scores,k-1)[:k];cut=scores[chosen].min();head=np.flatnonzero(scores>cut);ties=np.flatnonzero(scores==cut)[:k-len(head)];chosen=np.r_[head,ties];return chosen[np.lexsort((chosen,-scores[chosen]))]
 path=a.artifacts/'slates.progress.jsonl';manifest=a.artifacts/'scoring-inputs.json'
-inputs={str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in [a.source/'data/catalog.json',a.source/'data/steam_tags.json',a.model/'ranker.txt',a.artifacts/'ids.json',ROOT/'scripts/relaunch/catalog.py',ROOT/'scripts/relaunch/selection.py',pathlib.Path(__file__)]}
+inputs={str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in [a.source/'data/catalog.json',a.source/'data/steam_tags.json',a.source/'review-quality.json',ROOT/'scripts/relaunch/review_quality.py',a.model/'ranker.txt',a.artifacts/'ids.json',ROOT/'scripts/relaunch/catalog.py',ROOT/'scripts/relaunch/selection.py',pathlib.Path(__file__)]}
 if manifest.exists():assert json.loads(manifest.read_text())==inputs,'Dataset changed; use a new artifacts directory'
 else:manifest.write_text(json.dumps(inputs))
 done=set()
@@ -94,7 +97,7 @@ with path.open('a') as out:
    features=np.column_stack((E[c]@E[i],(linear[c]@linear[i].T).toarray().ravel(),feats['steam_tag'][j,c],hand[j,c],np.isin(c,A),np.isin(c,B),[bool(dev[i]&dev[t]) for t in c],[bool(pub[i]&pub[t]) for t in c],np.log1p(reviews[c])-np.log1p(reviews[i]),np.abs(np.log1p(reviews[c])-np.log1p(reviews[i])),np.log1p(reviews[c]),np.full(len(c),np.log1p(reviews[i])),ratios[c],np.abs(years[c]-years[i]),np.abs(prices[c]-prices[i]),known[c],np.full(len(c),known[i]),years[c]>0,np.full(len(c),years[i]>0),(np.log1p(pop[c])-np.log1p(pop[i]))*owner_known[c]*owner_known[i],owner_known[c],np.full(len(c),owner_known[i])))
    assert features.shape[1]==ranker.num_feature()==22
    values=ranker.predict(features,num_threads=2);ordered=c[np.lexsort((c,-values))]
-   selected=np.array(select_targets(ordered[:CANDIDATE_LIMIT],reviews),dtype=int)
+   selected=np.array(select_targets([t for t in ordered if allowed[t]],reviews),dtype=int)
    assert len(selected)<=SLATE_SIZE and mask[selected].all() and i not in selected
    slate={'source_appid':ids[i],'model':MODEL_VERSION,'ranked_candidates':[ids[t] for t in ordered],'suggestions':[{'rank':rank,'suggested_appid':ids[t]} for rank,t in enumerate(selected,1)]}
    out.write(json.dumps(slate)+'\n')

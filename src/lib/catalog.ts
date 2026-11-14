@@ -1,3 +1,4 @@
+import { recommendationEligible, type ReviewQuality } from "@/lib/review-quality";
 import { cache } from "react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -5,7 +6,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 export const getGame = cache(async (appid: number) => {
   const { data, error } = await getSupabaseServerClient()
     .from("games")
-    .select("appid,title,short_description,header_image,developers,publishers,release_date,genres,review_count,review_positive_pct,price_cents,is_free,is_indie,screenshots,trailers")
+    .select("appid,title,short_description,header_image,developers,publishers,release_date,genres,review_count,review_positive_pct,clean_score,bomb_windows,checked_at,price_cents,is_free,is_indie,screenshots,trailers")
     .eq("appid", appid)
     .maybeSingle();
   if (error) throw new Error("Catalog unavailable");
@@ -23,7 +24,7 @@ export type RecommendationCard = {
 export const getRecommendations = cache(async (appid: number): Promise<RecommendationCard[]> => {
   const { data, error } = await getSupabaseServerClient()
     .from("game_recs")
-    .select("rank,source,game:games!game_recs_rec_appid_fkey!inner(appid,title,header_image,review_count,review_positive_pct,is_indie)")
+    .select("rank,source,game:games!game_recs_rec_appid_fkey!inner(appid,title,header_image,review_count,review_positive_pct,is_indie,clean_score,bomb_windows,checked_at)")
     .eq("appid", appid)
     .eq("game.is_indie", true)
     .order("rank");
@@ -31,6 +32,7 @@ export const getRecommendations = cache(async (appid: number): Promise<Recommend
   const recs = (data ?? []) as unknown as RecommendationCard[];
   const seen = new Set<number>();
   return [...recs.filter(rec => rec.source === "llm"), ...recs.filter(rec => rec.source === "model")]
+    .filter(rec => recommendationEligible(rec.game))
     .filter(rec => rec.game.appid !== appid && !seen.has(rec.game.appid) && seen.add(rec.game.appid));
 });
 
@@ -40,12 +42,12 @@ export const getDeveloperGames = cache(async (appid: number, developers: string[
   const { data } = await getSupabaseServerClient().from("games").select(CARD_FIELDS)
     .neq("appid", appid).eq("is_indie", true).or(developers.map(dev => `developers.cs.{${dev}}`).join(","))
     .order("release_date", { ascending: false }).limit(4);
-  return data ?? [];
+  return (data ?? []).filter(recommendationEligible);
 });
 
 /** Everything a game card shows, selected the same way everywhere. */
-export const CARD_FIELDS = "appid,title,header_image,review_count,review_positive_pct";
-export type CardGame = { appid: number; title: string; header_image: string | null; review_count: number; review_positive_pct: number | null };
+export const CARD_FIELDS = "appid,title,header_image,review_count,review_positive_pct,clean_score,bomb_windows,checked_at";
+export type CardGame = ReviewQuality & { appid: number; title: string; header_image: string | null; review_count: number; review_positive_pct: number | null };
 type ShelfGame = CardGame;
 const SHELF_FIELDS = CARD_FIELDS;
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
@@ -86,7 +88,7 @@ export const isShelf = (slug: string): slug is ShelfSlug => slug in SHELVES;
 export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGame[]> {
   const { data, error } = await SHELVES[slug].query(shelfBase()).limit(limit);
   if (error) throw new Error("Catalog unavailable");
-  return data;
+  return data.filter(recommendationEligible);
 }
 
 /** Home previews; hidden gems rotate daily from the top of the shelf. */
