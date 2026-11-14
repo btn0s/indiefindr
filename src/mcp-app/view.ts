@@ -9,7 +9,7 @@ function render(data:Slate){
   const link=document.createElement('a');link.href=game.url;link.target='_blank';link.rel='noopener noreferrer';link.className='game';
   if(game.header_image){const image=document.createElement('img');image.src=game.header_image;image.alt='';image.loading='eager';link.append(image);}else{const placeholder=document.createElement('div');placeholder.className='placeholder';link.append(placeholder);}
   const name=document.createElement('h2');name.textContent=game.name;link.append(name);
-  const rating=document.createElement('p');if(game.review_label&&game.review_percent!==null){const percent=document.createElement('strong');percent.textContent=`${game.review_percent}%`;rating.append(percent,` ${game.review_label}`);}else rating.textContent='Not yet rated';if(game.review_bombed){const label=document.createElement("span");label.className="review-bombed";label.textContent="Review bombed";rating.append(label);}link.append(rating);
+  const rating=document.createElement('p');if(game.review_label&&game.review_percent!==null){const percent=document.createElement('strong');percent.textContent=`${game.review_percent}%`;rating.append(percent,` ${game.review_label}`);}else rating.textContent='Not yet rated';if(game.review_bombed){const label=document.createElement("span");label.className="review-bombed";label.textContent=" Review bombed";rating.append(label);}link.append(rating);
   link.addEventListener('click',event=>{event.preventDefault();void app.openLink({url:game.url});});track.append(link);
  }
  document.querySelector('#status')!.textContent=data.recommendations.length?`${data.recommendations.length} indie games picked from the catalog`:'No recommendations available for this game.';
