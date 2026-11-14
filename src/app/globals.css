@@ -170,6 +170,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    font size, leading, weight or tracking. Colour is a separate choice of three tiers: ink, body, muted. */
 .home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.045em; }
 .page-title { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; }
+/* The game page's name is its display line: the size of the home headline, at the title's tracking. */
+.source-header .page-title [itemprop=name] { font-size: var(--type-display); line-height: 1.05; letter-spacing: -0.025em; }
 .section-heading h2, .agent-docs h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
 /* Lead: heading size at reading weight; the one introductory sentence on a page. */
 .home-intro .lede { font-size: var(--type-heading); line-height: 1.5; }
@@ -178,7 +180,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Label: names and actions. */
 .game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
 /* Meta: facts about a game, captions, the footer. */
-.review-quality-note, .card-rating, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+.review-quality-note, .card-rating, .card-why, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
 /* Emphasis inside a role keeps its size and gains weight. */
 .card-rating strong, .game-facts strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
@@ -276,6 +278,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-card-art { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 460/215; background: var(--muted); }
 .game-card-title { padding-top: 10px; }
 .card-rating { margin-top: 2px; color: var(--muted-foreground); }
+.card-why { margin-top: 2px; color: var(--muted-foreground); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 
 /* Game page */
@@ -283,7 +286,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .discovery-page > .source-game + * { margin-top: var(--divider-gap); }
 /* Facts: one row of quiet chips that wrap whole. */
 .game-facts { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted-foreground); }
-.game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); white-space: nowrap; }
+.game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--game-chip, var(--card)); box-shadow: inset 0 0 0 1px var(--game-chip-border, var(--border)); white-space: nowrap; }
 .game-facts strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 .game-facts a { color: var(--foreground); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
@@ -294,7 +297,13 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-trailer { position: relative; aspect-ratio: 16/9; max-height: 50vh; width: 100%; overflow: hidden; border-radius: 12px 12px 0 0; background: var(--media); }
 .game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--background) 30%, transparent) 62%, color-mix(in srgb, var(--background) 78%, transparent) 78%, var(--background) 92%); }
-.source-header { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 10px; margin-top: -76px; }
+.source-header { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 12px; margin-top: -76px; }
+/* A soft glow of the game's colour behind the title block (src/lib/palette.ts checks the text on it). */
+/* It stays inside the header's box and fades out before every edge, so it never widens the page or shows a seam. */
+.source-header::before { content: ""; position: absolute; z-index: -1; inset: -32px 0 0; pointer-events: none;
+  background: radial-gradient(36% 48% at 36% 48%, color-mix(in oklab, var(--game-glow, transparent) 85%, transparent), transparent); }
+/* More air around the facts row than between the other lines. */
+.source-header .game-facts { margin-block: 6px 2px; }
 /* Below 1000px the cover runs edge to edge under the header. Wider, it bleeds 40px past the content column on each
    side, so the title and facts sit inset from the art's edge instead of flush with it. */
 @media (max-width: 999px) {
@@ -323,8 +332,35 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .trailer-button .icon-on, .trailer-button[data-on] .icon-off { opacity: 0; transform: scale(.6); filter: blur(2px); }
 .trailer-button[data-on] .icon-on { opacity: 1; transform: none; filter: none; }
 @media(prefers-reduced-motion: reduce) { .trailer-button svg { transform: none !important; filter: none !important; } }
-.source-description { max-width: 65ch; color: var(--text-body); text-wrap: pretty; }
+.source-description { max-width: 65ch; color: var(--game-description, #55555e); text-wrap: pretty; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
+/* Screenshots: a row that scrolls and snaps inside itself; on phones it runs to the screen edges. */
+.screenshot-strip { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.screenshot-strip::-webkit-scrollbar { display: none; }
+.screenshot-strip li { flex: 0 0 clamp(220px, 32%, 288px); scroll-snap-align: start; }
+.screenshot-strip button { display: block; width: 100%; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; background: var(--muted); }
+.screenshot-strip img { width: 100%; height: 100%; object-fit: cover; }
+/* Phones have the 16px page gutter (layout.tsx px-4). */
+@media (max-width: 639px) {
+  .screenshot-strip { margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; }
+  .screenshot-strip li { flex-basis: 72%; }
+}
+@media (hover: hover) and (pointer: fine) { .screenshot-strip button:hover img { opacity: .85; } }
+.screenshot-strip button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* The viewer: full screen on black, one shot per page of a snapping track (swipe, arrows), tap anywhere or Esc to close. */
+.screenshot-viewer { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #000; color: #fff; overflow: hidden; }
+.screenshot-viewer::backdrop { background: #000; }
+html:has(.screenshot-viewer[open]) { overflow: hidden; }
+.screenshot-track { display: flex; height: 100%; overflow-x: auto; overscroll-behavior: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.screenshot-track::-webkit-scrollbar { display: none; }
+.screenshot-track figure { position: relative; flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; }
+.screenshot-track img { object-fit: contain; }
+.viewer-button { position: absolute; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: rgb(255 255 255 / .14); color: #fff; }
+.viewer-close { top: calc(12px + env(safe-area-inset-top)); right: 12px; }
+.viewer-prev, .viewer-next { top: 50%; translate: 0 -50%; }
+.viewer-prev { left: 12px; } .viewer-next { right: 12px; }
+@media (hover: none) { .viewer-prev, .viewer-next { display: none; } }
+.viewer-button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media(max-width: 640px) {
   .source-game { gap: 16px; }
   .source-game-actions { width: 100%; }

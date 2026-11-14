@@ -7,7 +7,7 @@ const CHUNK = 8;
 /** A grid of game cards. Cards come in blocks of eight that skip layout and paint while off-screen
  *  (content-visibility), so long lists cost little until scrolled to. One tracker covers the whole grid. */
 export function CardGrid({ games, pageAppid, eager = 0, ranked = false }: {
-  games: GameCardGame[];
+  games: (GameCardGame & { why?: string[] | null })[];
   /** The game page the grid sits on, for tracking. */
   pageAppid?: number;
   /** How many leading cards are on the first screen. */

@@ -3,6 +3,7 @@ import argparse,json,pathlib,re,unicodedata,datetime
 p=argparse.ArgumentParser();p.add_argument('source',type=pathlib.Path);p.add_argument('--prices',type=pathlib.Path,default=pathlib.Path('data/steam-full/us-prices.json'));p.add_argument('--catalog-only',action='store_true');p.add_argument('--out',type=pathlib.Path,default=pathlib.Path('data/relaunch'));a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 from catalog import companions, is_indie
 from review_quality import eligible
+from rec_why import tag_specificity, why
 from selection import INDIE_PLUS_REVIEWS, MODEL_VERSION, SLATE_SIZE, select_targets
 quality=json.loads((a.source/"review-quality.json").read_text())
 assert json.loads((a.source/"review-quality-status.json").read_text())["complete"], "Finish histogram checks before preparation"
@@ -25,6 +26,7 @@ for game in games:
  indie_plus=game['review_count']>=INDIE_PLUS_REVIEWS;trend=q.get('trend') if game['is_indie'] and not indie_plus else None
  game.update(clean_score=q['clean_score'],bomb_windows=q['bomb_windows'],checked_at=q['checked_at'],indie_plus=indie_plus,momentum=trend and trend['momentum'])
 byid={g['appid']:g for g in games};recs=[];empty={}
+names={t['tagid']:t['name'] for t in tag_names};specificity=tag_specificity(games,names)
 review_counts={g['appid']:g['review_count'] for g in games}
 model_slates={s['source_appid']:s for s in (json.loads(l) for l in (a.source/'slates_indie.jsonl').open())} if not a.catalog_only else {}
 def allowed(target, source):
@@ -45,7 +47,7 @@ for source,slates in ([] if a.catalog_only else [('model',model_slates.values())
    assert len(targets)>=10, f'Insufficient eligible candidates for {appid}'
   assert len(targets)>=10, f'Insufficient eligible candidates for {appid}'
   for rank,target in enumerate(targets,1):
-   recs.append(dict(appid=appid,rank=rank,rec_appid=target,source=source,model_version=MODEL_VERSION if source=='model' else 'llm-archive-20260615-clean-v1'))
+   recs.append(dict(appid=appid,rank=rank,rec_appid=target,source=source,model_version=MODEL_VERSION if source=='model' else 'llm-archive-20260615-clean-v1',why=why(byid[appid]['tag_ids'],byid[target]['tag_ids'],specificity,names)))
   empty[source]+=not targets
 for name,data in [('games',games),('game_recs',recs),('tags',[{'id':t['tagid'],'name':t['name']} for t in json.loads((a.source/'data/steam_tag_names.json').read_text())['response']['tags']])]:
  with (a.out/(name+'.jsonl')).open('w') as f:
