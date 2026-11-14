@@ -199,11 +199,12 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .review-quality-note, .card-rating, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; text-wrap: pretty; }
 .review-quality-note, .site-footer p { max-width: var(--measure); }
 /* Meta units. Each moves to the next line whole; one wider than its line (a long name in a narrow card) wraps inside
-   itself or truncates rather than pushing the page wide. Chips truncate, with the full name in their title. */
+   itself rather than pushing the page wide. A fact chip never truncates: a name longer than its line wraps inside the
+   chip. */
 .rating-label, .review-bombed-label { display: inline-block; }
 .review-bombed-label, .game-facts li { white-space: nowrap; }
 .game-facts li { max-width: 100%; }
-.game-facts li > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.game-facts li > * { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 /* Emphasis inside a role keeps its size and gains weight. */
 .card-rating strong, .game-facts strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
@@ -292,59 +293,56 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* One column that may shrink below its content: an implicit auto column would grow to fit the 460px cover art and push
    the page wider than a phone screen. */
 .card-grid { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 28px; }
-.game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; }
+.game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
 /* Off-screen blocks of cards skip layout and paint until scrolled near; `auto` remembers each block's real height once
    seen, so the scrollbar doesn't jump. Home's later sections do the same. Find in page still finds their text. */
 .card-grid > .game-grid + .game-grid, .discovery-page > section:nth-of-type(n+3) { content-visibility: auto; contain-intrinsic-size: auto 520px; }
-@media(min-width: 768px) { .game-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* A gallery: three wide on desktop, so each piece of art is big enough to look at. */
+@media(min-width: 768px) { .game-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 24px; } .card-grid { row-gap: 36px; } }
 .game-card { display: block; }
 @media (hover: hover) and (pointer: fine) { .game-card:hover .game-card-title { text-decoration: underline; text-underline-offset: 3px; } }
-.game-card-art { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 460/215; background: var(--muted); }
-.game-card-title { padding-top: 10px; }
+.game-card-art { position: relative; overflow: hidden; border-radius: 12px; aspect-ratio: 460/215; background: var(--muted); }
+/* A hairline inside the art's edge, so pale art keeps its shape on the page. */
+.game-card-art::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .07); pointer-events: none; }
+@media(max-width: 700px) { .game-card-art { border-radius: 10px; } }
+.game-card-title { padding-top: 12px; }
 .card-rating { margin-top: 2px; color: var(--muted-foreground); }
 .card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 
 /* Game page */
-.source-game { display: flex; flex-direction: column; gap: 20px; padding-bottom: var(--divider-gap); border-bottom: 1px solid var(--border); }
-.discovery-page > .source-game + * { margin-top: var(--divider-gap); }
-/* Facts: one row of quiet chips that wrap whole. */
+/* Plate: the cover is an object on the page, whole and unfaded, with a hairline edge. On desktop the title,
+   facts, blurb and Steam button sit beside it, centred on it; below 1000px they follow it. The screenshots run under
+   both. A section gap, not a rule, separates the recommendations. */
+.source-game { display: flex; flex-direction: column; gap: 20px; }
+@media (min-width: 1000px) {
+  .source-game { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); column-gap: 44px; row-gap: 36px; align-items: center; }
+  .source-game > :not(.game-trailer, .source-info) { grid-column: 1 / -1; }
+}
+.source-info { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.source-header { display: flex; flex-direction: column; gap: 12px; }
+/* Facts: soft filled chips, no outline, one per fact, wrapping whole. A chip whose name is longer than its line wraps
+   inside itself, so its radius stays modest enough for two lines. */
 .game-facts { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted-foreground); }
-.game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); white-space: nowrap; }
+.game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 4px 10px; border-radius: 14px; background: rgb(19 19 22 / .055); }
 .game-facts strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 .game-facts a { color: var(--foreground); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
-/* Cover hero: the trailer, or its still, fading into the page at the bottom, with the title over the fade. Desktop keeps
-   it in the content column, rounded only at the top (the fade reaches the page colour before the bottom edge, so it
-   dissolves with no line) and at most half the viewport tall; phones run it edge to edge under the
-   header. */
-.game-trailer { position: relative; aspect-ratio: 16/9; max-height: 50vh; width: 100%; overflow: hidden; border-radius: 12px 12px 0 0; background: var(--media); }
-.game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--background) 30%, transparent) 62%, color-mix(in srgb, var(--background) 78%, transparent) 78%, var(--background) 92%); }
-.source-header { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 12px; margin-top: -76px; }
-/* More air around the facts row than between the other lines. */
-.source-header .game-facts { margin-block: 6px 2px; }
-/* Below 1000px the cover runs edge to edge under the header. Wider, it bleeds 40px past the content column on each
-   side, so the title and facts sit inset from the art's edge instead of flush with it. */
-@media (max-width: 999px) {
-  .source-game .game-trailer { width: 100vw; max-width: none; margin-inline: calc(50% - 50vw); margin-top: calc(-1 * var(--page-top)); border-radius: 0; }
-}
-@media (min-width: 1000px) {
-  .source-game .game-trailer { width: calc(100% + 80px); max-width: none; margin-inline: -40px; border-radius: 16px 16px 0 0; }
-}
-@media (max-width: 700px) {
-  .source-header { margin-top: -52px; }
-}
-/* Hierarchy from size and weight, both in full foreground: a small lead line, then the title. */
-.source-header .page-title { display: flex; flex-direction: column; gap: 2px; }
-.source-header .title-lead { color: var(--foreground); font-size: var(--type-body); line-height: 1.4; font-weight: 500; letter-spacing: 0; }
+/* The plate: 16:9, a 16px radius (14px on phones) and a hairline inside its edge. */
+.game-trailer { position: relative; aspect-ratio: 16/9; width: 100%; overflow: hidden; border-radius: 16px; background: var(--media); }
+.game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .08); pointer-events: none; }
+@media (max-width: 700px) { .game-trailer { border-radius: 14px; } }
+/* Hierarchy from size and weight, both in full foreground: a small lead line, then the title. Beside the plate the
+   name is a step smaller than the display size, so long names keep to two or three lines. */
+.source-header .page-title { display: flex; flex-direction: column; gap: 4px; }
+.source-header .title-lead { color: var(--muted-foreground); font-size: var(--type-body); line-height: 1.4; font-weight: 500; letter-spacing: 0; }
 .source-header .page-title [itemprop=name] { text-wrap: balance; overflow-wrap: anywhere; }
-.source-header .source-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-@media (max-width: 700px) { .source-header .source-description { -webkit-line-clamp: 2; } }
+@media (min-width: 1000px) { .source-header .page-title [itemprop=name] { font-size: 40px; line-height: 1.08; } }
+.source-header .source-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; margin-top: 2px; }
+@media (max-width: 700px) { .source-header .source-description { -webkit-line-clamp: 3; } }
 .game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
 .game-trailer video[data-playing=true] { opacity: 1; }
-/* Top right: the bottom of the cover belongs to the fade and the title. */
 .trailer-controls { position: absolute; z-index: 2; right: 12px; top: 12px; display: flex; gap: 8px; }
-.trailer-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--media) 65%, transparent); color: #fff; }
+.trailer-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgb(0 0 0 / .38); backdrop-filter: blur(12px); color: #fff; }
 .trailer-button::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 /* Each button holds both icons; the state crossfades between them (same swap as the copy button). */
 .trailer-button svg { position: absolute; transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out), filter var(--duration-enter) var(--ease-out); }
@@ -357,7 +355,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .screenshot-strip { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .screenshot-strip::-webkit-scrollbar { display: none; }
 .screenshot-strip li { flex: 0 0 clamp(220px, 32%, 288px); scroll-snap-align: start; }
-.screenshot-strip button { display: block; width: 100%; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; background: var(--muted); }
+@media (max-width: 700px) { .screenshot-strip button { border-radius: 10px; } }
+.screenshot-strip button { display: block; width: 100%; border-radius: 12px; overflow: hidden; aspect-ratio: 16/9; background: var(--muted); }
 /* A hairline edge, so pale shots don't melt into the page. */
 .screenshot-strip img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid rgb(0 0 0 / .07); outline-offset: -1px; border-radius: inherit; }
 /* Phones have the 16px page gutter (layout.tsx px-4). */
@@ -382,7 +381,6 @@ html:has(.screenshot-viewer[open]) { overflow: hidden; }
 @media (hover: none) { .viewer-prev, .viewer-next { display: none; } }
 .viewer-button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media(max-width: 640px) {
-  .source-game { gap: 16px; }
   .source-game-actions { width: 100%; }
   .steam-link { width: 100%; min-height: 46px; }
 }
@@ -574,6 +572,10 @@ html { touch-action: manipulation; }
 .card-skeleton .skeleton-line { height: 14px; margin-top: 13px; width: 72%; }
 .card-skeleton .skeleton-line + .skeleton-line { height: 12px; margin-top: 9px; width: 54%; }
 .skeleton-title { height: calc(var(--type-title) * 1.15); width: min(440px, 80%); border-radius: 6px; }
+.source-header .skeleton-lead { height: 14px; width: 76px; margin-bottom: 2px; }
+.source-header .skeleton-title { height: calc(var(--type-display) * 1.05); }
+@media (min-width: 1000px) { .source-header .skeleton-title { height: 44px; width: 90%; } }
+.source-header .skeleton-meta { height: 27px; width: min(380px, 90%); margin-top: 6px; border-radius: 14px; }
 .skeleton-meta { height: 14px; width: min(520px, 90%); margin-top: 16px; }
 .skeleton-note { height: 14px; width: min(320px, 70%); margin-top: 6px; }
 .skeleton-heading { height: calc(var(--type-heading) * 1.1); width: 220px; border-radius: 6px; }
