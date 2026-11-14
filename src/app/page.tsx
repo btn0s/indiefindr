@@ -1,27 +1,38 @@
-import Image from "next/image";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { cacheLife } from "next/cache";
 import { GameGrid } from "@/components/GameGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
 import { getBrowsePage, getGame, getHomeShelves, getRecommendations, SHELVES, type ShelfSlug } from "@/lib/catalog";
+import { heroImage } from "@/lib/hero";
 import { ShelfHeading } from "@/components/ShelfHeading";
-import { CardGrid } from "@/components/CardGrid";
+import { CardRail } from "@/components/CardRail";
 import { EmptyNote } from "@/components/EmptyNote";
-import { ArtMark } from "@/components/ArtMark";
+import { FeatureCards, type Feature } from "@/components/FeatureCards";
 
-// Well-known indies whose pages show off the recommendations; one is featured per revalidation.
-const SHOWCASE = [413150, 367520, 105600, 1145360, 504230, 646570];
-// Any game works as a starting point, AAA included; recommendations are always indie.
-const EXAMPLES = [[413150, "Stardew Valley"], [367520, "Hollow Knight"], [2379780, "Balatro"]] as const;
+// Well-known games whose pages show off the recommendations. Any game works as a starting point, AAA included;
+// recommendations are always indie.
+const FEATURED = [413150, 367520, 105600, 1145360, 504230, 646570, 2379780];
 
-/** The featured game and its first recommendations. A new pick each time the cache refreshes, about once a minute. */
-async function getShowcase() {
+/** Three featured games, each with its first recommendations. A new draw each time the cache refreshes, about once a
+ *  minute. */
+async function getFeatures(): Promise<Feature[]> {
   "use cache";
   cacheLife("minutes");
-  const appid = SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)];
-  const [game, recs] = await Promise.all([getGame(appid), getRecommendations(appid)]);
-  return { game, recs: recs.slice(0, 3) };
+  const pool = [...FEATURED];
+  const picks = Array.from({ length: 3 }, () => pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  const features = await Promise.all(picks.map(async appid => {
+    const [game, recs] = await Promise.all([getGame(appid), getRecommendations(appid)]);
+    if (!game) return null;
+    const trailer = (Array.isArray(game.trailers) ? game.trailers : [])[0] as { poster?: string | null } | undefined;
+    const still = game.screenshots?.[0] ?? null;
+    return {
+      appid, title: game.title,
+      cover: still ?? trailer?.poster ?? game.header_image,
+      hero: heroImage({ hero_poster: trailer?.poster, hero_still: still, header_image: game.header_image }),
+      recs: recs.slice(0, 3).map(({ game: rec }) => rec),
+    };
+  }));
+  return features.filter(feature => feature !== null);
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -74,34 +85,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [games, { game: showcase, recs: showcaseRecs }, shelves] = await Promise.all([getBrowsePage(0), getShowcase(), getHomeShelves()]);
+  const [features, shelves, games] = await Promise.all([getFeatures(), getHomeShelves(), getBrowsePage(0)]);
 
   return (
-    <main className="discovery-page">
-      <section className="home-intro">
-        <div>
-          <h1>Find your next favorite indie game</h1>
-          <p className="lede">Name a game you can&rsquo;t stop thinking about, and we&rsquo;ll find the indies that give you that feeling again.</p>
-          <p className="examples">Try {EXAMPLES.map(([appid, title], index) => <span key={appid}>
-            <Link href={`/games/${appid}`} prefetch={true}>{title}</Link>{index < EXAMPLES.length - 1 ? ", " : ""}
-          </span>)}</p>
-        </div>
-        {showcase && <div className="showcase">
-          <Link href={`/games/${showcase.appid}`} prefetch={true} className="showcase-source">
-            <ArtMark />
-            {/* The showcase is hidden on phones, so its art is preloaded only where it shows. */}
-            {showcase.header_image && <link rel="preload" as="image" href={showcase.header_image} fetchPriority="high" media="(min-width: 701px)" />}
-            {showcase.header_image && <Image src={showcase.header_image} alt="" width={460} height={215} unoptimized fetchPriority="high" loading="eager" suppressHydrationWarning />}
-            <span>Games like <strong>{showcase.title}</strong></span>
-          </Link>
-          <div className="showcase-recs">
-            {showcaseRecs.map(({ game }) => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true} title={game.title}>
-              <span className="showcase-tile"><ArtMark />{game.header_image && <Image src={game.header_image} alt={game.title} width={230} height={108} unoptimized suppressHydrationWarning />}</span>
-            </Link>)}
-          </div>
-        </div>}
-      </section>
-      <Shelf slug="rising" games={shelves.rising} aboveFold />
+    <main className="discovery-page home">
+      <header className="home-head">
+        <h1 className="page-title">Find your next favorite indie game</h1>
+        <p className="page-note">Name a game you can&rsquo;t stop thinking about, and we&rsquo;ll find the indies that give you that feeling again.</p>
+      </header>
+      <FeatureCards features={features} />
+      <Shelf slug="rising" games={shelves.rising} />
       <Shelf slug="early-access" games={shelves["early-access"]} />
       <Shelf slug="hidden-gems" games={shelves["hidden-gems"]} />
       {shelves.new.length >= 4 && <Shelf slug="new" games={shelves.new} />}
@@ -114,10 +107,6 @@ export default async function Home() {
   );
 }
 
-function Shelf({ slug, games, aboveFold = false }: { slug: ShelfSlug; games: GameCardGame[]; aboveFold?: boolean }) {
-  if (!games.length) return null;
-  return <section>
-    <ShelfHeading title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} />
-    <CardGrid games={games} eager={aboveFold ? 4 : 0} />
-  </section>;
+function Shelf({ slug, games }: { slug: ShelfSlug; games: GameCardGame[] }) {
+  return <CardRail games={games} title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} />;
 }

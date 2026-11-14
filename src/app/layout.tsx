@@ -113,7 +113,7 @@ export default async function RootLayout({
         <div className="site-shell">
           <a href="#content" className="skip-link">Skip to content</a>
           <Navbar popular={await getPopularIndies()} />
-          <div id="content" className="px-4 sm:px-7">{children}</div>
+          <div id="content">{children}</div>
           <footer className="site-footer">
             <nav aria-label="Footer"><Link href="/agents">Agent access</Link><Link href="/privacy">Privacy</Link></nav>
             <p>indiefindr · Game information and media from Steam.</p>

@@ -173,18 +173,21 @@ export default async function GamePage({
       />}
       <WebMCP />
       <main className="discovery-page">
-        {/* Cover hero: the trailer (its poster or still until it plays) as a framed plate on the page, whole and unfaded.
-            On desktop the title, facts, blurb and Steam button sit beside it; on phones, beneath it. */}
+        {/* Cover hero: the trailer (its poster or still until it plays). On phones it runs edge to edge with the title,
+            facts, blurb and Steam button beneath it; on desktop it's a framed plate with them beside it. The
+            screenshots follow as a rail. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
-          <GameTrailer title={game.title} trailer={trailer}
-            image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
-          <div className="source-info">
-            <header className="source-header">
-              <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
-              <GameFacts game={game} />
-              {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
-            </header>
-            <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>
+          <div className="source-top">
+            <GameTrailer title={game.title} trailer={trailer}
+              image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
+            <div className="source-info">
+              <header className="source-header">
+                <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
+                <GameFacts game={game} />
+                {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
+              </header>
+              <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>
+            </div>
           </div>
           <ScreenshotStrip title={game.title} screenshots={game.screenshots ?? []} />
           <ShopLinks appid={appId} />

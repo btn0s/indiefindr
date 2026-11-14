@@ -6,7 +6,7 @@ import { POPULAR_INDIES } from "@/lib/popular-indies";
 import type { PopularPick } from "@/lib/use-game-search";
 
 /** Shared by metadata and page rendering. Catalog reads are cached server-side: games and their recommendations
- *  shelves and Browse all change hourly at most (home's showcase rotates by the minute). Anything shown on every page
+ *  shelves and Browse all change hourly at most (home's featured games rotate by the minute). Anything shown on every page
  *  (the 404's Browse all is prerendered into each route) must not be shorter-lived than the pages themselves. */
 export async function getGame(appid: number) {
   "use cache";
@@ -127,13 +127,14 @@ export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGam
   return data.filter(recommendationEligible);
 }
 
-/** Home previews in claim order: a game appears on one shelf at most, the first that claims it. Hidden gems is a daily pick. */
+/** Home rails in claim order: a game appears on one shelf at most, the first that claims it. Hidden gems is a daily
+ *  pick. A rail costs no height for its length, so each holds a dozen; See all has the rest. */
 const HOME_SHELVES: { slug: ShelfSlug; fetch: number; show: number }[] = [
-  { slug: "rising", fetch: 8, show: 8 },
-  { slug: "early-access", fetch: 12, show: 4 },
-  { slug: "new", fetch: 12, show: 4 },
-  { slug: "upcoming", fetch: 8, show: 4 },
-  { slug: "hidden-gems", fetch: 240, show: 8 },
+  { slug: "rising", fetch: 12, show: 12 },
+  { slug: "early-access", fetch: 24, show: 12 },
+  { slug: "new", fetch: 24, show: 12 },
+  { slug: "upcoming", fetch: 20, show: 12 },
+  { slug: "hidden-gems", fetch: 240, show: 12 },
 ];
 
 export async function getHomeShelves() {
