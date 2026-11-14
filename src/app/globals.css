@@ -328,7 +328,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .trailer-button .icon-on, .trailer-button[data-on] .icon-off { opacity: 0; transform: scale(.6); filter: blur(2px); }
 .trailer-button[data-on] .icon-on { opacity: 1; transform: none; filter: none; }
 @media(prefers-reduced-motion: reduce) { .trailer-button svg { transform: none !important; filter: none !important; } }
-.source-description { max-width: 65ch; color: var(--text-body); text-wrap: pretty; }
+.source-description { max-width: 65ch; color: #55555e; text-wrap: pretty; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
 /* Screenshots: a row that scrolls and snaps inside itself; on phones it runs to the screen edges. */
 .screenshot-strip { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
