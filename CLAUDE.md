@@ -1,104 +1,97 @@
 # IndieFindr
 
-Indie game discovery platform powered by AI recommendations. Built with Next.js 16, Supabase, and Vercel AI SDK.
+Indie game discovery at www.indiefindr.gg: for any Steam game, a precomputed slate of indie games like it. Next.js 16
+(Cache Components) serves a Supabase catalog that an offline pipeline publishes nightly. No model or LLM runs on a
+request.
 
 ## Commands
 
 ```bash
-pnpm dev              # Start Supabase + Next.js dev server (localhost:3000)
-pnpm build            # Production build (runs OG image gen via prebuild)
-pnpm lint             # ESLint
-pnpm supabase:types   # Regenerate DB types -> src/lib/supabase/database.types.ts
-pnpm supabase:reset   # Reset local DB and reapply migrations + seed
-pnpm supabase:status  # Check local Supabase services
+pnpm dev                 # next dev
+pnpm build               # prebuild bundles the MCP app HTML and the home OG image first
+pnpm lint
+npx tsc --noEmit
+pnpm vitest run          # tests/**/*.test.tsx, jsdom
+pnpm supabase:types      # regenerate src/lib/supabase/database.types.ts
 ```
+
+`.env.local` and `.vercel/` are gitignored; in a fresh worktree, copy them from `/Users/btnorris/dev/indiefindr/`.
+`.env.local` points at a local Supabase with no catalog. To develop against the real data, run
+`vercel env pull .env.production.local --environment=production`, then `set -a; source .env.production.local; set +a`
+before `pnpm dev`. Never print env values.
 
 ## Architecture
 
-**Next.js 16 App Router** -- RSC by default, `"use client"` only where needed.
+Routes (`src/app`):
 
-```
-src/
-  app/                    # App Router
-    page.tsx              # Home (collections + game grid)
-    games/[appid]/        # Game detail page
-    collections/[slug]/   # Collection page
-    developer/[name]/     # Developer page
-    api/games/submit/     # Game ingestion endpoint (rate-limited)
-    api/games/search/     # Search (DB + Steam fallback)
-    api/games/[appid]/    # Single game fetch
-  components/             # Feature + UI components
-    ui/                   # shadcn/ui primitives (base-mira theme)
-  lib/
-    suggest.ts            # Multi-strategy AI recommendation engine
-    ingest.ts             # Steam data ingestion pipeline
-    steam.ts              # Steam Store API client
-    collections.ts        # Collection queries
-    config.ts             # All magic numbers and timing constants
-    actions/              # Server actions (games.ts, suggestions.ts)
-    supabase/             # DB clients (server.ts, client.ts, service.ts) + types
-  middleware.ts           # Rate limiting for /api/games/submit (60 req/min/IP)
-supabase/
-  migrations/             # 30+ SQL migrations (source of truth for schema)
-  config.toml             # Local Supabase config
-  seed.sql                # Seed data
-scripts/                  # OG image gen, data ingest, env sync
-```
+- `/`: intro, showcase, shelves, and Browse all, which loads further pages from `GET /api/browse` as you scroll.
+- `/games/[appid]`: cover (`GameTrailer`), screenshots (`ScreenshotStrip`, `ScreenshotViewer`), facts, More from the
+  developer, then the recommendation slate.
+- `/discover/[shelf]`: list pages; the shelves are `SHELVES` in `src/lib/catalog.ts` (rising, early-access, upcoming,
+  hidden-gems, new).
+- `/developer/[name]`, `/agents` (agent access docs), `/privacy`, sitemaps, `ads.txt`.
+- API: `browse`, `games/search`, `games/[appid]`, `recs/[appid]`, `events` (impressions and clicks), plus the agent routes below.
 
-## Key Patterns
+**Data reads** all live in `src/lib/catalog.ts`, each one `"use cache"` + `cacheLife("hours")`. Add new reads there in
+the same shape. Pages are prerendered shells over these cached reads.
 
-- **Supabase, not an ORM** -- all DB access via `@supabase/supabase-js`. Three clients: `server.ts` (anon, cookie-based), `client.ts` (browser), `service.ts` (service role, bypasses RLS).
-- **Config-driven tuning** -- all retry/polling/rate-limit constants live in `src/lib/config.ts`. Change behavior there, not inline.
-- **Distributed locking** -- ingestion uses DB-level locks (`LOCK_EXPIRY_SECONDS`) to prevent duplicate concurrent ingests of the same game.
-- **AI suggestions** -- `suggest.ts` calls OpenAI/Perplexity models via Vercel AI SDK (`ai` package) with structured Zod schemas. Results stored in `game_suggestions` table.
-- **Evaluating recommendations** -- `docs/recommendation-evaluation-framework.md` describes the eval stack (human pairwise, offline scorecard, stress tests, future logging/OPE) from current `games like X` toward taste-brief / agent-assisted matching. Cited external work is summarized in `docs/research/` (stable IDs, limits, takeaways).
-- **SSE streaming** -- submit endpoint streams ingestion progress to clients.
-- **Redirects** -- legacy routes (`/find/:id`, `/:id/:slug`, `/user/:username`) redirected in `next.config.ts`.
+**Prefetch** (comments in `next.config.ts`): every game card is a `CardLink` with `prefetch={true}`, so the whole game page
+is ready before the tap. The cover image isn't in the prefetch, so `src/lib/intent.ts` warms it when the visitor is about
+to open a card. `preloadHero` must ask for exactly the files `GameTrailer` renders (`smallCopy` and the optimizer
+`srcset`, `src/lib/hero.ts`). Other links prefetch the static shell. The router keeps recent routes mounted, so
+back/forward restores a page as it was left, Browse all's loaded pages and scroll included.
 
-## Database
+**Search**: the header search downloads a several-MB title index (Supabase storage `search/titles.json`, published
+nightly) into `public/search-worker.js` the first time someone types. Matching runs in the worker, and visible rows
+fetch their details from Supabase (`src/lib/use-game-search.ts`).
 
-**Primary tables:** `games_new`, `game_suggestions`, `collections`, `collection_games`, `collection_pins`.
+**Review quality**: `src/lib/review-quality.ts` reads `clean_score` and `bomb_windows`, which
+`scripts/relaunch/review_quality.py` computes (docs/review-bomb-detection.md). The Steam rating always stays visible; a
+rescued game adds "Review bombed".
 
-Types are manually defined in `src/lib/supabase/types.ts` (`GameNew`, `Collection`, `Suggestion`). Generated types from `pnpm supabase:types` go to `src/lib/supabase/database.types.ts`.
+**Agents**, all reading `src/lib/agent-catalog.ts`:
 
-Migrations are the schema source of truth -- always add new migrations under `supabase/migrations/`.
+- `/mcp`: MCP server with `search_games`, `get_game` and `get_recommendations`. The latter renders an MCP App carousel
+  from `src/mcp-app/`, bundled into `src/lib/mcp-app-html.ts` by prebuild.
+- `/api/agent-search`, `/api/agent-game/[appid]`: the same reads as JSON.
+- `src/components/WebMCP.tsx`: the same tools registered in the browser through `modelContext`.
+- `packages/cli`: `npx indiefindr`. Also `public/llms.txt`.
 
-## Tech Stack
+## Data pipeline
 
-| Layer | Choice |
-|-------|--------|
-| Framework | Next.js 16.1 (App Router) |
-| Language | TypeScript (strict) |
-| Database | PostgreSQL via Supabase |
-| UI | shadcn/ui (base-mira) + Base UI + Lucide icons |
-| Styling | Tailwind CSS v4 (CSS-driven, no tailwind.config) |
-| AI | Vercel AI SDK (`ai`) with OpenAI + Perplexity |
-| Validation | Zod |
-| Package manager | pnpm |
+`scripts/relaunch` (Python; its environment is set up in `scripts/recommender/README.md`) acquires Steam metadata,
+encodes, ranks offline, selects 24-target slates (`selection.py`) and publishes to the Supabase project
+`rqcqlpoxtdddjcylhopk`, then media and the search index. It runs nightly at 03:15 on the devbox Mac through a
+LaunchAgent. The job runs a snapshot of `scripts/` pinned by content hash under `data/nightly/releases/`, so a change
+to `scripts/` reaches the nightly run only after `scripts/relaunch/install-nightly.py` is re-run. Details:
+`docs/relaunch/offline-ingest.md`.
 
-## Environment Variables
+`supabase/migrations` is the schema source of truth. Vercel previews read the production Supabase, so a preview shows
+a migration only once it is applied there.
 
-Supabase vars are auto-synced for local dev via `pnpm dev` (starts Supabase). For production:
+## Styling and motion
 
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` -- Supabase project
-- `SUPABASE_SERVICE_ROLE_KEY` -- service role (server-only)
-- `OPENAI_API_KEY` -- suggestion generation
-- `PERPLEXITY_API_KEY` -- suggestion generation
-- `NEXT_PUBLIC_SITE_URL` -- canonical URL for metadata/OG
+`src/app/globals.css` owns the look: palette, type scale, semantic classes. Its **Type roles** block is the only place
+that sets font size, leading, weight, tracking or wrapping; give new text one of those roles. Tailwind v4 utilities are
+for layout. Motion values come from the tokens in `globals.css` (durations, `--ease-*`, `--spring-*` springs sampled as
+`linear()`), explained in `MOTION.md`. Animate transform and opacity so motion stays on the compositor. `AUDIT.md` is
+the craft audit behind the current details.
 
-## Code Style
+Copy: separate items with spacing or commas, never a middle dot (`·`).
 
-- TypeScript strict, no `any` casts
-- Prefer RSC; `"use client"` only when necessary
-- Tailwind v4 built-in values; compose small components
-- No unnecessary `useEffect`, `try/catch`, or abstractions
-- Imports at top of file, no inline imports
-- `next/font`, `next/image`, `next/script` where applicable
+## Code
 
-## External Packages in Next Config
+TypeScript strict, no `any`. Server components by default; `"use client"` only where the browser is needed. Imports
+at the top of the file.
 
-`steam-user`, `@doctormckay/steam-crypto`, `@tobilu/qmd`, `better-sqlite3`, `node-llama-cpp` are externalized via `serverExternalPackages` to avoid bundling issues.
+## Ship
 
-## No Test Suite
-
-There is no test framework configured. Verification is `pnpm build` + `pnpm lint`.
+1. `pnpm build`, `npx tsc --noEmit`, `pnpm lint`, `pnpm vitest run`.
+2. Load home, a game page (`/games/367520`) and a list page (`/discover/rising`) at 1280px and at 393px (iPhone).
+   On each, assert `document.documentElement.scrollWidth === innerWidth`, and look at the phone screenshots yourself:
+   a desktop-only check once shipped a phone overflow bug. playwright-core with
+   `executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"` works.
+   Previews (Vercel project `games-graph`) sit behind Vercel Authentication: `vercel curl <path> --deployment <url>`
+   uses the project's bypass token. For headless Chrome, send that token as `x-vercel-protection-bypass` with
+   `x-vercel-set-bypass-cookie: true`.
+3. Squash-merge the PR, run `vercel deploy --prod`, then check www.indiefindr.gg on a phone.

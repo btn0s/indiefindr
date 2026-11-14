@@ -105,7 +105,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 - **Framework**: Next.js 16 (App Router, React Server Components)
 - **Database**: Supabase (PostgreSQL)
 - **AI**: Perplexity Sonar + OpenAI GPT-4o-mini via AI SDK
-- **Styling**: Tailwind CSS v4 with shadcn/ui components
+- **Styling**: Tailwind CSS v4
 - **Type Safety**: TypeScript
 
 ### How Recommendations Work
@@ -246,6 +246,5 @@ This project is open source under the MIT License. See [LICENSE](LICENSE) for de
 ## Acknowledgments
 
 - Built with [Next.js](https://nextjs.org/)
-- UI components from [shadcn/ui](https://ui.shadcn.com/)
 - Database powered by [Supabase](https://supabase.com/)
 - AI recommendations via [Perplexity](https://www.perplexity.ai/) and [OpenAI](https://openai.com/)
