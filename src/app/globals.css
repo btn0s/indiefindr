@@ -288,11 +288,12 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-facts a { color: var(--foreground); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
 /* Cover hero: the trailer, or its still, fading into the page at the bottom, with the title over the fade. Desktop keeps
-   it in the content column with a radius and at most half the viewport tall; phones run it edge to edge under the
+   it in the content column, rounded only at the top (the fade reaches the page colour before the bottom edge, so it
+   dissolves with no line) and at most half the viewport tall; phones run it edge to edge under the
    header. */
-.game-trailer { position: relative; aspect-ratio: 16/9; max-height: 50vh; width: 100%; overflow: hidden; border-radius: 12px; background: var(--media); }
+.game-trailer { position: relative; aspect-ratio: 16/9; max-height: 50vh; width: 100%; overflow: hidden; border-radius: 12px 12px 0 0; background: var(--media); }
 .game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--background) 30%, transparent) 62%, color-mix(in srgb, var(--background) 78%, transparent) 84%, var(--background)); }
+  background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--background) 30%, transparent) 62%, color-mix(in srgb, var(--background) 78%, transparent) 78%, var(--background) 92%); }
 .source-header { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 10px; margin-top: -76px; }
 @media (max-width: 700px) {
   .source-game .game-trailer { width: 100vw; max-width: none; margin-inline: calc(50% - 50vw); margin-top: calc(-1 * var(--page-top)); border-radius: 0; }

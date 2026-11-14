@@ -187,7 +187,7 @@ export default async function GamePage({
           </ViewTransition>
           <header className="source-header">
             <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
-            <GameFacts game={game} price={price} />
+            <GameFacts game={game} />
             <ReviewQualityNote game={game} />
             {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
           </header>
