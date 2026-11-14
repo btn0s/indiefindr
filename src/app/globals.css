@@ -588,9 +588,9 @@ html { touch-action: manipulation; }
    video skips its own fade, so the layer's is the only one. */
 :root[data-cover-hold] .game-trailer > img + .cover-layer { opacity: 0; }
 :root[data-cover-hold] .game-trailer > img + .cover-layer video { transition: none; }
-/* Pulled down to dismiss (SwipeDismiss), the cover turns back into the card's art as the page starts to shrink, so it
+/* Pulled down to dismiss (PagePull), the cover turns back into the card's art as the page starts to shrink, so it
    lands in the card showing what the shelf shows; let go short of dismissing and the trailer comes back. */
-.cover-layer { position: absolute; inset: 0; transition: opacity 250ms var(--ease-out); }
+.cover-layer { position: absolute; inset: 0; transition: opacity var(--duration-m) var(--ease-out); }
 :root[data-pulling=""] .game-trailer > img + .cover-layer { opacity: 0; }
 /* Every view transition has an end that can be heard, even one where nothing else moves on the backdrop (card-morph.ts
    clears the card's names then). */
@@ -684,7 +684,31 @@ html { touch-action: manipulation; }
 }
 @keyframes enter-fade { from { opacity: 0; } }
 
-/* Pulling a game page down to dismiss it (SwipeDismiss): the page shrinks toward its card on its sheet, corners
+/* Pull to refresh (PagePull), in place of Safari's own: the page doesn't overscroll at all, so its pull-down is ours. The
+   content comes down under the header on a rubber band, uncovering the sword (muted, bare), which fades in and turns
+   with the pull. While the refresh runs it spins, each turn easing in and out from where the pull left it; once the
+   refresh has finished it completes its turn and fades as the content goes back up. The content carries a transform
+   only during a pull: at rest, the card morph's fixed sheet must stay relative to the viewport. */
+html, body { overscroll-behavior-y: none; }
+:root:has(.page-pull:not([data-phase=idle])) #content { translate: 0 var(--refresh-y, 0px); }
+:root:has(.page-pull:is([data-phase=refreshing], [data-phase=done])) #content { transition: translate var(--duration-m) var(--ease-glide); }
+.page-pull { position: fixed; z-index: 39; top: var(--refresh-top, 0px); left: 0; right: 0; height: var(--refresh-y, 0px); display: grid;
+  place-items: center; overflow: hidden; pointer-events: none; color: var(--muted-foreground); }
+.page-pull[data-phase=idle] { display: none; }
+.page-pull[data-phase=refreshing], .page-pull[data-phase=done] { transition: height var(--duration-m) var(--ease-glide); }
+.page-pull-sword { display: grid; opacity: var(--refresh-progress, 0); rotate: var(--refresh-turn, 0deg); }
+.page-pull-sword svg { width: 28px; height: 28px; }
+.page-pull[data-phase=refreshing] .page-pull-sword { opacity: 1; animation: pull-spin .8s var(--ease-in-out) infinite; }
+.page-pull[data-phase=done] .page-pull-sword { opacity: 0; transition: opacity var(--duration-s) var(--ease-out); }
+@keyframes pull-spin { from { rotate: var(--refresh-turn, 0deg); } to { rotate: calc(var(--refresh-turn, 0deg) + 360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .page-pull-sword, .page-pull[data-phase] .page-pull-sword { rotate: none; animation: none; }
+  .page-pull[data-phase=refreshing] .page-pull-sword { animation: pull-pulse 1s ease-in-out infinite; }
+  :root:has(.page-pull) #content, .page-pull { transition: none !important; }
+}
+@keyframes pull-pulse { 50% { opacity: .4; } }
+
+/* Pulling a game page down to dismiss it (PagePull): the page shrinks toward its card on its sheet, corners
    rounding, over a dimming page; let go short of the threshold and it springs back. */
 :root[data-pulling] {
   --pull-dim: color-mix(in srgb, #000 calc(var(--pull, 0) * 14%), var(--background));

@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Navbar } from "@/components/Navbar";
 import { HistoryTransition } from "@/components/HistoryTransition";
+import { PagePull } from "@/components/PagePull";
 import { getPopularIndies } from "@/lib/catalog";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -120,6 +121,7 @@ export default async function RootLayout({
         </div>
 
         <HistoryTransition />
+        <PagePull />
         <Toaster />
         <Analytics />
         <SpeedInsights />
