@@ -10,7 +10,6 @@ import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
 import { GameFacts } from "@/components/GameFacts";
 import { ScreenshotStrip } from "@/components/ScreenshotStrip";
-import { gameTheme, type Palette } from "@/lib/palette";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
 
@@ -151,7 +150,6 @@ export default async function GamePage({
     ],
   };
 
-  const theme = gameTheme(game.palette as Palette | null);
   const price = game.is_free ? "Free" : game.price_cents != null ? `$${(game.price_cents / 100).toFixed(2)}` : null;
 
   return (
@@ -176,8 +174,6 @@ export default async function GamePage({
         }}
       />}
       <WebMCP />
-      {/* Colour from the game (src/lib/palette.ts): set on the shell so the whole page, and the cover's fade, take it. */}
-      {theme && <style>{`.site-shell:has(.source-game){${theme.css}}`}</style>}
       {/* Opened from a card, the page slides in from the right; its cover morphs out of the card's art (CardLink).
           Replacing its loading skeleton, it fades in. */}
       <ViewTransition default="none" enter={{ "nav-forward": "slide-from-right", default: "page-in" }}

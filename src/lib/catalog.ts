@@ -13,7 +13,7 @@ export async function getGame(appid: number) {
   cacheLife("hours");
   const { data, error } = await getSupabaseServerClient()
     .from("games")
-    .select("appid,title,short_description,header_image,developers,publishers,release_date,genres,review_count,review_positive_pct,clean_score,bomb_windows,checked_at,price_cents,is_free,is_indie,screenshots,trailers,palette")
+    .select("appid,title,short_description,header_image,developers,publishers,release_date,genres,review_count,review_positive_pct,clean_score,bomb_windows,checked_at,price_cents,is_free,is_indie,screenshots,trailers")
     .eq("appid", appid)
     .maybeSingle();
   if (error) throw new Error("Catalog unavailable");

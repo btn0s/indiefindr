@@ -286,7 +286,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .discovery-page > .source-game + * { margin-top: var(--divider-gap); }
 /* Facts: one row of quiet chips that wrap whole. */
 .game-facts { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted-foreground); }
-.game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--game-chip, var(--card)); box-shadow: inset 0 0 0 1px var(--game-chip-border, var(--border)); white-space: nowrap; }
+.game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); white-space: nowrap; }
 .game-facts strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 .game-facts a { color: var(--foreground); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
@@ -298,10 +298,6 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--background) 30%, transparent) 62%, color-mix(in srgb, var(--background) 78%, transparent) 78%, var(--background) 92%); }
 .source-header { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 12px; margin-top: -76px; }
-/* A soft glow of the game's colour behind the title block (src/lib/palette.ts checks the text on it). */
-/* It stays inside the header's box and fades out before every edge, so it never widens the page or shows a seam. */
-.source-header::before { content: ""; position: absolute; z-index: -1; inset: -32px 0 0; pointer-events: none;
-  background: radial-gradient(36% 48% at 36% 48%, color-mix(in oklab, var(--game-glow, transparent) 85%, transparent), transparent); }
 /* More air around the facts row than between the other lines. */
 .source-header .game-facts { margin-block: 6px 2px; }
 /* Below 1000px the cover runs edge to edge under the header. Wider, it bleeds 40px past the content column on each
@@ -332,7 +328,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .trailer-button .icon-on, .trailer-button[data-on] .icon-off { opacity: 0; transform: scale(.6); filter: blur(2px); }
 .trailer-button[data-on] .icon-on { opacity: 1; transform: none; filter: none; }
 @media(prefers-reduced-motion: reduce) { .trailer-button svg { transform: none !important; filter: none !important; } }
-.source-description { max-width: 65ch; color: var(--game-description, #55555e); text-wrap: pretty; }
+.source-description { max-width: 65ch; color: var(--text-body); text-wrap: pretty; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
 /* Screenshots: a row that scrolls and snaps inside itself; on phones it runs to the screen edges. */
 .screenshot-strip { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
