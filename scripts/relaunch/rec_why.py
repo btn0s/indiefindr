@@ -33,7 +33,14 @@ def display(name):
 
 
 def why(source_tags, target_tags, specificity, tag_names):
-    """Display names of up to three shared descriptive tags, rarest first; None when nothing specific is shared."""
+    """Display names of up to three shared descriptive tags, rarest first; None when nothing specific is shared.
+    A tag that repeats one already picked (building and base building, roguelike and action roguelike) is skipped."""
     target = set(target_tags)
-    shared = sorted((t for t in dict.fromkeys(source_tags) if t in target and t in specificity), key=specificity.get)
-    return [display(tag_names[t]) for t in shared[:LIMIT]] or None
+    picked = []
+    for tag in sorted((t for t in dict.fromkeys(source_tags) if t in target and t in specificity), key=specificity.get):
+        words = set(display(tag_names[tag]).replace('-', ' ').split())
+        if not any(words <= other or other <= words for _, other in picked):
+            picked.append((display(tag_names[tag]), words))
+        if len(picked) == LIMIT:
+            break
+    return [name for name, _ in picked] or None

@@ -339,7 +339,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .screenshot-strip::-webkit-scrollbar { display: none; }
 .screenshot-strip li { flex: 0 0 clamp(220px, 32%, 288px); scroll-snap-align: start; }
 .screenshot-strip button { display: block; width: 100%; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; background: var(--muted); }
-.screenshot-strip img { width: 100%; height: 100%; object-fit: cover; }
+/* A hairline edge, so pale shots don't melt into the page. */
+.screenshot-strip img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid rgb(0 0 0 / .07); outline-offset: -1px; border-radius: inherit; }
 /* Phones have the 16px page gutter (layout.tsx px-4). */
 @media (max-width: 639px) {
   .screenshot-strip { margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; }
