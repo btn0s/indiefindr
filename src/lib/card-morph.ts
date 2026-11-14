@@ -23,6 +23,14 @@ const boxOf = (element: Element | null | undefined): Box | null => {
   const rect = element?.getBoundingClientRect();
   return rect ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height } : null;
 };
+/** A page and its sheet on screen, and the page's own scale (a page being pulled down to dismiss is shrunk), since the
+ *  content is moved in its own units. */
+const pageOf = (main: Element | null | undefined) => {
+  const box = boxOf(main), sheet = boxOf(main?.querySelector(":scope > .page-sheet"));
+  return main instanceof HTMLElement && main.offsetWidth && box && sheet ? { main: box, sheet, k: box.w / main.offsetWidth } : null;
+};
+/** A CSS time in milliseconds (computed custom properties come back in seconds). */
+const ms = (time: string) => parseFloat(time) * (/\dms$/.test(time.trim()) ? 1 : 1000);
 
 let active: Morph | null = null;
 let opening: Morph | null = null;
@@ -106,14 +114,11 @@ export function onEntryChange(type: string, from: number, to: number) {
   flight = {};
   if (!active) return;
   if (forward) flight.card = boxOf(document.querySelector(`.game-card[data-card="${CSS.escape(active.card)}"] > div`)) ?? undefined;
-  else {
-    const main = [...document.querySelectorAll("main")].find(main => main.checkVisibility());
-    flight = { main: main ?? undefined, sheet: boxOf(main?.querySelector(":scope > .page-sheet")) ?? undefined };
-  }
+  else flight.page = pageOf([...document.querySelectorAll("main")].find(main => main.checkVisibility())) ?? undefined;
 }
 
 /** Where the content riding in the sheet travels between: the card's surface, and the page with its sheet. */
-let flight: { card?: Box; sheet?: Box; main?: Element } = {};
+let flight: { card?: Box; page?: NonNullable<ReturnType<typeof pageOf>> } = {};
 
 /** The game page's content rides inside the card as it opens, at its own size, carried by the sheet's corner and cut
  *  off by its edges, so the page is all there from the first frame and the card reveals it (and Back folds it away
@@ -122,17 +127,12 @@ let flight: { card?: Box; sheet?: Box; main?: Element } = {};
 export function ride(types: readonly string[]) {
   const opening = types.includes("card-open");
   if (!active || !(opening || types.includes("card-close")) || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  if (opening) {
-    const main = document.querySelector("main:not([data-leaving])");
-    flight.main = main ?? undefined;
-    flight.sheet = boxOf(main?.querySelector(":scope > .page-sheet")) ?? undefined;
-  } else flight.card = boxOf(document.querySelector(`.game-card[data-card="${CSS.escape(active.card)}"] > div`)) ?? undefined;
-  const { card, sheet, main: element } = flight;
+  if (opening) flight.page = pageOf(document.querySelector("main:not([data-leaving])")) ?? undefined;
+  else flight.card = boxOf(document.querySelector(`.game-card[data-card="${CSS.escape(active.card)}"] > div`)) ?? undefined;
+  const { card, page } = flight;
   flight = {};
-  const main = boxOf(element);
-  if (!card || !sheet || !main || !(element instanceof HTMLElement) || !element.offsetWidth) return;
-  // The page's own scale (a page being pulled down to dismiss is shrunk), since the content is moved in its own units.
-  const k = main.w / element.offsetWidth;
+  if (!card || !page) return;
+  const { main, sheet, k } = page;
   const css = getComputedStyle(root());
   const at = (s: Box, radius: string): Keyframe => ({
     translate: `${(s.x - sheet.x) / k}px ${(s.y - sheet.y) / k}px`,
@@ -140,7 +140,7 @@ export function ride(types: readonly string[]) {
   });
   const frames = [at(card, css.getPropertyValue("--card-radius")), at(sheet, css.getPropertyValue("--page-radius"))];
   root().animate(opening ? frames : frames.reverse(), {
-    duration: parseFloat(css.getPropertyValue("--vt-duration")), easing: css.getPropertyValue("--vt-ease").trim(), fill: "both",
+    duration: ms(css.getPropertyValue("--vt-duration")), easing: css.getPropertyValue("--vt-ease").trim(), fill: "both",
     pseudoElement: opening ? "::view-transition-new(page-arrive)" : "::view-transition-old(page-leave)",
   });
 }
