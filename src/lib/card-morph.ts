@@ -127,7 +127,8 @@ let flight: { card?: Box; page?: NonNullable<ReturnType<typeof pageOf>> } = {};
 export function ride(types: readonly string[]) {
   const opening = types.includes("card-open");
   if (!active || !(opening || types.includes("card-close")) || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  if (opening) flight.page = pageOf(document.querySelector("main:not([data-leaving])")) ?? undefined;
+  // The arriving page is the one on screen: pages visited before stay mounted, hidden (cacheComponents).
+  if (opening) flight.page = pageOf([...document.querySelectorAll("main:not([data-leaving])")].find(main => main.checkVisibility())) ?? undefined;
   else flight.card = boxOf(document.querySelector(`.game-card[data-card="${CSS.escape(active.card)}"] > div`)) ?? undefined;
   const { card, page } = flight;
   flight = {};
