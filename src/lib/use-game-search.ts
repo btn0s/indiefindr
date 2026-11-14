@@ -1,4 +1,5 @@
 "use client";
+import { POPULAR_INDIES } from "./popular-indies";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -45,13 +46,13 @@ export function useGameSearch() {
     return () => { engine.terminate(); worker.current = null; loaded.current = false; };
   }, [show]);
 
-  // The empty search shows the most-reviewed indies, with their row details in the same query.
+  // Curated empty-state picks load their artwork and ratings in one catalog lookup.
   const loadPopular = useCallback(async (id: number) => {
     const { data } = await getSupabaseBrowserClient().from("games")
       .select("appid,title,header_image,release_date,review_positive_pct,review_count")
-      .eq("is_indie", true).order("review_count", { ascending: false }).limit(8)
+      .in("appid", POPULAR_INDIES.map(game => game.appid))
       .returns<(SearchDetail & { title: string })[]>();
-    const rows = data ?? [];
+    const rows = POPULAR_INDIES.flatMap(pick => { const game = data?.find(row => row.appid === pick.appid); return game ? [game] : []; });
     rows.forEach(row => requested.current.add(row.appid));
     setDetails(previous => new Map([...previous, ...rows.map(row => [row.appid, row] as const)]));
     const popular = rows.map(({ appid, title }) => ({ appid, title }));
