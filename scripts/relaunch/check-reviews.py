@@ -11,7 +11,7 @@ now=datetime.datetime.now(datetime.timezone.utc);today=now.date().isoformat()
 for key,tag in tags.items():
  pop=tag.get('popularity') or {};score=pop.get('percent_positive');count=pop.get('review_count') or 0;old=previous.get(key,{})
  dropped=old.get('default_score') is not None and score is not None and old['default_score']-score>15
- needs=rated_low(score,count) or dropped or int(key)==1478500
+ needs=rated_low(score,count) or dropped
  if not needs:
   results[key]=dict(clean_score=score,bomb_windows=[],checked_at=now.isoformat(),default_score=score)
   continue
