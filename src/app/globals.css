@@ -587,3 +587,51 @@ html { touch-action: manipulation; }
 .skeleton-text .skeleton:last-child { width: 60%; }
 .skeleton-button { height: 40px; width: 168px; border-radius: 8px; }
 @media(max-width: 640px) { .skeleton-button { width: 100%; height: 46px; } }
+
+/* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Visual language: Folio. A printed magazine about games. Names and headings are set in a serif display face at
+   confident sizes; reading and facts stay in Inter. Sections open on a hairline rule, corners are crisp (6px), and the
+   page breathes: fewer, larger things per screen. */
+:root { --background: #fbfbfa; --border: #e6e6e3; --rule: #1d1d20; --radius-print: 6px; }
+.home-intro h1, .page-title, .source-header .page-title [itemprop=name], .section-heading h2, .game-card-title {
+  font-family: var(--font-serif), Georgia, serif; font-weight: 400; }
+.home-intro h1 { font-size: clamp(48px, 7vw, 88px); line-height: .95; letter-spacing: -0.02em; }
+.home-intro .lede { font-size: 18px; line-height: 1.55; color: var(--text-body); }
+.source-header .page-title [itemprop=name] { font-size: clamp(46px, 5.6vw, 64px); line-height: .98; letter-spacing: -0.015em; }
+@media (min-width: 1000px) { .source-header .page-title [itemprop=name] { font-size: 52px; line-height: 1; } }
+/* The kicker: "Games like" in the serif's italic, a step above body size. */
+.source-header .title-lead { font-family: var(--font-serif), Georgia, serif; font-style: italic; font-size: 22px; line-height: 1.1; font-weight: 400; color: var(--muted-foreground); }
+
+/* Sections open on a full-width ink rule, the heading set large beneath it, the note in Inter, See all as a link. */
+.section-heading { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding-top: 14px; border-top: 1px solid var(--rule); margin-bottom: 22px; }
+.section-heading h2 { font-size: 34px; line-height: 1.05; letter-spacing: -0.01em; }
+@media (max-width: 700px) { .section-heading h2 { font-size: 30px; } }
+.section-heading p { margin-top: 6px; }
+.see-all { align-self: start; margin-top: 6px; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 4px; }
+.see-all svg { display: none; }
+@media (hover: hover) and (pointer: fine) { .see-all:hover { text-decoration-color: currentColor; } }
+
+/* Cards: the art as a print plate with crisp corners, the name in the serif beneath it, the score in small Inter. Four
+   across on desktop with wide gutters, two on phones. */
+.game-grid { gap: 32px 14px; }
+@media(min-width: 768px) { .game-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 44px 24px; } .card-grid { row-gap: 44px; } }
+.card-grid { row-gap: 32px; }
+.game-card-art, .card-skeleton .skeleton-art { border-radius: var(--radius-print); }
+.game-card-title { padding-top: 12px; font-size: 20px; line-height: 1.1; font-weight: 400; letter-spacing: -0.005em; }
+@media (max-width: 700px) { .game-card-title { font-size: 18px; } }
+.card-rating { margin-top: 4px; font-size: 12px; }
+@media (hover: hover) and (pointer: fine) { .game-card:hover .game-card-title { text-decoration-thickness: 1px; text-underline-offset: 4px; } }
+
+/* Game page: the plate keeps its place, with print corners. */
+.game-trailer, .screenshot-strip button { border-radius: var(--radius-print); }
+.game-trailer::after { border-radius: inherit; }
+.source-description { font-size: 15px; line-height: 1.65; }
+.button { border-radius: var(--radius-print); }
+.steam-link { min-height: 46px; padding-inline: 20px; }
+.game-facts li { background: rgb(19 19 22 / .05); }
+
+/* Home */
+.showcase-source, .showcase-tile, .showcase-recs a { border-radius: var(--radius-print); }
+.showcase-source span { border-radius: 4px; }
+.home-intro .examples { font-size: 15px; }
+.search-box { border-radius: var(--radius-print); }
