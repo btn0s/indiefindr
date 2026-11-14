@@ -587,3 +587,86 @@ html { touch-action: manipulation; }
 .skeleton-text .skeleton:last-child { width: 60%; }
 .skeleton-button { height: 40px; width: 168px; border-radius: 8px; }
 @media(max-width: 640px) { .skeleton-button { width: 100%; height: 46px; } }
+
+/* ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Visual language: Object. Everything you can pick is an object: a white card with one job, lifted off a soft grey
+   ground by a quiet shadow, its art inset with a matching radius. The game itself is the biggest object: a card whose
+   picture is the cover, with its name, a stat trio split by hairlines and a white pill Steam button on a scrim. */
+:root { --background: #ededf0; --border: #e1e1e6; --object-radius: 22px;
+  --object-shadow: 0 0 0 1px rgb(19 19 22 / .04), 0 1px 2px rgb(19 19 22 / .05), 0 10px 28px -14px rgb(19 19 22 / .18); }
+
+/* Cards: white objects of equal height in a row; art inset 8px, name and score beneath. */
+.game-grid { gap: 10px; }
+.card-grid { row-gap: 10px; }
+@media(min-width: 768px) { .game-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } .card-grid { row-gap: 16px; } }
+.game-card { height: 100%; }
+.game-card > div { height: 100%; padding: 7px 7px 12px; border-radius: var(--object-radius); background: var(--card); box-shadow: var(--object-shadow); }
+.game-card-art { border-radius: calc(var(--object-radius) - 7px); }
+.game-card-art::after { box-shadow: inset 0 0 0 1px rgb(0 0 0 / .05); }
+.game-card-title { padding: 11px 7px 0; font-weight: 600; letter-spacing: -0.01em; }
+.card-rating { padding: 0 7px; }
+.card-skeleton { padding: 7px 7px 12px; border-radius: var(--object-radius); background: var(--card); box-shadow: var(--object-shadow); }
+.card-skeleton .skeleton-art { border-radius: calc(var(--object-radius) - 7px); }
+@media (hover: hover) and (pointer: fine) {
+  .game-card > div { transition: transform var(--duration-release) var(--ease-out), box-shadow var(--duration-hover) var(--ease-out); }
+  .game-card:hover > div { box-shadow: 0 0 0 1px rgb(19 19 22 / .05), 0 2px 4px rgb(19 19 22 / .06), 0 18px 36px -16px rgb(19 19 22 / .26); }
+  .game-card:hover .game-card-title { text-decoration: none; }
+}
+
+/* Shelf headings: a confident name, its note quiet beneath, See all as a small white pill. */
+.section-heading h2 { font-size: 24px; font-weight: 650; letter-spacing: -0.025em; }
+@media (max-width: 700px) { .section-heading h2 { font-size: 21px; } }
+.see-all { padding: 6px 12px 6px 14px; border-radius: 999px; background: var(--card); box-shadow: var(--object-shadow); font-size: 13px; }
+
+/* Game page: the game card. Phones give it a portrait frame so the art has room above the type; desktop runs it wide
+   with the type at the bottom left and the Steam button bottom right. */
+.source-game { display: flex; flex-direction: column; gap: 20px; }
+.source-card { position: relative; isolation: isolate; overflow: hidden; border-radius: var(--object-radius); background: var(--media); box-shadow: var(--object-shadow); }
+.source-card .game-trailer { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; box-shadow: none; }
+.source-card .game-trailer::after { border-radius: 0; box-shadow: none;
+  background: linear-gradient(to top, rgb(0 0 0 / .86), rgb(0 0 0 / .62) 30%, rgb(0 0 0 / .18) 56%, transparent 72%), linear-gradient(to bottom, rgb(0 0 0 / .25), transparent 20%); }
+.source-card .source-info { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 18px; min-height: min(128vw, 560px); justify-content: flex-end; padding: 20px; color: #fff; pointer-events: none; }
+.source-card .source-info :is(a, button) { pointer-events: auto; }
+@media (min-width: 701px) {
+  .source-card .source-info { min-height: clamp(460px, 62vh, 560px); flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 32px; padding: 32px; }
+}
+.source-card .source-header { gap: 14px; max-width: 600px; }
+.source-card .title-lead { color: rgb(255 255 255 / .78); }
+.source-card .page-title [itemprop=name] { text-shadow: 0 1px 18px rgb(0 0 0 / .25); }
+@media (min-width: 701px) { .source-card .page-title [itemprop=name] { font-size: clamp(44px, 4.4vw, 56px); letter-spacing: -0.035em; } }
+/* Facts on the card: each developer a frosted chip on its own row above; then the stat trio (score, reviews, year),
+   value over a tiny label, split by hairlines. Nothing truncates; a long name wraps inside its chip. */
+.source-card .game-facts { display: flex; flex-wrap: wrap; row-gap: 14px; margin: 2px 0 0; color: #fff; }
+.source-card .game-facts::after { content: ""; order: 0; flex-basis: 100%; height: 0; margin-top: -14px; }
+.source-card .game-facts li { order: 1; display: flex; flex-direction: column; gap: 3px; padding: 0 16px; border-radius: 0; background: none; white-space: normal; }
+.source-card .game-facts li[data-fact=developer] { order: -1; flex: 0 1 auto; padding: 0; margin: 0 6px 0 0; }
+.source-card .game-facts li[data-fact=developer] .fact-value { display: inline-block; padding: 4px 11px; border-radius: 14px; background: rgb(255 255 255 / .16); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4); font-size: 13px; font-weight: 500; }
+.source-card .game-facts li[data-fact=score] { padding-left: 0; }
+.source-card .game-facts li[data-fact=reviews]:first-child { padding-left: 0; }
+.source-card .game-facts [data-fact=score] + [data-fact=reviews], .source-card .game-facts :is([data-fact=score], [data-fact=reviews]) ~ [data-fact=year] { border-left: 1px solid rgb(255 255 255 / .22); }
+.source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) .fact-value { font-size: 22px; line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; color: #fff; }
+.source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) .fact-label { display: block; font-size: 12px; line-height: 1.3; color: rgb(255 255 255 / .66); }
+.source-card .game-facts li[data-fact=developer] .fact-label { display: none; }
+.source-card .game-facts a { color: #fff; }
+/* A long rating label sits under its score; on a phone the reviews and year stay beside it. */
+.source-card .game-facts li[data-fact=score] .fact-label { max-width: 13ch; }
+/* The action: a white pill on the scrim. */
+.source-card .source-game-actions { flex-shrink: 0; }
+.source-card .steam-link { width: 100%; min-height: 50px; padding-inline: 24px; border-radius: 999px; color: #131316; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .2), 0 8px 24px -8px rgb(0 0 0 / .45); font-size: 15px; font-weight: 600; }
+.source-card .steam-link:active { box-shadow: 0 1px 1px rgb(0 0 0 / .2); }
+@media (hover: hover) and (pointer: fine) { .source-card .steam-link:hover { filter: none; background: #f2f2f4; } }
+.source-card .trailer-controls { top: 16px; right: 16px; }
+.screenshot-strip button { border-radius: 16px; }
+.source-description { color: var(--text-body); font-size: 15px; line-height: 1.6; }
+
+/* Home: the showcase pieces are objects too. */
+.showcase-source { border-radius: var(--object-radius); }
+.showcase-tile, .showcase-recs a { border-radius: 14px; }
+.showcase-tile { border-width: 4px; border-color: var(--card); }
+.search-box { border-radius: 999px; background: var(--background); }
+.button-primary { border-radius: 999px; }
+.skeleton-on-art { background: rgb(255 255 255 / .12); }
+.skeleton-on-art::after { background: linear-gradient(90deg, transparent, rgb(255 255 255 / .08), transparent); }
+.source-card .skeleton-meta { height: 44px; width: min(320px, 85%); margin-top: 6px; }
+.source-card .skeleton-button { height: 50px; border-radius: 999px; }
+@media (min-width: 701px) { .source-card .skeleton-button { width: 200px; } }
