@@ -312,12 +312,13 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Review-bombed games: a banner under the facts says what happened beside the review history,
    and opens the full history in a dialog, a bottom sheet on phones. Steam's score stays as Steam gives it. */
 .meta-score { white-space: nowrap; }
-.bomb-banner, .history-chart, .bomb-dialog { --band: color-mix(in srgb, var(--foreground) 7%, transparent); }
-.bomb-banner { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px; width: 100%; margin-top: 24px; padding: 20px 24px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text-body); font: inherit; text-align: left; cursor: pointer; transition: border-color 160ms ease-out, box-shadow 160ms ease-out; }
-.bomb-banner:hover { border-color: color-mix(in srgb, var(--foreground) 16%, var(--border)); box-shadow: 0 1px 2px rgb(19 19 22 / 4%), 0 6px 20px rgb(19 19 22 / 5%); }
+.bomb-banner, .history-chart, .bomb-dialog { --band: color-mix(in srgb, var(--negative) 10%, transparent); }
+.bomb-banner { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: 40px; width: 100%; margin-top: 24px; padding: 20px 24px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text-body); font: inherit; text-align: left; cursor: pointer; transition: border-color 160ms ease-out, box-shadow 160ms ease-out, scale 160ms cubic-bezier(.2, 0, 0, 1); }
+.bomb-banner:hover { border-color: color-mix(in srgb, var(--foreground) 22%, var(--border)); box-shadow: 0 1px 2px rgb(19 19 22 / 5%), 0 8px 24px rgb(19 19 22 / 7%); }
+.bomb-banner:hover .bomb-banner-more { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 3px; }
 .bomb-banner:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .bomb-banner { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.bomb-banner:active { background: color-mix(in srgb, var(--foreground) 2%, var(--card)); }
+.bomb-banner:active { scale: .992; box-shadow: 0 1px 2px rgb(19 19 22 / 5%); transition-duration: 80ms; }
 .bomb-banner-text { display: flex; flex-direction: column; gap: 4px; }
 .bomb-banner-eyebrow { margin-bottom: 6px; color: var(--muted-foreground); font-size: var(--type-meta); line-height: 1.4; }
 .bomb-banner-headline { color: var(--foreground); font-size: var(--type-body); font-weight: 600; line-height: 1.5; text-wrap: balance; }
@@ -327,8 +328,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .bomb-banner:hover .bomb-banner-more svg { translate: 3px 0; }
 
 .history-chart { display: flex; flex-direction: column; min-width: 0; margin: 0; color: var(--muted-foreground); font-size: var(--type-meta); line-height: 1.4; font-variant-numeric: tabular-nums; }
-.history-chart[data-compact] { align-self: end; }
-.history-caption { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; margin-bottom: 16px; }
+.history-caption { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; margin-bottom: 12px; }
 .history-readout strong { margin-right: 6px; color: var(--foreground); font-weight: 600; }
 .history-legend { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; }
 .history-legend > span { display: inline-flex; align-items: center; gap: 6px; }
@@ -336,28 +336,34 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .history-legend [data-key=up] { --key: var(--positive); }
 .history-legend [data-key=down] { --key: var(--negative); }
 .history-legend [data-key=band]::before { width: 12px; height: 12px; border-radius: 3px; background: var(--band); }
-.history-labels { position: relative; display: block; height: 18px; margin-bottom: 4px; }
-.history-labels > span { position: absolute; bottom: 0; translate: -50% 0; color: var(--text-body); white-space: nowrap; }
-.history-labels > [data-edge=start] { translate: -16px 0; }
-.history-labels > [data-edge=end] { translate: calc(-100% + 16px) 0; }
-.history-label-short, .history-labels[data-tight] .history-label-long { display: none; }
-.history-labels[data-tight] .history-label-short { display: inline; }
-.history-plot { position: relative; display: block; height: 88px; container-type: inline-size; }
-.history-chart:not([data-compact]) .history-plot { height: 184px; touch-action: pan-y; border-radius: 4px; }
+/* Each review bomb is named above its band, over a short leader. */
+.history-callouts { position: relative; display: block; flex-shrink: 0; }
+.history-chart[data-compact] .history-callouts { height: 18px; margin-bottom: 6px; }
+.history-callout { position: absolute; color: var(--muted-foreground); line-height: 16px; white-space: nowrap; }
+.history-chart[data-compact] .history-callout { color: var(--text-body); line-height: 18px; }
+.history-callout strong { color: var(--foreground); font-weight: 500; }
+.history-callout[data-stacked] > span { display: block; }
+.history-leader { position: absolute; bottom: 0; width: 1px; translate: -.5px 0; background: color-mix(in srgb, var(--foreground) 30%, transparent); }
+.history-plot { position: relative; display: block; height: 96px; }
+.history-chart:not([data-compact]) .history-plot { height: 176px; touch-action: pan-y; border-radius: 4px; }
 .history-plot:focus-visible { outline: 2px solid var(--ring); outline-offset: 6px; }
-.history-band { position: absolute; top: -4px; bottom: -4px; border-radius: 3px; background: var(--band); }
-.history-bar { position: absolute; background: var(--fill); transition: opacity 120ms ease-out; }
-.history-bar[data-sign=up] { --fill: var(--positive); border-radius: 2px 2px 0 0; }
-.history-bar[data-sign=down] { --fill: var(--negative); border-radius: 0 0 2px 2px; }
-.history-plot[data-active] .history-period:not([data-active]) .history-bar { opacity: .28; }
-.history-axis { position: absolute; left: 0; right: 0; height: 1px; translate: 0 -.5px; background: color-mix(in srgb, var(--foreground) 32%, transparent); }
-.history-grid { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); }
-.history-grid > span { position: absolute; right: 0; bottom: 3px; padding-left: 6px; background: var(--card); line-height: 1; }
-.history-grid[data-side=down] > span { top: 4px; bottom: auto; }
+.history-svg { display: block; animation: history-in 240ms ease-out; }
+@keyframes history-in { from { opacity: 0; } }
+.history-band { fill: var(--band); }
+.history-bar[data-sign=up] { fill: var(--positive); }
+.history-bar[data-sign=down] { fill: var(--negative); }
+.history-slot { transition: opacity 120ms ease-out; }
+.history-plot[data-active] .history-slot:not([data-active]) { opacity: .28; }
+.history-axis { fill: color-mix(in srgb, var(--foreground) 32%, transparent); }
+.history-grid { stroke: var(--border); stroke-width: 1; }
+/* Labels sit inside the plot on a card-coloured halo, so they stay legible over a bar. */
+.history-tick, .history-direct { position: absolute; padding: 1px 6px 1px 0; border-radius: 3px; background: var(--card); line-height: 1; white-space: nowrap; }
+.history-tick { left: 0; }
+.history-tick[data-at=end] { right: 0; left: auto; padding: 1px 0 1px 6px; }
+.history-direct { right: 0; padding: 1px 0 1px 6px; font-size: 11px; }
 .history-years { position: relative; height: 18px; margin-top: 10px; }
 .history-years > span { position: absolute; top: 0; padding-left: 6px; border-left: 1px solid var(--border); line-height: 18px; }
-.history-years > [data-end] { display: none; }
-.history-ends { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
+.history-ends { display: flex; justify-content: space-between; margin-top: 8px; }
 
 .bomb-dialog-backdrop { position: fixed; inset: 0; z-index: 50; background: rgb(19 19 22 / 36%); transition: opacity 220ms cubic-bezier(.2, 0, 0, 1); }
 .bomb-dialog-backdrop:is([data-starting-style], [data-ending-style]) { opacity: 0; }
@@ -376,7 +382,11 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .bomb-dialog-close { display: grid; flex-shrink: 0; place-items: center; width: 36px; height: 36px; border-radius: 999px; color: var(--muted-foreground); cursor: pointer; transition: background-color 120ms ease-out, color 120ms ease-out; }
 .bomb-dialog-close:hover { background: var(--muted); color: var(--foreground); }
 .bomb-dialog-close:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.bomb-dialog-body { display: flex; flex-direction: column; gap: 32px; min-height: 0; padding: 12px 32px 28px; overflow-y: auto; overscroll-behavior: contain; }
+.bomb-dialog-body { display: flex; flex-direction: column; gap: 28px; min-height: 0; padding: 12px 32px 28px; overflow-y: auto; overscroll-behavior: contain; }
+/* While there's more history below, the body fades out at its bottom edge to say it scrolls. */
+@property --scroll-fade { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@keyframes bomb-scroll-fade { 0%, 94% { --scroll-fade: 48px; } 100% { --scroll-fade: 0px; } }
+.bomb-dialog-body { mask-image: linear-gradient(to bottom, #000 calc(100% - var(--scroll-fade)), transparent); animation: bomb-scroll-fade linear both; animation-timeline: scroll(self); }
 .bomb-dialog-lead { max-width: 62ch; color: var(--text-body); font-size: var(--type-body); line-height: 1.6; text-wrap: pretty; }
 .bomb-dialog-lead strong { color: var(--foreground); font-weight: 600; }
 .bomb-dialog-method { max-width: 66ch; color: var(--muted-foreground); font-size: var(--type-meta); line-height: 1.55; text-wrap: pretty; }
@@ -407,11 +417,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .bomb-banner-headline { margin-bottom: 4px; }
   .history-chart[data-compact] { margin-top: 20px; }
   .bomb-banner-more { order: 1; padding-top: 16px; }
-  .history-plot { height: 64px; }
+  .history-plot { height: 72px; }
   .history-chart:not([data-compact]) .history-plot { height: 152px; }
-  .history-labels .history-label-long { display: none; }
-  .history-labels .history-label-short { display: inline; }
-  .history-years > [data-minor] { display: none; }
   .bomb-dialog-header { padding: 12px 12px 0 20px; }
   .bomb-dialog-header h2 { font-size: var(--type-heading); }
   .bomb-dialog-body { gap: 28px; padding: 8px 20px 24px; }
@@ -422,10 +429,14 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .bomb-ledger-cell { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }
 @media(prefers-reduced-motion: reduce) {
-  .bomb-banner, .bomb-banner-more svg, .history-bar, .bomb-dialog-close { transition: none; }
+  .bomb-banner, .bomb-banner-more svg, .history-slot, .bomb-dialog-close { transition: none; }
+  .bomb-banner:active { scale: none; }
+  .history-svg { animation: none; }
 }
 @media(forced-colors: active) {
-  .history-band { border: 1px dashed CanvasText; }
-  .history-bar[data-sign=up], .bomb-split > [data-sign=up] { background: Highlight; }
-  .history-bar[data-sign=down], .bomb-split > [data-sign=down] { background: CanvasText; }
+  .history-band { fill: none; stroke: CanvasText; stroke-dasharray: 3 3; }
+  .history-bar[data-sign=up] { fill: Highlight; }
+  .history-bar[data-sign=down], .history-axis { fill: CanvasText; }
+  .bomb-split > [data-sign=up] { background: Highlight; }
+  .bomb-split > [data-sign=down] { background: CanvasText; }
 }
