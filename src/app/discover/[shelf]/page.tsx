@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CardGrid } from "@/components/CardGrid";
-import { getShelf, isShelf, SHELVES } from "@/lib/catalog";
+import { getShelf, isShelf, SHELVES, withArt } from "@/lib/catalog";
 
 export const generateStaticParams = () => Object.keys(SHELVES).map(shelf => ({ shelf }));
 
@@ -15,12 +15,12 @@ export async function generateMetadata({ params }: { params: Promise<{ shelf: st
 export default async function ShelfPage({ params }: { params: Promise<{ shelf: string }> }) {
   const { shelf } = await params;
   if (!isShelf(shelf)) notFound();
-  const games = await getShelf(shelf, 96);
+  const games = await withArt(await getShelf(shelf, 96));
   return <main className="discovery-page">
     <header className="page-head">
       <h1 className="page-title">{SHELVES[shelf].title}</h1>
       <p className="page-note">{SHELVES[shelf].note}</p>
     </header>
-    <CardGrid games={games} eager={8} />
+    <CardGrid games={games} eager={6} />
   </main>;
 }

@@ -1,7 +1,8 @@
 import { WebMCP } from "@/components/WebMCP";
 import { notFound } from "next/navigation";
 import { heroImage } from "@/lib/hero";
-import { GameTrailer, type Trailer } from "@/components/GameTrailer";
+import type { Trailer } from "@/components/GameTrailer";
+import { GameHero } from "@/components/GameHero";
 import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
@@ -9,7 +10,8 @@ import { SteamLink } from "@/components/SteamLink";
 import { GameFacts } from "@/components/GameFacts";
 import { ScreenshotStrip } from "@/components/ScreenshotStrip";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
+import { getGamePageSlate, getGame, getRecommendations, withArt } from "@/lib/catalog";
+import { getHeroLogo } from "@/lib/steam-art";
 
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
@@ -116,12 +118,16 @@ export default async function GamePage({
     }),
   };
 
-  const { recs, developerGames } = await getGamePageSlate(appId, game.developers);
+  // The logo is looked up alongside the art and shown only over the library hero it was placed for. Steam unreachable:
+  // no logo, until the page is next refreshed.
+  const [{ recs, developerGames }, [{ hero }], logo] = await Promise.all([
+    getGamePageSlate(appId, game.developers), withArt([{ appid: appId }]), getHeroLogo(appId).catch(() => null),
+  ]);
   const recommendationsSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: `Indie games like ${game.title}`,
-    itemListElement: recs.map(({ game: rec }, index) => ({
+    itemListElement: recs.map((rec, index) => ({
       "@type": "ListItem",
       position: index + 1,
       url: `${siteUrl}/games/${rec.appid}`,
@@ -173,11 +179,11 @@ export default async function GamePage({
       />}
       <WebMCP />
       <main className="discovery-page">
-        {/* Cover hero: the trailer (its poster or still until it plays) as a framed plate on the page, whole and unfaded.
-            On desktop the title, facts, blurb and Steam button sit beside it; on phones, beneath it. */}
+        {/* The page opens on the game's key art with its logo, a framed plate the width of the column. The title, facts,
+            blurb and Steam button follow, then the trailer and screenshots. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
-          <GameTrailer title={game.title} trailer={trailer} base={game.header_image}
-            image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
+          <GameHero title={game.title} logo={hero ? logo : null}
+            art={heroImage({ hero, hero_still: game.screenshots?.[0], hero_poster: trailer?.poster, header_image: game.header_image })} />
           <div className="source-info">
             <header className="source-header">
               <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
@@ -186,11 +192,11 @@ export default async function GamePage({
             </header>
             <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>
           </div>
-          <ScreenshotStrip title={game.title} screenshots={game.screenshots ?? []} />
+          <ScreenshotStrip title={game.title} trailer={trailer} screenshots={game.screenshots ?? []} />
           <ShopLinks appid={appId} />
         </article>
         <SameDeveloperSection developers={game.developers} games={developerGames} />
-        <SuggestionsSection appId={appId} recs={recs} />
+        <SuggestionsSection appId={appId} games={recs} />
         <AdSlot />
       </main>
     </>

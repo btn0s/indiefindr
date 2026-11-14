@@ -4,49 +4,44 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { preconnect } from "react-dom";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
-import { HERO_SIZES } from "@/lib/hero";
 
 export type Trailer = { title: string; url: string; poster: string | null };
 
-// An explicit pause holds for the rest of the visit: the next game page starts paused too.
-const PAUSED_KEY = "indiefindr-trailer-paused";
-const saveData = () => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+/** A tile of the media row (globals.css, .screenshot-strip li): most of a phone's width, a third of the column. */
+const TILE_SIZES = "(min-width: 1096px) 340px, (min-width: 640px) 33vw, 80vw";
 
-/** The hero: a muted, looping trailer over its still. The stream starts only after the still has painted, when the
- *  browser is idle, so it never competes with the page's first images. It plays only while on screen and the tab is
- *  visible, and not at all for reduced motion or Save-Data, which keep the still. */
-export function GameTrailer({ title, trailer, image, base }: {
-  title: string; trailer: Trailer | null; image: string | null;
-  /** The store header, already cached from the card that was opened: it fills the frame at once, and the optimised
-   *  hero fades in over it, so a cold image transform never leaves the frame empty. */
-  base: string | null;
-}) {
+/** The trailer, first in the media row: its poster under a play button until asked for, then it streams and plays in
+ *  place, with sound, under the pause and mute buttons (K toggles pause). Nothing loads before the tap. It pauses while
+ *  scrolled away or while the tab is hidden and carries on when back; leaving the page stops the stream, and coming
+ *  back finds it paused. */
+export function GameTrailer({ title, trailer }: { title: string; trailer: Trailer }) {
   const ref = useRef<HTMLVideoElement>(null);
-  const [heroPainted, setHeroPainted] = useState(!image);
-  const [loaded, setLoaded] = useState(false);
+  const [started, setStarted] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const userPaused = useRef(false);
+  const [paused, setPaused] = useState(true);
+  const [muted, setMuted] = useState(false);
+  // The visitor wants it playing: set by play, cleared by pause, by the end, and by leaving the page.
+  const wanted = useRef(false);
   const inView = useRef(true);
-  if (trailer) preconnect("https://video.akamai.steamstatic.com");
+  preconnect("https://video.akamai.steamstatic.com");
 
+  const native = (video: HTMLVideoElement) => video.canPlayType("application/vnd.apple.mpegurl") !== "";
   const sync = () => {
     const video = ref.current;
     if (!video?.currentSrc && !video?.src) return;
-    if (!userPaused.current && inView.current && !document.hidden) void video.play().catch(() => {});
+    if (wanted.current && inView.current && !document.hidden) void video.play().catch(() => {});
     else video.pause();
   };
 
   useEffect(() => {
     const video = ref.current;
-    if (!video || !trailer || !heroPainted || matchMedia("(prefers-reduced-motion: reduce)").matches || saveData()) return;
-    userPaused.current = sessionStorage.getItem(PAUSED_KEY) === "1";
-    setPaused(userPaused.current);
+    if (!started || !video) return;
     let hls: { destroy(): void } | undefined;
     let disposed = false;
-    const start = () => {
-      if (video.canPlayType("application/vnd.apple.mpegurl")) { video.src = trailer.url; sync(); return; }
+    if (native(video)) {
+      if (!video.getAttribute("src")) video.src = trailer.url;
+      sync();
+    } else {
       void import("hls.js").then(({ default: Hls }) => {
         if (disposed || !Hls.isSupported()) return;
         const player = new Hls({ capLevelToPlayerSize: true });
@@ -55,17 +50,14 @@ export function GameTrailer({ title, trailer, image, base }: {
         player.attachMedia(video);
         player.on(Hls.Events.MANIFEST_PARSED, sync);
       });
-    };
-    // Not every Safari has requestIdleCallback; a short timeout stands in.
-    const onIdle = window.requestIdleCallback as typeof requestIdleCallback | undefined;
-    const idle = onIdle ? onIdle(start, { timeout: 1000 }) : window.setTimeout(start, 200);
+    }
     const visibility = new IntersectionObserver(([entry]) => { inView.current = entry.isIntersecting; sync(); }, { threshold: 0.25 });
     visibility.observe(video);
     document.addEventListener("visibilitychange", sync);
     // Also runs when the route is kept but hidden after navigating away (Cache Components): stop, don't play unseen.
     return () => {
       disposed = true;
-      if (onIdle) cancelIdleCallback(idle); else clearTimeout(idle);
+      wanted.current = false;
       visibility.disconnect();
       document.removeEventListener("visibilitychange", sync);
       hls?.destroy();
@@ -75,26 +67,33 @@ export function GameTrailer({ title, trailer, image, base }: {
       video.removeAttribute("src");
       video.load();
     };
-  }, [trailer, heroPainted]);
+  }, [started, trailer]);
 
-  const togglePause = () => {
-    const next = !paused;
-    userPaused.current = next;
-    setPaused(next);
-    if (next) sessionStorage.setItem(PAUSED_KEY, "1"); else sessionStorage.removeItem(PAUSED_KEY);
-    sync();
+  const play = () => {
+    const video = ref.current;
+    if (!video) return;
+    wanted.current = true;
+    if (started) return sync();
+    // Safari streams HLS itself; starting it inside the tap is what lets it play with sound. Elsewhere hls.js attaches
+    // in the effect, and the tap has already unlocked sound for the page.
+    if (native(video)) {
+      video.src = trailer.url;
+      void video.play().catch(() => {});
+    }
+    setStarted(true);
   };
+  const pause = () => { wanted.current = false; ref.current?.pause(); };
 
-  return <div className="game-trailer" onKeyDown={event => { if (loaded && event.key.toLowerCase() === "k") togglePause(); }}>
-    {/* Eager and decoded with the frame: it is the card's own file, already in memory, so the cover has art on the
-        page's first frame instead of an empty plate. */}
-    {base && base !== image && <Image src={base} alt="" fill unoptimized loading="eager" decoding="sync" className="object-cover" />}
-    {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes={HERO_SIZES} className="object-cover"
-      onLoad={() => setHeroPainted(true)} onError={() => setHeroPainted(true)} />}
-    {trailer && <video ref={ref} muted={muted} loop playsInline aria-label={`${title} trailer`}
-      onLoadedData={() => setLoaded(true)} onPlaying={() => setPlaying(true)} data-playing={playing} />}
-    {loaded && <div className="trailer-controls">
-      <Button className="trailer-button" onClick={togglePause} aria-label={paused ? "Play trailer" : "Pause trailer"} data-on={paused || undefined}>
+  return <div className="game-trailer" onKeyDown={event => { if (started && event.key.toLowerCase() === "k") (paused ? play : pause)(); }}>
+    {trailer.poster && <Image src={trailer.poster} alt="" fill sizes={TILE_SIZES} className="object-cover" />}
+    <video ref={ref} muted={muted} playsInline aria-label={`${title} trailer`} data-playing={playing}
+      onPlaying={() => setPlaying(true)} onPlay={() => setPaused(false)} onPause={() => setPaused(true)}
+      onEnded={() => { wanted.current = false; }} />
+    {!started && <button type="button" className="trailer-start" onClick={play} aria-label={`Play ${title} trailer`}>
+      <span className="trailer-start-mark"><Play size={20} fill="currentColor" aria-hidden="true" /></span>
+    </button>}
+    {started && <div className="trailer-controls">
+      <Button className="trailer-button" onClick={paused ? play : pause} aria-label={paused ? "Play trailer" : "Pause trailer"} data-on={paused || undefined}>
         <Pause size={16} className="icon-off" aria-hidden="true" /><Play size={16} className="icon-on" aria-hidden="true" />
       </Button>
       <Button className="trailer-button" onClick={() => setMuted(value => !value)} aria-label={muted ? "Unmute trailer" : "Mute trailer"} data-on={muted || undefined}>

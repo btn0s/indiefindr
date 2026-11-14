@@ -21,6 +21,6 @@ export async function gameDetails(appid:number){
 export async function recommendationSlate(appid:number,limit=10){
  const game=await getGame(appid);if(!game)return null;
  const {recs}=await getGamePageSlate(appid,game.developers);
- const recommendations=recs.slice(0,Math.min(24,Math.max(1,limit))).map(({game:g})=>({appid:g.appid,name:g.title,header_image:g.header_image,review_percent:g.review_positive_pct,review_label:steamRating(g.review_positive_pct,g.review_count),review_count:g.review_count,review_bomb:reviewBomb(g),...links(g.appid)}));
+ const recommendations=recs.slice(0,Math.min(24,Math.max(1,limit))).map(g=>({appid:g.appid,name:g.title,header_image:g.header_image,review_percent:g.review_positive_pct,review_label:steamRating(g.review_positive_pct,g.review_count),review_count:g.review_count,review_bomb:reviewBomb(g),...links(g.appid)}));
  return {game:{appid,name:game.title,review_bomb:reviewBomb(game),...links(appid)},recommendations};
 }

@@ -1,4 +1,4 @@
-import { CARD_FIELDS, textArray } from "@/lib/catalog";
+import { CARD_FIELDS, textArray, withArt, type CardRow } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { cacheLife } from "next/cache";
@@ -59,7 +59,7 @@ async function getGamesByDeveloper(developerName: string) {
     return [];
   }
 
-  return games;
+  return withArt<CardRow>(games);
 }
 
 export default async function DeveloperQueryPage({
@@ -136,7 +136,7 @@ export default async function DeveloperQueryPage({
           </p>
         </header>
 
-        <CardGrid games={games} eager={8} />
+        <CardGrid games={games} eager={6} />
       </main>
     </>
   );

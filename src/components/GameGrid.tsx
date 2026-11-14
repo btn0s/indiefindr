@@ -4,12 +4,12 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { CardGrid } from "./CardGrid";
 import { GridSkeleton } from "./CardSkeleton";
 import { loadMoreGames } from "@/lib/actions/games";
-import type { GameCardGame } from "@/lib/supabase/types";
+import type { CardGame } from "@/lib/catalog";
 
 const PAGE_SIZE = 24;
 
 interface GameGridProps {
-  initialGames: GameCardGame[];
+  initialGames: CardGame[];
 }
 
 export function GameGrid({ initialGames }: GameGridProps) {
@@ -18,7 +18,7 @@ export function GameGrid({ initialGames }: GameGridProps) {
   const [hasMore, setHasMore] = useState(initialGames.length === PAGE_SIZE);
   const [isPending, startTransition] = useTransition();
   const loaderRef = useRef<HTMLDivElement>(null);
-  const gamesRef = useRef<GameCardGame[]>(initialGames);
+  const gamesRef = useRef<CardGame[]>(initialGames);
 
   useEffect(() => {
     gamesRef.current = games;
@@ -62,7 +62,7 @@ export function GameGrid({ initialGames }: GameGridProps) {
       <div className="card-grid">
         <CardGrid games={games} />
         {/* The next page holds its place as cards, so nothing below jumps when it lands. */}
-        {isPending && <GridSkeleton count={4} />}
+        {isPending && <GridSkeleton count={6} />}
       </div>
       {hasMore && <div ref={loaderRef} aria-hidden="true" className="h-px" />}
     </>

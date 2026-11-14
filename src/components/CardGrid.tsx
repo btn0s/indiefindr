@@ -1,14 +1,14 @@
-import type { GameCardGame } from "@/lib/supabase/types";
+import type { CardGame } from "@/lib/catalog";
 import { GameCard } from "./GameCard";
 import { CardTracker } from "./CardTracker";
 
-// Twelve fills whole rows at two, three and four across.
+// Twelve fills whole rows at three (phones) and six (desktop) across.
 const CHUNK = 12;
 
 /** A grid of game cards. Cards come in blocks of twelve that skip layout and paint while off-screen
  *  (content-visibility), so long lists cost little until scrolled to. One tracker covers the whole grid. */
 export function CardGrid({ games, pageAppid, eager = 0, ranked = false }: {
-  games: GameCardGame[];
+  games: CardGame[];
   /** The game page the grid sits on, for tracking. */
   pageAppid?: number;
   /** How many leading cards are on the first screen. */

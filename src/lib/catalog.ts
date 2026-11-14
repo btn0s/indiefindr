@@ -3,6 +3,7 @@ import { cacheLife } from "next/cache";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { HERO_FIELDS } from "@/lib/hero";
 import { POPULAR_INDIES } from "@/lib/popular-indies";
+import { getLibraryArt, type LibraryArt } from "@/lib/steam-art";
 import type { PopularPick } from "@/lib/use-game-search";
 
 /** Shared by metadata and page rendering. Catalog reads are cached server-side: games and their recommendations
@@ -23,7 +24,7 @@ export async function getGame(appid: number) {
 export type RecommendationCard = {
   rank: number;
   source: "llm" | "model";
-  game: CardGame & { is_indie: boolean };
+  game: CardRow & { is_indie: boolean };
 };
 
 /** The game's full list: hand-written (LLM) picks first where a game has them, then the model's, without repeats.
@@ -46,28 +47,42 @@ export async function getRecommendations(appid: number): Promise<RecommendationC
     .filter(rec => rec.game.appid !== appid && !seen.has(rec.game.appid) && seen.add(rec.game.appid));
 }
 
-/** Up to four more indies from the same developer(s), newest first. */
 /** Array-filter elements for postgrest-js, which joins them unquoted: quoting keeps names like "Studio, Inc." intact. */
 export const textArray = (values: string[]) => values.map(value => `"${value.replace(/["\\]/g, "\\$&")}"`);
 
-export async function getDeveloperGames(appid: number, developers: string[]): Promise<CardGame[]> {
+/** Up to six more indies from the same developer(s), newest first: one row of covers on desktop, two on phones. */
+export async function getDeveloperGames(appid: number, developers: string[]): Promise<CardRow[]> {
   "use cache";
   cacheLife("hours");
   if (!developers.length) return [];
   const { data } = await getSupabaseServerClient().from("games").select(CARD_FIELDS)
     .neq("appid", appid).eq("is_indie", true).eq("is_companion", false).overlaps("developers", textArray(developers))
-    .order("release_date", { ascending: false }).limit(4);
+    .order("release_date", { ascending: false }).limit(6);
   return (data ?? []).filter(recommendationEligible);
 }
 
-/** Everything a game card shows, selected the same way everywhere. */
+/** Everything a game card shows from the catalog, selected the same way everywhere. */
 export const CARD_FIELDS = `appid,title,header_image,review_count,review_positive_pct,clean_score,bomb_windows,checked_at,${HERO_FIELDS}`;
-export type CardGame = ReviewQuality & {
+export type CardRow = ReviewQuality & {
   appid: number; title: string; header_image: string | null; review_count: number; review_positive_pct: number | null;
   hero_poster: string | null; hero_still: string | null;
 };
-type ShelfGame = CardGame;
-const SHELF_FIELDS = CARD_FIELDS;
+/** A card as drawn: its catalog row and its Steam library art. */
+export type CardGame = CardRow & LibraryArt;
+
+/** Library art by appid. With Steam unreachable there is none, and the cards draw their store headers until the list
+ *  is next refreshed. */
+const artFor = (appids: number[]) => getLibraryArt(appids).catch((): Record<number, LibraryArt> => ({}));
+const drawn = <T extends { appid: number }>(game: T, art: Record<number, LibraryArt>): T & LibraryArt =>
+  ({ ...game, cover: art[game.appid]?.cover ?? null, hero: art[game.appid]?.hero ?? null });
+
+/** Adds each game's library art to its card, in one request for the whole list. Lists get their art once they are
+ *  final, so a pick from a long candidate list fetches art only for the games it shows. */
+export async function withArt<T extends { appid: number }>(games: T[]): Promise<(T & LibraryArt)[]> {
+  const art = await artFor(games.map(game => game.appid));
+  return games.map(game => drawn(game, art));
+}
+
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
 /** Same order for everyone on a given day, different the next day. */
@@ -82,7 +97,7 @@ function dailyPick<T>(items: T[], count: number): T[] {
 /** Discovery shelves boost indies that still need it: indie+ games (lifetime reviews past the pipeline's
  *  notoriety line) stay searchable and recommendable but never appear here, nor do Steam adult-only titles or
  *  companion apps (demos, prologues, DLC, soundtracks; scripts/relaunch/catalog.py). */
-const shelfBase = () => getSupabaseServerClient().from("games").select(SHELF_FIELDS)
+const shelfBase = () => getSupabaseServerClient().from("games").select(CARD_FIELDS)
   .eq("is_indie", true).eq("indie_plus", false).eq("is_adult", false).eq("is_companion", false);
 type ShelfQuery = ReturnType<typeof shelfBase>;
 
@@ -119,7 +134,7 @@ export const SHELVES = {
 export type ShelfSlug = keyof typeof SHELVES;
 export const isShelf = (slug: string): slug is ShelfSlug => slug in SHELVES;
 
-export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGame[]> {
+export async function getShelf(slug: ShelfSlug, limit: number): Promise<CardRow[]> {
   "use cache";
   cacheLife("hours");
   const { data, error } = await SHELVES[slug].query(shelfBase()).limit(limit);
@@ -127,13 +142,14 @@ export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGam
   return data.filter(recommendationEligible);
 }
 
-/** Home previews in claim order: a game appears on one shelf at most, the first that claims it. Hidden gems is a daily pick. */
+/** Home previews in claim order: a game appears on one shelf at most, the first that claims it. Hidden gems is a daily
+ *  pick. Six is a row of covers on desktop and two on phones; Rising, the lead, gets two rows. */
 const HOME_SHELVES: { slug: ShelfSlug; fetch: number; show: number }[] = [
-  { slug: "rising", fetch: 8, show: 8 },
-  { slug: "early-access", fetch: 12, show: 4 },
-  { slug: "new", fetch: 12, show: 4 },
-  { slug: "upcoming", fetch: 8, show: 4 },
-  { slug: "hidden-gems", fetch: 240, show: 8 },
+  { slug: "rising", fetch: 12, show: 12 },
+  { slug: "early-access", fetch: 18, show: 6 },
+  { slug: "new", fetch: 18, show: 6 },
+  { slug: "upcoming", fetch: 12, show: 6 },
+  { slug: "hidden-gems", fetch: 240, show: 6 },
 ];
 
 export async function getHomeShelves() {
@@ -141,12 +157,15 @@ export async function getHomeShelves() {
   cacheLife("hours");
   const fetched = await Promise.all(HOME_SHELVES.map(({ slug, fetch }) => getShelf(slug, fetch)));
   const shown = new Set<number>();
-  const shelves = {} as Record<ShelfSlug, ShelfGame[]>;
+  const picked = {} as Record<ShelfSlug, CardRow[]>;
   HOME_SHELVES.forEach(({ slug, show }, index) => {
     const unclaimed = fetched[index].filter(game => !shown.has(game.appid));
-    shelves[slug] = slug === "hidden-gems" ? dailyPick(unclaimed, show) : unclaimed.slice(0, show);
-    for (const game of shelves[slug]) shown.add(game.appid);
+    picked[slug] = slug === "hidden-gems" ? dailyPick(unclaimed, show) : unclaimed.slice(0, show);
+    for (const game of picked[slug]) shown.add(game.appid);
   });
+  const art = await artFor([...shown]);
+  const shelves = {} as Record<ShelfSlug, CardGame[]>;
+  for (const { slug } of HOME_SHELVES) shelves[slug] = picked[slug].map(game => drawn(game, art));
   return shelves;
 }
 
@@ -159,14 +178,17 @@ export async function getBrowsePage(offset: number): Promise<CardGame[]> {
   const { data, error } = await getSupabaseServerClient().from("games").select(CARD_FIELDS).eq("is_indie", true).eq("is_companion", false)
     .order("review_count", { ascending: false }).order("appid").range(offset, offset + BROWSE_PAGE_SIZE - 1);
   if (error) throw new Error("Catalog unavailable");
-  return data;
+  return withArt<CardRow>(data);
 }
 
+/** The game page's two lists, with their art: more from the developer, then the recommendations without those. */
 export async function getGamePageSlate(appid: number, developers: string[]) {
   "use cache";
   cacheLife("hours");
   const [all, developerGames] = await Promise.all([getRecommendations(appid), getDeveloperGames(appid, developers)]);
-  return { developerGames, recs: all.filter(rec => !developerGames.some(game => game.appid === rec.game.appid)) };
+  const recs = all.map(rec => rec.game).filter(game => !developerGames.some(other => other.appid === game.appid));
+  const art = await artFor([...developerGames, ...recs].map(game => game.appid));
+  return { developerGames: developerGames.map(game => drawn(game, art)), recs: recs.map(game => drawn(game, art)) };
 }
 
 /** Search's empty state: the curated picks with their art and ratings, drawn on the server so the panel opens complete.

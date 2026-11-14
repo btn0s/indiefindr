@@ -1,4 +1,4 @@
-/** Stands in for a GameCard at its exact size: art frame, title line, rating line. */
+/** Stands in for a GameCard at its exact size: cover, title line, rating line. */
 export function CardSkeleton() {
   return <div className="card-skeleton" aria-hidden="true">
     <div className="skeleton skeleton-art" />
