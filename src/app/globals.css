@@ -379,11 +379,15 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Game page */
 /* Plate: the cover is an object on the page, whole and unfaded, with a hairline edge. On desktop the title,
    facts, blurb and Steam button sit beside it, centred on it; below 1000px they follow it. The screenshots run under
-   both. A section gap, not a rule, separates the recommendations. */
-.source-game { display: flex; flex-direction: column; gap: 20px; }
+   both as a rail, the full width of the page like the shelves'. A section gap, not a rule, separates the
+   recommendations. */
+.discovery-page > .source-game { grid-column: full; display: grid; grid-template-columns: subgrid; row-gap: 20px; }
+.source-game > * { grid-column: frame; min-width: 0; }
+.source-game > .screenshot-rail { grid-column: full; --edge: max(var(--gutter), calc((100% - var(--frame)) / 2)); }
+.source-top { display: flex; flex-direction: column; gap: 20px; }
 @media (min-width: 1000px) {
-  .source-game { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); column-gap: 44px; row-gap: 36px; align-items: center; }
-  .source-game > :not(.game-trailer, .source-info) { grid-column: 1 / -1; }
+  .discovery-page > .source-game { row-gap: 36px; }
+  .source-top { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); column-gap: 44px; align-items: center; }
 }
 .source-info { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .source-header { display: flex; flex-direction: column; gap: 12px; }
@@ -423,8 +427,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Phones: the plate runs edge to edge, straight under the header, like an app page's media; name, facts and the Steam
    button follow it. */
 @media (max-width: 700px) {
-  .source-game > .game-trailer { width: auto; margin: calc(-1 * var(--page-top)) calc(-1 * var(--gutter)) 0; border-radius: 0; }
-  .source-game > .game-trailer::after { box-shadow: inset 0 -1px 0 rgb(0 0 0 / .06); }
+  .source-top > .game-trailer { width: auto; margin: calc(-1 * var(--page-top)) calc(-1 * var(--gutter)) 0; border-radius: 0; }
+  .source-top > .game-trailer::after { box-shadow: inset 0 -1px 0 rgb(0 0 0 / .06); }
 }
 /* Hierarchy from size and weight, both in full foreground: a small lead line, then the title. Beside the plate the
    name is a step smaller than the display size, so long names keep to two or three lines. */
@@ -454,8 +458,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 @media (max-width: 700px) { .screenshot-strip button { border-radius: 10px; } }
 /* A hairline edge, so pale shots don't melt into the page. */
 .screenshot-strip img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid rgb(0 0 0 / .07); outline-offset: -1px; border-radius: inherit; }
-/* Below desktop it runs past the page gutter to the screen edges, like the rails. */
-@media (max-width: 999px) { .screenshot-strip { margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); } }
+/* It runs the full width of the page with its first shot on the frame, like the rails. */
+.screenshot-rail .screenshot-strip { padding-inline: var(--edge); scroll-padding-inline: var(--edge); }
 @media (max-width: 639px) { .screenshot-strip li { flex-basis: 72%; } }
 @media (hover: hover) and (pointer: fine) { .screenshot-strip button:hover img { opacity: .85; } }
 /* With a mouse, Previous and Next float over the row's ends while it's hovered (or one has focus), and leave at the end
@@ -466,8 +470,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .screenshot-buttons { display: contents; }
   .screenshot-buttons .rail-button { position: absolute; z-index: 2; top: 50%; translate: 0 -50%; opacity: 0; pointer-events: none;
     box-shadow: 0 0 0 1px rgb(19 19 22 / .08), 0 4px 14px rgb(19 19 22 / .22); }
-  .screenshot-buttons .rail-button:first-child { left: 12px; }
-  .screenshot-buttons .rail-button:last-child { right: 12px; }
+  .screenshot-buttons .rail-button:first-child { left: calc(var(--edge) + 12px); }
+  .screenshot-buttons .rail-button:last-child { right: calc(var(--edge) + 12px); }
   .screenshot-rail:is(:hover, :focus-within) .rail-button:not(:disabled) { opacity: 1; pointer-events: auto; }
 }
 /* Room above and below for the focus ring, which the strip's horizontal scroll would otherwise clip. After the viewer
