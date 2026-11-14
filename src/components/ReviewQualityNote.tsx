@@ -159,16 +159,16 @@ export function ReviewQualityNote({
             <g key={p.start}>
               <rect
                 x={miniX(p.start) + 0.3}
-                y={20 - (p.up / miniMax) * 17}
+                y={20 - (p.up / miniMax) * 19}
                 width={Math.max(0.5, miniX(p.end) - miniX(p.start) - 0.6)}
-                height={(p.up / miniMax) * 17}
+                height={(p.up / miniMax) * 19}
                 className="history-positive"
               />
               <rect
                 x={miniX(p.start) + 0.3}
                 y={20}
                 width={Math.max(0.5, miniX(p.end) - miniX(p.start) - 0.6)}
-                height={(p.down / miniMax) * 17}
+                height={(p.down / miniMax) * 19}
                 className="history-negative"
               />
             </g>
