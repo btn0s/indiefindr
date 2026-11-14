@@ -206,7 +206,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-facts li { max-width: 100%; }
 .game-facts li > * { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 /* Emphasis inside a role keeps its size and gains weight. */
-.card-rating strong, .game-facts strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
+.card-rating strong, .game-facts li:is([data-fact=score], [data-fact=reviews]) .fact-value, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
 .site-shell { min-height: 100vh; background: var(--background); }
 
@@ -324,7 +324,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    inside itself, so its radius stays modest enough for two lines. */
 .game-facts { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted-foreground); }
 .game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 4px 10px; border-radius: 14px; background: rgb(19 19 22 / .055); }
-.game-facts strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+.game-facts .fact-value { color: var(--foreground); font-variant-numeric: tabular-nums; }
+/* Developer and Released name what a value is; chips leave them out, since the value says it. */
+.game-facts .fact-label[data-quiet] { display: none; }
 .game-facts a { color: var(--foreground); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
 /* The plate: 16:9, a 16px radius (14px on phones) and a hairline inside its edge. */
