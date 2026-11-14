@@ -648,8 +648,14 @@ html { touch-action: manipulation; }
 .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) .fact-label { display: block; font-size: 12px; line-height: 1.3; color: rgb(255 255 255 / .66); }
 .source-card .game-facts li[data-fact=developer] .fact-label { display: none; }
 .source-card .game-facts a { color: #fff; }
-/* A long rating label sits under its score; on a phone the reviews and year stay beside it. */
+/* A long rating label wraps under its score. */
 .source-card .game-facts li[data-fact=score] .fact-label { max-width: 13ch; }
+@media (max-width: 700px) {
+  /* On a phone the trio is three equal cells, always on one row. */
+  .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) { flex: 1 1 0; min-width: 0; padding-inline: 12px; }
+  .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) .fact-value { white-space: nowrap; overflow-wrap: normal; }
+  .source-card .game-facts li[data-fact=score] { padding-left: 0; }
+}
 /* The action: a white pill on the scrim. */
 .source-card .source-game-actions { flex-shrink: 0; }
 .source-card .steam-link { width: 100%; min-height: 50px; padding-inline: 24px; border-radius: 999px; color: #131316; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .2), 0 8px 24px -8px rgb(0 0 0 / .45); font-size: 15px; font-weight: 600; }
