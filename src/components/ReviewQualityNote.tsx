@@ -111,18 +111,81 @@ export function ReviewQualityNote({
   const label = steamRating(game.review_positive_pct, game.review_count);
   const periodText = (p: ReviewPeriod) =>
     `${month(p.start)}: ${tally(p.up, p.down)}`;
+  const latest = windows[windows.length - 1];
+  const compactDate = (value: string) => date(value).replace(/, \d{4}/, "");
+  const windowLabel =
+    windows.length === 1
+      ? `${compactDate(latest.start)}–${compactDate(latest.end)}, ${latest.end.slice(0, 4)} · negative surge`
+      : `${windows.length} periods · most recent ${new Date(latest.start + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })}–${new Date(latest.end + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })}`;
+  const miniPeriods = periods.filter(
+    (p) =>
+      p.end >= periodWindows[0].startTime - 365 * 86400 &&
+      p.start <= periodWindows.at(-1)!.endTime + 365 * 86400,
+  );
+  const miniLow = miniPeriods[0]?.start ?? low;
+  const miniHigh = miniPeriods.at(-1)?.end ?? high;
+  const miniX = (stamp: number) =>
+    ((stamp - miniLow) / Math.max(1, miniHigh - miniLow)) * 200;
+  const miniMax = Math.max(1, ...miniPeriods.flatMap((p) => [p.up, p.down]));
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        className="review-quality-chip"
-        aria-label={`${Math.round(game.clean_score!)}% excluding review bomb. Learn about the detected review bombing`}
-      >
-        <TriangleAlert size={13} aria-hidden="true" />
-        <span>
-          <strong>{Math.round(game.clean_score!)}%</strong> excluding review
-          bomb
+      <div className="review-banner">
+        <span className="review-banner-icon">
+          <TriangleAlert size={18} aria-hidden="true" />
         </span>
-      </DialogTrigger>
+        <div className="review-banner-heading">
+          <strong>Review bombing detected</strong>
+          <span>{windowLabel}</span>
+        </div>
+        <svg
+          className="review-banner-chart"
+          viewBox="0 0 200 40"
+          preserveAspectRatio="none"
+          aria-label="Monthly review histogram showing the detected negative surge"
+          role="img"
+        >
+          {periodWindows.map((w) => (
+            <rect
+              key={w.start}
+              x={miniX(w.startTime)}
+              y={0}
+              width={Math.max(1, miniX(w.endTime) - miniX(w.startTime))}
+              height={40}
+              className="bomb-band"
+            />
+          ))}
+          <line x1={0} x2={200} y1={20} y2={20} className="history-axis" />
+          {miniPeriods.map((p) => (
+            <g key={p.start}>
+              <rect
+                x={miniX(p.start) + 0.3}
+                y={20 - (p.up / miniMax) * 17}
+                width={Math.max(0.5, miniX(p.end) - miniX(p.start) - 0.6)}
+                height={(p.up / miniMax) * 17}
+                className="history-positive"
+              />
+              <rect
+                x={miniX(p.start) + 0.3}
+                y={20}
+                width={Math.max(0.5, miniX(p.end) - miniX(p.start) - 0.6)}
+                height={(p.down / miniMax) * 17}
+                className="history-negative"
+              />
+            </g>
+          ))}
+        </svg>
+        <div className="review-banner-scores">
+          <div>
+            <span>{Math.round(game.review_positive_pct!)}%</span>
+            <ArrowRight size={14} aria-hidden="true" />
+            <strong>{Math.round(game.clean_score!)}%</strong>
+          </div>
+          <span>excluding the bomb</span>
+        </div>
+        <DialogTrigger className="review-banner-button">
+          See what happened
+        </DialogTrigger>
+      </div>
       <DialogBackdrop className="review-dialog-backdrop" />
       <DialogContent
         className="review-dialog"

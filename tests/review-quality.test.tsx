@@ -9,7 +9,6 @@ import {
 } from "@testing-library/react";
 import { ReviewQualityNote } from "../src/components/ReviewQualityNote";
 import { createAgent } from "@ui-sdk/react/agent";
-import { GameMetadata } from "../src/components/GameMetadata";
 import { CardRating } from "../src/components/Rating";
 import {
   isRescued,
@@ -59,9 +58,7 @@ test("shows both scores, accessible periods and a neutral learn-more link", asyn
       }}
     />,
   );
-  fireEvent.click(
-    screen.getByRole("button", { name: /91% excluding review bomb/ }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "See what happened" }));
   expect(
     screen
       .getByRole("dialog", { hidden: true })
@@ -72,7 +69,7 @@ test("shows both scores, accessible periods and a neutral learn-more link", asyn
       .getByRole("dialog", { hidden: true })
       .getAttribute("aria-describedby"),
   ).toBeTruthy();
-  expect(screen.getByText("60%")).toBeTruthy();
+  expect(screen.getAllByText("60%").length).toBeGreaterThan(0);
   expect(screen.getAllByText("91%")).toHaveLength(2);
   const agent = createAgent();
   const bar = screen.getByRole("button", {
@@ -126,7 +123,7 @@ test("preserves Steam label on rescued cards with spaced disclosure", () => {
   render(<CardRating pct={60} count={1000} rescued cleanScore={91} />);
   expect(screen.getByText("91% outside")).toBeTruthy();
   expect(screen.getByText(/Mixed/)).toBeTruthy();
-  expect(screen.getByText("60%")).toBeTruthy();
+  expect(screen.getAllByText("60%").length).toBeGreaterThan(0);
 });
 test("ordinary and unrated pages have no disclosure", () => {
   const view = render(
@@ -135,22 +132,4 @@ test("ordinary and unrated pages have no disclosure", () => {
   expect(view.container.textContent).toBe("");
   view.rerender(<ReviewQualityNote game={{ ...game, review_count: 1 }} />);
   expect(view.container.textContent).toBe("");
-});
-
-test("keeps the rescue chip with the Steam rating as one metadata group", () => {
-  render(
-    <GameMetadata
-      game={{ ...game, developers: [], release_date: null, is_indie: true }}
-      reviewDetail={<ReviewQualityNote game={game} />}
-    />,
-  );
-  const chip = screen.getByRole("button", {
-    name: /91% excluding review bomb/,
-  });
-  expect(chip.closest(".meta-rating-group")?.textContent).toContain(
-    "60% Mixed",
-  );
-  expect(
-    screen.queryByRole("button", { name: "Learn more", exact: true }),
-  ).toBeNull();
 });

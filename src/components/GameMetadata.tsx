@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
 import { compactCount, steamRating } from "@/lib/rating";
 
@@ -11,13 +10,7 @@ type MetadataGame = {
 };
 
 /** Optional facts wrap as complete items; missing facts leave no punctuation behind. */
-export function GameMetadata({
-  game,
-  reviewDetail,
-}: {
-  game: MetadataGame;
-  reviewDetail?: ReactNode;
-}) {
+export function GameMetadata({ game }: { game: MetadataGame }) {
   const rating = steamRating(game.review_positive_pct, game.review_count);
   const date = game.release_date ? new Date(game.release_date) : null;
   const hasDate = date && !Number.isNaN(date.getTime());
@@ -30,7 +23,6 @@ export function GameMetadata({
           <span className="meta-score" title="Steam user reviews">
             <strong>{game.review_positive_pct}%</strong> {rating}
           </span>
-          {reviewDetail}
         </div>
       )}
       {game.review_count > 0 && (

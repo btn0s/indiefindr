@@ -171,7 +171,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Label: names and actions. */
 .game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
 /* Meta: facts about a game, captions, the footer. */
-.review-score-pair p, .review-history figcaption, .review-history-caption, .review-dialog-explanation, .review-dialog-footer, .review-quality-chip, .review-dialog-game, .review-tooltip, .card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+.review-score-pair p, .review-history figcaption, .review-history-caption, .review-dialog-explanation, .review-dialog-footer, .review-dialog-game, .review-tooltip, .card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
 /* Emphasis inside a role keeps its size and gains weight. */
 .card-rating strong, .game-meta strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
@@ -317,11 +317,22 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .clean-score-badge { font-size: 11px; line-height: 1.5; font-weight: 600; }
 .meta-rating-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 100%; }
 .meta-score { white-space: nowrap; }
-.review-quality-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--warning-border); border-radius: var(--pill-radius); background: var(--warning-muted); color: var(--warning-foreground); white-space: nowrap; cursor: pointer; font-variant-numeric: tabular-nums; }
-.game-meta .review-quality-chip strong { color: inherit; }
-.review-quality-chip:hover { border-color: var(--warning); }
-.review-quality-chip:focus-visible, .review-dialog-close:focus-visible, .review-dialog-x:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
-.review-score-pair { display: grid; grid-template-columns: 1fr 24px 1fr; align-items: start; gap: 24px; padding: 24px 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+.review-banner { position: relative; display: grid; grid-template-columns: 32px minmax(180px,1fr) 160px auto auto; align-items: center; gap: 16px; padding: 16px; min-height: 80px; margin-top: 8px; border: 1px solid var(--warning-border); border-radius: var(--radius); background: var(--warning-muted); font-variant-numeric: tabular-nums; }
+.review-banner-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; background: color-mix(in srgb,var(--warning) 14%,var(--card)); color: var(--warning-foreground); }
+.review-banner-heading { display: flex; flex-direction: column; gap: 4px; }
+.review-banner-heading strong { font-size: var(--type-body); font-weight: 600; }
+.review-banner-heading > span { font-size: 11px; line-height: 16px; color: var(--muted-foreground); white-space: nowrap; }
+.review-banner-chart { width: 160px; height: 40px; overflow: hidden; }
+.review-banner-scores { white-space: nowrap; }
+.review-banner-scores > div { display: flex; align-items: center; gap: 8px; font-size: 18px; line-height: 24px; }
+.review-banner-scores > div > span { color: var(--muted-foreground); }
+.review-banner-scores > span { display: block; font-size: 11px; line-height: 16px; color: var(--muted-foreground); }
+.review-banner-button { padding: 8px 12px; border: 1px solid var(--warning-border); border-radius: 8px; background: var(--card); white-space: nowrap; font-size: 12px; line-height: 20px; cursor: pointer; }
+.review-banner-button::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); }
+.review-banner:hover { border-color: var(--warning); }
+.review-banner:has(:focus-visible) { outline: 2px solid var(--ring); outline-offset: 3px; }
+.review-dialog-close:focus-visible, .review-dialog-x:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.review-score-pair { display: grid; grid-template-columns: 136px 24px 1fr; align-items: start; gap: 16px; padding: 24px 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
 .review-score-pair p { text-wrap: balance; margin-top: 8px; color: var(--muted-foreground); }
 .review-score-steam, .review-score-steam strong { color: var(--muted-foreground); }
 .review-score-steam p span { margin-left: 8px; color: var(--text-body); }
@@ -384,4 +395,21 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 }
 @media(prefers-reduced-motion:reduce) {
  .review-dialog, .review-dialog-backdrop { transition: none; }
+}
+
+@media(max-width:800px) and (min-width:641px) {
+ .review-banner { grid-template-columns: 32px minmax(180px,1fr) 100px auto; gap: 8px; }
+ .review-banner-chart { width: 100px; }
+ .review-banner-button { grid-column: 2 / 5; justify-self: end; }
+}
+@media(max-width:640px) {
+ .review-banner { grid-template-columns: 24px 1fr auto; gap: 4px 8px; padding: 8px; min-height: 0; }
+ .review-banner-icon { width: 24px; height: 24px; border-radius: 6px; }
+ .review-banner-heading { grid-column: 2 / 4; gap: 0; }
+ .review-banner-chart { grid-column: 1 / 4; width: 100%; height: 20px; }
+ .review-banner-scores { grid-column: 1 / 3; display: flex; align-items: center; gap: 8px; }
+ .review-banner-scores > div { font-size: 16px; line-height: 20px; }
+ .review-banner-scores > span { max-width: 66px; white-space: normal; line-height: 12px; }
+ .review-banner-button { grid-column: 3; padding: 6px 8px; }
+ .review-score-pair { grid-template-columns: 1fr 24px 1fr; }
 }
