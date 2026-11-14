@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { CardGrid } from "./CardGrid";
 import { GridSkeleton } from "./CardSkeleton";
-import { loadMoreGames } from "@/lib/actions/games";
 import type { GameCardGame } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 24;
@@ -31,8 +30,10 @@ export function GameGrid({ initialGames }: GameGridProps) {
       (entries) => {
         if (entries[0].isIntersecting) {
           startTransition(async () => {
-            const newGames = await loadMoreGames(offset);
-            if (!newGames || newGames.length === 0) {
+            // A cached GET (src/app/api/browse); a failed page ends the list rather than retrying in a loop.
+            const response = await fetch(`/api/browse?offset=${offset}`);
+            const newGames: GameCardGame[] = response.ok ? await response.json() : [];
+            if (newGames.length === 0) {
               setHasMore(false);
             } else {
               const seen = new Set(gamesRef.current.map((g) => g.appid));

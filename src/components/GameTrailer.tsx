@@ -4,7 +4,8 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { preconnect } from "react-dom";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
-import { HERO_SIZES } from "@/lib/hero";
+import { HERO_SIZES, smallCopy } from "@/lib/hero";
+import { ArtMark } from "./ArtMark";
 
 export type Trailer = { title: string; url: string; poster: string | null };
 
@@ -15,12 +16,10 @@ const saveData = () => (navigator as Navigator & { connection?: { saveData?: boo
 /** The hero: a muted, looping trailer over its still. The stream starts only after the still has painted, when the
  *  browser is idle, so it never competes with the page's first images. It plays only while on screen and the tab is
  *  visible, and not at all for reduced motion or Save-Data, which keep the still. */
-export function GameTrailer({ title, trailer, image, base }: {
-  title: string; trailer: Trailer | null; image: string | null;
-  /** The store header, already cached from the card that was opened: it fills the frame at once, and the optimised
-   *  hero fades in over it, so a cold image transform never leaves the frame empty. */
-  base: string | null;
-}) {
+export function GameTrailer({ title, trailer, image }: { title: string; trailer: Trailer | null; image: string | null }) {
+  // Steam's small copy of the same picture, warmed with the hero by the card that was opened (preloadHero): it fills
+  // the frame at once and the optimised hero sharpens over it, so a cold image transform never leaves the frame empty.
+  const base = image && smallCopy(image);
   const ref = useRef<HTMLVideoElement>(null);
   const [heroPainted, setHeroPainted] = useState(!image);
   const [loaded, setLoaded] = useState(false);
@@ -86,10 +85,12 @@ export function GameTrailer({ title, trailer, image, base }: {
   };
 
   return <div className="game-trailer" onKeyDown={event => { if (loaded && event.key.toLowerCase() === "k") togglePause(); }}>
-    {/* Eager and decoded with the frame: it is the card's own file, already in memory, so the cover has art on the
-        page's first frame instead of an empty plate. */}
-    {base && base !== image && <Image src={base} alt="" fill unoptimized loading="eager" decoding="sync" className="object-cover" />}
-    {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes={HERO_SIZES} className="object-cover"
+    <ArtMark />
+    {/* Eager and decoded with the frame: the card's warm-up has usually fetched it already, so the cover has art on the
+        page's first frame instead of an empty plate. The head script marks art as it loads (layout.tsx), hence
+        suppressHydrationWarning on each. */}
+    {base && <Image src={base} alt="" fill unoptimized loading="eager" fetchPriority="high" decoding="sync" className="object-cover" suppressHydrationWarning />}
+    {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes={HERO_SIZES} className="object-cover" suppressHydrationWarning
       onLoad={() => setHeroPainted(true)} onError={() => setHeroPainted(true)} />}
     {trailer && <video ref={ref} muted={muted} loop playsInline aria-label={`${title} trailer`}
       onLoadedData={() => setLoaded(true)} onPlaying={() => setPlaying(true)} data-playing={playing} />}

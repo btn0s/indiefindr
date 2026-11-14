@@ -2,6 +2,7 @@ import Image from "next/image";
 import { heroImage, type HeroFields } from "@/lib/hero";
 import { CardRating } from "./Rating";
 import { CardLink } from "./CardLink";
+import { ArtMark } from "./ArtMark";
 
 export interface GameCardProps extends HeroFields {
   appid: number;
@@ -25,7 +26,8 @@ export function GameCard({
       data-appid={appid} data-position={position}>
       <div>
         <div className="game-card-art">
-          {header_image && <Image src={header_image} alt={title} fill unoptimized className="object-cover" preload={preload} />}
+          <ArtMark />
+          {header_image && <Image src={header_image} alt={title} fill unoptimized className="object-cover" preload={preload} suppressHydrationWarning />}
         </div>
         <div className="game-card-title"><span>{title}</span></div>
         <CardRating pct={review_positive_pct} count={review_count} />

@@ -5,6 +5,7 @@ import { useShortcut } from "@ui-sdk/react/shortcuts";
 import { matchRanges, matchSegments } from "@ui-sdk/core/text-match";
 import { ArrowUpRight, LoaderCircle, Search } from "lucide-react";
 import { SwordMark } from "./SwordMark";
+import { ArtMark } from "./ArtMark";
 import Link from "next/link";
 import { addTransitionType, startTransition, useRef, useState, useTransition, ViewTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -122,7 +123,7 @@ function SearchRow({ title, query, detail }: { title: string; query: string; det
   const rating = detail && steamRating(detail.review_positive_pct, detail.review_count);
   const year = detail?.release_date?.slice(0, 4);
   return <>
-    <span className="search-art">{detail?.header_image && <Image src={detail.header_image} alt="" width={92} height={43} unoptimized />}</span>
+    <span className="search-art"><ArtMark />{detail?.header_image && <Image src={detail.header_image} alt="" width={92} height={43} unoptimized suppressHydrationWarning />}</span>
     <span className="search-text">
       <span className="search-title"><MarkedTitle title={title} query={query} /></span>
       {(year || rating) && <span className="search-meta">

@@ -2,11 +2,13 @@
 import { ForesightManager } from "js.foresight";
 import { getImageProps } from "next/image";
 import { preload } from "react-dom";
-import { HERO_SIZES } from "@/lib/hero";
+import { HERO_SIZES, smallCopy } from "@/lib/hero";
 
-/** Fetches a game page's hero the way the page will ask for it: same optimizer widths, same sizes. */
+/** Fetches a game page's cover the way the page will ask for it: Steam's small copy that paints first, then the hero
+ *  at the same optimizer widths and sizes (GameTrailer). */
 export function preloadHero(src: string | null) {
   if (!src) return;
+  preload(smallCopy(src), { as: "image", fetchPriority: "high" });
   const { props } = getImageProps({ src, alt: "", fill: true, sizes: HERO_SIZES });
   preload(props.src, { as: "image", imageSrcSet: props.srcSet, imageSizes: props.sizes, fetchPriority: "high" });
 }

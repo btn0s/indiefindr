@@ -3,9 +3,7 @@ import Image from "next/image";
 import { useEffectEvent, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-
-/** Steam serves each screenshot at fixed sizes beside the original; the strip shows the 600px one. */
-export const thumbSrc = (src: string) => src.replace(/(\/ss_[0-9a-f]+)\.jpg/, "$1.600x338.jpg");
+import { smallCopy } from "@/lib/hero";
 
 // Motion. Every moving value is a spring, so any of them can be retargeted mid-flight and keeps its velocity: a tap
 // while it opens sends it back, a finger catches it, a release hands the finger's speed to the spring that takes over.
@@ -491,7 +489,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       <div ref={track} className="viewer-track">
         {screenshots.map((src, i) => <div key={src} ref={page => { pages.current[i] = page; }} className="viewer-page">
           <div ref={shot => { shots.current[i] = shot; }} className="viewer-shot">
-            <Image src={thumbSrc(src)} alt="" fill unoptimized draggable={false} loading={wanted.has(i) ? "eager" : "lazy"} />
+            <Image src={smallCopy(src)} alt="" fill unoptimized draggable={false} loading={wanted.has(i) ? "eager" : "lazy"} />
             {wanted.has(i) && <Image className="viewer-full" src={src} alt={`${title} screenshot ${i + 1} of ${n}`} fill sizes="100vw"
               draggable={false} onLoad={event => controls.current?.loaded(i, event.currentTarget)} />}
           </div>

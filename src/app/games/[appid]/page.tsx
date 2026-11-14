@@ -176,7 +176,7 @@ export default async function GamePage({
         {/* Cover hero: the trailer (its poster or still until it plays) as a framed plate on the page, whole and unfaded.
             On desktop the title, facts, blurb and Steam button sit beside it; on phones, beneath it. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
-          <GameTrailer title={game.title} trailer={trailer} base={game.header_image}
+          <GameTrailer title={game.title} trailer={trailer}
             image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
           <div className="source-info">
             <header className="source-header">

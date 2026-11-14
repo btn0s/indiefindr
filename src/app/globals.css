@@ -302,10 +302,21 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .card-grid { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 28px; }
 .game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
 /* Off-screen blocks of cards skip layout and paint until scrolled near; `auto` remembers each block's real height once
-   seen, so the scrollbar doesn't jump. Home's later sections do the same. Find in page still finds their text. */
-.card-grid > .game-grid + .game-grid, .discovery-page > section:nth-of-type(n+3) { content-visibility: auto; contain-intrinsic-size: auto 520px; }
+   seen. Home's later sections do the same. Find in page still finds their text. Until a block is seen it stands at an
+   estimate close to its real height, so the page's length and the scrollbar barely move as blocks arrive: twelve cards
+   are six rows on phones, four from 768px; a later home section is mostly a four-card shelf, except Browse all, the
+   last, at two blocks. */
+.card-grid > .game-grid + .game-grid, .discovery-page > section:nth-of-type(n+3) { content-visibility: auto; }
+.card-grid > .game-grid + .game-grid { contain-intrinsic-size: auto 1000px; }
+.discovery-page > section:nth-of-type(n+3) { contain-intrinsic-size: auto 380px; }
+.discovery-page > section:nth-of-type(n+3):last-of-type { contain-intrinsic-size: auto 2100px; }
 /* A gallery: three wide on desktop, so each piece of art is big enough to look at. */
-@media(min-width: 768px) { .game-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 24px; } .card-grid { row-gap: 36px; } }
+@media(min-width: 768px) {
+  .game-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 24px; } .card-grid { row-gap: 36px; }
+  .card-grid > .game-grid + .game-grid { contain-intrinsic-size: auto 850px; }
+  .discovery-page > section:nth-of-type(n+3) { contain-intrinsic-size: auto 470px; }
+  .discovery-page > section:nth-of-type(n+3):last-of-type { contain-intrinsic-size: auto 1780px; }
+}
 .game-card { display: block; }
 @media (hover: hover) and (pointer: fine) { .game-card:hover .game-card-title { text-decoration: underline; text-underline-offset: 3px; } }
 .game-card-art { position: relative; overflow: hidden; border-radius: 12px; aspect-ratio: 460/215; background: var(--muted); }
@@ -439,21 +450,26 @@ html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable;
 }
 
 /* Art placeholder: while a cover loads, if it fails, or when a game has none, the sword sits centred in the frame
-   with a slow sheen. It paints behind the frame's content, so the art covers it as soon as it arrives. A failed image
-   gets the same placeholder drawn over its broken-image icon (browsers render ::before/::after only on broken images). */
+   with a slow sheen. The mark (ArtMark) is the frame's first child and paints behind its content, so the art covers it
+   as soon as it arrives. The sword is a mask on the mark that stays put; the sheen is a band three frames wide sliding
+   under it by transform, so the loop runs on the compositor and never repaints. It stops once the frame's art has
+   loaded (the head script's data-art, layout.tsx). Without that script, a failed image draws the sword over its
+   broken-image icon instead, unanimated (browsers render ::before/::after only on broken images). */
 :where(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) { position: relative; isolation: isolate; background: var(--art-bg); --art-bg: var(--muted); --art-ink: #d3d3d9; --art-sheen: #e4e4e9; }
 .game-trailer { --art-bg: var(--media); --art-ink: #1e1e23; --art-sheen: #2e2e35; }
-:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer)::before, :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::after {
-  content: ""; position: absolute; inset: 0; z-index: -1;
+.art-mark, :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::after {
+  position: absolute; inset: 0; z-index: -1; overflow: hidden; background: var(--art-ink);
   mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%224.4%204.6%2015%2015%22%3E%3Cpath%20d%3D%22M12.7057%2017.9728L14.0299%2016.6487L10.7377%2013.3567L7.4396%2010.0586L6.11553%2011.3827L7.33348%2014.3331L4.85938%2017.8014L5.52604%2018.4681L6.19271%2019.1347L9.66681%2016.6487L12.7057%2017.9728Z%22/%3E%3Cpath%20d%3D%22M19%209.04753L13.6686%2014.3789L12.1159%2012.8262L15.5358%209.40755L14.5925%208.46419L11.1732%2011.8835L9.62109%2010.3314L14.9525%205H19V9.04753Z%22/%3E%3C/svg%3E") center / auto clamp(14px, 34%, 64px) no-repeat;
-  background: linear-gradient(100deg, var(--art-ink) 40%, var(--art-sheen) 50%, var(--art-ink) 60%) 0 0 / 300% 100%;
-  animation: art-sheen var(--loop) linear infinite;
 }
+.art-mark::before { content: ""; position: absolute; top: 0; left: 0; width: 300%; height: 100%;
+  background: linear-gradient(100deg, var(--art-ink) 40%, var(--art-sheen) 50%, var(--art-ink) 60%);
+  animation: art-sheen var(--loop) linear infinite; }
+@keyframes art-sheen { from { transform: translateX(-66.6667%); } }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer):has(> img[data-art]) > .art-mark::before { animation: none; }
 :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img { color: transparent; }
 :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::before { content: ""; position: absolute; inset: 0; background: var(--art-bg); }
-:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::after { z-index: auto; }
-@keyframes art-sheen { from { background-position: 100% 0; } to { background-position: 0 0; } }
-@media(prefers-reduced-motion: reduce) { :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer)::before, :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::after { animation: none; } }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img::after { content: ""; z-index: auto; }
+@media(prefers-reduced-motion: reduce) { .art-mark::before { animation: none; } }
 
 /* Footer */
 .site-footer { max-width: 896px; margin: auto; padding: 28px 0 36px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; color: var(--muted-foreground); }
@@ -592,10 +608,13 @@ html { touch-action: manipulation; }
 .empty-note { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 24px; text-align: center; }
 .empty-note svg { color: #d3d3d9; }
 
-/* Art fades up once it has loaded instead of painting in top to bottom. The head script in layout.tsx reveals each
-   image as it loads and stops the placeholder sheen behind it; without that script nothing is hidden. */
-:root[data-art-fade] :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img { opacity: 0; }
-:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) img { transition: opacity var(--duration-m) var(--ease-out); }
+/* Art fades up once it has loaded instead of painting in top to bottom. The head script in layout.tsx marks each
+   image as it loads (data-art=fade), or at once if the picture is already in hand (data-art=shown: no fade), which also
+   stops the placeholder sheen behind it. A failed image is never marked and keeps its placeholder. Without that
+   script nothing is hidden. */
+:root[data-art-fade] :is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) > img:not([data-art]) { opacity: 0; }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) > img { transition: opacity var(--duration-m) var(--ease-out); }
+:is(.game-card-art, .search-art, .showcase-source, .showcase-tile, .game-trailer) > img[data-art=shown] { transition: none; }
 
 /* Skeletons match the layout they stand in for, so nothing jumps when the content arrives. */
 .skeleton { position: relative; overflow: hidden; border-radius: 4px; background: var(--muted); }
