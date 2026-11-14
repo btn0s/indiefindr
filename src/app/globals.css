@@ -661,49 +661,26 @@ html { touch-action: manipulation; }
     &::view-transition-new(page-arrive) { animation: return var(--duration-close) var(--ease-glide) both; }
   }
 }
-/* The game page's entrance: what's above the fold arrives as one beat, in reading order, each piece rising a short way
-   over --duration-s on --ease-out, 40ms apart (MOTION.md's stagger: six items): the title block, the blurb, the Steam
-   button, the screenshots sliding up and cascading left to right, then the recommendations. It settles about 400ms
-   after the card lands. Nothing further down moves. Reduced motion gets a plain fade.
-   Opened from a card, it plays inside the card's view transition, from when the card has visibly landed (the spring is
-   over 80% of the way there by 50%): each piece is its own transition group, since the rest of the arriving page has to
-   wait to show until the card covers it. Only the three screenshots in view at landing get one: a group escapes the
-   strip's clipping, so one further along would show past its edge. The title travelled with the card, so it stays put. Any other arrival plays
-   it on the live page (card-morph.ts, data-entering). */
-:root { --enter: var(--duration-s); --enter-step: 40ms; --enter-land: calc(var(--duration-open) * .5); }
-:root:active-view-transition-type(card-open) main:not([data-leaving]) {
-  .source-header > :not(.source-head) { view-transition-name: match-element; view-transition-class: enter-1; }
-  .source-game-actions, .shop-links { view-transition-name: match-element; view-transition-class: enter-2; }
-  .screenshot-strip li:nth-child(1) { view-transition-name: match-element; view-transition-class: enter-3; }
-  .screenshot-strip li:nth-child(2) { view-transition-name: match-element; view-transition-class: enter-4; }
-  .screenshot-strip li:nth-child(3) { view-transition-name: match-element; view-transition-class: enter-5; }
-  .suggestions-section { view-transition-name: match-element; view-transition-class: enter-6; }
-}
+/* The game page's entrance: everything under the cover fades up together as one block, the same 12px in the same
+   direction, with no stagger, over --duration-m on --ease-out.
+   Opened from a card, it plays inside the card's view transition, from when the card has visibly landed (the glide is
+   over 80% of the way there by 50%). Each piece is its own transition group with the same animation, since the rest of
+   the arriving page has to wait to show until the card covers it. The title travelled with the card, so it stays put.
+   Any other arrival plays it on the live page, title included (card-morph.ts, data-entering). Reduced motion fades. */
+:root { --enter-land: calc(var(--duration-open) * .5); }
+:root:active-view-transition-type(card-open) main:not([data-leaving]) :is(.source-header > :not(.source-head), .source-game-actions, .screenshot-strip, .shop-links, .suggestions-section) {
+  view-transition-name: match-element; view-transition-class: enter; }
 :root:active-view-transition-type(card-open) {
-  &::view-transition-group(.enter-1), &::view-transition-group(.enter-2), &::view-transition-group(.enter-3),
-  &::view-transition-group(.enter-4), &::view-transition-group(.enter-5),
-  &::view-transition-group(.enter-6) { z-index: 3; }
-  &::view-transition-new(.enter-1) { animation: enter-rise var(--enter) var(--ease-out) calc(var(--enter-land) + 1 * var(--enter-step)) both; }
-  &::view-transition-new(.enter-2) { animation: enter-rise var(--enter) var(--ease-out) calc(var(--enter-land) + 2 * var(--enter-step)) both; }
-  &::view-transition-new(.enter-3) { animation: enter-slide var(--enter) var(--ease-out) calc(var(--enter-land) + 3 * var(--enter-step)) both; }
-  &::view-transition-new(.enter-4) { animation: enter-slide var(--enter) var(--ease-out) calc(var(--enter-land) + 4 * var(--enter-step)) both; }
-  &::view-transition-new(.enter-5) { animation: enter-slide var(--enter) var(--ease-out) calc(var(--enter-land) + 5 * var(--enter-step)) both; }
-  &::view-transition-new(.enter-6) { animation: enter-rise var(--enter) var(--ease-out) calc(var(--enter-land) + 6 * var(--enter-step)) both; }
+  &::view-transition-group(.enter) { z-index: 3; }
+  &::view-transition-new(.enter) { animation: enter-up var(--duration-m) var(--ease-out) var(--enter-land) both; }
 }
-:root[data-entering=page] main:not([data-leaving]) {
-  .source-head, .source-header > :not(.source-head), .source-game-actions, .shop-links, .screenshot-strip li:nth-child(-n + 3),
-  .suggestions-section { animation: enter-rise var(--enter) var(--ease-out) calc(var(--step, 0) * var(--enter-step)) both; }
-  .source-header > :not(.source-head) { --step: 1; }
-  .source-game-actions, .shop-links { --step: 2; }
-  .screenshot-strip li:nth-child(-n + 3) { animation-name: enter-slide; --step: calc(3 + var(--i)); }
-  .suggestions-section { --step: 6; }
-}
-/* Rising pieces come up 10px; the screenshots slide up a little further and in from the right, so the row cascades. */
-@keyframes enter-rise { from { opacity: 0; translate: 0 10px; } }
-@keyframes enter-slide { from { opacity: 0; translate: 12px 16px; } }
+:root[data-entering=page] main:not([data-leaving]) :is(.source-head, .source-header > :not(.source-head), .source-game-actions, .screenshot-strip, .shop-links, .suggestions-section) {
+  animation: enter-up var(--duration-m) var(--ease-out) both; }
+@keyframes enter-up { from { opacity: 0; translate: 0 12px; } }
 @media (prefers-reduced-motion: reduce) {
-  :root[data-entering] main:not([data-leaving]) :is(.source-head, .source-header > *, .source-game-actions, .shop-links, .screenshot-strip li, .suggestions-section) {
-    animation-name: enter-fade !important; animation-delay: 0s !important; }
+  :root[data-entering] main:not([data-leaving]) :is(.source-head, .source-header > *, .source-game-actions, .screenshot-strip, .shop-links, .suggestions-section) {
+    animation-name: enter-fade !important; }
+  :root:active-view-transition-type(card-open)::view-transition-new(.enter) { animation-name: enter-fade; }
 }
 @keyframes enter-fade { from { opacity: 0; } }
 
