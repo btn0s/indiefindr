@@ -11,12 +11,10 @@ import "./globals.css";
 
 export const preferredRegion = "pdx1";
 
-// The optical-size axis gives large headings Inter's tighter display cut and keeps small text open.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
-  axes: ["opsz"],
 });
 
 const geistMono = Geist_Mono({
@@ -30,7 +28,9 @@ const geistMono = Geist_Mono({
 // wait for hydration. Each loaded URL gets a rule in its own stylesheet instead of an attribute on the <img>, which
 // React owns; a cover that's already loaded then shows at once on the next page, with no fade. A failed image gets no
 // rule and keeps its placeholder. It listens on document because element load events never reach window.
-const ART_FADE = `(function(){var d=document,s=new CSSStyleSheet,seen={};d.adoptedStyleSheets=d.adoptedStyleSheets.concat(s);d.documentElement.dataset.artFade="";d.addEventListener("load",function(e){var t=e.target,u=t.tagName==="IMG"&&t.getAttribute("src");if(!u||seen[u])return;seen[u]=1;u='[src="'+CSS.escape(u)+'"]';s.insertRule("img"+u+"{opacity:1!important}");s.insertRule(":has(>img"+u+")::before{animation:none!important}")},true)})()`;
+// The empty touchstart listener is what makes iOS Safari apply :active while a finger is down; without one, a press
+// only flashes on release, which reads as a bounce.
+const ART_FADE = `(function(){var d=document,s=new CSSStyleSheet,seen={};d.adoptedStyleSheets=d.adoptedStyleSheets.concat(s);d.documentElement.dataset.artFade="";d.addEventListener("load",function(e){var t=e.target,u=t.tagName==="IMG"&&t.getAttribute("src");if(!u||seen[u])return;seen[u]=1;u='[src="'+CSS.escape(u)+'"]';s.insertRule("img"+u+"{opacity:1!important}");s.insertRule(":has(>img"+u+")::before{animation:none!important}")},true);d.addEventListener("touchstart",function(){},{passive:true})})()`;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 
@@ -112,8 +112,9 @@ export default function RootLayout({
           }}
         />
         <div className="site-shell">
+          <a href="#content" className="skip-link">Skip to content</a>
           <Navbar />
-          <div className="px-4 sm:px-7">{children}</div>
+          <div id="content" className="px-4 sm:px-7">{children}</div>
           <footer className="site-footer">
             <nav aria-label="Footer"><Link href="/agents">Agent access</Link><Link href="/privacy">Privacy</Link></nav>
             <p>indiefindr · Game information and media from Steam.</p>
