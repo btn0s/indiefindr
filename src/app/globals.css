@@ -259,7 +259,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 @media (hover: hover) and (pointer: fine) { .see-all:hover svg { transform: translateX(2px); } }
 
 /* Cards */
-.card-grid { display: grid; row-gap: 28px; }
+/* One column that may shrink below its content: an implicit auto column would grow to fit the 460px cover art and push
+   the page wider than a phone screen. */
+.card-grid { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 28px; }
 .game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; }
 /* Off-screen blocks of cards skip layout and paint until scrolled near; `auto` remembers each block's real height once
    seen, so the scrollbar doesn't jump. Home's later sections do the same. Find in page still finds their text. */
