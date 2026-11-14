@@ -17,8 +17,8 @@ type Phase = "idle" | "pulling" | "ready" | "refreshing" | "done";
  *    like closing an App Store card. Let go past the threshold (or flick) and it goes Back, whose transition picks up from
  *    the dragged page and shrinks it into the card (card-morph.ts, globals.css); short of it, it springs back.
  *  - Every other page refreshes, in place of Safari's own pull-to-refresh (switched off with overscroll-behavior): the
- *    content comes down on a rubber band under the header, the sword fades in and turns with the pull, spins while
- *    router.refresh() runs, and fades out when it has finished.
+ *    content comes down on a rubber band under the header; the sword, resting blade-left, fades in and turns to the logo's
+ *    angle with the pull, makes one turn back on release (more while router.refresh() is still running), and fades out.
  *  Nothing starts while a dialog is open, inside a scrolled inner scroller, or on a sideways drag (the screenshot strip). */
 export function PagePull() {
   const router = useRouter();
@@ -99,7 +99,6 @@ export function PagePull() {
       const offset = band(distance, 150);
       root.style.setProperty("--refresh-y", `${offset.toFixed(1)}px`);
       root.style.setProperty("--refresh-progress", Math.min(1, offset / READY).toFixed(3));
-      root.style.setProperty("--refresh-turn", `${(offset * 3).toFixed(1)}deg`);
       const ready = offset >= READY;
       if (ready !== (phaseRef.current === "ready")) go(ready ? "ready" : "pulling");
     };
@@ -180,7 +179,7 @@ export function PagePull() {
         .flatMap(element => element?.getAnimations() ?? []);
       void Promise.allSettled(moving.map(animation => animation.finished)).then(() => {
         if (!live) return;
-        for (const name of ["--refresh-y", "--refresh-progress", "--refresh-turn", "--refresh-top"]) document.documentElement.style.removeProperty(name);
+        for (const name of ["--refresh-y", "--refresh-progress", "--refresh-top"]) document.documentElement.style.removeProperty(name);
         go("idle");
       });
     });

@@ -685,24 +685,25 @@ html { touch-action: manipulation; }
 @keyframes enter-fade { from { opacity: 0; } }
 
 /* Pull to refresh (PagePull), in place of Safari's own: the page doesn't overscroll at all, so its pull-down is ours. The
-   content comes down under the header on a rubber band, uncovering the sword (muted, bare), which fades in and turns
-   with the pull. While the refresh runs it spins, each turn easing in and out from where the pull left it; once the
-   refresh has finished it completes its turn and fades as the content goes back up. The content carries a transform
+   content comes down under the header on a rubber band, uncovering the sword, light and bare so it sits back. It rests
+   blade-left (the logo's angle less 135deg), fades in and turns clockwise with the pull, and reaches the logo's exact angle
+   at the threshold. Let go there and it makes one turn back, counter-clockwise and ease-in-out, repeating at the same pace
+   only while the refresh is still running; then it fades as the content goes back up. The content carries a transform
    only during a pull: at rest, the card morph's fixed sheet must stay relative to the viewport. */
 html, body { overscroll-behavior-y: none; }
 :root:has(.page-pull:not([data-phase=idle])) #content { translate: 0 var(--refresh-y, 0px); }
 :root:has(.page-pull:is([data-phase=refreshing], [data-phase=done])) #content { transition: translate var(--duration-m) var(--ease-glide); }
 .page-pull { position: fixed; z-index: 39; top: var(--refresh-top, 0px); left: 0; right: 0; height: var(--refresh-y, 0px); display: grid;
-  place-items: center; overflow: hidden; pointer-events: none; color: var(--muted-foreground); }
+  place-items: center; overflow: hidden; pointer-events: none; color: color-mix(in oklch, var(--muted-foreground) 55%, var(--background)); }
 .page-pull[data-phase=idle] { display: none; }
 .page-pull[data-phase=refreshing], .page-pull[data-phase=done] { transition: height var(--duration-m) var(--ease-glide); }
-.page-pull-sword { display: grid; opacity: var(--refresh-progress, 0); rotate: var(--refresh-turn, 0deg); }
+.page-pull-sword { display: grid; opacity: var(--refresh-progress, 0); rotate: calc((var(--refresh-progress, 0) - 1) * 135deg); }
 .page-pull-sword svg { width: 28px; height: 28px; }
-.page-pull[data-phase=refreshing] .page-pull-sword { opacity: 1; animation: pull-spin .8s var(--ease-in-out) infinite; }
+.page-pull[data-phase=refreshing] .page-pull-sword { opacity: 1; animation: pull-turn .8s var(--ease-in-out) infinite; }
 .page-pull[data-phase=done] .page-pull-sword { opacity: 0; transition: opacity var(--duration-s) var(--ease-out); }
-@keyframes pull-spin { from { rotate: var(--refresh-turn, 0deg); } to { rotate: calc(var(--refresh-turn, 0deg) + 360deg); } }
+@keyframes pull-turn { from { rotate: 0deg; } to { rotate: -360deg; } }
 @media (prefers-reduced-motion: reduce) {
-  .page-pull-sword, .page-pull[data-phase] .page-pull-sword { rotate: none; animation: none; }
+  .page-pull-sword, .page-pull[data-phase] .page-pull-sword { animation: none; }
   .page-pull[data-phase=refreshing] .page-pull-sword { animation: pull-pulse 1s ease-in-out infinite; }
   :root:has(.page-pull) #content, .page-pull { transition: none !important; }
 }
