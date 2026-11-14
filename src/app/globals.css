@@ -124,6 +124,10 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Wrapping defaults: headings balance their lines; running text avoids a lone last word. The Type roles below
+     restate these per role and add the measure. */
+  h1, h2, h3, h4 { text-wrap: balance; }
+  p, li, dd, figcaption, blockquote { text-wrap: pretty; }
 }
 
 .aspect-steam {
@@ -146,6 +150,11 @@
   --type-heading: 20px;
   --type-body: 14px;
   --type-meta: 13px;
+  /* Measure: the longest line running text may set. Body copy reads at --measure; a note under a heading or a lede,
+     shorter. In ch of the text's own size, so each role's measure scales with its type. */
+  --measure: 65ch;
+  --measure-note: 56ch;
+  --measure-lede: 40ch;
 
   /* Vertical rhythm on a 4px grid. */
   --page-top: 32px;
@@ -167,20 +176,34 @@
 
 body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); }
 /* Type roles. Every piece of text belongs to exactly one role here, and no other rule sets
-   font size, leading, weight or tracking. Colour is a separate choice of three tiers: ink, body, muted. */
-.home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.045em; }
-.page-title { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; }
+   font size, leading, weight, tracking or wrapping. Colour is a separate choice of three tiers: ink, body, muted.
+   Wrapping follows the role: display, title, heading and label text balances its lines (no ragged two-liners, no lone
+   last word); lede, body and meta text wraps pretty within a measure; and a meta unit (a score's label, a count, a name
+   in a chip) never splits. Text that holds a catalog name may break inside a word, since some names have no spaces;
+   running text never does. */
+.home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.045em; text-wrap: balance; }
+.page-title { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere; }
 /* The game page's name is its display line: the size of the home headline, at the title's tracking. */
 .source-header .page-title [itemprop=name] { font-size: var(--type-display); line-height: 1.05; letter-spacing: -0.025em; }
-.section-heading h2, .agent-docs h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; }
+.section-heading h2, .agent-docs h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; overflow-wrap: anywhere; }
 /* Lead: heading size at reading weight; the one introductory sentence on a page. */
-.home-intro .lede { font-size: var(--type-heading); line-height: 1.5; }
-/* Body: running text and notes. */
-.source-description, .section-heading p, .page-note, .empty-note, .home-intro .examples, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; }
-/* Label: names and actions. */
-.game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
+.home-intro .lede { font-size: var(--type-heading); line-height: 1.5; text-wrap: pretty; max-width: var(--measure-lede); }
+/* Body: running text and notes. Notes sit under a heading and keep the shorter measure. */
+.source-description, .agent-docs p, .section-heading p, .page-note, .empty-note, .home-intro .examples, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; text-wrap: pretty; }
+.source-description, .agent-docs p, .empty-note p { max-width: var(--measure); }
+.section-heading p, .page-note { max-width: var(--measure-note); }
+/* Label: names and actions. Actions never wrap; a name balances, or truncates where it shares a line (search rows). */
+.game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; text-wrap: balance; overflow-wrap: anywhere; }
+.see-all, .steam-link, .search-cancel { white-space: nowrap; }
 /* Meta: facts about a game, captions, the footer. */
-.review-quality-note, .card-rating, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+.review-quality-note, .card-rating, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; text-wrap: pretty; }
+.review-quality-note, .site-footer p { max-width: var(--measure); }
+/* Meta units. Each moves to the next line whole; one wider than its line (a long name in a narrow card) wraps inside
+   itself or truncates rather than pushing the page wide. Chips truncate, with the full name in their title. */
+.rating-label, .review-bombed-label { display: inline-block; }
+.review-bombed-label, .game-facts li { white-space: nowrap; }
+.game-facts li { max-width: 100%; }
+.game-facts li > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Emphasis inside a role keeps its size and gains weight. */
 .card-rating strong, .game-facts strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
@@ -232,7 +255,6 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .discovery-page { max-width: 896px; margin: auto; padding: var(--page-top) 0 64px; }
 .discovery-page > * + * { margin-top: var(--section-gap); }
 .page-head { display: flex; flex-direction: column; gap: 8px; }
-.page-title { text-wrap: pretty; }
 .title-lead { color: var(--muted-foreground); }
 .page-note { color: var(--muted-foreground); }
 .empty-note { color: var(--muted-foreground); }
@@ -240,8 +262,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Home hero */
 .home-intro { padding: 8px 0 0; display: grid; grid-template-columns: 1fr 1.05fr; gap: 40px; align-items: center; }
 .home-intro h1 { text-wrap: balance; margin: 0 0 16px; }
-.home-intro .lede { max-width: 26em; color: var(--text-body); text-wrap: pretty; }
-.home-intro .examples { margin-top: 16px; color: var(--muted-foreground); text-wrap: balance; }
+.home-intro .lede { color: var(--text-body); }
+.home-intro .examples { margin-top: 16px; color: var(--muted-foreground); }
 .home-intro .examples span { white-space: nowrap; }
 .home-intro .examples a { color: var(--foreground); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .home-intro .examples a:hover { text-decoration-color: currentColor; } }
@@ -259,8 +281,10 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 
 /* Section heading: title over a one-line note, optional See all on the right. */
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: var(--heading-gap); }
+/* The title takes what's left of the row and balances inside it; See all keeps its place on the right. */
+.section-heading > div { min-width: 0; }
 .section-heading p { margin-top: 2px; color: var(--muted-foreground); }
-.see-all { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.see-all { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; }
 .see-all svg { transition: transform .15s ease-out; }
 @media (hover: hover) and (pointer: fine) { .see-all:hover svg { transform: translateX(2px); } }
 
@@ -327,7 +351,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .trailer-button .icon-on, .trailer-button[data-on] .icon-off { opacity: 0; transform: scale(.6); filter: blur(2px); }
 .trailer-button[data-on] .icon-on { opacity: 1; transform: none; filter: none; }
 @media(prefers-reduced-motion: reduce) { .trailer-button svg { transform: none !important; filter: none !important; } }
-.source-description { max-width: 65ch; color: #55555e; text-wrap: pretty; }
+.source-description { color: #55555e; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
 /* Screenshots: a row that scrolls and snaps inside itself; on phones it runs to the screen edges. */
 .screenshot-strip { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
@@ -403,9 +427,9 @@ code, pre { font-family: var(--font-geist-mono), ui-monospace, monospace; }
 @media(prefers-reduced-motion: reduce) { .copy-button svg { transform: none !important; } }
 .agent-docs a { text-decoration: underline; text-underline-offset: 3px; }
 
-.review-quality-note { margin-top: 12px; max-width: 80ch; color: var(--muted-foreground); }
+.review-quality-note { margin-top: 12px; color: var(--muted-foreground); }
 .review-quality-note a { text-decoration: underline; text-underline-offset: 3px; }
-.review-bombed-label { margin-inline-start: 12px; color: var(--muted-foreground); white-space: nowrap; }
+.review-bombed-label { margin-inline-start: 12px; color: var(--muted-foreground); }
 
 /* Focus: one ring, keyboard only; a mouse click never draws it. */
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
