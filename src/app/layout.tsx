@@ -25,13 +25,16 @@ const geistMono = Geist_Mono({
 });
 
 // Lets art fade up once it has loaded (see globals.css). It runs in the head, before any image starts, so it doesn't
-// wait for hydration. Each loaded URL gets a rule in its own stylesheet instead of an attribute on the <img>, which
-// React owns; a cover that's already loaded then shows at once on the next page, with no fade. A failed image gets no
-// rule and keeps its placeholder. It listens on document because element load events never reach window. An image
-// that finished before its load event could be seen (Safari, a preloaded or cached one) is caught once the page has parsed.
+// wait for hydration. Each art image is marked on its own element as it loads: data-art="fade" fades it up, "shown" puts
+// it there at once. A picture already in hand shows at once with no fade: one already decoded when it's inserted (the
+// observer runs before the next paint), or one this page has loaded before (an earlier card's header, a cover seen on a
+// previous page). A failed image is never marked and keeps its placeholder. It listens on document because element load
+// events never reach window. An image that finished before its load event could be seen (Safari, a preloaded or cached
+// one) is caught once the page has parsed. React owns these <img>s, so each art image carries suppressHydrationWarning
+// for the mark, and a new src clears the mark so the new picture loads like any other.
 // The empty touchstart listener is what makes iOS Safari apply :active while a finger is down; without one, a press
 // only flashes on release, which reads as a bounce.
-const ART_FADE = `(function(){var d=document,s=new CSSStyleSheet,seen={};d.adoptedStyleSheets=d.adoptedStyleSheets.concat(s);d.documentElement.dataset.artFade="";function show(t){var u=t.tagName==="IMG"&&t.getAttribute("src");if(!u||seen[u])return;seen[u]=1;u='[src="'+CSS.escape(u)+'"]';s.insertRule("img"+u+"{opacity:1!important}");s.insertRule(":has(>img"+u+")::before{animation:none!important}")}d.addEventListener("load",function(e){show(e.target)},true);d.addEventListener("DOMContentLoaded",function(){for(var i=0,m=d.images;i<m.length;i++)if(m[i].complete&&m[i].naturalWidth)show(m[i])});d.addEventListener("touchstart",function(){},{passive:true})})()`;
+const ART_FADE = `(function(){var d=document,r=d.documentElement,seen=new Set,ART=":is(.game-card-art,.search-art,.showcase-source,.showcase-tile,.game-trailer)>img";r.dataset.artFade="";function mark(i,now){if(i.tagName!=="IMG"||!i.complete||!i.naturalWidth||i.hasAttribute("data-art")||!i.matches(ART))return;var u=i.getAttribute("src");i.setAttribute("data-art",now||seen.has(u)?"shown":"fade");seen.add(u)}function all(n){n.querySelectorAll(ART).forEach(function(i){mark(i,1)})}d.addEventListener("load",function(e){mark(e.target)},true);d.addEventListener("DOMContentLoaded",function(){for(var i=0,m=d.images;i<m.length;i++)mark(m[i])});new MutationObserver(function(l){l.forEach(function(m){var t=m.target;if(m.type==="attributes"){if(t.tagName==="IMG"&&t.hasAttribute("data-art")){t.removeAttribute("data-art");mark(t,1)}}else m.addedNodes.forEach(function(n){if(n.tagName==="IMG")mark(n,1);else if(n.firstElementChild)all(n)})})}).observe(r,{childList:true,subtree:true,attributes:true,attributeFilter:["src"]});d.addEventListener("touchstart",function(){},{passive:true})})()`;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 

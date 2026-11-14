@@ -8,6 +8,7 @@ import { getBrowsePage, getGame, getHomeShelves, getRecommendations, SHELVES, ty
 import { ShelfHeading } from "@/components/ShelfHeading";
 import { CardGrid } from "@/components/CardGrid";
 import { EmptyNote } from "@/components/EmptyNote";
+import { ArtMark } from "@/components/ArtMark";
 
 // Well-known indies whose pages show off the recommendations; one is featured per revalidation.
 const SHOWCASE = [413150, 367520, 105600, 1145360, 504230, 646570];
@@ -73,9 +74,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const games = await getBrowsePage(0);
-
-  const [{ game: showcase, recs: showcaseRecs }, shelves] = await Promise.all([getShowcase(), getHomeShelves()]);
+  const [games, { game: showcase, recs: showcaseRecs }, shelves] = await Promise.all([getBrowsePage(0), getShowcase(), getHomeShelves()]);
 
   return (
     <main className="discovery-page">
@@ -89,14 +88,15 @@ export default async function Home() {
         </div>
         {showcase && <div className="showcase">
           <Link href={`/games/${showcase.appid}`} prefetch={true} className="showcase-source">
+            <ArtMark />
             {/* The showcase is hidden on phones, so its art is preloaded only where it shows. */}
             {showcase.header_image && <link rel="preload" as="image" href={showcase.header_image} fetchPriority="high" media="(min-width: 701px)" />}
-            {showcase.header_image && <Image src={showcase.header_image} alt="" width={460} height={215} unoptimized fetchPriority="high" loading="eager" />}
+            {showcase.header_image && <Image src={showcase.header_image} alt="" width={460} height={215} unoptimized fetchPriority="high" loading="eager" suppressHydrationWarning />}
             <span>Games like <strong>{showcase.title}</strong></span>
           </Link>
           <div className="showcase-recs">
             {showcaseRecs.map(({ game }) => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true} title={game.title}>
-              <span className="showcase-tile">{game.header_image && <Image src={game.header_image} alt={game.title} width={230} height={108} unoptimized />}</span>
+              <span className="showcase-tile"><ArtMark />{game.header_image && <Image src={game.header_image} alt={game.title} width={230} height={108} unoptimized suppressHydrationWarning />}</span>
             </Link>)}
           </div>
         </div>}
