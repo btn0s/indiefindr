@@ -653,7 +653,8 @@ html { touch-action: manipulation; }
 @media (max-width: 700px) {
   /* On a phone the trio is three equal cells, always on one row. */
   .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) { flex: 1 1 0; min-width: 0; padding-inline: 12px; }
-  .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) :is(.fact-value, .fact-label) { white-space: nowrap; overflow-wrap: normal; }
+  .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) .fact-value { white-space: nowrap; }
+  .source-card .game-facts li:is([data-fact=score], [data-fact=reviews], [data-fact=year]) > * { overflow-wrap: normal; }
   .source-card .game-facts li[data-fact=score] { padding-left: 0; }
 }
 /* The action: a white pill on the scrim. */
