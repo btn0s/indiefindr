@@ -1,5 +1,5 @@
 """Convert cached Steam batch metadata to the offline scorer/catalog contracts."""
-import argparse,json,pathlib,datetime,re
+import argparse,json,pathlib,datetime,re,html
 from catalog import is_indie
 p=argparse.ArgumentParser();p.add_argument('--input',type=pathlib.Path,default=pathlib.Path('data/steam-full'));p.add_argument('--out',type=pathlib.Path,default=pathlib.Path('data/full-source'));p.add_argument('--previous',type=pathlib.Path);p.add_argument('--allow-partial',action='store_true');a=p.parse_args()
 assert a.allow_partial or (a.input/'complete.json').exists(),'Backfill must finish before publication'
@@ -11,7 +11,9 @@ if a.previous:
  oldtags.update(json.loads((a.previous/'data/steam_tags.json').read_text()))
 genre_names={int(g['id']):g['description'] for r in old.values() for g in (r.get('genres') or [])}
 category_names={int(c['id']):c['description'] for r in old.values() for c in (r.get('categories') or [])}
-namesraw=json.loads((a.input/'tag_names.json').read_text());names={t['tagid']:t['name'] for t in namesraw['response']['tags']};rows={};enriched={};failed=[]
+namesraw=json.loads((a.input/'tag_names.json').read_text())
+for tag in namesraw['response']['tags']:tag['name']=html.unescape(tag['name'])
+names={t['tagid']:t['name'] for t in namesraw['response']['tags']};rows={};enriched={};failed=[]
 batch_names=json.loads((a.input/'batch_files.json').read_text()) if (a.input/'batch_files.json').exists() else None
 files=[a.input/'batches'/name for name in batch_names] if batch_names is not None else sorted((a.input/'batches').glob('*.json'))
 def plain_description(value):
@@ -42,6 +44,18 @@ for appid,r in old.items():
   r['price_overview']=None
   r['is_indie']=is_indie(r,oldtags[str(appid)]['tags'])
   rows[appid]=r;enriched[str(appid)]=oldtags[str(appid)];preserved+=1
+# Steam returns some text HTML-escaped ("DU&amp;I"). Decode every Steam text field once, here, for fresh and
+# preserved rows alike, so the site, search and developer joins all see the same plain string.
+def decode(value):
+ if isinstance(value,str):return html.unescape(value)
+ if isinstance(value,list):return [decode(v) for v in value]
+ if isinstance(value,dict):return {k:decode(v) if k in ('description','name') else v for k,v in value.items()}
+ return value
+for r in rows.values():
+ for field in ('title','short_description','long_description','developers','publishers','genres','categories'):
+  if field in r:r[field]=decode(r[field])
+for entry in enriched.values():
+ entry['tags']=[{**t,'name':html.unescape(t['name'])} if isinstance(t.get('name'),str) else t for t in entry.get('tags',[])]
 for filename,value in [('catalog.json',{'rows':sorted(rows.values(),key=lambda r:r['appid']),'row_count':len(rows)}),('steam_tags.json',enriched),('steam_tag_names.json',namesraw)]:
  (a.out/'data'/filename).write_text(json.dumps(value))
 print({'games':len(rows),'unavailable_or_non_game':len(failed),'preserved_legacy':preserved})

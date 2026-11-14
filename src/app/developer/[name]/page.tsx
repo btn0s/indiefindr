@@ -1,4 +1,4 @@
-import { CARD_FIELDS } from "@/lib/catalog";
+import { CARD_FIELDS, textArray } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { cacheLife } from "next/cache";
@@ -51,7 +51,7 @@ async function getGamesByDeveloper(developerName: string) {
   const { data: games, error } = await supabase
     .from("games")
     .select(CARD_FIELDS)
-    .contains("developers", [developerName])
+    .contains("developers", textArray([developerName]))
     .eq("is_indie", true)
     .order("release_date", { ascending: false });
 
