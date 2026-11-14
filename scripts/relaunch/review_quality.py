@@ -31,8 +31,8 @@ def analyze(payload, default_score):
     """Use daily buckets where available; never count their weekly parents twice.
 
     Compare daily votes with the median daily baseline (including zero days).
-    Weekly-only periods use median daily * seven and a minimum of 50 downvotes.
-    Exclude both polarities from flagged intervals. No detected spike means the
+    Rollup periods scale the daily baseline by their actual day count.
+    Only negative-majority merged windows qualify; exclude both polarities. No detected spike means the
     Steam default stays authoritative; empty/incomplete data cannot rescue a game.
     """
     if payload.get('success') != 1 or not isinstance(payload.get('results'), dict):

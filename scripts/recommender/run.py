@@ -12,7 +12,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts/relaunch'))
 from catalog import is_indie
 from review_quality import eligible
-from selection import MODEL_VERSION, SLATE_SIZE, CANDIDATE_LIMIT, select_targets
+from selection import MODEL_VERSION, SLATE_SIZE, select_targets
 p=argparse.ArgumentParser();p.add_argument('stage',choices=['encode','score']);p.add_argument('--source',type=pathlib.Path,default=ROOT/'data/full-source');p.add_argument('--artifacts',type=pathlib.Path,default=ROOT/'data/full-model');p.add_argument('--model',type=pathlib.Path,default=ROOT/'data/model');a=p.parse_args();a.artifacts.mkdir(parents=True,exist_ok=True)
 # Serialize native model work even when invoked outside the nightly runner.
 compute_lock=(ROOT/'data/recommender.lock').open('a')
