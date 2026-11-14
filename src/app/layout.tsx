@@ -7,7 +7,6 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Navbar } from "@/components/Navbar";
 import { getPopularIndies } from "@/lib/catalog";
 
-import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 export const preferredRegion = "pdx1";
@@ -118,7 +117,6 @@ export default async function RootLayout({
           </footer>
         </div>
 
-        <Toaster />
         <Analytics />
         <SpeedInsights />
       </body>
