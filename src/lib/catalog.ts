@@ -23,8 +23,6 @@ export async function getGame(appid: number) {
 export type RecommendationCard = {
   rank: number;
   source: "llm" | "model";
-  /** Up to three tags the two games share, most specific first; null when they share nothing specific. */
-  why: string[] | null;
   game: CardGame & { is_indie: boolean };
 };
 
@@ -35,7 +33,7 @@ export async function getRecommendations(appid: number): Promise<RecommendationC
   cacheLife("hours");
   const { data, error } = await getSupabaseServerClient()
     .from("game_recs")
-    .select(`rank,source,why,game:games!game_recs_rec_appid_fkey!inner(${CARD_FIELDS},is_indie)`)
+    .select(`rank,source,game:games!game_recs_rec_appid_fkey!inner(${CARD_FIELDS},is_indie)`)
     .eq("appid", appid)
     .eq("game.is_indie", true)
     .eq("game.is_companion", false)

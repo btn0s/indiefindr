@@ -180,7 +180,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Label: names and actions. */
 .game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
 /* Meta: facts about a game, captions, the footer. */
-.review-quality-note, .card-rating, .card-why, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+.review-quality-note, .card-rating, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
 /* Emphasis inside a role keeps its size and gains weight. */
 .card-rating strong, .game-facts strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
@@ -278,7 +278,6 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-card-art { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 460/215; background: var(--muted); }
 .game-card-title { padding-top: 10px; }
 .card-rating { margin-top: 2px; color: var(--muted-foreground); }
-.card-why { margin-top: 2px; color: var(--muted-foreground); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 
 /* Game page */

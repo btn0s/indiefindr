@@ -7,7 +7,7 @@ export function SuggestionsSection({ appId, recs }: { appId: number; recs: Recom
   return (
     <section>
       <ShelfHeading title="Indie games to play next" />
-      {recs.length > 0 && <CardGrid games={recs.map(({ game, why }) => ({ ...game, why }))} pageAppid={appId} ranked />}
+      {recs.length > 0 && <CardGrid games={recs.map(({ game }) => game)} pageAppid={appId} ranked />}
       {!recs.length && <EmptyNote>Recommendations are being prepared for this game. Check back soon.</EmptyNote>}
     </section>
   );

@@ -46,7 +46,7 @@ for start in range(0,len(ids),100):
  assert_physical_headroom(management,capacity['operating_budget_bytes'])
  batch=ids[start:start+100];records=[r for appid in batch for source in ['model','llm'] for r in slates.get((appid,source),[])]
  data=json.dumps(records).replace("'","''")
- query("begin; delete from public.game_recs where (source='model' or source='llm' and appid in (select appid from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,source text) where source='llm')) and appid in ("+','.join(map(str,batch))+"); insert into public.game_recs(appid,rank,rec_appid,source,model_version,why) select appid,rank,rec_appid,source,model_version,why from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,rank integer,rec_appid integer,source text,model_version text,why text[]); commit;")
+ query("begin; delete from public.game_recs where (source='model' or source='llm' and appid in (select appid from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,source text) where source='llm')) and appid in ("+','.join(map(str,batch))+"); insert into public.game_recs(appid,rank,rec_appid,source,model_version) select appid,rank,rec_appid,source,model_version from jsonb_to_recordset('"+data+"'::jsonb) as r(appid integer,rank integer,rec_appid integer,source text,model_version text); commit;")
  if start%5000==0:print('published',min(start+100,len(ids)),flush=True)
 checks=verify_model_slates(query,{appid:len(slates.get((appid,'model'),[])) for appid in byid})
 print('Publication verified',checks,flush=True)
