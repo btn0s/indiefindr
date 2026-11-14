@@ -23,9 +23,11 @@ export function CardLink({ appid, hero, children, onClick, ...props }: CardLinkP
   // (card-morph.ts).
   return <Link ref={ref} data-card={id} href={`/games/${appid}`} prefetch={true} transitionTypes={["card-open"]}
       onClick={event => {
-        const box = event.currentTarget.getBoundingClientRect();
+        // The card's surface (its first child), the box that expands into the page's sheet.
+        const box = (event.currentTarget.firstElementChild ?? event.currentTarget).getBoundingClientRect();
         const art = event.currentTarget.querySelector<HTMLImageElement>(".game-card-art img")?.currentSrc || null;
-        openCard({ appid, card: id, center: { x: box.left + box.width / 2, y: box.top + box.height / 2 }, art }, event.currentTarget);
+        openCard({ appid, card: id, art, center: { x: box.left + box.width / 2, y: box.top + box.height / 2 },
+          box: { x: box.left, y: box.top, w: box.width, h: box.height } }, event.currentTarget);
         markLeavingPage(event.currentTarget);
         onClick?.(event);
       }} {...props}>

@@ -2,7 +2,7 @@
 import { addTransitionType, startTransition, Suspense, useEffect, ViewTransition } from "react";
 import { usePathname } from "next/navigation";
 import { markLeavingPage } from "./CardLink";
-import { onEntryChange as onMorphEntryChange } from "@/lib/card-morph";
+import { onEntryChange as onMorphEntryChange, ride } from "@/lib/card-morph";
 
 /** Lets Back and Forward animate like a card opening and closing.
  *
@@ -49,13 +49,16 @@ export function HistoryTransition() {
   // React starts a view transition only when a <ViewTransition> boundary in the commit animates. The card and page parts
   // are named by a stylesheet (card-morph.ts), not by boundaries, so every card navigation carries this cue: a boundary
   // per route that enters and exits only for card-open and card-close. Its own snapshot is hidden (globals.css).
-  // The route is only known at request time, so the cue streams in rather than block prerendering.
+  // The route is only known at request time, so the cue streams in rather than block prerendering. Its enter callback
+  // runs once the transition's pseudo-elements exist, which is when the page's content can be set riding in the card.
   return <Suspense fallback={null}><TransitionCue /></Suspense>;
 }
 
 function TransitionCue() {
   const pathname = usePathname();
-  return <ViewTransition key={pathname} default="none" enter={CUE} exit={CUE}><span className="card-cue" aria-hidden /></ViewTransition>;
+  return <ViewTransition key={pathname} default="none" enter={CUE} exit={CUE} onEnter={(_, types) => ride(types)}>
+    <span className="card-cue" aria-hidden />
+  </ViewTransition>;
 }
 
 const CUE = { "card-open": "card-cue", "card-close": "card-cue", default: "none" };

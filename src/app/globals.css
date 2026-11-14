@@ -570,8 +570,9 @@ html { touch-action: manipulation; }
 /* Card to game page, App Store style (CardLink, HistoryTransition, games/[appid]/page.tsx). The opened card is one
    object: its surface expands into the page's sheet (the viewport on phones, the content column on desktop) as its
    radius squares off, and its art grows into the cover, one snapshot cropped like the cover throughout. The page it
-   came from recedes and dims instead of fading. The new page's content rises in, staggered, as the sheet lands; nothing
-   waits under the card. Back is the same in reverse, quicker. Both run on a near-critically damped spring (damping
+   came from recedes and dims instead of fading. The new page is all there from the first frame, riding inside the
+   card at its own size and revealed by its edges as it grows (card-morph.ts ride); nothing waits for the card to land.
+   Back is the same in reverse, quicker. Both run on a near-critically damped spring (damping
    ratio 0.88: a hair of settle). The site header stays put above it all, and the page stays clickable throughout.
 
    card-morph.ts names the one card and game page being navigated (sheet, art, text), at navigation time and for that
@@ -584,7 +585,7 @@ html { touch-action: manipulation; }
 @media (min-width: 1000px) { :root { --page-radius: 16px; } }
 .source-head { display: flex; flex-direction: column; gap: inherit; }
 /* Arriving from a card, the cover shows the card's own art (the store header, underneath) until the trailer is playing,
-   then crossfades straight to it: one change, not art, then poster, then video (card-morph.ts releaseCover). Held, the
+   then crossfades straight to it: one change, not art, then poster, then video (card-morph.ts coverReady). Held, the
    video skips its own fade, so the layer's is the only one. */
 :root[data-cover-hold] .game-trailer > img + .cover-layer { opacity: 0; }
 :root[data-cover-hold] .game-trailer > img + .cover-layer video { transition: none; }
@@ -609,21 +610,17 @@ html { touch-action: manipulation; }
   .site-header { view-transition-name: site-header; }
   main[data-leaving] { view-transition-name: page-leave; }
   main:not([data-leaving]) { view-transition-name: page-arrive; }
-  /* One stacking order both ways (left alone, a group only one side has lands on top): the pages, the sheet, the art,
-     the content, the header. */
+  /* One stacking order both ways (left alone, a group only one side has lands on top): the page underneath, the sheet,
+     the game page riding in it, the art, the title, the header. */
   &::view-transition-group(page-leave), &::view-transition-group(page-arrive) { z-index: 0; }
   &::view-transition-group(.sheet) { z-index: 1; }
-  &::view-transition-group(.art) { z-index: 2; }
-  &::view-transition-group(.text) { z-index: 3; }
-  &::view-transition-group(.sink) { z-index: 3; }
+  &::view-transition-group(.art) { z-index: 3; }
+  &::view-transition-group(.text) { z-index: 4; }
   &::view-transition-group(site-header), &::view-transition-group(search-field), &::view-transition-group(search-icon),
-  &::view-transition-group(search-input) { z-index: 4; }
+  &::view-transition-group(search-input) { z-index: 5; }
 }
-/* Closing, the page content goes first, in one quick fade (no reverse stagger). Opening, it arrives through the
-   entrance below, on the live page. */
-:root:active-view-transition-type(card-close) main[data-leaving] :is(.source-header > :not(.source-head), .source-game-actions, .shop-links, .screenshot-strip, .suggestions-section) {
-  view-transition-name: match-element; view-transition-class: sink;
-}
+:root:active-view-transition-type(card-open)::view-transition-group(page-arrive),
+:root:active-view-transition-type(card-close)::view-transition-group(page-leave) { z-index: 2; }
 /* The sheet is a flat surface and the art crops like the cover, so both fill the morphing frame, clipped to it (a
    transition image paints its cover overflow otherwise, so a page-tall sheet in a card-sized frame spills past it). */
 ::view-transition-old(.sheet), ::view-transition-new(.sheet), ::view-transition-old(.art), ::view-transition-new(.art) {
@@ -641,46 +638,39 @@ html { touch-action: manipulation; }
     &::view-transition-old(.text) { animation: fade-out calc(var(--duration-open) * .3) var(--ease-out) both; }
     &::view-transition-new(.text) { animation: fade-in calc(var(--duration-open) * .35) var(--ease-out) calc(var(--duration-open) * .15) both; }
     &::view-transition-old(page-leave) { animation: recede var(--duration-open) var(--ease-glide) both; }
-    &::view-transition-new(page-arrive) { animation: fade-in calc(var(--duration-open) * .25) var(--ease-out) calc(var(--duration-open) * .75) both; }
+    /* Shown from the first frame: it rides in the card (card-morph.ts ride). */
+    &::view-transition-new(page-arrive) { animation: none; }
   }
-  /* Closing. The content goes first, the sheet and cover shrink into the card's slot, the card's text returns as they
-     land, and the page underneath comes back up. */
-  ::view-transition-old(.sink) { animation: fade-out var(--duration-xs) var(--ease-out) both; }
+  /* Closing. The sheet and cover shrink into the card's slot with the page's content folding away inside them, the
+     card's text returns as they land, and the page underneath comes back up. */
   :root:active-view-transition-type(card-close) {
     &::view-transition { animation: backdrop-dim var(--duration-close) var(--ease-glide) reverse both; }
     &::view-transition-new(.sheet) { animation: fade-in 120ms var(--ease-out) calc(var(--duration-close) * .6) both; }
     &::view-transition-old(.sheet) { animation: round-in var(--duration-close) var(--ease-glide) both, lift var(--duration-close) ease-in-out both; }
-    /* The cover turns back into the card's own art as the shrink starts, so the card lands showing what the shelf
-       shows. */
-    &::view-transition-old(.art) { animation: art-close var(--duration-close) var(--ease-glide) both, fade-out calc(var(--duration-close) * .4) var(--ease-out) both; }
-    &::view-transition-new(.art) { animation: art-close var(--duration-close) var(--ease-glide) both, fade-in calc(var(--duration-close) * .4) var(--ease-out) both; }
-    /* Overlapping, so the shrinking card always carries a title. */
-    &::view-transition-old(.text) { animation: fade-out calc(var(--duration-close) * .5) var(--ease-out) both; }
-    &::view-transition-new(.text) { animation: fade-in calc(var(--duration-close) * .4) var(--ease-out) calc(var(--duration-close) * .25) both; }
-    &::view-transition-old(page-leave) { animation: fade-out var(--duration-xs) var(--ease-out) both; }
+    /* The cover blends into the card's own art over the whole shrink, so the card lands showing what the shelf shows
+       and the plate never swaps pictures at full size. */
+    &::view-transition-old(.art) { animation: art-close var(--duration-close) var(--ease-glide) both, fade-out var(--duration-close) linear both; }
+    &::view-transition-new(.art) { animation: art-close var(--duration-close) var(--ease-glide) both, fade-in var(--duration-close) linear both; }
+    /* Overlapping, so the shrinking card always carries a title; the card's comes in only once it is near its own size,
+       so it never shows blown up. */
+    &::view-transition-old(.text) { animation: fade-out calc(var(--duration-close) * .4) var(--ease-out) calc(var(--duration-close) * .3) both; }
+    &::view-transition-new(.text) { animation: fade-in calc(var(--duration-close) * .4) var(--ease-out) calc(var(--duration-close) * .45) both; }
+    /* The page's content folds away in the card (ride) and is gone as it lands, so a page left scrolled down doesn't
+       leave its middle in the card. */
+    &::view-transition-old(page-leave) { animation: fade-out calc(var(--duration-close) * .4) var(--ease-out) calc(var(--duration-close) * .6) both; }
     &::view-transition-new(page-arrive) { animation: return var(--duration-close) var(--ease-glide) both; }
   }
 }
 /* The game page's entrance: everything under the cover fades up together as one block, the same 12px in the same
-   direction, with no stagger, over --duration-m on --ease-out.
-   Opened from a card, it plays inside the card's view transition, from when the card has visibly landed (the glide is
-   over 80% of the way there by 50%). Each piece is its own transition group with the same animation, since the rest of
-   the arriving page has to wait to show until the card covers it. The title travelled with the card, so it stays put.
-   Any other arrival plays it on the live page, title included (card-morph.ts, data-entering). Reduced motion fades. */
-:root { --enter-land: calc(var(--duration-open) * .5); }
-:root:active-view-transition-type(card-open) main:not([data-leaving]) :is(.source-header > :not(.source-head), .source-game-actions, .screenshot-strip, .shop-links, .suggestions-section) {
-  view-transition-name: match-element; view-transition-class: enter; }
-:root:active-view-transition-type(card-open) {
-  &::view-transition-group(.enter) { z-index: 3; }
-  &::view-transition-new(.enter) { animation: enter-up var(--duration-m) var(--ease-out) var(--enter-land) both; }
-}
+   direction, with no stagger, over --duration-m on --ease-out. It plays on the live page for any arrival other than a
+   card (card-morph.ts, data-entering), title included; opened from a card, the page is already there, riding in it.
+   Reduced motion fades. */
 :root[data-entering=page] main:not([data-leaving]) :is(.source-head, .source-header > :not(.source-head), .source-game-actions, .screenshot-strip, .shop-links, .suggestions-section) {
   animation: enter-up var(--duration-m) var(--ease-out) both; }
 @keyframes enter-up { from { opacity: 0; translate: 0 12px; } }
 @media (prefers-reduced-motion: reduce) {
   :root[data-entering] main:not([data-leaving]) :is(.source-head, .source-header > *, .source-game-actions, .screenshot-strip, .shop-links, .suggestions-section) {
     animation-name: enter-fade !important; }
-  :root:active-view-transition-type(card-open)::view-transition-new(.enter) { animation-name: enter-fade; }
 }
 @keyframes enter-fade { from { opacity: 0; } }
 

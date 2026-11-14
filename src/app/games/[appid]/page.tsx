@@ -175,7 +175,7 @@ export default async function GamePage({
       />}
       <WebMCP />
       {/* Opened from a card, the card expands into the page: its surface into the sheet, its art into the cover, while
-          the page it came from recedes; the content rises in as the sheet lands (globals.css). Back plays it in reverse
+          the page it came from recedes; the content rides in it from the first frame (globals.css). Back plays it in reverse
           (HistoryTransition). Arriving any other way, the page fades in. */}
       <ViewTransition default="none" enter={{ "card-open": "none", "card-close": "none", default: "page-in" }}>
       <main className="discovery-page">

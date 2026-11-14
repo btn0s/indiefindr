@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { preconnect } from "react-dom";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { HERO_SIZES } from "@/lib/hero";
-import { trailerPlaying } from "@/lib/card-morph";
+import { coverReady } from "@/lib/card-morph";
 
 export type Trailer = { title: string; url: string; poster: string | null };
 
@@ -35,21 +35,30 @@ export function GameTrailer({ title, trailer, image, base }: {
   const sync = () => {
     const video = ref.current;
     if (!video?.currentSrc && !video?.src) return;
-    if (!userPaused.current && inView.current && !document.hidden) void video.play().catch(() => {});
+    // A trailer the browser won't play (iOS Low Power Mode refuses autoplay) leaves the still as the cover. A play cut
+    // short by a pause or by leaving the page says nothing about the cover.
+    if (!userPaused.current && inView.current && !document.hidden) void video.play().catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "NotAllowedError") coverReady();
+    });
     else video.pause();
   };
 
   useEffect(() => {
     const video = ref.current;
-    if (!video || !trailer || !heroPainted || matchMedia("(prefers-reduced-motion: reduce)").matches || saveData()) return;
+    if (!heroPainted) return;
+    // No trailer to play: the still is the cover's own picture.
+    if (!video || !trailer || matchMedia("(prefers-reduced-motion: reduce)").matches || saveData()) { coverReady(); return; }
     userPaused.current = sessionStorage.getItem(PAUSED_KEY) === "1";
     setPaused(userPaused.current);
+    // Paused earlier in the visit, the trailer stays on its still: that is the cover.
+    if (userPaused.current) coverReady();
     let hls: { destroy(): void } | undefined;
     let disposed = false;
     const start = () => {
       if (video.canPlayType("application/vnd.apple.mpegurl")) { video.src = trailer.url; sync(); return; }
       void import("hls.js").then(({ default: Hls }) => {
-        if (disposed || !Hls.isSupported()) return;
+        if (disposed) return;
+        if (!Hls.isSupported()) { coverReady(); return; }
         const player = new Hls({ capLevelToPlayerSize: true });
         hls = player;
         player.loadSource(trailer.url);
@@ -87,14 +96,16 @@ export function GameTrailer({ title, trailer, image, base }: {
   };
 
   return <div className="game-trailer" onKeyDown={event => { if (loaded && event.key.toLowerCase() === "k") togglePause(); }}>
-    {base && base !== image && <Image src={base} alt="" fill unoptimized className="object-cover" />}
+    {/* Eager and decoded with the frame: it is the card's own file, already in memory, and an opening card captures
+        this cover at once, so a lazy or async image would fly as an empty plate. */}
+    {base && base !== image && <Image src={base} alt="" fill unoptimized loading="eager" decoding="sync" className="object-cover" />}
     {/* Everything over the card's own art (base) moves as one layer, so a card morph can hold or drop it as a whole
         (globals.css, data-cover-hold and data-pulling; card-morph.ts). */}
     <div className="cover-layer">
       {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes={HERO_SIZES} className="object-cover"
         onLoad={() => setHeroPainted(true)} onError={() => setHeroPainted(true)} />}
       {trailer && <video ref={ref} muted={muted} loop playsInline aria-label={`${title} trailer`}
-        onLoadedData={() => setLoaded(true)} onPlaying={() => { setPlaying(true); trailerPlaying(); }} data-playing={playing} />}
+        onLoadedData={() => setLoaded(true)} onPlaying={() => { setPlaying(true); coverReady(); }} onError={coverReady} data-playing={playing} />}
     </div>
     {loaded && <div className="trailer-controls">
       <Button className="trailer-button" onClick={togglePause} aria-label={paused ? "Play trailer" : "Pause trailer"} data-on={paused || undefined}>

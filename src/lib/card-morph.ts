@@ -12,8 +12,16 @@ export type Morph = {
   card: string;
   /** Where that card sat on screen, so swiping its page away shrinks it toward that spot. */
   center: { x: number; y: number };
+  /** The card's surface on screen when it was tapped: where the page's content starts riding from (ride). */
+  box: Box;
   /** The card's art, which the page's cover (or its loading skeleton) shows until the card has landed. */
   art: string | null;
+};
+
+type Box = { x: number; y: number; w: number; h: number };
+const boxOf = (element: Element | null | undefined): Box | null => {
+  const rect = element?.getBoundingClientRect();
+  return rect ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height } : null;
 };
 
 let active: Morph | null = null;
@@ -46,30 +54,31 @@ const set = (morph: Morph | null, opening = true) => {
 const root = () => document.documentElement;
 const clearPressed = () => { for (const card of document.querySelectorAll("[data-opening]")) card.removeAttribute("data-opening"); };
 
-/** The arriving page's entrance (globals.css): its content above the fold rises in as one staggered beat. Opened from a
- *  card ("card"), the card's own view transition plays it; any other arrival ("page") plays it on the live page, and so
- *  does a card's page that was still loading when the card landed. Back and Forward return to a page as it was, with
+/** The arriving page's entrance (globals.css): its content rises in as one block. Opened from a card ("card"), there is
+ *  none: the page is already there, riding in the card (ride). Any other arrival ("page") plays it on the live page, and
+ *  so does a card's page that was still loading when the card landed. Back and Forward return to a page as it was, with
  *  no entrance. */
 const enter = (state: "card" | "page" | null) => {
   if (state) root().setAttribute("data-entering", state); else root().removeAttribute("data-entering");
 };
 
-/** The arriving cover keeps showing the card's own art until the trailer is actually playing, so the art changes once,
- *  straight to the moving trailer; if it hasn't started by the end of the entrance, the still comes in instead. */
-export function releaseCover() {
-  root().removeAttribute("data-cover-hold");
-}
+/** The arriving cover keeps showing the card's own art until its own picture is ready (coverReady), so the art changes
+ *  once: straight to the moving trailer, or to the still on a page whose trailer won't play. */
+const releaseCover = () => { coverWaiting = false; root().removeAttribute("data-cover-hold"); };
+let coverWaiting = false;
 
-/** The trailer has started: it takes over the cover, but never mid-flight (the card's own art is what flies); a card
- *  still expanding releases the cover as it lands. */
-export function trailerPlaying() {
-  if (!root().matches(":active-view-transition")) releaseCover();
+/** The cover's own picture is ready (GameTrailer): the trailer is playing, or there is no trailer to play and the still
+ *  has painted. It takes over the cover, but never mid-flight (the card's own art is what flies): a card still
+ *  expanding hands over as it lands. */
+export function coverReady() {
+  if (root().matches(":active-view-transition")) coverWaiting = true; else releaseCover();
 }
 
 /** A card was tapped: it holds its pressed scale while it opens (the expansion starts from there), and the arriving
- *  page holds its cover (releaseCover) and its entrance until the card has landed. */
+ *  page holds its cover on the card's art until its own picture is ready (coverReady). */
 export function openCard(morph: Morph, card: Element) {
   clearPressed();
+  flight = { card: morph.box };
   card.setAttribute("data-opening", "");
   root().setAttribute("data-cover-hold", "");
   enter("card");
@@ -93,6 +102,47 @@ export function onEntryChange(type: string, from: number, to: number) {
   set(Math.abs(to - from) === 1 ? byEntry.get(forward ? to : from) ?? null : null, forward);
   if (forward && active) root().setAttribute("data-cover-hold", ""); else releaseCover();
   enter(null);
+  // What the content rides from, measured while it is still on screen: Forward, the card; Back, the page and its sheet.
+  flight = {};
+  if (!active) return;
+  if (forward) flight.card = boxOf(document.querySelector(`.game-card[data-card="${CSS.escape(active.card)}"] > div`)) ?? undefined;
+  else {
+    const main = [...document.querySelectorAll("main")].find(main => main.checkVisibility());
+    flight = { main: main ?? undefined, sheet: boxOf(main?.querySelector(":scope > .page-sheet")) ?? undefined };
+  }
+}
+
+/** Where the content riding in the sheet travels between: the card's surface, and the page with its sheet. */
+let flight: { card?: Box; sheet?: Box; main?: Element } = {};
+
+/** The game page's content rides inside the card as it opens, at its own size, carried by the sheet's corner and cut
+ *  off by its edges, so the page is all there from the first frame and the card reveals it (and Back folds it away
+ *  the same way). Called once the transition's pseudo-elements exist (HistoryTransition), with the arriving side now
+ *  on screen to measure. The sheet's own group moves with the transition's timing, so this uses the same. */
+export function ride(types: readonly string[]) {
+  const opening = types.includes("card-open");
+  if (!active || !(opening || types.includes("card-close")) || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (opening) {
+    const main = document.querySelector("main:not([data-leaving])");
+    flight.main = main ?? undefined;
+    flight.sheet = boxOf(main?.querySelector(":scope > .page-sheet")) ?? undefined;
+  } else flight.card = boxOf(document.querySelector(`.game-card[data-card="${CSS.escape(active.card)}"] > div`)) ?? undefined;
+  const { card, sheet, main: element } = flight;
+  flight = {};
+  const main = boxOf(element);
+  if (!card || !sheet || !main || !(element instanceof HTMLElement) || !element.offsetWidth) return;
+  // The page's own scale (a page being pulled down to dismiss is shrunk), since the content is moved in its own units.
+  const k = main.w / element.offsetWidth;
+  const css = getComputedStyle(root());
+  const at = (s: Box, radius: string): Keyframe => ({
+    translate: `${(s.x - sheet.x) / k}px ${(s.y - sheet.y) / k}px`,
+    clipPath: `inset(${(sheet.y - main.y) / k}px ${(main.x + main.w - sheet.x - s.w) / k}px ${(main.y + main.h - sheet.y - s.h) / k}px ${(sheet.x - main.x) / k}px round ${radius})`,
+  });
+  const frames = [at(card, css.getPropertyValue("--card-radius")), at(sheet, css.getPropertyValue("--page-radius"))];
+  root().animate(opening ? frames : frames.reverse(), {
+    duration: parseFloat(css.getPropertyValue("--vt-duration")), easing: css.getPropertyValue("--vt-ease").trim(), fill: "both",
+    pseudoElement: opening ? "::view-transition-new(page-arrive)" : "::view-transition-old(page-leave)",
+  });
 }
 
 /** How long the next close takes: a flick hands its speed to the spring (SwipeDismiss). Reset when it ends. */
@@ -102,23 +152,22 @@ export function setCloseDuration(ms: number) {
 
 if (typeof document !== "undefined") {
   document.addEventListener("animationend", event => {
-    // The entrance has settled once its last element has: the page is at rest, and the cover shows the still if the
-    // trailer hasn't started.
+    // The entrance has settled once its last element has: the page is at rest.
     if (/^enter/.test(event.animationName) && !document.getAnimations().some(animation =>
       animation instanceof CSSAnimation && /^enter/.test(animation.animationName) && animation.playState === "running")) {
       enter(null);
-      releaseCover();
     }
     // A view transition has finished (an opened page that was still loading takes a second one, from its skeleton): the
     // names go, so no other navigation can pair them; the page left behind is hidden by now, so the opened card can let
     // go of its press; and a flick's close speed applies only to its own close.
     if (event.pseudoElement === "::view-transition") {
       document.getElementById("card-morph")?.replaceChildren();
-      // The card has landed and its entrance has played; if the page was still loading, it plays when the page arrives.
+      // The card has landed with the page in it; if the page was still loading, its entrance plays when it arrives.
       if (root().getAttribute("data-entering") === "card") {
-        if (document.querySelector("main[aria-busy=true]:not([data-leaving])")?.checkVisibility()) enter("page");
-        else { enter(null); releaseCover(); }
+        enter(document.querySelector("main[aria-busy=true]:not([data-leaving])")?.checkVisibility() ? "page" : null);
       }
+      // A cover that became ready mid-flight takes over now.
+      if (coverWaiting) releaseCover();
       clearPressed();
       root().style.removeProperty("--duration-close");
     }
