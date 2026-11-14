@@ -14,6 +14,7 @@ import {
   isRescued,
   recommendationEligible,
   qualityFields,
+  unresolvedWindows,
 } from "../src/lib/review-quality";
 const game = {
   title: "Example & Game",
@@ -101,4 +102,12 @@ test("the banner says what happened, and opens the history with every figure fro
   expect(within(dialog).getByText("10 positive · 100 negative")).toBeTruthy();
   fireEvent.click(within(dialog).getByRole("button", { name: "Close", hidden: true }));
   await waitFor(() => expect(dialog.hasAttribute("data-closed")).toBe(true));
+});
+test("only adjusted windows rescue; open windows still being judged are reported apart", () => {
+  const active = { start: "2026-11-01", end: "2026-11-10", up: 400, down: 380, verdict: "active_bomb", adjusted: true };
+  const open = { start: "2026-10-01", end: "2026-10-05", up: 5, down: 90, verdict: "unresolved", adjusted: false };
+  expect(isRescued({ ...game, bomb_windows: [open] })).toBe(false);
+  expect(isRescued({ ...game, bomb_windows: [active, open] })).toBe(true);
+  expect(bombSpans([active, open])).toMatchObject([{ up: 400, down: 380, verdict: "active_bomb" }]);
+  expect(unresolvedWindows([active, open])).toMatchObject([{ verdict: "unresolved" }]);
 });
