@@ -24,6 +24,8 @@ const LEADER = 10;
 const STACK_BELOW = 520;
 /** Room a gridline's label takes inside the plot. */
 const TICK_LABEL = 104;
+/** The banner chart keeps this much room at its right end for the Positive / Negative labels, so no bar runs under them. */
+const DIRECT_LABEL = 60;
 
 /** The plot's size in whole pixels, unaffected by the dialog's opening scale. */
 function usePlotSize() {
@@ -80,9 +82,10 @@ export function ReviewHistoryChart({
   const [active, setActive] = useState<number | null>(null);
   const [layout, setLayout] = useState<{ places: Placement[]; short: boolean } | null>(null);
 
-  const { slots, grain } = slotsFor(periods, unit, width, compact ? 5 : 4);
+  const span = compact ? Math.max(0, width - DIRECT_LABEL) : width;
+  const { slots, grain } = slotsFor(periods, unit, span, compact ? 5 : 4);
   const inner = Math.max(1, height - 2 * INSET);
-  const { bars, baseline: base, perReview, maxUp, maxDown } = layoutBars(slots, width, inner);
+  const { bars, baseline: base, perReview, maxUp, maxDown } = layoutBars(slots, span, inner);
   const baseline = base + INSET;
   const stacked = !compact && width > 0 && width < STACK_BELOW;
   const range = monthRange(periods[0].start, periods.at(-1)!.end);
@@ -202,7 +205,7 @@ export function ReviewHistoryChart({
             </>
           )}
         </span>
-        <span className="history-ends">
+        <span className="history-ends" style={{ paddingRight: width - span }}>
           <span>{yearOf(periods[0].start)}</span>
           <span>{yearOf(periods.at(-1)!.end - 1)}</span>
         </span>
