@@ -621,12 +621,11 @@ html { touch-action: manipulation; }
 /* Facts: a panel of cells split by hairlines, label over value: score, reviews, each developer, year. Two across;
    an odd last cell takes the full width. Names wrap whole inside their cell, never truncate. */
 .game-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-block: 8px 2px; overflow: hidden; border-radius: 16px; background: var(--border); box-shadow: 0 0 0 1px var(--border); }
-.game-facts li { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 4px; padding: 12px 14px 13px; border-radius: 0; background: var(--card); white-space: normal; }
+.game-facts li { display: flex; flex-direction: column-reverse; justify-content: space-between; gap: 4px; padding: 12px 14px 13px; border-radius: 0; background: var(--card); white-space: normal; }
 .game-facts li:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .game-facts .fact-label, .game-facts .fact-label[data-quiet] { display: block; color: var(--label); }
 .game-facts .fact-value { font-size: 26px; line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; color: var(--foreground); font-variant-numeric: tabular-nums; }
 .game-facts li[data-fact=developer] .fact-value { font-size: 15px; line-height: 1.3; font-weight: 500; letter-spacing: 0; }
-.game-facts li[data-fact=developer] { justify-content: space-between; }
 .source-header .game-facts { margin-block: 8px 2px; }
 @media (min-width: 1000px) { .source-game { align-items: start; } }
 /* The action: a black pill. */
