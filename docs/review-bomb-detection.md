@@ -1,6 +1,6 @@
 # Review-bomb detection (v3, `steam-review-events-v3`)
 
-Code: `scripts/relaunch/review_quality.py` (model), `review_topics.py` (local off-game text classifier), `steam_reviews.py` (cached, rate-limited Steam reads), `check-reviews.py` (catalog run), `evaluate-review-bombs.py` (scoring against ground truth). TS consumer: `src/lib/review-quality.ts`.
+Code: `scripts/relaunch/review_quality.py` (model), `review_topics.py` (local off-game text classifier), `steam_reviews.py` (cached, rate-limited Steam reads), `check-reviews.py` (catalog run), `evaluate-review-bombs.py` (scoring against ground truth). TS consumer: `src/lib/review-quality.ts`, whose `reviewBomb(game)` is the one thing the site reads (below).
 
 ## Which score is the truth
 
@@ -30,14 +30,18 @@ Steam retired `store.steampowered.com/appreviews?json=1` on about 22 Oct 2026 (i
      - `decline`: sentiment stayed down. Players changed their minds (a broken update, monetisation, abandonment, a company dispute). Never adjusted.
    - Live (open or too recent):
      - `active_bomb`: at least two evidence families. Adjusted now, and the reason says so.
-     - `decline`: the *players* reading. Not adjusted, no banner.
-     - `unresolved`: anything else. Shown as a possible bomb with both numbers, never adjusted.
+     - `decline`: the *players* reading. Not adjusted.
+     - `unresolved`: anything else. Stored for re-judging, never adjusted, never reported to the site.
      - A live window with fewer than 20 reviews before it has no break to judge (a new game's bad launch week is not a bomb): `unresolved`, not shown.
    - Steam flags large bombs while they are still under way: on 14 Nov 2026, PUBG and Dead by Daylight carried open-ended flags, Dead by Daylight's 13 days in. Once that flag appears, the nightly re-judge settles the window as `steam_flagged`.
-5. **Nightly re-judging.** `check-reviews.py` rechecks every game with an `active_bomb` or `unresolved` window, whatever its score, and refetches the headline and open windows daily. Once after-data exists, recovery confirms the verdict or flips it to `decline`, and the banner and score follow.
+5. **Nightly re-judging.** `check-reviews.py` rechecks every game with an `active_bomb` or `unresolved` window, whatever its score, and refetches the headline and open windows daily. Once after-data exists, recovery confirms the verdict or flips it to `decline`, and the score follows.
 6. **Positive bursts** go through the same candidate test and are reported in `positive_windows` (`positive_bomb` if they faded, `rise` if they lasted). They are never subtracted. The score is only used to keep sub-70% games out of recommendations, so removing a positive burst could only lower a score that is already under the gate, and positive bursts are far more often real players (a fix, a free weekend) than a brigade. Steam's labels already remove flagged bursts of either sign.
 
-`bomb_windows` (stored on every game row) is kept lean: adjusted windows (`bomb`, `active_bomb`, `adjusted: true`) plus open `unresolved` windows (`adjusted: false`, banner only). Each carries dates, histogram `up`/`down` (matching the review-history chart), `steam_up`/`steam_down`, `verdict`, `adjusted`, `reason` and `shape`. Only adjusted windows can rescue a game (`eligible` / `isRescued`); rows from before v3 carry no flag and only ever stored negative-majority windows. `review_events` in `review-quality.json` keeps every window with its full evidence.
+`bomb_windows` (stored on every game row) is kept lean: adjusted windows (`bomb`, `active_bomb`, `adjusted: true`) plus open `unresolved` windows (`adjusted: false`, kept for re-judging). Each carries dates, histogram `up`/`down`, `steam_up`/`steam_down`, `verdict`, `adjusted`, `reason` and `shape`. Only adjusted windows can rescue a game (`eligible` / `reviewBomb`); rows from before v3 carry no flag and only ever stored negative-majority windows. `review_events` in `review-quality.json` keeps every window with its full evidence.
+
+## What the site reads
+
+One question: is this game rated Mixed or below because it was review-bombed? `reviewBomb(game)` in `src/lib/review-quality.ts` answers it and returns `{ ratingBefore, ratingNow, when, active }`, or null. It is non-null only when Steam's rating is under 70% (Mixed or below) and `clean_score`, Steam's reviews without the adjusted windows, is 70% or more. A bomb that no longer keeps the game out of the positive range is never reported, and an `unresolved` window never is. The same rule keeps such games in recommendations (`recommendationEligible`, and `eligible` in `review_quality.py`). The agent API returns it as `review_bomb`.
 
 ## Cost
 

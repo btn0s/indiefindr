@@ -1,4 +1,4 @@
-import { qualityFields } from "./review-quality";
+import { reviewBomb } from "./review-quality";
 import { getGame, getGamePageSlate } from './catalog';
 import { getSupabaseServerClient } from './supabase/server';
 import { steamRating } from './rating';
@@ -16,11 +16,11 @@ export async function searchGames(query:string){
 }
 export async function gameDetails(appid:number){
  const game=await getGame(appid);if(!game)return null;
- return {appid,name:game.title,developers:game.developers,release_date:game.release_date,short_description:game.short_description,header_image:game.header_image,review_percent:game.review_positive_pct,review_label:steamRating(game.review_positive_pct,game.review_count),review_count:game.review_count,...qualityFields(game),...links(appid)};
+ return {appid,name:game.title,developers:game.developers,release_date:game.release_date,short_description:game.short_description,header_image:game.header_image,review_percent:game.review_positive_pct,review_label:steamRating(game.review_positive_pct,game.review_count),review_count:game.review_count,review_bomb:reviewBomb(game),...links(appid)};
 }
 export async function recommendationSlate(appid:number,limit=10){
  const game=await getGame(appid);if(!game)return null;
  const {recs}=await getGamePageSlate(appid,game.developers);
- const recommendations=recs.slice(0,Math.min(24,Math.max(1,limit))).map(({game:g})=>({appid:g.appid,name:g.title,header_image:g.header_image,review_percent:g.review_positive_pct,review_label:steamRating(g.review_positive_pct,g.review_count),review_count:g.review_count,...qualityFields(g),...links(g.appid)}));
- return {game:{appid,name:game.title,...qualityFields(game),...links(appid)},recommendations};
+ const recommendations=recs.slice(0,Math.min(24,Math.max(1,limit))).map(({game:g})=>({appid:g.appid,name:g.title,header_image:g.header_image,review_percent:g.review_positive_pct,review_label:steamRating(g.review_positive_pct,g.review_count),review_count:g.review_count,review_bomb:reviewBomb(g),...links(g.appid)}));
+ return {game:{appid,name:game.title,review_bomb:reviewBomb(game),...links(appid)},recommendations};
 }

@@ -139,7 +139,6 @@
   --background: #f7f7f8; --foreground: #131316; --card: #ffffff; --popover: #ffffff;
   --muted: #ececef; --muted-foreground: #6b6b75; --border: #e3e3e8; --input: #e3e3e8;
   --primary: #131316; --primary-foreground: #ffffff; --ring: #131316;
-  --positive: #2f6fb5; --negative: #c8553d;
   --brand: var(--foreground); --media: #0d0d0f; --radius: 0.9rem;
 
   /* Text tiers: ink for names and headings, body for reading, muted for metadata. */
@@ -200,11 +199,11 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .card-rating, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; text-wrap: pretty; }
 .site-footer p { max-width: var(--measure); }
 /* Meta units. Each moves to the next line whole; one wider than its line (a long name in a narrow card) wraps inside
-   itself or truncates rather than pushing the page wide. Chips truncate, with the full name in their title. */
+   itself rather than pushing the page wide. A fact chip never truncates: a name longer than its line wraps inside the
+   chip. */
 .rating-label { display: inline-block; }
-.game-facts li { white-space: nowrap; }
-.game-facts li { max-width: 100%; }
-.game-facts li > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.game-facts li { max-width: 100%; white-space: nowrap; }
+.game-facts li > * { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 /* Emphasis inside a role keeps its size and gains weight. */
 .card-rating strong, .game-facts strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
@@ -293,59 +292,56 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* One column that may shrink below its content: an implicit auto column would grow to fit the 460px cover art and push
    the page wider than a phone screen. */
 .card-grid { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 28px; }
-.game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; }
+.game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; }
 /* Off-screen blocks of cards skip layout and paint until scrolled near; `auto` remembers each block's real height once
    seen, so the scrollbar doesn't jump. Home's later sections do the same. Find in page still finds their text. */
 .card-grid > .game-grid + .game-grid, .discovery-page > section:nth-of-type(n+3) { content-visibility: auto; contain-intrinsic-size: auto 520px; }
-@media(min-width: 768px) { .game-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* A gallery: three wide on desktop, so each piece of art is big enough to look at. */
+@media(min-width: 768px) { .game-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px 24px; } .card-grid { row-gap: 36px; } }
 .game-card { display: block; }
 @media (hover: hover) and (pointer: fine) { .game-card:hover .game-card-title { text-decoration: underline; text-underline-offset: 3px; } }
-.game-card-art { position: relative; overflow: hidden; border-radius: 6px; aspect-ratio: 460/215; background: var(--muted); }
-.game-card-title { padding-top: 10px; }
+.game-card-art { position: relative; overflow: hidden; border-radius: 12px; aspect-ratio: 460/215; background: var(--muted); }
+/* A hairline inside the art's edge, so pale art keeps its shape on the page. */
+.game-card-art::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .07); pointer-events: none; }
+@media(max-width: 700px) { .game-card-art { border-radius: 10px; } }
+.game-card-title { padding-top: 12px; }
 .card-rating { margin-top: 2px; color: var(--muted-foreground); }
 .card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 
 /* Game page */
-.source-game { display: flex; flex-direction: column; gap: 20px; padding-bottom: var(--divider-gap); border-bottom: 1px solid var(--border); }
-.discovery-page > .source-game + * { margin-top: var(--divider-gap); }
-/* Facts: one row of quiet chips that wrap whole. */
+/* Plate: the cover is an object on the page, whole and unfaded, with a hairline edge. On desktop the title,
+   facts, blurb and Steam button sit beside it, centred on it; below 1000px they follow it. The screenshots run under
+   both. A section gap, not a rule, separates the recommendations. */
+.source-game { display: flex; flex-direction: column; gap: 20px; }
+@media (min-width: 1000px) {
+  .source-game { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); column-gap: 44px; row-gap: 36px; align-items: center; }
+  .source-game > :not(.game-trailer, .source-info) { grid-column: 1 / -1; }
+}
+.source-info { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.source-header { display: flex; flex-direction: column; gap: 12px; }
+/* Facts: soft filled chips, no outline, one per fact, wrapping whole. A chip whose name is longer than its line wraps
+   inside itself, so its radius stays modest enough for two lines. */
 .game-facts { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted-foreground); }
-.game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); white-space: nowrap; }
+.game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 4px 10px; border-radius: 14px; background: rgb(19 19 22 / .055); }
 .game-facts strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 .game-facts a { color: var(--foreground); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
-/* Cover hero: the trailer, or its still, fading into the page at the bottom, with the title over the fade. Desktop keeps
-   it in the content column, rounded only at the top (the fade reaches the page colour before the bottom edge, so it
-   dissolves with no line) and at most half the viewport tall; phones run it edge to edge under the
-   header. */
-.game-trailer { position: relative; aspect-ratio: 16/9; max-height: 50vh; width: 100%; overflow: hidden; border-radius: 12px 12px 0 0; background: var(--media); }
-.game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--background) 30%, transparent) 62%, color-mix(in srgb, var(--background) 78%, transparent) 78%, var(--background) 92%); }
-.source-header { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 12px; margin-top: -76px; }
-/* More air around the facts row than between the other lines. */
-.source-header .game-facts { margin-block: 6px 2px; }
-/* Below 1000px the cover runs edge to edge under the header. Wider, it bleeds 40px past the content column on each
-   side, so the title and facts sit inset from the art's edge instead of flush with it. */
-@media (max-width: 999px) {
-  .source-game .game-trailer { width: 100vw; max-width: none; margin-inline: calc(50% - 50vw); margin-top: calc(-1 * var(--page-top)); border-radius: 0; }
-}
-@media (min-width: 1000px) {
-  .source-game .game-trailer { width: calc(100% + 80px); max-width: none; margin-inline: -40px; border-radius: 16px 16px 0 0; }
-}
-@media (max-width: 700px) {
-  .source-header { margin-top: -52px; }
-}
-/* Hierarchy from size and weight, both in full foreground: a small lead line, then the title. */
-.source-header .page-title { display: flex; flex-direction: column; gap: 2px; }
-.source-header .title-lead { color: var(--foreground); font-size: var(--type-body); line-height: 1.4; font-weight: 500; letter-spacing: 0; }
+/* The plate: 16:9, a 16px radius (14px on phones) and a hairline inside its edge. */
+.game-trailer { position: relative; aspect-ratio: 16/9; width: 100%; overflow: hidden; border-radius: 16px; background: var(--media); }
+.game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .08); pointer-events: none; }
+@media (max-width: 700px) { .game-trailer { border-radius: 14px; } }
+/* Hierarchy from size and weight, both in full foreground: a small lead line, then the title. Beside the plate the
+   name is a step smaller than the display size, so long names keep to two or three lines. */
+.source-header .page-title { display: flex; flex-direction: column; gap: 4px; }
+.source-header .title-lead { color: var(--muted-foreground); font-size: var(--type-body); line-height: 1.4; font-weight: 500; letter-spacing: 0; }
 .source-header .page-title [itemprop=name] { text-wrap: balance; overflow-wrap: anywhere; }
-.source-header .source-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-@media (max-width: 700px) { .source-header .source-description { -webkit-line-clamp: 2; } }
+@media (min-width: 1000px) { .source-header .page-title [itemprop=name] { font-size: 40px; line-height: 1.08; } }
+.source-header .source-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; margin-top: 2px; }
+@media (max-width: 700px) { .source-header .source-description { -webkit-line-clamp: 3; } }
 .game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
 .game-trailer video[data-playing=true] { opacity: 1; }
-/* Top right: the bottom of the cover belongs to the fade and the title. */
 .trailer-controls { position: absolute; z-index: 2; right: 12px; top: 12px; display: flex; gap: 8px; }
-.trailer-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--media) 65%, transparent); color: #fff; }
+.trailer-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgb(0 0 0 / .38); backdrop-filter: blur(12px); color: #fff; }
 .trailer-button::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 /* Each button holds both icons; the state crossfades between them (same swap as the copy button). */
 .trailer-button svg { position: absolute; transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out), filter var(--duration-enter) var(--ease-out); }
@@ -355,10 +351,11 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .source-description { color: #55555e; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
 /* Screenshots: a row that scrolls and snaps inside itself; on phones it runs to the screen edges. */
-.screenshot-strip { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.screenshot-strip { position: relative; display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .screenshot-strip::-webkit-scrollbar { display: none; }
 .screenshot-strip li { flex: 0 0 clamp(220px, 32%, 288px); scroll-snap-align: start; }
-.screenshot-strip button { display: block; width: 100%; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; background: var(--muted); }
+.screenshot-strip button { display: block; width: 100%; border-radius: 12px; overflow: hidden; aspect-ratio: 16/9; background: var(--muted); }
+@media (max-width: 700px) { .screenshot-strip button { border-radius: 10px; } }
 /* A hairline edge, so pale shots don't melt into the page. */
 .screenshot-strip img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid rgb(0 0 0 / .07); outline-offset: -1px; border-radius: inherit; }
 /* Phones have the 16px page gutter (layout.tsx px-4). */
@@ -367,23 +364,45 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .screenshot-strip li { flex-basis: 72%; }
 }
 @media (hover: hover) and (pointer: fine) { .screenshot-strip button:hover img { opacity: .85; } }
-.screenshot-strip button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-/* The viewer: full screen on black, one shot per page of a snapping track (swipe, arrows), tap anywhere or Esc to close. */
-.screenshot-viewer { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #000; color: #fff; overflow: hidden; }
-.screenshot-viewer::backdrop { background: #000; }
-html:has(.screenshot-viewer[open]) { overflow: hidden; }
-.screenshot-track { display: flex; height: 100%; overflow-x: auto; overscroll-behavior: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
-.screenshot-track::-webkit-scrollbar { display: none; }
-.screenshot-track figure { position: relative; flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; }
-.screenshot-track img { object-fit: contain; }
-.viewer-button { position: absolute; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: rgb(255 255 255 / .14); color: #fff; }
-.viewer-close { top: calc(12px + env(safe-area-inset-top)); right: 12px; }
+/* Room above and below for the focus ring, which the strip's horizontal scroll would otherwise clip. After the viewer
+   closes by pointer or touch, the thumbnail it returns focus to shows no ring (ScreenshotViewer). */
+.screenshot-strip { padding-block: 4px; margin-block: -4px; }
+.screenshot-strip button[data-quiet-focus]:focus-visible { outline: none; }
+/* The viewer (ScreenshotViewer): shots on black over the receded page. Script drives every moving value; CSS only
+   lays it out and fades the chrome. The page keeps its scrollbar's gutter while locked, so nothing shifts. */
+html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable; }
+.screenshot-viewer { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
+  background: none; color: #fff; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: zoom-out; }
+.screenshot-viewer::backdrop { background: none; }
+.screenshot-viewer:focus-visible { outline: none; }
+.viewer-backdrop { position: absolute; inset: 0; background: #000; opacity: 0; }
+.viewer-track, .viewer-page { position: absolute; inset: 0; }
+/* While a shot is picked up or flying home, the others step out of the way. */
+.viewer-page { transition: opacity .15s ease; }
+.screenshot-viewer:is([data-phase=dragging], [data-phase=closing]) .viewer-page:not([data-current]) { opacity: 0; }
+.viewer-shot { position: absolute; top: 0; left: 0; transform-origin: 0 0; background: rgb(255 255 255 / .06); }
+.viewer-shot img { object-fit: cover; pointer-events: none; }
+.viewer-shot .viewer-full { object-fit: contain; opacity: 0; transition: opacity .25s ease; }
+.viewer-shot[data-shown] .viewer-full { opacity: 1; }
+/* The shot being viewed leaves an empty slot in the strip, as it would if it had been lifted out. */
+.screenshot-strip button[data-viewing] img { visibility: hidden; }
+.viewer-button { position: absolute; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+  background: rgb(255 255 255 / .14); color: #fff; cursor: pointer; opacity: 0; pointer-events: none;
+  transition: opacity .12s ease, background-color .15s ease, scale .15s ease-out; }
+.viewer-button:active { scale: .94; }
+.screenshot-viewer[data-phase=open] .viewer-close { opacity: 1; pointer-events: auto; transition-duration: .2s, .15s, .15s; }
+.viewer-close { top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); }
 .viewer-prev, .viewer-next { top: 50%; translate: 0 -50%; }
-.viewer-prev { left: 12px; } .viewer-next { right: 12px; }
-@media (hover: none) { .viewer-prev, .viewer-next { display: none; } }
+.viewer-prev { left: 16px; } .viewer-next { right: 16px; }
+/* Prev and next show while the mouse moves (and on keyboard focus), and not at the ends. Touch swipes instead. */
+@media (hover: none) { .viewer-nav { display: none; } }
+@media (hover: hover) and (pointer: fine) {
+  .viewer-button:hover { background: rgb(255 255 255 / .24); }
+  .screenshot-viewer[data-phase=open]:is([data-pointer], :has(.viewer-nav:focus-visible)) .viewer-nav:not([aria-disabled=true]) {
+    opacity: 1; pointer-events: auto; transition-duration: .2s, .15s, .15s; }
+}
 .viewer-button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media(max-width: 640px) {
-  .source-game { gap: 16px; }
   .source-game-actions { width: 100%; }
   .steam-link { width: 100%; min-height: 46px; }
 }
@@ -427,6 +446,7 @@ code, pre { font-family: var(--font-geist-mono), ui-monospace, monospace; }
 .copy-button[data-copied] .copy-check { opacity: 1; transform: none; }
 @media(prefers-reduced-motion: reduce) { .copy-button svg { transform: none !important; } }
 .agent-docs a { text-decoration: underline; text-underline-offset: 3px; }
+
 
 /* Focus: one ring, keyboard only; a mouse click never draws it. */
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
@@ -571,6 +591,10 @@ html { touch-action: manipulation; }
 .card-skeleton .skeleton-line { height: 14px; margin-top: 13px; width: 72%; }
 .card-skeleton .skeleton-line + .skeleton-line { height: 12px; margin-top: 9px; width: 54%; }
 .skeleton-title { height: calc(var(--type-title) * 1.15); width: min(440px, 80%); border-radius: 6px; }
+.source-header .skeleton-lead { height: 14px; width: 76px; margin-bottom: 2px; }
+.source-header .skeleton-title { height: calc(var(--type-display) * 1.05); }
+@media (min-width: 1000px) { .source-header .skeleton-title { height: 44px; width: 90%; } }
+.source-header .skeleton-meta { height: 27px; width: min(380px, 90%); margin-top: 6px; border-radius: 14px; }
 .skeleton-meta { height: 14px; width: min(520px, 90%); margin-top: 16px; }
 .skeleton-note { height: 14px; width: min(320px, 70%); margin-top: 6px; }
 .skeleton-heading { height: calc(var(--type-heading) * 1.1); width: 220px; border-radius: 6px; }
@@ -580,141 +604,3 @@ html { touch-action: manipulation; }
 .skeleton-text .skeleton:last-child { width: 60%; }
 .skeleton-button { height: 40px; width: 168px; border-radius: 8px; }
 @media(max-width: 640px) { .skeleton-button { width: 100%; height: 46px; } }
-
-/* Review-bombed games: a banner under the facts says what happened beside the review history,
-   and opens the full history in a dialog, a bottom sheet on phones. Steam's score stays as Steam gives it. */
-.bomb-banner, .history-chart, .bomb-dialog { --band: color-mix(in srgb, var(--negative) 10%, transparent); --band-possible: color-mix(in srgb, var(--negative) 5%, transparent); }
-.bomb-banner { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: 40px; width: 100%; margin-top: 24px; padding: 20px 24px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text-body); font: inherit; text-align: left; cursor: pointer; transition: border-color 160ms ease-out, box-shadow 160ms ease-out, scale 160ms cubic-bezier(.2, 0, 0, 1); }
-.bomb-banner:hover { border-color: color-mix(in srgb, var(--foreground) 22%, var(--border)); box-shadow: 0 1px 2px rgb(19 19 22 / 5%), 0 8px 24px rgb(19 19 22 / 7%); }
-.bomb-banner:hover .bomb-banner-more { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 3px; }
-.bomb-banner:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.bomb-banner { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.bomb-banner:active { scale: .992; box-shadow: 0 1px 2px rgb(19 19 22 / 5%); transition-duration: 80ms; }
-.bomb-banner-text { display: flex; flex-direction: column; gap: 4px; }
-/* With no review history to draw, the sentence takes the whole card at a reading measure. */
-.bomb-banner:not(:has(.history-chart)) { grid-template-columns: minmax(0, 1fr); }
-.bomb-banner:not(:has(.history-chart)) .bomb-banner-text { max-width: 68ch; }
-.bomb-banner-eyebrow { margin-bottom: 6px; color: var(--muted-foreground); font-size: var(--type-meta); line-height: 1.4; }
-.bomb-banner-headline { color: var(--foreground); font-size: var(--type-body); font-weight: 600; line-height: 1.5; text-wrap: balance; }
-.bomb-banner-detail { font-size: var(--type-body); line-height: 1.6; text-wrap: pretty; }
-.bomb-banner-more { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 14px; color: var(--foreground); font-size: var(--type-meta); font-weight: 500; }
-.bomb-banner-more svg { transition: translate 160ms ease-out; }
-.bomb-banner:hover .bomb-banner-more svg { translate: 3px 0; }
-
-.history-chart { display: flex; flex-direction: column; min-width: 0; margin: 0; color: var(--muted-foreground); font-size: var(--type-meta); line-height: 1.4; font-variant-numeric: tabular-nums; }
-.history-caption { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; margin-bottom: 12px; }
-.history-readout strong { margin-right: 6px; color: var(--foreground); font-weight: 600; }
-.history-legend { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; }
-.history-legend > span { display: inline-flex; align-items: center; gap: 6px; }
-.history-legend > span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--key); }
-.history-legend [data-key=up] { --key: var(--positive); }
-.history-legend [data-key=down] { --key: var(--negative); }
-.history-legend [data-key=band]::before { width: 12px; height: 12px; border-radius: 3px; background: var(--band); }
-.history-legend [data-key=band][data-verdict=unresolved]::before { background: var(--band-possible); outline: 1px dashed color-mix(in srgb, var(--negative) 45%, transparent); outline-offset: -1px; }
-/* Each review bomb is named above its band, over a short leader. */
-.history-callouts { position: relative; display: block; flex-shrink: 0; }
-.history-chart[data-compact] .history-callouts { height: 18px; margin-bottom: 6px; }
-.history-callout { position: absolute; color: var(--muted-foreground); line-height: 16px; white-space: nowrap; }
-.history-chart[data-compact] .history-callout { color: var(--text-body); line-height: 18px; }
-.history-callout strong { color: var(--foreground); font-weight: 500; }
-.history-callout[data-stacked] > span { display: block; }
-.history-leader { position: absolute; bottom: 0; width: 1px; translate: -.5px 0; background: color-mix(in srgb, var(--foreground) 30%, transparent); }
-.history-plot { position: relative; display: block; height: 96px; }
-.history-chart:not([data-compact]) .history-plot { height: 176px; touch-action: pan-y; border-radius: 4px; }
-.history-plot:focus-visible { outline: 2px solid var(--ring); outline-offset: 6px; }
-.history-svg { display: block; animation: history-in 240ms ease-out; }
-@keyframes history-in { from { opacity: 0; } }
-.history-band { fill: var(--band); }
-/* A possible bomb isn't set aside: half the wash, edged with a dashed line. */
-.history-band[data-verdict=unresolved] { fill: var(--band-possible); stroke: color-mix(in srgb, var(--negative) 45%, transparent); stroke-dasharray: 3 3; }
-.history-bar[data-sign=up] { fill: var(--positive); }
-.history-bar[data-sign=down] { fill: var(--negative); }
-.history-slot { transition: opacity 120ms ease-out; }
-.history-plot[data-active] .history-slot:not([data-active]) { opacity: .28; }
-.history-axis { fill: color-mix(in srgb, var(--foreground) 32%, transparent); }
-.history-grid { stroke: var(--border); stroke-width: 1; }
-/* Labels sit inside the plot on a card-coloured halo, so they stay legible over a bar. */
-.history-tick, .history-direct { position: absolute; padding: 1px 6px 1px 0; border-radius: 3px; background: var(--card); line-height: 1; white-space: nowrap; }
-.history-tick { left: 0; }
-.history-tick[data-at=end] { right: 0; left: auto; padding: 1px 0 1px 6px; }
-.history-direct { right: 0; padding: 1px 0 1px 6px; font-size: 11px; }
-.history-years { position: relative; height: 18px; margin-top: 10px; }
-.history-years > span { position: absolute; top: 0; padding-left: 6px; border-left: 1px solid var(--border); line-height: 18px; }
-.history-ends { display: flex; justify-content: space-between; margin-top: 8px; }
-
-.bomb-dialog-backdrop { position: fixed; inset: 0; z-index: 50; background: rgb(19 19 22 / 36%); transition: opacity 220ms cubic-bezier(.2, 0, 0, 1); }
-.bomb-dialog-backdrop:is([data-starting-style], [data-ending-style]) { opacity: 0; }
-.bomb-dialog { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; width: min(760px, calc(100vw - 48px)); height: fit-content; max-height: calc(100dvh - 64px); margin: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--foreground); box-shadow: 0 24px 64px rgb(19 19 22 / 16%), 0 2px 6px rgb(19 19 22 / 6%); outline: none; transition: opacity 220ms cubic-bezier(.2, 0, 0, 1), scale 220ms cubic-bezier(.2, 0, 0, 1); }
-.bomb-dialog:is([data-starting-style], [data-ending-style]) { opacity: 0; scale: .97; }
-.bomb-dialog[data-ending-style] { transition-duration: 150ms; transition-timing-function: cubic-bezier(.4, 0, 1, 1); }
-.bomb-dialog-grabber { display: none; }
-/* On phones the dialog is a bottom sheet; the SDK places it and drives its motion and swipe. */
-.bomb-dialog[data-presentation=sheet] { width: 100%; max-height: 92dvh; margin: 0; padding-bottom: env(safe-area-inset-bottom); border-width: 1px 0 0; border-radius: 16px 16px 0 0; transition: none; }
-.bomb-dialog[data-presentation=sheet]:is([data-starting-style], [data-ending-style]) { opacity: 1; scale: 1; }
-/* Pulling down with the history scrolled to the top carries on into the sheet and dismisses it. */
-.bomb-dialog[data-presentation=sheet] .bomb-dialog-body { overscroll-behavior-y: auto; }
-.bomb-dialog[data-presentation=sheet] .bomb-dialog-grabber { display: block; flex-shrink: 0; width: 36px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: color-mix(in srgb, var(--foreground) 18%, transparent); }
-.bomb-dialog-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 20px 0 32px; }
-.bomb-dialog-header h2 { font-size: var(--type-heading); font-weight: 600; line-height: 1.3; letter-spacing: -0.015em; }
-.bomb-dialog-close { display: grid; flex-shrink: 0; place-items: center; width: 36px; height: 36px; border-radius: 999px; color: var(--muted-foreground); cursor: pointer; transition: background-color 120ms ease-out, color 120ms ease-out; }
-.bomb-dialog-close:hover { background: var(--muted); color: var(--foreground); }
-.bomb-dialog-close:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.bomb-dialog-body { display: flex; flex-direction: column; gap: 28px; min-height: 0; padding: 12px 32px 28px; overflow-y: auto; overscroll-behavior: contain; }
-/* While there's more history below, the body fades out at its bottom edge to say it scrolls. */
-@property --scroll-fade { syntax: "<length>"; inherits: false; initial-value: 0px; }
-@keyframes bomb-scroll-fade { 0%, 94% { --scroll-fade: 48px; } 100% { --scroll-fade: 0px; } }
-.bomb-dialog-body { mask-image: linear-gradient(to bottom, #000 calc(100% - var(--scroll-fade)), transparent); animation: bomb-scroll-fade linear both; animation-timeline: scroll(self); }
-.bomb-dialog-lead { max-width: 62ch; color: var(--text-body); font-size: var(--type-body); line-height: 1.6; text-wrap: pretty; }
-.bomb-dialog-lead strong { color: var(--foreground); font-weight: 600; }
-.bomb-dialog-method { max-width: 66ch; color: var(--muted-foreground); font-size: var(--type-meta); line-height: 1.55; text-wrap: pretty; }
-.bomb-dialog-method a { display: inline-flex; align-items: center; gap: 2px; color: var(--foreground); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 3px; }
-.bomb-dialog-method a:hover { text-decoration-color: currentColor; }
-
-.bomb-ledger { width: calc(100% + 20px); margin-inline: -10px; border-collapse: collapse; font-size: var(--type-meta); line-height: 1.4; font-variant-numeric: tabular-nums; }
-.bomb-ledger caption { padding: 0 10px 10px; color: var(--foreground); font-size: var(--type-body); font-weight: 600; text-align: left; }
-.bomb-ledger :is(th, td) { padding: 11px 10px; border-top: 1px solid var(--border); color: var(--text-body); font-weight: inherit; text-align: left; vertical-align: top; }
-.bomb-ledger td { width: 64px; text-align: right; }
-.bomb-ledger [data-kind=bomb] > * { background: var(--band); }
-.bomb-ledger [data-verdict=unresolved] > * { background: var(--band-possible); }
-.bomb-ledger [data-kind=bomb] > :first-child { border-radius: 6px 0 0 6px; }
-.bomb-ledger [data-kind=bomb] > :last-child { border-radius: 0 6px 6px 0; }
-.bomb-ledger [data-kind=bomb] > *, .bomb-ledger [data-kind=bomb] + tr > * { border-top-color: transparent; }
-.bomb-ledger-cell { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 24px; }
-.bomb-ledger-name { white-space: nowrap; }
-.bomb-ledger-name > span { margin-left: 8px; color: var(--muted-foreground); }
-.bomb-ledger tfoot tr:first-child > * { border-top-color: color-mix(in srgb, var(--foreground) 32%, transparent); }
-.bomb-ledger [data-kind=kept] > * { color: var(--foreground); font-weight: 600; }
-.bomb-split { display: flex; gap: 2px; height: 6px; }
-.bomb-split > span { min-width: 2px; border-radius: 3px; background: var(--fill); }
-.bomb-split > [data-sign=up] { --fill: var(--positive); }
-.bomb-split > [data-sign=down] { --fill: var(--negative); }
-
-@media(max-width: 700px) {
-  .bomb-banner { grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 20px; padding: 16px; }
-  .bomb-banner-text { display: contents; }
-  .bomb-banner-headline { margin-bottom: 4px; }
-  .history-chart[data-compact] { margin-top: 20px; }
-  .bomb-banner-more { order: 1; padding-top: 16px; }
-  .history-plot { height: 72px; }
-  .history-chart:not([data-compact]) .history-plot { height: 152px; }
-  .bomb-dialog-header { padding: 12px 12px 0 20px; }
-  .bomb-dialog-header h2 { font-size: var(--type-heading); }
-  .bomb-dialog-body { gap: 28px; padding: 8px 20px 24px; }
-  .bomb-ledger { width: calc(100% + 16px); margin-inline: -8px; }
-  .bomb-ledger caption { padding-inline: 8px; }
-  .bomb-ledger :is(th, td) { padding: 10px 8px; }
-  .bomb-ledger td { width: 52px; }
-  .bomb-ledger-cell { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-}
-@media(prefers-reduced-motion: reduce) {
-  .bomb-banner, .bomb-banner-more svg, .history-slot, .bomb-dialog-close { transition: none; }
-  .bomb-banner:active { scale: none; }
-  .history-svg { animation: none; }
-}
-@media(forced-colors: active) {
-  .history-band { fill: none; stroke: CanvasText; stroke-dasharray: 3 3; }
-  .history-bar[data-sign=up] { fill: Highlight; }
-  .history-bar[data-sign=down], .history-axis { fill: CanvasText; }
-  .bomb-split > [data-sign=up] { background: Highlight; }
-  .bomb-split > [data-sign=down] { background: CanvasText; }
-}
