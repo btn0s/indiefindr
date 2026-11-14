@@ -17,7 +17,7 @@ export function GameFacts({ game }: { game: FactsGame }) {
   const year = game.release_date?.slice(0, 4);
   return <ul className="game-facts">
     {rating && <li data-fact="score" title="Steam user reviews"><span className="fact-value">{game.review_positive_pct}%</span> <span className="fact-label">{rating}</span></li>}
-    {game.review_count > 0 && <li data-fact="reviews"><span className="fact-value">{compactCount(game.review_count)}</span>{" "}<span className="fact-label">reviews</span></li>}
+    {game.review_count > 0 && <li data-fact="reviews"><span className="fact-value">{compactCount(game.review_count)}</span>{" "}<span className="fact-label">reviews</span></li>}
     {game.developers.map(developer => <li key={developer} data-fact="developer">
       <span className="fact-value"><Link title={developer} href={game.is_indie ? `/developer/${encodeURIComponent(developer)}` : `https://store.steampowered.com/search/?developer=${encodeURIComponent(developer)}`}>{developer}</Link></span>
       <span className="fact-label" data-quiet>Developer</span>
