@@ -17,7 +17,6 @@ const SETTLE: Feel = { duration: 0.34, bounce: 0.12 }; // back into place after 
 const FADE: Feel = { duration: 0.24, bounce: 0 }; // reduced motion: the viewer only fades
 const GAP = 24; // between shots while swiping
 const RECEDE = 0.04; // how far the page shrinks back behind the open viewer
-const THUMB_RADIUS = 8; // the strip's corner radius (globals.css)
 const SHRINK = 0.5; // how small a shot gets dragged down a whole screen
 const PROJECT = 0.998 / (1 - 0.998); // iOS scroll deceleration: how far a release at 1px/ms would coast, in px
 
@@ -119,7 +118,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       const f = fits[current], s = Math.max(r.width / f.w, r.height / f.h);
       return {
         x: r.left - pageLeft() + (r.width - f.w * s) / 2, y: r.top + (r.height - f.h * s) / 2, s,
-        cx: (f.w * s - r.width) / 2, cy: (f.h * s - r.height) / 2, r: THUMB_RADIUS * r.width / thumb.offsetWidth,
+        cx: (f.w * s - r.width) / 2, cy: (f.h * s - r.height) / 2, r: (parseFloat(getComputedStyle(thumb).borderTopLeftRadius) || 0) * r.width / thumb.offsetWidth,
       };
     };
     const shrunk = (): Pose => { const f = fits[current]; return { x: f.x + f.w * 0.05, y: f.y + f.h * 0.05, s: 0.9, cx: 0, cy: 0, r: 0 }; };
