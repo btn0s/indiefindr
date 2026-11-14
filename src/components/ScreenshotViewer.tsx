@@ -11,7 +11,8 @@ export const thumbSrc = (src: string) => src.replace(/(\/ss_[0-9a-f]+)\.jpg/, "$
 // while it opens sends it back, a finger catches it, a release hands the finger's speed to the spring that takes over.
 type Feel = { duration: number; bounce: number };
 const OPEN: Feel = { duration: 0.44, bounce: 0.08 };
-const CLOSE: Feel = { duration: 0.36, bounce: 0 };
+// Closing runs on one progress spring, release pose to thumbnail, so everything lands together without a tail.
+const CLOSE: Feel = { duration: 0.24, bounce: 0 };
 const PAGE: Feel = { duration: 0.4, bounce: 0 };
 const SETTLE: Feel = { duration: 0.34, bounce: 0.12 }; // back into place after a drag that didn't dismiss
 const FADE: Feel = { duration: 0.24, bounce: 0 }; // reduced motion: the viewer only fades
@@ -31,15 +32,15 @@ function aim(s: Spring, to: number, feel: Feel, v?: number) {
   if (v !== undefined) s.v = v;
 }
 function jump(s: Spring, x: number) { s.x = s.to = x; s.v = 0; }
-/** Steps a spring by dt seconds; false once it has settled. */
-function advance(s: Spring, dt: number, rest: number) {
+/** Steps a spring by dt seconds; false once it is within `rest` of its target and slower than `restSpeed` per second. */
+function advance(s: Spring, dt: number, rest: number, restSpeed = rest * 10) {
   if (s.x === s.to && s.v === 0) return false;
   for (let t = 0; t < dt; t += 1 / 240) {
     const h = Math.min(1 / 240, dt - t);
     s.v += (-s.k * (s.x - s.to) - s.c * s.v) * h;
     s.x += s.v * h;
   }
-  if (Math.abs(s.x - s.to) < rest && Math.abs(s.v) < rest * 10) { jump(s, s.to); return false; }
+  if (Math.abs(s.x - s.to) < rest && Math.abs(s.v) < restSpeed) { jump(s, s.to); return false; }
   return true;
 }
 /** iOS rubber band: follows at first, then resists, never passing `size`. */
@@ -101,6 +102,8 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
     const ready = new Set<number>();
     const trackX = spring(), shade = spring();
     const pose = { x: spring(), y: spring(), s: spring(1), cx: spring(), cy: spring(), r: spring() };
+    // While closing: progress from the pose and backdrop at the start of the close (0) to the thumbnail (1).
+    let land: { t: Spring; from: Pose; shade: number; rest: number } | null = null;
 
     const fitPose = (): Pose => { const f = fits[current]; return { x: f.x, y: f.y, s: 1, cx: 0, cy: 0, r: 0 }; };
     const setPose = (to: Pose, feel?: Feel) => {
@@ -213,8 +216,15 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       frame = 0;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (phase === "closing" && !reduce) aimClose();
-      let moving = advance(trackX, dt, 0.25);
+      let moving = false;
+      if (phase === "closing" && land) {
+        moving = advance(land.t, dt, land.rest, land.rest * 30); // a pixel away, under 30px/s: landed
+        // The thumbnail is measured each frame, since the page under it is still growing back from its recede.
+        const to = closeTarget(), from = land.from, t = Math.min(1, land.t.x);
+        for (const key of ["x", "y", "s", "cx", "cy", "r"] as const) jump(pose[key], from[key] + (to[key] - from[key]) * t);
+        jump(shade, land.shade * (1 - t));
+      }
+      moving = advance(trackX, dt, 0.25) || moving;
       moving = advance(shade, dt, 0.002) || moving;
       for (const key of ["x", "y", "cx", "cy", "r"] as const) moving = advance(pose[key], dt, 0.25) || moving;
       moving = advance(pose.s, dt, 0.0005) || moving;
@@ -230,24 +240,33 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       if (moving) kick();
     };
 
-    const aimClose = () => {
+    const closeTarget = () => {
       const to = fallback ? null : thumbPose();
-      if (to) setPose(to, CLOSE);
-      else { fallback = true; setPose(shrunk(), CLOSE); }
+      if (to) return to;
+      fallback = true;
+      return shrunk();
     };
-    const close = (keyboard = false) => {
+    /** Closes into the thumbnail. A release's velocity (px/s) carries over as far as it heads toward the thumbnail. */
+    const close = (keyboard = false, velocity = { x: 0, y: 0 }) => {
       byKeyboard = keyboard;
       if (phase === "closing" || phase === "done") return;
       drag = null;
       fallback = false;
       setPhase("closing");
       keepInStrip(current);
-      aim(trackX, -current * stride, PAGE);
-      aim(shade, 0, reduce ? FADE : CLOSE);
-      if (!reduce) aimClose();
+      aim(trackX, -current * stride, CLOSE);
+      if (reduce) { aim(shade, 0, FADE); kick(); return; }
+      const from: Pose = { x: pose.x.x, y: pose.y.x, s: pose.s.x, cx: pose.cx.x, cy: pose.cy.x, r: pose.r.x };
+      const to = closeTarget(), f = fits[current];
+      const dx = to.x + f.w * to.s / 2 - (from.x + f.w * from.s / 2), dy = to.y + f.h * to.s / 2 - (from.y + f.h * from.s / 2);
+      const distance = Math.hypot(dx, dy, f.w * (to.s - from.s));
+      const v0 = distance > 1 ? clamp((velocity.x * dx + velocity.y * dy) / (dx * dx + dy * dy || 1), 0, 10) : 0;
+      land = { t: spring(0), from, shade: shade.x, rest: 1 / Math.max(1, distance) };
+      aim(land.t, 1, CLOSE, v0);
       kick();
     };
     const reopen = () => {
+      land = null;
       setPhase("opening");
       setPose(fitPose(), OPEN);
       aim(shade, 1, reduce ? FADE : OPEN);
@@ -367,11 +386,11 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       }
       const dy = event.clientY - d.y0;
       const vx = v.x * 1000, vy = v.y * 1000;
-      pose.x.v = vx;
-      pose.y.v = vy;
-      pose.s.v = dy > 0 ? -d.s0 * SHRINK * vy / H : 0;
-      if (!cancelled && (v.y > 0.3 || (dy > H * 0.12 && v.y > -0.1))) close();
+      if (!cancelled && (v.y > 0.3 || (dy > H * 0.12 && v.y > -0.1))) close(false, { x: vx, y: vy });
       else {
+        pose.x.v = vx;
+        pose.y.v = vy;
+        pose.s.v = dy > 0 ? -d.s0 * SHRINK * vy / H : 0;
         setPhase("opening");
         setPose(fitPose(), SETTLE);
         aim(shade, 1, SETTLE);
