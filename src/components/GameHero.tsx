@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { HERO_SIZES } from "@/lib/hero";
-import type { HeroLogo } from "@/lib/steam-art";
+import type { HeroLogo } from "@/lib/steam-logo";
 
 const EDGE = { start: "left", center: "center", end: "right" } as const;
 const ROW = { start: "top", center: "center", end: "bottom" } as const;

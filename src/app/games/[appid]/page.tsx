@@ -11,7 +11,7 @@ import { GameFacts } from "@/components/GameFacts";
 import { ScreenshotStrip } from "@/components/ScreenshotStrip";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGamePageSlate, getGame, getRecommendations, withArt } from "@/lib/catalog";
-import { getHeroLogo } from "@/lib/steam-art";
+import { getHeroLogo } from "@/lib/steam-logo";
 
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";

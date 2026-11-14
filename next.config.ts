@@ -4,11 +4,13 @@ const nextConfig: NextConfig = {
   // Externalize steam-user and its dependencies to avoid bundling issues
   // steam-crypto needs to access system.pem file at runtime
   serverExternalPackages: ["steam-user", "@doctormckay/steam-crypto"],
-  // Game page heroes (trailer posters and screenshots, 1920px at Steam) go through the image optimizer, so a phone gets
-  // a sharp ~1200px file at a fraction of the bytes. Store headers are already right-sized; those images opt out
-  // with `unoptimized` where they render (GameCard, search rows, home showcase). WebP only: AVIF encodes far slower on
-  // a cache miss, and every deploy starts cold. The hero paints over the cached store header (GameTrailer), so a cold
-  // transform never leaves the frame empty.
+  // steam-user loads lzma by a computed name (helpers.requireWithFallback), which the file tracer can't follow: without
+  // this, every request-time render of a page that looks up a logo fails on Vercel with "Cannot find module 'lzma'".
+  outputFileTracingIncludes: { "/*": ["node_modules/.pnpm/steam-user@*/node_modules/lzma/**/*"] },
+  // Box art (600x900), library heroes (3840px) and the media row's stills go through the image optimizer, so a phone
+  // gets a sharp file sized to where it draws at a fraction of the bytes. Store headers are already right-sized; those
+  // images opt out with `unoptimized` where they render (cover stand-ins, search rows). WebP only: AVIF encodes far
+  // slower on a cache miss, and every deploy starts cold.
   images: {
     formats: ["image/webp"],
     remotePatterns: [{ protocol: "https", hostname: "*.akamai.steamstatic.com", pathname: "/**" }],
