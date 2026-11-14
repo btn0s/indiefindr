@@ -2,9 +2,10 @@ import type { GameCardGame } from "@/lib/supabase/types";
 import { GameCard } from "./GameCard";
 import { CardTracker } from "./CardTracker";
 
-const CHUNK = 8;
+// Twelve fills whole rows at two, three and four across.
+const CHUNK = 12;
 
-/** A grid of game cards. Cards come in blocks of eight that skip layout and paint while off-screen
+/** A grid of game cards. Cards come in blocks of twelve that skip layout and paint while off-screen
  *  (content-visibility), so long lists cost little until scrolled to. One tracker covers the whole grid. */
 export function CardGrid({ games, pageAppid, eager = 0, ranked = false }: {
   games: GameCardGame[];

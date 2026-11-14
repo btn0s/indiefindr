@@ -179,21 +179,23 @@ export default async function GamePage({
       <ViewTransition default="none" enter={{ "nav-forward": "slide-from-right", default: "page-in" }}
         exit={{ "nav-forward": "slide-to-left", default: "none" }}>
       <main className="discovery-page">
-        {/* Cover hero: the trailer (its poster or still until it plays) fades into the page, and the title sits over the
-            fade. Recommendations follow the source directly, so on a phone their first row shows above the fold. */}
+        {/* Cover hero: the trailer (its poster or still until it plays) as a framed plate on the page, whole and unfaded.
+            On desktop the title, facts, blurb and Steam button sit beside it; on phones, beneath it. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <ViewTransition name={`art-${appId}`} share="art-morph" default="none">
             <GameTrailer title={game.title} trailer={trailer} base={game.header_image}
               image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
           </ViewTransition>
-          <header className="source-header">
-            <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
-            <GameFacts game={game} />
-            <ReviewQualityNote game={game} />
-            {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
-          </header>
+          <div className="source-info">
+            <header className="source-header">
+              <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
+              <GameFacts game={game} />
+              <ReviewQualityNote game={game} />
+              {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
+            </header>
+            <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>
+          </div>
           <ScreenshotStrip title={game.title} screenshots={game.screenshots ?? []} />
-          <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>
           <ShopLinks appid={appId} />
         </article>
         <SuggestionsSection appId={appId} recs={recs} />
