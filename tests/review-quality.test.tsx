@@ -1,28 +1,43 @@
-import React from 'react';
-import {expect,test} from 'vitest';
-import {render,screen} from '@testing-library/react';
-import {ReviewQualityNote} from '../src/components/ReviewQualityNote';
-import {CardRating} from '../src/components/Rating';
-import {isRescued,recommendationEligible,qualityFields} from '../src/lib/review-quality';
-const game={title:'Example & Game',review_positive_pct:60,review_count:1000,clean_score:91,bomb_windows:[{start:'2025-01-01',end:'2025-01-02',up:10,down:100},{start:'2026-11-09',end:'2026-11-11',up:20,down:200}],checked_at:'2026-11-13T00:00:00Z'};
-test('retains unrated games and rejects ordinary Mixed games or positive-dominant rescue data',()=>{
- expect(recommendationEligible({...game,review_count:9,clean_score:0})).toBe(true);
- expect(recommendationEligible({...game,clean_score:60})).toBe(false);
- expect(isRescued({...game,bomb_windows:[{start:'2026-01-01',end:'2026-01-02',up:300,down:100}]})).toBe(false);
- expect(isRescued(game)).toBe(true);
- expect(qualityFields(game)).toMatchObject({steam_score:60,clean_score:91,review_bombed:true});
+import { expect, test } from "vitest";
+import { recommendationEligible, reviewBomb } from "../src/lib/review-quality";
+
+// Russian Fishing 4 as the v3 run stored it: Steam 61% Mixed, 70.1% without its February 2024 bomb.
+const fishing = {
+  review_positive_pct: 61,
+  review_count: 92987,
+  clean_score: 70.0866,
+  checked_at: "2026-11-14T04:28:20Z",
+  bomb_windows: [{
+    start: "2024-01-31", end: "2024-02-28", start_ts: 1706745600, end_ts: 1709251200, up: 813, down: 13970,
+    steam_up: 1457, steam_down: 12201, verdict: "bomb", adjusted: true,
+  }],
+};
+
+test("a bomb that put a positive game into Mixed is reported with both ratings and its days", () => {
+  expect(reviewBomb(fishing)).toEqual({
+    ratingBefore: { pct: 70, label: "Mostly Positive" },
+    ratingNow: { pct: 61, label: "Mixed" },
+    when: { start: "2024-02-01", end: "2024-02-29" },
+    active: false,
+  });
+  expect(recommendationEligible(fishing)).toBe(true);
 });
-test('discloses the latest window and earlier count with an encoded neutral learn-more link',()=>{
- render(<ReviewQualityNote game={game}/>);
- expect(screen.getByText(/From Nov 9, 2026 to Nov 11, 2026 \(and 1 earlier period\)/)).toBeTruthy();
- const link=screen.getByRole('link',{name:'Learn more ↗'});
- expect(link.getAttribute('target')).toBe('_blank');expect(link.getAttribute('rel')).toContain('noopener');
- expect(link.getAttribute('href')).toBe('https://www.google.com/search?q='+encodeURIComponent('Example & Game review bombing'));
+
+test("nothing is reported when the bomb no longer decides the rating", () => {
+  // Rated positive today: the bomb doesn't drag it out of the positive range.
+  expect(reviewBomb({ ...fishing, review_positive_pct: 72 })).toBeNull();
+  // Still Mixed without the bomb: the bomb isn't what put it there.
+  expect(reviewBomb({ ...fishing, clean_score: 64 })).toBeNull();
+  expect(recommendationEligible({ ...fishing, clean_score: 64 })).toBe(false);
 });
-test('preserves Steam label on rescued cards with spaced disclosure',()=>{
- render(<CardRating pct={60} count={1000} rescued/>);expect(screen.getByText('Review bombed')).toBeTruthy();expect(screen.getByText(/Mixed/)).toBeTruthy();expect(screen.getByText('60%')).toBeTruthy();
+
+test("only windows the detector set aside count; a possible bomb still being judged does not", () => {
+  const [window] = fishing.bomb_windows;
+  expect(reviewBomb({ ...fishing, bomb_windows: [{ ...window, verdict: "unresolved", adjusted: false }] })).toBeNull();
+  expect(reviewBomb({ ...fishing, bomb_windows: [{ ...window, verdict: "active_bomb" }] })?.active).toBe(true);
 });
-test('ordinary and unrated pages have no disclosure',()=>{
- const view=render(<ReviewQualityNote game={{...game,review_positive_pct:95}}/>);expect(view.container.textContent).toBe('');
- view.rerender(<ReviewQualityNote game={{...game,review_count:1}}/>);expect(view.container.textContent).toBe('');
+
+test("unrated games stay eligible", () => {
+  expect(recommendationEligible({ ...fishing, review_count: 9, clean_score: 0 })).toBe(true);
+  expect(recommendationEligible({ ...fishing, review_positive_pct: null })).toBe(true);
 });

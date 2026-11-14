@@ -1,5 +1,4 @@
 import { WebMCP } from "@/components/WebMCP";
-import { ReviewQualityNote } from "@/components/ReviewQualityNote";
 import { notFound } from "next/navigation";
 import { ViewTransition } from "react";
 import { heroImage } from "@/lib/hero";
@@ -190,7 +189,6 @@ export default async function GamePage({
             <header className="source-header">
               <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
               <GameFacts game={game} />
-              <ReviewQualityNote game={game} />
               {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
             </header>
             <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>

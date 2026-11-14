@@ -1,10 +1,9 @@
 import Image from "next/image";
-import { isRescued, type ReviewQuality } from "@/lib/review-quality";
 import { heroImage, type HeroFields } from "@/lib/hero";
 import { CardRating } from "./Rating";
 import { CardLink, CardMorph } from "./CardLink";
 
-export interface GameCardProps extends ReviewQuality, HeroFields {
+export interface GameCardProps extends HeroFields {
   appid: number;
   title: string;
   review_count?: number;
@@ -18,7 +17,7 @@ export interface GameCardProps extends ReviewQuality, HeroFields {
 /** Renders on the server; only the link (prefetch and intent) and the morph names are client code. */
 export function GameCard({
   appid, title, header_image, hero_poster, hero_still,
-  review_count = 0, review_positive_pct = null, clean_score, bomb_windows,
+  review_count = 0, review_positive_pct = null,
   preload = false, position = 0,
 }: GameCardProps) {
   return (
@@ -31,7 +30,7 @@ export function GameCard({
           </div>
         </CardMorph>
         <div className="game-card-title"><span>{title}</span></div>
-        <CardRating pct={review_positive_pct} count={review_count} rescued={isRescued({ review_positive_pct, review_count, clean_score, bomb_windows })} />
+        <CardRating pct={review_positive_pct} count={review_count} />
       </div>
     </CardLink>
   );

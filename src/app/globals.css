@@ -204,14 +204,13 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; text-wrap: balance; overflow-wrap: anywhere; }
 .see-all, .steam-link, .search-cancel { white-space: nowrap; }
 /* Meta: facts about a game, captions, the footer. */
-.review-quality-note, .card-rating, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; text-wrap: pretty; }
-.review-quality-note, .site-footer p { max-width: var(--measure); }
+.card-rating, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; text-wrap: pretty; }
+.site-footer p { max-width: var(--measure); }
 /* Meta units. Each moves to the next line whole; one wider than its line (a long name in a narrow card) wraps inside
    itself rather than pushing the page wide. A fact chip never truncates: a name longer than its line wraps inside the
    chip. */
-.rating-label, .review-bombed-label { display: inline-block; }
-.review-bombed-label, .game-facts li { white-space: nowrap; }
-.game-facts li { max-width: 100%; }
+.rating-label { display: inline-block; }
+.game-facts li { max-width: 100%; white-space: nowrap; }
 .game-facts li > * { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 /* Emphasis inside a role keeps its size and gains weight. */
 .card-rating strong, .game-facts strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
@@ -456,9 +455,6 @@ code, pre { font-family: var(--font-geist-mono), ui-monospace, monospace; }
 @media(prefers-reduced-motion: reduce) { .copy-button svg { transform: none !important; } }
 .agent-docs a { text-decoration: underline; text-underline-offset: 3px; }
 
-.review-quality-note { margin-top: 12px; color: var(--muted-foreground); }
-.review-quality-note a { text-decoration: underline; text-underline-offset: 3px; }
-.review-bombed-label { margin-inline-start: 12px; color: var(--muted-foreground); }
 
 /* Focus: one ring, keyboard only; a mouse click never draws it. */
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
