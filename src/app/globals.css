@@ -302,6 +302,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    keeps to two lines. Screen readers still read the whole label. */
 .rating-short { display: none; }
 @container (max-width: 179px) {
+  /* Hidden to the eye, held inside its own line so it never stands out past the rail's scroll. */
+  .card-rating { position: relative; }
   .rating-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .rating-short { display: inline; }
 }
