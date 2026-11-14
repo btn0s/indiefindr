@@ -47,12 +47,15 @@ export async function getRecommendations(appid: number): Promise<RecommendationC
 }
 
 /** Up to four more indies from the same developer(s), newest first. */
+/** Array-filter elements for postgrest-js, which joins them unquoted: quoting keeps names like "Studio, Inc." intact. */
+export const textArray = (values: string[]) => values.map(value => `"${value.replace(/["\\]/g, "\\$&")}"`);
+
 export async function getDeveloperGames(appid: number, developers: string[]): Promise<CardGame[]> {
   "use cache";
   cacheLife("hours");
   if (!developers.length) return [];
   const { data } = await getSupabaseServerClient().from("games").select(CARD_FIELDS)
-    .neq("appid", appid).eq("is_indie", true).eq("is_companion", false).or(developers.map(dev => `developers.cs.{${dev}}`).join(","))
+    .neq("appid", appid).eq("is_indie", true).eq("is_companion", false).overlaps("developers", textArray(developers))
     .order("release_date", { ascending: false }).limit(4);
   return (data ?? []).filter(recommendationEligible);
 }
