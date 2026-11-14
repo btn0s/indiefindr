@@ -178,9 +178,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Label: names and actions. */
 .game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
 /* Meta: facts about a game, captions, the footer. */
-.review-quality-note, .card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+.review-quality-note, .card-rating, .search-meta, .search-label, .game-facts, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
 /* Emphasis inside a role keeps its size and gains weight. */
-.card-rating strong, .game-meta strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
+.card-rating strong, .game-facts strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
 .site-shell { min-height: 100vh; background: var(--background); }
 
@@ -281,17 +281,34 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Game page */
 .source-game { display: flex; flex-direction: column; gap: 20px; padding-bottom: var(--divider-gap); border-bottom: 1px solid var(--border); }
 .discovery-page > .source-game + * { margin-top: var(--divider-gap); }
-.source-header { display: block; }
-.game-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 12px; color: var(--muted-foreground); }
-.game-meta > span { display: inline-flex; align-items: baseline; gap: 6px; }
-.game-meta strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
-.game-meta .meta-label { color: var(--muted-foreground); }
-.game-meta a { color: var(--foreground); text-underline-offset: 3px; }
-@media (hover: hover) and (pointer: fine) { .game-meta a:hover { text-decoration: underline; } }
-.game-trailer { position: relative; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background: var(--media); }
+/* Facts: one row of quiet chips that wrap whole. */
+.game-facts { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted-foreground); }
+.game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); white-space: nowrap; }
+.game-facts strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+.game-facts a { color: var(--foreground); text-underline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
+/* Cover hero: the trailer, or its still, fading into the page at the bottom, with the title over the fade. Desktop keeps
+   it in the content column, rounded only at the top (the fade reaches the page colour before the bottom edge, so it
+   dissolves with no line) and at most half the viewport tall; phones run it edge to edge under the
+   header. */
+.game-trailer { position: relative; aspect-ratio: 16/9; max-height: 50vh; width: 100%; overflow: hidden; border-radius: 12px 12px 0 0; background: var(--media); }
+.game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(to bottom, transparent 42%, color-mix(in srgb, var(--background) 30%, transparent) 62%, color-mix(in srgb, var(--background) 78%, transparent) 78%, var(--background) 92%); }
+.source-header { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 10px; margin-top: -76px; }
+@media (max-width: 700px) {
+  .source-game .game-trailer { width: 100vw; max-width: none; margin-inline: calc(50% - 50vw); margin-top: calc(-1 * var(--page-top)); border-radius: 0; }
+  .source-header { margin-top: -52px; }
+}
+/* Hierarchy from size and weight, both in full foreground: a small lead line, then the title. */
+.source-header .page-title { display: flex; flex-direction: column; gap: 2px; }
+.source-header .title-lead { color: var(--foreground); font-size: var(--type-body); line-height: 1.4; font-weight: 500; letter-spacing: 0; }
+.source-header .page-title [itemprop=name] { text-wrap: balance; overflow-wrap: anywhere; }
+.source-header .source-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+@media (max-width: 700px) { .source-header .source-description { -webkit-line-clamp: 2; } }
 .game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
 .game-trailer video[data-playing=true] { opacity: 1; }
-.trailer-controls { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 8px; }
+/* Top right: the bottom of the cover belongs to the fade and the title. */
+.trailer-controls { position: absolute; z-index: 2; right: 12px; top: 12px; display: flex; gap: 8px; }
 .trailer-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--media) 65%, transparent); color: #fff; }
 .trailer-button::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 /* Each button holds both icons; the state crossfades between them (same swap as the copy button). */
@@ -370,7 +387,7 @@ html { touch-action: manipulation; }
 .showcase-source:active { transform: scale(.98); transition-duration: var(--duration-press); }
 .game-card:active > div, .showcase-recs a:active .showcase-tile { transform: scale(.97); transition-duration: var(--duration-press); }
 .trailer-button:active { transform: scale(.92); transition-duration: var(--duration-press); }
-.see-all:active, .search-cancel:active, .wordmark:active, .home-intro .examples a:active, .site-footer a:active, .game-meta a:active { opacity: .6; }
+.see-all:active, .search-cancel:active, .wordmark:active, .home-intro .examples a:active, .site-footer a:active, .game-facts a:active { opacity: .6; }
 .search-results a:active { background: var(--muted); }
 
 /* Buttons. The primary (the Steam button) is the one physical object on the site: top-lit, a highlight on its top

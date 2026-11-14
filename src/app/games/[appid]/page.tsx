@@ -8,7 +8,7 @@ import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
-import { GameMetadata } from "@/components/GameMetadata";
+import { GameFacts } from "@/components/GameFacts";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
 
@@ -149,6 +149,8 @@ export default async function GamePage({
     ],
   };
 
+  const price = game.is_free ? "Free" : game.price_cents != null ? `$${(game.price_cents / 100).toFixed(2)}` : null;
+
   return (
     <>
       <script
@@ -171,29 +173,29 @@ export default async function GamePage({
         }}
       />}
       <WebMCP />
-      {/* Opened from a card, the page slides in from the right; its hero and title morph out of the card (CardLink).
+      {/* Opened from a card, the page slides in from the right; its cover morphs out of the card's art (CardLink).
           Replacing its loading skeleton, it fades in. */}
       <ViewTransition default="none" enter={{ "nav-forward": "slide-from-right", default: "page-in" }}
         exit={{ "nav-forward": "slide-to-left", default: "none" }}>
       <main className="discovery-page">
+        {/* Cover hero: the trailer (its poster or still until it plays) fades into the page, and the title sits over the
+            fade. Recommendations follow the source directly, so on a phone their first row shows above the fold. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
-          <header className="source-header">
-            <div className="page-head">
-            <h1 className="page-title"><span className="title-lead">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
-            <GameMetadata game={game} />
-            <ReviewQualityNote game={game} />
-            </div>
-          </header>
           <ViewTransition name={`art-${appId}`} share="art-morph" default="none">
             <GameTrailer title={game.title} trailer={trailer} base={game.header_image}
               image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
           </ViewTransition>
-          {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
-          <div className="source-game-actions"><SteamLink appid={appId} price={game.is_free ? "Free" : game.price_cents != null ? `$${(game.price_cents / 100).toFixed(2)}` : null} /></div>
+          <header className="source-header">
+            <h1 className="page-title"><span className="title-lead">Games like</span> <span itemProp="name">{game.title}</span></h1>
+            <GameFacts game={game} />
+            <ReviewQualityNote game={game} />
+            {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
+          </header>
+          <div className="source-game-actions"><SteamLink appid={appId} price={price} /></div>
           <ShopLinks appid={appId} />
         </article>
-        <SameDeveloperSection developers={game.developers} games={developerGames} />
         <SuggestionsSection appId={appId} gameTitle={game.title} recs={recs} />
+        <SameDeveloperSection developers={game.developers} games={developerGames} />
         <AdSlot />
       </main>
       </ViewTransition>
