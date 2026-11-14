@@ -179,7 +179,7 @@ export default async function GamePage({
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <header className="source-header">
             <div className="page-head">
-            <h1 className="page-title"><span className="title-lead">Games like</span>{" "}<ViewTransition name={`title-${appId}`} share="title-morph" default="none"><span itemProp="name">{game.title}</span></ViewTransition></h1>
+            <h1 className="page-title"><span className="title-lead">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
             <GameMetadata game={game} />
             <ReviewQualityNote game={game} />
             </div>

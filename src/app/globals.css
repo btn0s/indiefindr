@@ -457,10 +457,8 @@ html { touch-action: manipulation; }
    the new heading rides the box at full resolution instead of scaling a blurry bitmap. The page stays clickable
    while anything moves. */
 ::view-transition { pointer-events: none; }
-::view-transition-group(.art-morph), ::view-transition-group(.title-morph) { animation-duration: var(--duration-route); animation-timing-function: var(--ease-out); }
+::view-transition-group(.art-morph) { animation-duration: var(--duration-route); animation-timing-function: var(--ease-out); }
 ::view-transition-old(.art-morph), ::view-transition-new(.art-morph) { height: 100%; object-fit: cover; }
-::view-transition-old(.title-morph) { display: none; }
-::view-transition-new(.title-morph) { animation: none; object-fit: none; object-position: left top; }
 ::view-transition-new(.slide-from-right) { animation: fade-in var(--duration-route) var(--ease-out) both, slide-in-right var(--duration-route) var(--ease-out) both; }
 ::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-exit) var(--ease-out) both, slide-out-left var(--duration-route) var(--ease-out) both; }
 ::view-transition-new(.page-in) { animation: fade-in var(--duration-enter) var(--ease-out) both; }

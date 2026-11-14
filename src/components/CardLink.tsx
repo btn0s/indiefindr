@@ -3,8 +3,8 @@ import Link, { useLinkStatus } from "next/link";
 import { createContext, use, useEffect, useId, useRef, useSyncExternalStore, ViewTransition, type ComponentProps, type ReactNode } from "react";
 import { preloadHero, watchIntent } from "@/lib/intent";
 
-// The card the visitor opened last. Only that card names its art and title, so they morph into the game page's hero
-// and title: a view-transition name may be mounted once, and the same game can sit in several grids at the same time.
+// The card the visitor opened last. Only that card names its art, so it morphs into the game page's hero (the title
+// stays put and arrives with the page): a view-transition name may be mounted once, and the same game can sit in several grids at the same time.
 let openedCard: string | null = null;
 const listeners = new Set<() => void>();
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
@@ -41,9 +41,9 @@ function PendingMark() {
   return <span hidden data-link-pending={pending || undefined} />;
 }
 
-/** Part of a card that morphs into its counterpart on the game page, when this is the card being opened. */
-export function CardMorph({ part, appid, children }: { part: "art" | "title"; appid: number; children: ReactNode }) {
+/** The card's art, which morphs into the game page's hero when this is the card being opened. */
+export function CardMorph({ appid, children }: { appid: number; children: ReactNode }) {
   const id = use(CardId);
   const opened = useSyncExternalStore(subscribe, () => openedCard === id, () => false);
-  return <ViewTransition name={opened ? `${part}-${appid}` : undefined} share={`${part}-morph`} default="none">{children}</ViewTransition>;
+  return <ViewTransition name={opened ? `art-${appid}` : undefined} share="art-morph" default="none">{children}</ViewTransition>;
 }

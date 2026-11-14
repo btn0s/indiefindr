@@ -25,12 +25,12 @@ export function GameCard({
     <CardLink appid={appid} hero={heroImage({ hero_poster, hero_still, header_image })} className="game-card"
       data-appid={appid} data-position={position}>
       <div>
-        <CardMorph part="art" appid={appid}>
+        <CardMorph appid={appid}>
           <div className="game-card-art">
             {header_image && <Image src={header_image} alt={title} fill unoptimized className="object-cover" preload={preload} />}
           </div>
         </CardMorph>
-        <CardMorph part="title" appid={appid}><div className="game-card-title"><span>{title}</span></div></CardMorph>
+        <div className="game-card-title"><span>{title}</span></div>
         <CardRating pct={review_positive_pct} count={review_count} rescued={isRescued({ review_positive_pct, review_count, clean_score, bomb_windows })} />
       </div>
     </CardLink>
