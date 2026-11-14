@@ -12,9 +12,10 @@ fcntl.flock(fetch_lock,fcntl.LOCK_EX)
 tags=json.loads((a.source/'data/steam_tags.json').read_text());output=a.source/'review-quality.json'
 previous=json.loads(output.read_text()) if output.exists() else {};results={};pending=[]
 now=datetime.datetime.now(datetime.timezone.utc);today=now.date().isoformat()
-# A 1.0 release only moves steam_release_date later, so it safely bounds age before the histogram dates the first review.
+# Rising age runs from the later of first review and steam_release_date (an early-access 1.0 counts as a launch),
+# so only indies released, or released from early access, within the window need a histogram.
 trend_since=(now.date()-datetime.timedelta(days=TREND_MAX_AGE_DAYS)).isoformat()
-recent_indies={str(r['appid']) for r in json.loads((a.source/'data/catalog.json').read_text())['rows'] if r.get('is_indie') and (r.get('steam_release_date') or '9999')>=trend_since}
+recent_indies={str(r['appid']):r.get('steam_release_date') for r in json.loads((a.source/'data/catalog.json').read_text())['rows'] if r.get('is_indie') and (r.get('steam_release_date') or '9999')>=trend_since}
 for key,tag in tags.items():
  pop=tag.get('popularity') or {};score=pop.get('percent_positive');count=pop.get('review_count') or 0;old=previous.get(key,{})
  dropped=old.get('default_score') is not None and score is not None and old['default_score']-score>15
@@ -51,7 +52,7 @@ def fetch(job):
     time.sleep(wait)
  try:result=analyze(cached['payload'],score) if quality else dict(clean_score=score,bomb_windows=[])
  except ValueError as error:result=dict(clean_score=score,bomb_windows=[],unavailable=str(error),detector_version=VERSION)
- try:result['trend']=momentum(cached['payload'],score,now) if trend else None
+ try:result['trend']=momentum(cached['payload'],score,now,recent_indies[key]) if trend else None
  except ValueError:result['trend']=None
  result.update(checked_at=cached['checked_at'],default_score=score)
  return key,result

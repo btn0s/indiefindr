@@ -10,12 +10,13 @@ prices=json.loads(a.prices.read_text())
 assert all(price is None or price.get('currency')=='USD' for price in prices.values()),'Only canonical US prices may be published'
 tag_names=json.loads((a.source/'data/steam_tag_names.json').read_text())['response']['tags']
 tag_ids_by_name={t['name'].casefold():t['tagid'] for t in tag_names}
+ADULT_ONLY=3  # Steam content descriptor: Adult Only Sexual Content (hidden by Steam's default store filter)
 rows=json.loads((a.source/'data/catalog.json').read_text())['rows'];tags=json.loads((a.source/'data/steam_tags.json').read_text());games=[]
 for r in rows:
  t=tags.get(str(r['appid']),{}); genre=[g['description'] if isinstance(g,dict) else g for g in (r.get('genres') or [])];pub=r.get('publishers') or []; ids=list(dict.fromkeys(i for x in t.get('tags',[]) if (i:=x.get('tagid') or tag_ids_by_name.get(x.get('name','').casefold())) is not None));pop=t.get('popularity',{})
  indie=is_indie(r,t.get('tags',[]))
  slug=re.sub(r'[^a-z0-9]+','-',unicodedata.normalize('NFKD',r['title']).encode('ascii','ignore').decode().lower()).strip('-') or 'game'
- games.append(dict(appid=r['appid'],slug=f'{slug}-{r["appid"]}',title=r['title'],short_description=r.get('short_description'),header_image=r.get('header_image'),release_date=r.get('steam_release_date'),developers=r.get('developers') or [],publishers=pub,genres=genre,price_cents=(prices[str(r['appid'])] or {}).get('final'),is_free=bool(r.get('is_free')),steam_type=r.get('steam_type'),review_count=pop.get('review_count') or 0,review_positive_pct=round(pop['percent_positive']) if pop.get('percent_positive') is not None else None,tag_ids=ids,is_indie=indie,updated_at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
+ games.append(dict(appid=r['appid'],slug=f'{slug}-{r["appid"]}',title=r['title'],short_description=r.get('short_description'),header_image=r.get('header_image'),release_date=r.get('steam_release_date'),developers=r.get('developers') or [],publishers=pub,genres=genre,price_cents=(prices[str(r['appid'])] or {}).get('final'),is_free=bool(r.get('is_free')),steam_type=r.get('steam_type'),review_count=pop.get('review_count') or 0,review_positive_pct=round(pop['percent_positive']) if pop.get('percent_positive') is not None else None,tag_ids=ids,is_indie=indie,is_adult=ADULT_ONLY in ((r.get('content_descriptors') or {}).get('ids') or []),updated_at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
 for game in games:
  q=quality.get(str(game['appid']))
  assert q is not None, f"Missing review quality for {game['appid']}"

@@ -117,12 +117,13 @@ TREND_SMOOTHING = 20
 TREND_MIN_MOMENTUM = 1.5
 
 
-def momentum(payload, score, now):
+def momentum(payload, score, now, released=None):
     """Momentum = (reviews in the last 14 complete days + k) / (reviews expected at the prior pace + k).
 
     The prior pace comes from the 60 days before the window, or from first review if younger;
-    under a week of history counts as a launch (expected 0). The first histogram bucket with votes
-    dates the game, so an early-access game's 1.0 release does not make it look new. Returns None
+    under a week of history counts as a launch (expected 0). Age runs from the later of the first
+    review and the Steam release date (`released`, ISO), so an early-access 1.0 release counts as a
+    launch event; indie+ already keeps relaunched giants off the shelf. Returns None
     when the game is too old, too quiet, below the quality floor (lifetime and recent), or not rising
     (under 1.5x its own prior pace; launches clear this by volume alone).
     """
@@ -132,7 +133,8 @@ def momentum(payload, score, now):
     first = next((b['start'] for b in buckets if b['up'] + b['down']), None)
     # Daily data must cover the window, or the game's whole life (a launch inside the window).
     daily_start = min((r['date'] for r in daily), default=None)
-    if first is None or daily_start is None or daily_start > max(start, first) or first < end - TREND_MAX_AGE_DAYS * DAY:
+    launched = max(first, int(datetime.fromisoformat(released).replace(tzinfo=timezone.utc).timestamp())) if released and first is not None else first
+    if first is None or daily_start is None or daily_start > max(start, first) or launched < end - TREND_MAX_AGE_DAYS * DAY:
         return None
     def count(lo, hi, polarity=('up', 'down')):
         return sum(b[k] for b in buckets for k in polarity
@@ -148,5 +150,5 @@ def momentum(payload, score, now):
     lift = (recent + TREND_SMOOTHING) / (expected + TREND_SMOOTHING)
     if lift < TREND_MIN_MOMENTUM:
         return None
-    return dict(momentum=round(lift, 3), recent_reviews=recent,
-                expected_reviews=round(expected, 1), first_review=datetime.fromtimestamp(first, timezone.utc).date().isoformat())
+    return dict(momentum=round(lift, 3), recent_reviews=recent, expected_reviews=round(expected, 1),
+                first_review=datetime.fromtimestamp(first, timezone.utc).date().isoformat(), released=released)

@@ -62,14 +62,15 @@ function dailyPick<T>(items: T[], count: number): T[] {
 }
 
 /** Discovery shelves boost indies that still need it: indie+ games (lifetime reviews past the pipeline's
- *  notoriety line) stay searchable and recommendable but never appear here. */
-const shelfBase = () => getSupabaseServerClient().from("games").select(SHELF_FIELDS).eq("is_indie", true).eq("indie_plus", false);
+ *  notoriety line) stay searchable and recommendable but never appear here, nor do Steam adult-only titles. */
+const shelfBase = () => getSupabaseServerClient().from("games").select(SHELF_FIELDS)
+  .eq("is_indie", true).eq("indie_plus", false).eq("is_adult", false);
 type ShelfQuery = ReturnType<typeof shelfBase>;
 
 /** Discovery shelves: one definition drives both the home preview and the shelf's own page. */
 export const SHELVES = {
   rising: {
-    // momentum is set nightly only for indies first reviewed within a year, with 30+ reviews in the last
+    // momentum is set nightly only for indies launched (or released from early access) within a year, with 30+ reviews in the last
     // 14 days at 80%+ positive, moving at 1.5x+ their own earlier pace; ranked by that ratio (scripts/relaunch/review_quality.py).
     title: "Rising", note: "Indies picking up players right now",
     query: (q: ShelfQuery) => q.not("momentum", "is", null).order("momentum", { ascending: false }).order("appid"),
@@ -81,7 +82,7 @@ export const SHELVES = {
   },
   new: {
     title: "New on Steam", note: "Released in the last two months",
-    query: (q: ShelfQuery) => q.gte("release_date", daysAgo(60)).lte("release_date", daysAgo(0))
+    query: (q: ShelfQuery) => q.gte("release_date", daysAgo(60)).lte("release_date", daysAgo(0)).gte("review_count", 10)
       .order("release_date", { ascending: false }).order("review_count", { ascending: false }),
   },
 } as const;
@@ -94,10 +95,13 @@ export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGam
   return data.filter(recommendationEligible);
 }
 
-/** Home previews; hidden gems rotate daily from the top of the shelf. */
+/** Home previews; each game appears on one shelf at most: Rising, then New on Steam, then the daily hidden-gems pick. */
 export async function getHomeShelves() {
-  const [rising, gems, fresh] = await Promise.all([getShelf("rising", 8), getShelf("hidden-gems", 240), getShelf("new", 4)]);
-  return { rising, gems: dailyPick(gems, 8), fresh };
+  const [rising, gems, fresh] = await Promise.all([getShelf("rising", 8), getShelf("hidden-gems", 240), getShelf("new", 12)]);
+  const shown = new Set(rising.map(game => game.appid));
+  const newest = fresh.filter(game => !shown.has(game.appid)).slice(0, 4);
+  for (const game of newest) shown.add(game.appid);
+  return { rising, gems: dailyPick(gems.filter(game => !shown.has(game.appid)), 8), fresh: newest };
 }
 
 export const BROWSE_PAGE_SIZE = 24;
