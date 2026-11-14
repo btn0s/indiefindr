@@ -36,13 +36,6 @@ export const SubmitGameSchema = z.object({
 });
 export type SubmitGameInput = z.infer<typeof SubmitGameSchema>;
 
-/**
- * GET /api/games/search?q=...
- */
-export const SearchGamesSchema = z.object({
-  q: z.string().min(2, "Search query must be at least 2 characters"),
-});
-export type SearchGamesInput = z.infer<typeof SearchGamesSchema>;
 
 // =============================================================================
 // Steam API Response Schemas (for runtime validation)

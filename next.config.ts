@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   // Steam's CDN already serves right-sized, immutable images (10-year cache); re-optimizing them
   // only added cold misses per deployment and per-image billing.
   images: { unoptimized: true },
+  // Earlier search endpoints, kept for the published CLI and agents that cached them.
+  async rewrites() {
+    return [
+      { source: "/api/agent-search", destination: "/api/search" },
+      { source: "/api/games/search", destination: "/api/search" },
+    ];
+  },
   async redirects() {
     return [
       {

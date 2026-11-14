@@ -13,14 +13,11 @@ export const API_CONFIG = {
   /** Maximum app IDs per batch request */
   BATCH_MAX_APPIDS: 60,
 
-  /** Minimum search query length */
-  SEARCH_MIN_LENGTH: 2,
+  /** Results per title search (search box, /api/search, MCP, CLI) */
+  SEARCH_LIMIT: 8,
 
-  /** Maximum search results from database */
-  SEARCH_DB_LIMIT: 10,
-
-  /** Maximum search results from Steam */
-  SEARCH_STEAM_LIMIT: 10,
+  /** Pause after the last keystroke before the search box queries /api/search (ms) */
+  SEARCH_DEBOUNCE_MS: 120,
 } as const;
 
 export const RATE_LIMIT_CONFIG = {

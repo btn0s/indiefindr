@@ -5,7 +5,7 @@
 ## How to use it
 
 - "Games like X": https://www.indiefindr.gg/games/{Steam app ID}, e.g. [Games like Stardew Valley](https://www.indiefindr.gg/games/413150), [Games like Hollow Knight](https://www.indiefindr.gg/games/367520), [Games like Call of Duty](https://www.indiefindr.gg/games/1938090)
-- Find a Steam app ID by title: https://www.indiefindr.gg/api/games/search?q={title}
+- Find a Steam app ID by title: https://www.indiefindr.gg/api/search?q={title}
 - Each game page includes the source game's details and Steam rating, and its recommendations as a schema.org ItemList.
 
 ## Discovery shelves
