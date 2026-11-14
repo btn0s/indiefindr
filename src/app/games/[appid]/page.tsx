@@ -189,8 +189,8 @@ export default async function GamePage({
           <ScreenshotStrip title={game.title} screenshots={game.screenshots ?? []} />
           <ShopLinks appid={appId} />
         </article>
-        <SuggestionsSection appId={appId} recs={recs} />
         <SameDeveloperSection developers={game.developers} games={developerGames} />
+        <SuggestionsSection appId={appId} recs={recs} />
         <AdSlot />
       </main>
     </>
