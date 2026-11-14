@@ -10,6 +10,11 @@ import { smallCopy } from "@/lib/hero";
 // The springs are the site's motion tokens (globals.css, MOTION.md): glide opens and pages, snap closes (one progress
 // spring, release pose to thumbnail, so everything lands together without a tail) and fades under reduced motion,
 // release (letGo here) settles back after a drag that didn't dismiss.
+// Flights run on the compositor. Once the springs are aimed, the whole flight is stepped ahead to rest and handed to
+// the Web Animations API as transform and opacity keyframes, so it plays at the screen's own rate with no script per
+// frame. Whatever interrupts a flight (a tap, a finger, a key, a resize) reads where everything is and how fast it is
+// going from the same simulation at the animation's current time, then aims the next flight from there. Only a finger
+// is followed from script.
 type Feel = { duration: number; bounce: number };
 /** Reads a `--spring-*` token, written as "duration bounce". */
 function feel(from: Element, token: string): Feel {
@@ -20,6 +25,7 @@ const GAP = 24; // between shots while swiping
 const RECEDE = 0.04; // how far the page shrinks back behind the open viewer
 const SHRINK = 0.5; // how small a shot gets dragged down a whole screen
 const PROJECT = 0.998 / (1 - 0.998); // iOS scroll deceleration: how far a release at 1px/ms would coast, in px
+const STEP = 1 / 120; // seconds between a flight's keyframes; the compositor interpolates between them
 
 type Spring = { x: number; v: number; to: number; k: number; c: number };
 const spring = (x = 0): Spring => ({ x, v: 0, to: x, k: 0, c: 0 });
@@ -52,6 +58,36 @@ const clamp = (x: number, min: number, max: number) => Math.min(max, Math.max(mi
  *  cover the thumbnail's box and cropped to it. */
 type Pose = { x: number; y: number; s: number; cx: number; cy: number; r: number };
 type Box = { x: number; y: number; w: number; h: number };
+/** A shot's corner radius in its own px, horizontal and vertical (see shotTransforms). */
+type Corner = { x: number; y: number };
+const KEYS = ["x", "y", "s", "cx", "cy", "r"] as const;
+
+/** A shot is a window (rounded, clipping) holding the picture. The window is scaled to the part of the shot that shows
+ *  and the picture inside is scaled back, so the picture keeps the pose's uniform scale and the crop costs no
+ *  clip-path. Scaling the window scales its corners too, so they grow as the shot does; the window then also reaches
+ *  past the picture's edges, by just enough that the picture's own corner trims the curve to the pose's radius and,
+ *  at radius 0, hides it. On a shot cropped along one axis (its shape isn't the thumbnail's), that axis stays on the
+ *  crop and only the other reaches out. `corner` is the window's radius for the whole flight, chosen so that where the
+ *  pose's radius is largest against its size (over the thumbnail) the window's corner is exactly that radius. */
+function shotTransforms(f: Box, p: Pose, corner: Corner, pinned: "x" | "y" | null) {
+  const s = p.s, cx = Math.max(0, p.cx), cy = Math.max(0, p.cy), r = Math.max(0, p.r);
+  const vw = Math.max(1, f.w * s - 2 * cx), vh = Math.max(1, f.h * s - 2 * cy);
+  let ox = 0, oy = 0;
+  if (corner.x > 0) {
+    const pad = Math.max(0, 1 - r); // at radius 0, clear the corner by a pixel more, so antialiasing leaves it square
+    for (let i = 0; i < 3; i++) {
+      const rx = corner.x * (vw + 2 * ox) / f.w, ry = corner.y * (vh + 2 * oy) / f.h;
+      if (pinned === "y") ox = Math.max(0, rx - r) + pad; // the curve leaves the window's edge r from the corner
+      else if (pinned === "x") oy = Math.max(0, ry - r) + pad;
+      else ox = oy = (rx > r ? rx - (r + Math.sqrt(2 * rx * rx - r * r)) / 2 : 0) + pad; // the curve meets each edge r in
+    }
+  }
+  const sx = (vw + 2 * ox) / f.w, sy = (vh + 2 * oy) / f.h;
+  return {
+    shot: `translate3d(${p.x + cx - ox}px, ${p.y + cy - oy}px, 0) scale(${sx}, ${sy})`,
+    art: `translate3d(${(ox - cx) / sx}px, ${(oy - cy) / sy}px, 0) scale(${s / sx}, ${s / sy})`,
+  };
+}
 type Phase = "opening" | "open" | "dragging" | "closing" | "done";
 type Drag = {
   id: number; mouse: boolean; x0: number; y0: number; mode: "none" | "pan" | "dismiss"; moved: boolean;
@@ -72,6 +108,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
   const track = useRef<HTMLDivElement>(null);
   const pages = useRef<(HTMLDivElement | null)[]>([]);
   const shots = useRef<(HTMLDivElement | null)[]>([]);
+  const arts = useRef<(HTMLDivElement | null)[]>([]);
   const status = useRef<HTMLParagraphElement>(null);
   const prev = useRef<HTMLButtonElement>(null);
   const next = useRef<HTMLButtonElement>(null);
@@ -103,36 +140,51 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
     const ready = new Set<number>();
     const trackX = spring(), shade = spring();
     const pose = { x: spring(), y: spring(), s: spring(1), cx: spring(), cy: spring(), r: spring() };
-    // While closing: progress from the pose and backdrop at the start of the close (0) to the thumbnail (1).
-    let land: { t: Spring; from: Pose; shade: number; rest: number } | null = null;
+    // While closing: progress from the pose and backdrop at the start of the close (0) to the thumbnail (1), which is
+    // wherever `to` puts it with the page receded by a given amount.
+    let land: { t: Spring; from: Pose; shade: number; rest: number; to: (recede: number) => Pose } | null = null;
+    // The shown shot's window corner and cropped axis for the current flight (shotTransforms).
+    let corner: Corner = { x: 0, y: 0 }, pinned: "x" | "y" | null = null;
+    // The page recedes about a point fixed on screen (set on open), so where a thumbnail will be is arithmetic.
+    let origin = { x: 0, y: 0 };
 
     const fitPose = (): Pose => { const f = fits[current]; return { x: f.x, y: f.y, s: 1, cx: 0, cy: 0, r: 0 }; };
     const setPose = (to: Pose, feel?: Feel) => {
-      for (const key of ["x", "y", "s", "cx", "cy", "r"] as const) {
+      for (const key of KEYS) {
         if (feel) aim(pose[key], to[key], feel); else jump(pose[key], to[key]);
       }
     };
+    const posed = (): Pose => ({ x: pose.x.x, y: pose.y.x, s: pose.s.x, cx: pose.cx.x, cy: pose.cy.x, r: pose.r.x });
     const pageLeft = () => trackX.x + current * stride;
+    const recede = () => reduce || !shell ? 0 : clamp(shade.x, 0, 1);
 
-    /** The pose that lays the shown shot exactly over its thumbnail as the page draws it now (receded, scrolled). */
-    const thumbPose = (): Pose | null => {
+    /** Lays the shown shot exactly over its thumbnail: a function from how far the page is receded to the pose, or null
+     *  if the thumbnail is off screen. It is measured once, as the page draws it now, and the recede undone by
+     *  arithmetic. The pose is relative to the shot's page, so it reads the track where it is when called. */
+    const thumbPose = (): ((recede: number) => Pose) | null => {
       const thumb = thumbAt(current);
       if (!thumb) return null;
-      const r = thumb.getBoundingClientRect();
-      if (!r.width || r.bottom <= 0 || r.top >= H || r.right <= 0 || r.left >= W) return null;
-      const f = fits[current], s = Math.max(r.width / f.w, r.height / f.h);
-      return {
-        x: r.left - pageLeft() + (r.width - f.w * s) / 2, y: r.top + (r.height - f.h * s) / 2, s,
-        cx: (f.w * s - r.width) / 2, cy: (f.h * s - r.height) / 2, r: (parseFloat(getComputedStyle(thumb).borderTopLeftRadius) || 0) * r.width / thumb.offsetWidth,
+      const m = thumb.getBoundingClientRect();
+      if (!m.width || m.bottom <= 0 || m.top >= H || m.right <= 0 || m.left >= W) return null;
+      const k0 = 1 - RECEDE * recede(), f = fits[current];
+      const left = origin.x + (m.left - origin.x) / k0, top = origin.y + (m.top - origin.y) / k0;
+      const w = m.width / k0, h = m.height / k0, s = Math.max(w / f.w, h / f.h);
+      const radius = (parseFloat(getComputedStyle(thumb).borderTopLeftRadius) || 0) * w / thumb.offsetWidth;
+      return (o) => {
+        const k = 1 - RECEDE * o;
+        return {
+          x: origin.x + (left - origin.x) * k - pageLeft() + (w - f.w * s) * k / 2, y: origin.y + (top - origin.y) * k + (h - f.h * s) * k / 2,
+          s: s * k, cx: (f.w * s - w) * k / 2, cy: (f.h * s - h) * k / 2, r: radius * k,
+        };
       };
     };
     const shrunk = (): Pose => { const f = fits[current]; return { x: f.x + f.w * 0.05, y: f.y + f.h * 0.05, s: 0.9, cx: 0, cy: 0, r: 0 }; };
 
     const place = (i: number) => {
-      const shot = shots.current[i], f = fits[i];
-      if (!shot) return;
+      const shot = shots.current[i], art = arts.current[i], f = fits[i];
+      if (!shot || !art) return;
       shot.style.transform = `translate3d(${f.x}px, ${f.y}px, 0)`;
-      shot.style.clipPath = shot.style.opacity = "";
+      shot.style.opacity = shot.style.borderRadius = art.style.transform = "";
     };
     const layout = () => {
       W = box.clientWidth; H = box.clientHeight; stride = W + GAP;
@@ -152,21 +204,36 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       });
     };
 
-    const render = () => {
-      row.style.transform = `translate3d(${trackX.x}px, 0, 0)`;
-      const shot = shots.current[current];
-      if (shot) {
-        const s = pose.s.x, cx = Math.max(0, pose.cx.x), cy = Math.max(0, pose.cy.x), r = Math.max(0, pose.r.x);
-        shot.style.transform = `translate3d(${pose.x.x}px, ${pose.y.x}px, 0) scale(${s})`;
-        shot.style.clipPath = cx + cy + r > 0.01 ? `inset(${cy / s}px ${cx / s}px round ${r / s}px)` : "";
-        shot.style.opacity = fallback ? String(clamp(shade.x, 0, 1)) : "";
+    // One frame of everything that moves, as styles: from the springs now, or from a step of a flight being laid out.
+    type Look = { track: number; shade: number; pose: Pose };
+    type Frame = { row: string; shot: string; art: string; shotOpacity: string; shade: string; shell: string };
+    const look = (): Look => ({ track: trackX.x, shade: shade.x, pose: posed() });
+    const frameAt = (l: Look): Frame => {
+      const o = clamp(l.shade, 0, 1), { shot, art } = shotTransforms(fits[current], l.pose, corner, pinned);
+      return {
+        row: `translate3d(${l.track}px, 0, 0)`, shot, art, shotOpacity: fallback ? String(o) : "1", shade: String(o),
+        shell: `scale(${1 - RECEDE * o})`,
+      };
+    };
+    const paint = (frame: Frame) => {
+      row.style.transform = frame.row;
+      const shot = shots.current[current], art = arts.current[current];
+      if (shot && art) {
+        shot.style.transform = frame.shot;
+        shot.style.opacity = frame.shotOpacity === "1" ? "" : frame.shotOpacity;
+        art.style.transform = frame.art;
       }
-      const o = clamp(shade.x, 0, 1);
-      if (reduce) box.style.opacity = String(o);
+      if (reduce) box.style.opacity = frame.shade;
       else {
-        layer.style.opacity = String(o);
-        if (shell) shell.style.transform = `scale(${1 - RECEDE * o})`;
+        layer.style.opacity = frame.shade;
+        if (shell) shell.style.transform = frame.shell;
       }
+    };
+    /** Sets the shown shot's window corner, for a flight or for rest (none). */
+    const setCorner = (to: Corner, axis: "x" | "y" | null) => {
+      corner = to; pinned = axis;
+      const shot = shots.current[current];
+      if (shot) shot.style.borderRadius = to.x > 0 ? `${to.x}px / ${to.y}px` : "";
     };
 
     // The full-size image fades in over the thumbnail-size one once decoded, but never on a shot that is moving.
@@ -207,6 +274,108 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       next.current?.setAttribute("aria-disabled", String(i === n - 1));
     };
 
+    /** Steps every spring by dt seconds; false once all are at rest. */
+    const physics = (dt: number) => {
+      let moving = false;
+      if (land) {
+        moving = advance(land.t, dt, land.rest, land.rest * 30); // a pixel away, under 30px/s: landed
+        const t = Math.min(1, land.t.x), o = land.shade * (1 - t), to = land.to(o), from = land.from;
+        for (const key of KEYS) jump(pose[key], from[key] + (to[key] - from[key]) * t);
+        jump(shade, o);
+      }
+      moving = advance(trackX, dt, 0.25) || moving;
+      moving = advance(shade, dt, 0.002) || moving;
+      for (const key of ["x", "y", "cx", "cy", "r"] as const) moving = advance(pose[key], dt, 0.25) || moving;
+      moving = advance(pose.s, dt, 0.0005) || moving;
+      return moving;
+    };
+    const opened = () => {
+      const f = fits[current];
+      return Math.abs(shade.x - 1) < 0.02 && Math.abs(pose.s.x - 1) < 0.01 && Math.abs(pose.x.x - f.x) < 2 && Math.abs(pose.y.x - f.y) < 2;
+    };
+
+    // The flight playing now: the springs as it began, its animations, and its timers.
+    type Flight = { springs: [Spring, Spring][]; steps: number; anims: Animation[]; timers: number[] };
+    let flight: Flight | null = null;
+    const springs = () => [trackX, shade, ...KEYS.map(key => pose[key]), ...(land ? [land.t] : [])];
+
+    /** Brings the springs to where the flight playing now has got to, with their speeds, and stops it there. */
+    const sync = () => {
+      const f = flight;
+      if (!f) return;
+      flight = null;
+      const at = Number(f.anims[0]?.currentTime ?? Infinity) / 1000;
+      f.timers.forEach(clearTimeout);
+      f.anims.forEach(anim => anim.cancel());
+      if (at < f.steps * STEP) {
+        for (const [live, was] of f.springs) Object.assign(live, was);
+        const whole = Math.floor(at / STEP);
+        for (let i = 0; i < whole; i++) physics(STEP);
+        physics(at - whole * STEP);
+      }
+      paint(frameAt(look()));
+    };
+
+    /** Plays the springs from where they are to rest on the compositor. */
+    const fly = () => {
+      if (flight) { flight.timers.forEach(clearTimeout); flight.anims.forEach(anim => anim.cancel()); flight = null; } // callers sync first
+      const began: [Spring, Spring][] = springs().map(live => [live, { ...live }]);
+      const looks = [look()];
+      let openAt = phase === "opening" && opened() ? 0 : -1;
+      for (let moving = true; moving && looks.length < 4 / STEP;) {
+        moving = physics(STEP);
+        looks.push(look());
+        if (openAt < 0 && phase === "opening" && opened()) openAt = (looks.length - 1) * STEP;
+      }
+      const f = fits[current];
+      const to: Corner = { x: 0, y: 0 };
+      let cropX = 0, cropY = 0;
+      for (const { pose: p } of looks) {
+        const r = Math.max(0, p.r), cx = Math.max(0, p.cx), cy = Math.max(0, p.cy);
+        to.x = Math.max(to.x, r * f.w / Math.max(1, f.w * p.s - 2 * cx));
+        to.y = Math.max(to.y, r * f.h / Math.max(1, f.h * p.s - 2 * cy));
+        cropX = Math.max(cropX, cx); cropY = Math.max(cropY, cy);
+      }
+      setCorner(to, cropX > 1 ? "x" : cropY > 1 ? "y" : null);
+      const frames = looks.map(frameAt);
+      // Held once the flight ends; meanwhile the animations draw over it.
+      paint(frames[frames.length - 1]);
+
+      const anims: Animation[] = [], timers: number[] = [];
+      const duration = (frames.length - 1) * STEP * 1000;
+      const run = (el: HTMLElement | null | undefined, values: Partial<Record<"transform" | "opacity", string[]>>) => {
+        const moving = Object.entries(values).filter(([, list]) => list.some(v => v !== list[0]));
+        if (!el || !moving.length || frames.length < 2) return;
+        anims.push(el.animate(frames.map((_, i) => Object.fromEntries(moving.map(([prop, list]) => [prop, list[i]]))), { duration, easing: "linear" }));
+      };
+      run(row, { transform: frames.map(fr => fr.row) });
+      run(shots.current[current], { transform: frames.map(fr => fr.shot), opacity: frames.map(fr => fr.shotOpacity) });
+      run(arts.current[current], { transform: frames.map(fr => fr.art) });
+      if (reduce) run(box, { opacity: frames.map(fr => fr.shade) });
+      else {
+        run(layer, { opacity: frames.map(fr => fr.shade) });
+        run(shell, { transform: frames.map(fr => fr.shell) });
+      }
+      const self: Flight = { springs: began, steps: frames.length - 1, anims, timers };
+      flight = self;
+
+      if (openAt >= 0) {
+        const opens = () => { fallback = false; setPhase("open"); };
+        if (openAt === 0) opens(); else timers.push(window.setTimeout(opens, openAt * 1000));
+      }
+      const landed = () => {
+        if (flight !== self) return;
+        flight = null;
+        if (phase === "closing") return finish();
+        // At rest the window needs no corner, and an unscaled window keeps the picture's raster at its own size.
+        setCorner({ x: 0, y: 0 }, null);
+        paint(frameAt(look()));
+      };
+      if (!anims.length) landed();
+      else Promise.all(anims.map(anim => anim.finished)).then(landed, () => {});
+    };
+
+    // A finger is followed from script: each move sets the springs it holds, and the rest keep stepping each frame.
     let frame = 0, last = 0;
     const kick = () => {
       if (frame) return;
@@ -217,65 +386,50 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       frame = 0;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      let moving = false;
-      if (phase === "closing" && land) {
-        moving = advance(land.t, dt, land.rest, land.rest * 30); // a pixel away, under 30px/s: landed
-        // The thumbnail is measured each frame, since the page under it is still growing back from its recede.
-        const to = closeTarget(), from = land.from, t = Math.min(1, land.t.x);
-        for (const key of ["x", "y", "s", "cx", "cy", "r"] as const) jump(pose[key], from[key] + (to[key] - from[key]) * t);
-        jump(shade, land.shade * (1 - t));
-      }
-      moving = advance(trackX, dt, 0.25) || moving;
-      moving = advance(shade, dt, 0.002) || moving;
-      for (const key of ["x", "y", "cx", "cy", "r"] as const) moving = advance(pose[key], dt, 0.25) || moving;
-      moving = advance(pose.s, dt, 0.0005) || moving;
-      render();
-      if (phase === "opening") {
-        const f = fits[current];
-        if (Math.abs(shade.x - 1) < 0.02 && Math.abs(pose.s.x - 1) < 0.01 && Math.abs(pose.x.x - f.x) < 2 && Math.abs(pose.y.x - f.y) < 2) {
-          fallback = false;
-          setPhase("open");
-        }
-      }
-      if (phase === "closing" && !moving) return finish();
+      const moving = physics(dt);
+      paint(frameAt(look()));
       if (moving) kick();
     };
+    const stopTick = () => { cancelAnimationFrame(frame); frame = 0; };
 
-    const closeTarget = () => {
-      const to = fallback ? null : thumbPose();
-      if (to) return to;
-      fallback = true;
-      return shrunk();
+    /** Flies the shown shot into its thumbnail (or, off screen, shrinks and fades it). A release's velocity (px/s)
+     *  carries over as far as it heads toward the thumbnail. */
+    const flyHome = (velocity = { x: 0, y: 0 }) => {
+      aim(trackX, -current * stride, snap);
+      if (reduce) { aim(shade, 0, snap); fly(); return; }
+      const thumb = fallback ? null : thumbPose();
+      fallback = !thumb;
+      const to = thumb ?? (() => shrunk());
+      const from = posed(), aimed = to(recede()), f = fits[current];
+      const dx = aimed.x + f.w * aimed.s / 2 - (from.x + f.w * from.s / 2), dy = aimed.y + f.h * aimed.s / 2 - (from.y + f.h * from.s / 2);
+      const distance = Math.hypot(dx, dy, f.w * (aimed.s - from.s));
+      const v0 = distance > 1 ? clamp((velocity.x * dx + velocity.y * dy) / (dx * dx + dy * dy || 1), 0, 10) : 0;
+      land = { t: spring(0), from, shade: shade.x, rest: 1 / Math.max(1, distance), to };
+      aim(land.t, 1, snap, v0);
+      fly();
     };
-    /** Closes into the thumbnail. A release's velocity (px/s) carries over as far as it heads toward the thumbnail. */
     const close = (keyboard = false, velocity = { x: 0, y: 0 }) => {
       byKeyboard = keyboard;
       if (phase === "closing" || phase === "done") return;
+      sync();
+      stopTick();
       drag = null;
       fallback = false;
       setPhase("closing");
       keepInStrip(current);
-      aim(trackX, -current * stride, snap);
-      if (reduce) { aim(shade, 0, snap); kick(); return; }
-      const from: Pose = { x: pose.x.x, y: pose.y.x, s: pose.s.x, cx: pose.cx.x, cy: pose.cy.x, r: pose.r.x };
-      const to = closeTarget(), f = fits[current];
-      const dx = to.x + f.w * to.s / 2 - (from.x + f.w * from.s / 2), dy = to.y + f.h * to.s / 2 - (from.y + f.h * from.s / 2);
-      const distance = Math.hypot(dx, dy, f.w * (to.s - from.s));
-      const v0 = distance > 1 ? clamp((velocity.x * dx + velocity.y * dy) / (dx * dx + dy * dy || 1), 0, 10) : 0;
-      land = { t: spring(0), from, shade: shade.x, rest: 1 / Math.max(1, distance) };
-      aim(land.t, 1, snap, v0);
-      kick();
+      flyHome(velocity);
     };
     const reopen = () => {
+      sync();
       land = null;
       setPhase("opening");
       setPose(fitPose(), glide);
       aim(shade, 1, reduce ? snap : glide);
-      kick();
+      fly();
     };
     const restore = () => {
-      cancelAnimationFrame(frame);
-      frame = 0;
+      if (flight) { flight.timers.forEach(clearTimeout); flight.anims.forEach(anim => anim.cancel()); flight = null; }
+      stopTick();
       thumbs.current.forEach(thumb => thumb?.removeAttribute("data-viewing"));
       if (shell) shell.style.transform = shell.style.transformOrigin = shell.style.willChange = "";
     };
@@ -296,6 +450,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
 
     const step = (direction: number) => {
       if (phase !== "open") return;
+      sync();
       const to = clamp(current + direction, 0, n - 1);
       if (to === current) {
         // A nudge against the end, so the key visibly did something.
@@ -303,8 +458,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       } else if (reduce) jump(trackX, -to * stride);
       else aim(trackX, -to * stride, glide);
       show(to);
-      render();
-      kick();
+      fly();
     };
 
     // Gestures. A finger that moves past the slop picks an axis: sideways pages through the shots, down (or any way
@@ -335,6 +489,8 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       if (drag.mouse) return;
       if (drag.mode === "none") {
         if (!drag.moved) return;
+        // The finger catches whatever is in flight, where it is.
+        sync();
         const sideways = Math.abs(dx) > Math.abs(dy);
         // Start from here, so the shot doesn't jump by the slop.
         drag.x0 = event.clientX; drag.y0 = event.clientY; dx = dy = 0;
@@ -344,6 +500,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
           jump(trackX, trackX.x);
         } else {
           drag.mode = "dismiss";
+          land = null;
           setPhase("dragging");
           fallback = false;
           drag.s0 = pose.s.x; drag.b0 = shade.x;
@@ -363,7 +520,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         jump(pose.y, drag.y0 + lift - s * drag.ay);
         jump(shade, drag.b0 * (1 - clamp(dy / (H * 0.45), 0, 1)));
       }
-      render();
+      paint(frameAt(look()));
       kick();
     };
     const release = (event: PointerEvent, cancelled = false) => {
@@ -375,6 +532,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         if (!cancelled && !d.moved) { if (phase === "closing") reopen(); else close(); }
         return;
       }
+      stopTick();
       if (d.mode === "pan") {
         // At most one shot from the one it was headed to, so quick repeated swipes each count.
         const page = current;
@@ -382,7 +540,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         const to = clamp(Math.round(-(trackX.x + v.x * PROJECT) / stride), Math.max(0, page - 1), Math.min(n - 1, page + 1));
         aim(trackX, -to * stride, glide, inside ? v.x * 1000 : 0);
         show(to);
-        kick();
+        fly();
         return;
       }
       const dy = event.clientY - d.y0;
@@ -395,7 +553,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         setPhase("opening");
         setPose(fitPose(), letGo);
         aim(shade, 1, letGo);
-        kick();
+        fly();
       }
     };
     const onRelease = (event: PointerEvent) => release(event, event.type === "pointercancel");
@@ -413,11 +571,15 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
     // The game page's own pull-down-to-go-back listens on window; a drag in here is the viewer's.
     const keep = (event: Event) => event.stopPropagation();
     const onResize = () => {
+      sync();
+      stopTick();
       drag = null;
       layout();
       jump(trackX, -current * stride);
-      if (phase !== "closing") { setPose(fitPose()); jump(shade, 1); setPhase("open"); }
-      render();
+      if (phase === "closing") { flyHome(); return; }
+      setPose(fitPose()); jump(shade, 1); setPhase("open");
+      setCorner({ x: 0, y: 0 }, null);
+      paint(frameAt(look()));
     };
 
     // Open: lay the shot over its thumbnail, hide the thumbnail, and spring both into place, all before first paint.
@@ -434,19 +596,20 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
     if (status.current) status.current.textContent = `${current + 1} of ${n}`;
     jump(trackX, -current * stride);
     if (shell && !reduce) {
+      const page = shell.getBoundingClientRect();
+      origin = { x: page.left + page.width / 2, y: page.top + scrollY + innerHeight / 2 };
       shell.style.transformOrigin = `50% ${scrollY + innerHeight / 2}px`;
       shell.style.willChange = "transform";
     }
     if (reduce) layer.style.opacity = "1";
     const from = reduce ? null : thumbPose();
     fallback = !reduce && !from;
-    setPose(from ?? (reduce ? fitPose() : shrunk()));
+    setPose(from ? from(0) : reduce ? fitPose() : shrunk());
     jump(shade, 0);
     setPhase("opening");
-    render();
     setPose(fitPose(), glide);
     aim(shade, 1, reduce ? snap : glide);
-    kick();
+    fly();
 
     controls.current = {
       close, step,
@@ -489,9 +652,11 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       <div ref={track} className="viewer-track">
         {screenshots.map((src, i) => <div key={src} ref={page => { pages.current[i] = page; }} className="viewer-page">
           <div ref={shot => { shots.current[i] = shot; }} className="viewer-shot">
-            <Image src={smallCopy(src)} alt="" fill unoptimized draggable={false} loading={wanted.has(i) ? "eager" : "lazy"} />
-            {wanted.has(i) && <Image className="viewer-full" src={src} alt={`${title} screenshot ${i + 1} of ${n}`} fill sizes="100vw"
-              draggable={false} onLoad={event => controls.current?.loaded(i, event.currentTarget)} />}
+            <div ref={art => { arts.current[i] = art; }} className="viewer-art">
+              <Image src={smallCopy(src)} alt="" fill unoptimized draggable={false} loading={wanted.has(i) ? "eager" : "lazy"} />
+              {wanted.has(i) && <Image className="viewer-full" src={src} alt={`${title} screenshot ${i + 1} of ${n}`} fill sizes="100vw"
+                draggable={false} onLoad={event => controls.current?.loaded(i, event.currentTarget)} />}
+            </div>
           </div>
         </div>)}
       </div>

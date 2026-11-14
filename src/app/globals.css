@@ -170,8 +170,9 @@
      in place: ease-in-out. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
-  /* Springs as duration and bounce (SwiftUI, Motion). The screenshot viewer runs them live with the finger's velocity;
-     --ease-glide is the glide spring sampled for CSS, played over --duration-l, for full-screen morphs.
+  /* Springs as duration and bounce (SwiftUI, Motion). The screenshot viewer steps them, from whatever velocity a flight
+     inherits, into compositor keyframes; --ease-glide is the glide spring sampled for CSS, played over --duration-l,
+     for full-screen morphs.
      snap: closing into place, fades. glide: opening, paging, full-screen morphs. release: settling after a let-go. */
   --spring-snap: 0.24 0; --spring-glide: 0.4 0; --spring-release: 0.4 0.15;
   --ease-glide: linear(0, 0.0003 0.4%, 0.0027 1.2%, 0.0093 2.3%, 0.0222 3.6%, 0.0426 5.1%, 0.0712 6.9%, 0.1079 8.8%, 0.1522 10.9%, 0.2032 13.1%, 0.2593 15.6%, 0.3192 18.1%, 0.3812 20.8%, 0.4438 23.7%, 0.5055 26.6%, 0.5652 29.8%, 0.6218 33%, 0.6746 36.3%, 0.7231 39.8%, 0.7669 43.4%, 0.8061 47.1%, 0.8406 51%, 0.8706 54.9%, 0.8964 59%, 0.9183 63.1%, 0.9368 67.4%, 0.9522 71.7%, 0.9649 76.2%, 0.9753 80.8%, 0.9837 85.4%, 0.9904 90.2%, 0.9958 95%, 1);
@@ -410,8 +411,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    closes by pointer or touch, the thumbnail it returns focus to shows no ring (ScreenshotViewer). */
 .screenshot-strip { padding-block: 4px; margin-block: -4px; }
 .screenshot-strip button[data-quiet-focus]:focus-visible { outline: none; }
-/* The viewer (ScreenshotViewer): shots on black over the receded page. Script drives every moving value; CSS only
-   lays it out and fades the chrome. The page keeps its scrollbar's gutter while locked, so nothing shifts. */
+/* The viewer (ScreenshotViewer): shots on black over the receded page. Script lays out every flight and the
+   compositor plays it (Web Animations); CSS only lays it out and fades the chrome. The page keeps its scrollbar's gutter while locked, so nothing shifts. */
 html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable; }
 .screenshot-viewer { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
   background: none; color: #fff; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: zoom-out; }
@@ -422,7 +423,9 @@ html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable;
 /* While a shot is picked up or flying home, the others step out of the way. */
 .viewer-page { transition: opacity var(--duration-s) var(--ease-out); }
 .screenshot-viewer:is([data-phase=dragging], [data-phase=closing]) .viewer-page:not([data-current]) { opacity: 0; }
-.viewer-shot { position: absolute; top: 0; left: 0; transform-origin: 0 0; background: rgb(255 255 255 / .06); }
+/* A shot is a clipping window (its crop and corners while it flies) with the picture inside, both moved by transform. */
+.viewer-shot { position: absolute; top: 0; left: 0; transform-origin: 0 0; overflow: hidden; }
+.viewer-art { position: absolute; inset: 0; transform-origin: 0 0; background: rgb(255 255 255 / .06); }
 .viewer-shot img { object-fit: cover; pointer-events: none; }
 .viewer-shot .viewer-full { object-fit: contain; opacity: 0; transition: opacity var(--duration-m) var(--ease-out); }
 .viewer-shot[data-shown] .viewer-full { opacity: 1; }
