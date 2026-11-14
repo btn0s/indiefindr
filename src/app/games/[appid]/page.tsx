@@ -1,4 +1,6 @@
 import { WebMCP } from "@/components/WebMCP";
+import { getReviewHistory } from "@/lib/review-history";
+import { isRescued } from "@/lib/review-quality";
 import { ReviewQualityNote } from "@/components/ReviewQualityNote";
 import { notFound } from "next/navigation";
 import { GameTrailer, type Trailer } from "@/components/GameTrailer";
@@ -116,7 +118,7 @@ export default async function GamePage({
     }),
   };
 
-  const { recs, developerGames } = await getGamePageSlate(appId, game.developers);
+  const [{ recs, developerGames }, reviewHistory] = await Promise.all([getGamePageSlate(appId, game.developers), isRescued(game) ? getReviewHistory(appId) : Promise.resolve(null)]);
   const recommendationsSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -176,7 +178,7 @@ export default async function GamePage({
             <div className="page-head">
             <h1 className="page-title"><span className="title-lead">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
             <GameMetadata game={game} />
-            <ReviewQualityNote game={game} />
+            <ReviewQualityNote game={game} history={reviewHistory} />
             </div>
           </header>
           <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}

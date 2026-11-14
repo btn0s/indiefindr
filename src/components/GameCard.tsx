@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { track } from "@/lib/tracking";
 import Link from "next/link";
 import Image from "next/image";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@ui-sdk/react/tooltip";
 import { isRescued, type ReviewQuality } from "@/lib/review-quality";
 import { CardRating } from "./Rating";
 
@@ -25,30 +26,76 @@ export function GameCard({
   header_image,
   review_count = 0,
   review_positive_pct = null,
-  clean_score, bomb_windows,
+  clean_score,
+  bomb_windows,
   preload = false,
-  pageAppid, position = 0,
+  pageAppid,
+  position = 0,
 }: GameCardProps) {
-  const ref=useRef<HTMLAnchorElement>(null);
-  useEffect(()=>{if(!ref.current)return;const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){track('impression',pageAppid??null,appid,position);observer.disconnect();}},{threshold:0.5});observer.observe(ref.current);return ()=>observer.disconnect();},[appid,pageAppid,position]);
-  return (
-    <Link ref={ref} onClick={()=>track('click_card',pageAppid??null,appid,position)} href={`/games/${appid}`} className="game-card" prefetch={true}>
-      <div>
-        <div className="game-card-art">
-          {header_image && (
-            <Image
-              src={header_image}
-              alt={title}
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-              className="absolute inset-0 w-full h-full object-cover"
-              preload={preload}
-            />
-          )}
-        </div>
-        <div className="game-card-title"><span>{title}</span></div>
-        <CardRating pct={review_positive_pct} count={review_count} rescued={isRescued({ review_positive_pct, review_count, clean_score, bomb_windows })} />
+  const ref = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          track("impression", pageAppid ?? null, appid, position);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [appid, pageAppid, position]);
+  const rescued = isRescued({
+    review_positive_pct,
+    review_count,
+    clean_score,
+    bomb_windows,
+  });
+  const content = (
+    <div>
+      <div className="game-card-art">
+        {header_image && (
+          <Image
+            src={header_image}
+            alt={title}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+            className="absolute inset-0 w-full h-full object-cover"
+            preload={preload}
+          />
+        )}
       </div>
-    </Link>
+      <div className="game-card-title">
+        <span>{title}</span>
+      </div>
+      <CardRating
+        pct={review_positive_pct}
+        count={review_count}
+        rescued={rescued}
+        cleanScore={clean_score}
+      />
+    </div>
+  );
+  const link = (
+    <Link
+      ref={ref}
+      onClick={() => track("click_card", pageAppid ?? null, appid, position)}
+      href={`/games/${appid}`}
+      className="game-card"
+      prefetch
+    />
+  );
+  if (!rescued) return <Link {...link.props}>{content}</Link>;
+  return (
+    <Tooltip delay={150}>
+      <TooltipTrigger render={link}>{content}</TooltipTrigger>
+      <TooltipContent className="review-tooltip">
+        {clean_score?.toLocaleString("en-US", { maximumFractionDigits: 1 })}%
+        positive outside detected review-bomb periods. Steam rating:{" "}
+        {review_positive_pct}%.
+      </TooltipContent>
+    </Tooltip>
   );
 }

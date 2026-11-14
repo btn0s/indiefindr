@@ -39,6 +39,7 @@ with (ROOT/'data/ingest.lock').open('a') as lock:
   stage('score','scripts/recommender/run.py','score','--source',source,'--artifacts',artifacts)
   stage('prepare','scripts/relaunch/prepare.py',source,'--out',imports)
   stage('publish','scripts/relaunch/publish.py','--data',imports)
+  stage('review-history','scripts/relaunch/publish-review-history.py','--source',source)
   stage('media','scripts/relaunch/media.py','--top','250000')
   stage('search','scripts/relaunch/publish-search.py','--games',imports/'games.jsonl')
   stage('verify','scripts/relaunch/verify-publication.py')
