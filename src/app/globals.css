@@ -365,13 +365,17 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .screenshot-strip li { flex-basis: 72%; }
 }
 @media (hover: hover) and (pointer: fine) { .screenshot-strip button:hover img { opacity: .85; } }
-.screenshot-strip button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* Room above and below for the focus ring, which the strip's horizontal scroll would otherwise clip. After the viewer
+   closes by pointer or touch, the thumbnail it returns focus to shows no ring (ScreenshotViewer). */
+.screenshot-strip { padding-block: 4px; margin-block: -4px; }
+.screenshot-strip button[data-quiet-focus]:focus-visible { outline: none; }
 /* The viewer (ScreenshotViewer): shots on black over the receded page. Script drives every moving value; CSS only
    lays it out and fades the chrome. The page keeps its scrollbar's gutter while locked, so nothing shifts. */
 html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable; }
 .screenshot-viewer { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
   background: none; color: #fff; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: zoom-out; }
 .screenshot-viewer::backdrop { background: none; }
+.screenshot-viewer:focus-visible { outline: none; }
 .viewer-backdrop { position: absolute; inset: 0; background: #000; opacity: 0; }
 .viewer-track, .viewer-page { position: absolute; inset: 0; }
 /* While a shot is picked up or flying home, the others step out of the way. */

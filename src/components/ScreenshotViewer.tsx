@@ -74,7 +74,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
   const status = useRef<HTMLParagraphElement>(null);
   const prev = useRef<HTMLButtonElement>(null);
   const next = useRef<HTMLButtonElement>(null);
-  const controls = useRef<{ close(): void; step(direction: number): void; loaded(index: number, img: HTMLImageElement): void }>(null);
+  const controls = useRef<{ close(byKeyboard: boolean): void; step(direction: number): void; loaded(index: number, img: HTMLImageElement): void }>(null);
   // Shots whose full-size image is wanted: the one shown and its neighbours, kept once asked for.
   const [wanted, setWanted] = useState(() => new Set([start - 1, start, start + 1]));
   const closed = useEffectEvent(onClosed);
@@ -97,6 +97,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
     let phase: Phase = "opening";
     let drag: Drag | null = null;
     let fallback = false; // closing with the thumbnail off screen: shrink and fade instead
+    let byKeyboard = false; // how the viewer was closed, for whether the thumbnail it returns focus to shows a ring
     const ready = new Set<number>();
     const trackX = spring(), shade = spring();
     const pose = { x: spring(), y: spring(), s: spring(1), cx: spring(), cy: spring(), r: spring() };
@@ -234,7 +235,8 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       if (to) setPose(to, CLOSE);
       else { fallback = true; setPose(shrunk(), CLOSE); }
     };
-    const close = () => {
+    const close = (keyboard = false) => {
+      byKeyboard = keyboard;
       if (phase === "closing" || phase === "done") return;
       drag = null;
       fallback = false;
@@ -261,7 +263,14 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       setPhase("done");
       restore();
       if (box.open) box.close();
-      thumbAt(current)?.focus({ preventScroll: true });
+      // Focus goes back to the thumbnail. Only a keyboard close shows the focus ring there: after a pointer or touch
+      // close the thumbnail carries a marker that hides the ring until focus leaves it.
+      const thumb = thumbAt(current);
+      if (thumb && !byKeyboard) {
+        thumb.setAttribute("data-quiet-focus", "");
+        thumb.addEventListener("blur", () => thumb.removeAttribute("data-quiet-focus"), { once: true });
+      }
+      thumb?.focus({ preventScroll: true });
       closed();
     };
 
@@ -377,10 +386,10 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       clearTimeout(idle);
       idle = window.setTimeout(() => box.removeAttribute("data-pointer"), 1800);
     };
-    const onCancel = (event: Event) => { event.preventDefault(); close(); };
+    const onCancel = (event: Event) => { event.preventDefault(); close(true); };
     // Closed by the browser (a second Esc) rather than by us. A close event can also arrive late, after the dialog was
     // shown again; that one is stale.
-    const onNativeClose = () => { if (phase !== "done" && !box.open) finish(); };
+    const onNativeClose = () => { if (phase !== "done" && !box.open) { byKeyboard = true; finish(); } };
     // The game page's own pull-down-to-go-back listens on window; a drag in here is the viewer's.
     const keep = (event: Event) => event.stopPropagation();
     const onResize = () => {
@@ -393,6 +402,9 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
 
     // Open: lay the shot over its thumbnail, hide the thumbnail, and spring both into place, all before first paint.
     box.showModal();
+    // Focus the viewer itself rather than its first button, so opening by touch or mouse draws no ring on the close
+    // button; Tab still reaches it.
+    box.focus({ preventScroll: true });
     layout();
     // The shot lifts out of the strip, leaving its slot empty; with reduced motion it only fades, so the slot stays.
     if (!reduce) thumbAt(current)?.setAttribute("data-viewing", "");
@@ -447,7 +459,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
   }, [screenshots, start, n, thumbs, strip]);
 
   return createPortal(
-    <dialog ref={dialog} className="screenshot-viewer" aria-label={`${title} screenshots`}
+    <dialog ref={dialog} className="screenshot-viewer" tabIndex={-1} aria-label={`${title} screenshots`}
       onKeyDown={event => {
         if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
         event.preventDefault();
@@ -464,7 +476,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         </div>)}
       </div>
       <p ref={status} className="sr-only" aria-live="polite" />
-      <button type="button" className="viewer-button viewer-close" aria-label="Close" onClick={() => controls.current?.close()}>
+      <button type="button" className="viewer-button viewer-close" aria-label="Close" onClick={event => controls.current?.close(event.detail === 0)}>
         <X size={20} />
       </button>
       <button ref={prev} type="button" className="viewer-button viewer-nav viewer-prev" aria-label="Previous screenshot"
