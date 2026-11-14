@@ -61,15 +61,18 @@ function dailyPick<T>(items: T[], count: number): T[] {
   return pool.slice(0, count);
 }
 
-const shelfBase = () => getSupabaseServerClient().from("games").select(SHELF_FIELDS).eq("is_indie", true);
+/** Discovery shelves boost indies that still need it: indie+ games (lifetime reviews past the pipeline's
+ *  notoriety line) stay searchable and recommendable but never appear here. */
+const shelfBase = () => getSupabaseServerClient().from("games").select(SHELF_FIELDS).eq("is_indie", true).eq("indie_plus", false);
 type ShelfQuery = ReturnType<typeof shelfBase>;
 
 /** Discovery shelves: one definition drives both the home preview and the shelf's own page. */
 export const SHELVES = {
   rising: {
-    title: "Rising", note: "Breakout indies from the past year",
-    query: (q: ShelfQuery) => q.gte("release_date", daysAgo(365)).gte("review_count", 200).gte("review_positive_pct", 80)
-      .order("review_count", { ascending: false }),
+    // momentum is set nightly only for indies first reviewed within a year, with 30+ reviews in the last
+    // 14 days at 80%+ positive, moving at 1.5x+ their own earlier pace; ranked by that ratio (scripts/relaunch/review_quality.py).
+    title: "Rising", note: "Indies picking up players right now",
+    query: (q: ShelfQuery) => q.not("momentum", "is", null).order("momentum", { ascending: false }).order("appid"),
   },
   "hidden-gems": {
     title: "Hidden gems", note: "Loved by players, still under the radar",
@@ -78,7 +81,7 @@ export const SHELVES = {
   },
   new: {
     title: "New on Steam", note: "Released in the last two months",
-    query: (q: ShelfQuery) => q.gte("release_date", daysAgo(60))
+    query: (q: ShelfQuery) => q.gte("release_date", daysAgo(60)).lte("release_date", daysAgo(0))
       .order("release_date", { ascending: false }).order("review_count", { ascending: false }),
   },
 } as const;

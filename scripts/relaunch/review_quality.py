@@ -27,14 +27,12 @@ def eligible(game):
     return game.get('clean_score') is not None and game['clean_score'] >= 70 and bool(windows) and all(w.get('down', 0) > w.get('up', 0) for w in windows)
 
 
-def analyze(payload, default_score):
-    """Use daily buckets where available; never count their weekly parents twice.
+def votes(row):
+    return int(row.get('recommendations_up', 0)), int(row.get('recommendations_down', 0))
 
-    Compare daily votes with the median daily baseline (including zero days).
-    Rollup periods scale the daily baseline by their actual day count.
-    Only negative-majority merged windows qualify; exclude both polarities. No detected spike means the
-    Steam default stays authoritative; empty/incomplete data cannot rescue a game.
-    """
+
+def histogram_buckets(payload):
+    """Non-overlapping vote periods: daily buckets where available; never count their weekly parents twice."""
     if payload.get('success') != 1 or not isinstance(payload.get('results'), dict):
         raise ValueError('Steam histogram unavailable')
     data = payload['results']
@@ -43,8 +41,6 @@ def analyze(payload, default_score):
     resolution = data.get('rollup_type') or 'week'
     if resolution not in ('week', 'month'):
         raise ValueError('Unsupported Steam histogram resolution')
-    def votes(row):
-        return int(row.get('recommendations_up', 0)), int(row.get('recommendations_down', 0))
     def bucket(row, duration):
         up, down = votes(row)
         if min(up, down) < 0:
@@ -70,6 +66,17 @@ def analyze(payload, default_score):
     buckets.sort(key=lambda r: r['start'])
     if any(a['end'] > b['start'] for a, b in zip(buckets, buckets[1:])):
         raise ValueError('Overlapping histogram periods')
+    return buckets, daily
+
+
+def analyze(payload, default_score):
+    """Compare daily votes with the median daily baseline (including zero days).
+
+    Rollup periods scale the daily baseline by their actual day count.
+    Only negative-majority merged windows qualify; exclude both polarities. No detected spike means the
+    Steam default stays authoritative; empty/incomplete data cannot rescue a game.
+    """
+    buckets, daily = histogram_buckets(payload)
     # The daily data is the game's observed daily baseline. Weekly rates supply
     # it only if the endpoint has no daily series at all.
     baseline = median([votes(r)[1] for r in daily]) if daily else median(
@@ -98,3 +105,48 @@ def analyze(payload, default_score):
     return dict(clean_score=score, bomb_windows=windows, median_daily_down=baseline,
                 remaining_up=remaining_up, remaining_down=remaining_down,
                 total_up=total_up, total_down=total_down, detector_version=VERSION)
+
+
+# Rising: review velocity over the last two weeks against the game's own earlier pace.
+TREND_DAYS = 14
+BASELINE_DAYS = 60
+TREND_MIN_REVIEWS = 30
+TREND_MIN_POSITIVE = 80
+TREND_MAX_AGE_DAYS = 365
+TREND_SMOOTHING = 20
+TREND_MIN_MOMENTUM = 1.5
+
+
+def momentum(payload, score, now):
+    """Momentum = (reviews in the last 14 complete days + k) / (reviews expected at the prior pace + k).
+
+    The prior pace comes from the 60 days before the window, or from first review if younger;
+    under a week of history counts as a launch (expected 0). The first histogram bucket with votes
+    dates the game, so an early-access game's 1.0 release does not make it look new. Returns None
+    when the game is too old, too quiet, below the quality floor (lifetime and recent), or not rising
+    (under 1.5x its own prior pace; launches clear this by volume alone).
+    """
+    buckets, daily = histogram_buckets(payload)
+    end = int(now.timestamp()) // DAY * DAY
+    start = end - TREND_DAYS * DAY
+    first = next((b['start'] for b in buckets if b['up'] + b['down']), None)
+    # Daily data must cover the window, or the game's whole life (a launch inside the window).
+    daily_start = min((r['date'] for r in daily), default=None)
+    if first is None or daily_start is None or daily_start > max(start, first) or first < end - TREND_MAX_AGE_DAYS * DAY:
+        return None
+    def count(lo, hi, polarity=('up', 'down')):
+        return sum(b[k] for b in buckets for k in polarity
+                   if b['end'] > lo and b['start'] < hi) if hi > lo else 0
+    def prorated(lo, hi):
+        return sum((b['up'] + b['down']) * (min(b['end'], hi) - max(b['start'], lo)) / (b['end'] - b['start'])
+                   for b in buckets if b['end'] > lo and b['start'] < hi)
+    recent = count(start, end);recent_up = count(start, end, ('up',))
+    base_start = max(first, start - BASELINE_DAYS * DAY);base_days = (start - base_start) / DAY
+    expected = prorated(base_start, start) / base_days * TREND_DAYS if base_days >= 7 else 0
+    if recent < TREND_MIN_REVIEWS or score is None or score < TREND_MIN_POSITIVE or 100 * recent_up < TREND_MIN_POSITIVE * recent:
+        return None
+    lift = (recent + TREND_SMOOTHING) / (expected + TREND_SMOOTHING)
+    if lift < TREND_MIN_MOMENTUM:
+        return None
+    return dict(momentum=round(lift, 3), recent_reviews=recent,
+                expected_reviews=round(expected, 1), first_review=datetime.fromtimestamp(first, timezone.utc).date().isoformat())

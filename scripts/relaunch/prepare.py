@@ -3,7 +3,7 @@ import argparse,json,pathlib,re,unicodedata,datetime
 p=argparse.ArgumentParser();p.add_argument('source',type=pathlib.Path);p.add_argument('--prices',type=pathlib.Path,default=pathlib.Path('data/steam-full/us-prices.json'));p.add_argument('--catalog-only',action='store_true');p.add_argument('--out',type=pathlib.Path,default=pathlib.Path('data/relaunch'));a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 from catalog import is_indie
 from review_quality import eligible
-from selection import MODEL_VERSION, SLATE_SIZE, select_targets
+from selection import INDIE_PLUS_REVIEWS, MODEL_VERSION, SLATE_SIZE, select_targets
 quality=json.loads((a.source/"review-quality.json").read_text())
 assert json.loads((a.source/"review-quality-status.json").read_text())["complete"], "Finish histogram checks before preparation"
 prices=json.loads(a.prices.read_text())
@@ -19,7 +19,9 @@ for r in rows:
 for game in games:
  q=quality.get(str(game['appid']))
  assert q is not None, f"Missing review quality for {game['appid']}"
- game.update(clean_score=q['clean_score'],bomb_windows=q['bomb_windows'],checked_at=q['checked_at'])
+ # Indie+ games have outgrown discovery shelves; only shelf-eligible indies carry a Rising momentum.
+ indie_plus=game['review_count']>=INDIE_PLUS_REVIEWS;trend=q.get('trend') if game['is_indie'] and not indie_plus else None
+ game.update(clean_score=q['clean_score'],bomb_windows=q['bomb_windows'],checked_at=q['checked_at'],indie_plus=indie_plus,momentum=trend and trend['momentum'])
 byid={g['appid']:g for g in games};recs=[];empty={}
 review_counts={g['appid']:g['review_count'] for g in games}
 model_slates={s['source_appid']:s for s in (json.loads(l) for l in (a.source/'slates_indie.jsonl').open())} if not a.catalog_only else {}
@@ -46,4 +48,4 @@ for source,slates in ([] if a.catalog_only else [('model',model_slates.values())
 for name,data in [('games',games),('game_recs',recs),('tags',[{'id':t['tagid'],'name':t['name']} for t in json.loads((a.source/'data/steam_tag_names.json').read_text())['response']['tags']])]:
  with (a.out/(name+'.jsonl')).open('w') as f:
   for row in data:f.write(json.dumps(row)+'\n')
-report={'games':len(games),'indie':sum(g['is_indie'] for g in games),'recs':len(recs),'empty_after_indie_filter':empty};(a.out/'manifest.json').write_text(json.dumps(report,indent=2));print(report)
+report={'games':len(games),'indie':sum(g['is_indie'] for g in games),'indie_plus':sum(g['is_indie'] and g['indie_plus'] for g in games),'rising':sum(g['momentum'] is not None for g in games),'recs':len(recs),'empty_after_indie_filter':empty};(a.out/'manifest.json').write_text(json.dumps(report,indent=2));print(report)
