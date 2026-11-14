@@ -33,7 +33,7 @@ for f in files:
   categoryids={c for group in (item.get('categories') or {}).values() for c in group}
   categories=[{'id':c,'description':category_names[c]} for c in sorted(categoryids) if c in category_names]
   r.update(appid=appid,title=item['name'],short_description=info.get('short_description') or r.get('short_description'),long_description=plain_description(item.get('full_description_bbcode')) or r.get('long_description'),header_image=header,developers=[d['name'] for d in info.get('developers',[])],publishers=[d['name'] for d in info.get('publishers',[])],release_date=date,steam_release_date=date,steam_type='game',price_overview={'currency':'USD','initial':initial,'final':cents} if cents is not None else None,is_free=bool(item.get('is_free')),recommendations={'total':review_count},genres=genres,categories=categories,content_descriptors={'ids':item.get('content_descriptorids') or (r.get('content_descriptors') or {}).get('ids') or []},steamspy_tags=r.get('steamspy_tags') or {})
-  r['is_indie']=is_indie(r,tags)
+  r['is_indie']=is_indie(r,tags);r['is_early_access']=bool(item.get('is_early_access') or release.get('is_early_access'))
   rows[appid]=r;enriched[str(appid)]={'appid':appid,'tags':tags,'popularity':{'review_count':review_count,'percent_positive':summary.get('percent_positive'),'owners':r.get('steamspy_owners')},'source':'IStoreBrowseService/GetItems'}
 # Preserve legacy delisted/region-limited sources, whose stored pages must continue working.
 preserved=0

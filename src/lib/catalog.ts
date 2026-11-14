@@ -70,10 +70,20 @@ type ShelfQuery = ReturnType<typeof shelfBase>;
 /** Discovery shelves: one definition drives both the home preview and the shelf's own page. */
 export const SHELVES = {
   rising: {
-    // momentum is set nightly only for indies launched (or released from early access) within a year, with 30+ reviews in the last
-    // 14 days at 80%+ positive, moving at 1.5x+ their own earlier pace; ranked by that ratio (scripts/relaunch/review_quality.py).
+    // momentum is set nightly for indies launched (or released from early access) within a year, and for indies still in early
+    // access at any age, with 30+ reviews in the last 14 days at 80%+ positive, moving at 1.5x+ their own earlier pace; ranked by
+    // that ratio (scripts/relaunch/review_quality.py). Rising takes the released games, Early Access the rest.
     title: "Rising", note: "Indies picking up players right now",
-    query: (q: ShelfQuery) => q.not("momentum", "is", null).order("momentum", { ascending: false }).order("appid"),
+    query: (q: ShelfQuery) => q.not("momentum", "is", null).eq("is_early_access", false).order("momentum", { ascending: false }).order("appid"),
+  },
+  "early-access": {
+    title: "Early Access", note: "In-development indies players are flocking to",
+    query: (q: ShelfQuery) => q.not("momentum", "is", null).eq("is_early_access", true).order("momentum", { ascending: false }).order("appid"),
+  },
+  upcoming: {
+    // upcoming_rank is Steam's wishlist order among indies dated within six months, refreshed nightly (scripts/relaunch/upcoming.py).
+    title: "Upcoming", note: "The most-wishlisted indies coming soon",
+    query: (q: ShelfQuery) => q.not("upcoming_rank", "is", null).order("upcoming_rank"),
   },
   "hidden-gems": {
     title: "Hidden gems", note: "Loved by players, still under the radar",
@@ -95,13 +105,25 @@ export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGam
   return data.filter(recommendationEligible);
 }
 
-/** Home previews; each game appears on one shelf at most: Rising, then New on Steam, then the daily hidden-gems pick. */
+/** Home previews in claim order: a game appears on one shelf at most, the first that claims it. Hidden gems is a daily pick. */
+const HOME_SHELVES: { slug: ShelfSlug; fetch: number; show: number }[] = [
+  { slug: "rising", fetch: 8, show: 8 },
+  { slug: "early-access", fetch: 12, show: 4 },
+  { slug: "new", fetch: 12, show: 4 },
+  { slug: "upcoming", fetch: 8, show: 4 },
+  { slug: "hidden-gems", fetch: 240, show: 8 },
+];
+
 export async function getHomeShelves() {
-  const [rising, gems, fresh] = await Promise.all([getShelf("rising", 8), getShelf("hidden-gems", 240), getShelf("new", 12)]);
-  const shown = new Set(rising.map(game => game.appid));
-  const newest = fresh.filter(game => !shown.has(game.appid)).slice(0, 4);
-  for (const game of newest) shown.add(game.appid);
-  return { rising, gems: dailyPick(gems.filter(game => !shown.has(game.appid)), 8), fresh: newest };
+  const fetched = await Promise.all(HOME_SHELVES.map(({ slug, fetch }) => getShelf(slug, fetch)));
+  const shown = new Set<number>();
+  const shelves = {} as Record<ShelfSlug, ShelfGame[]>;
+  HOME_SHELVES.forEach(({ slug, show }, index) => {
+    const unclaimed = fetched[index].filter(game => !shown.has(game.appid));
+    shelves[slug] = slug === "hidden-gems" ? dailyPick(unclaimed, show) : unclaimed.slice(0, show);
+    for (const game of shelves[slug]) shown.add(game.appid);
+  });
+  return shelves;
 }
 
 export const BROWSE_PAGE_SIZE = 24;
