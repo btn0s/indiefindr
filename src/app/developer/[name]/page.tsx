@@ -19,7 +19,7 @@ export async function generateMetadata({
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const canonicalUrl = `${siteUrl}/developer/${name}`;
 
-  const title = `Games by ${developerName} — IndieFindr`;
+  const title = `Games by ${developerName}`;
   const description = `Browse all indie games developed by ${developerName} on Steam.`;
 
   return {

@@ -32,13 +32,13 @@ export async function generateMetadata({
   const appId = parseInt(appid, 10);
 
   if (isNaN(appId)) {
-    return { title: "Game Not Found" };
+    return { title: "Game not found" };
   }
 
   const [data, recs] = await Promise.all([getGame(appId), getRecommendations(appId)]);
 
   if (!data) {
-    return { title: "Game Not Found" };
+    return { title: "Game not found" };
   }
   const names = recs.slice(0, 3).map(({ game }) => game.title);
 
@@ -52,7 +52,7 @@ export async function generateMetadata({
     : `Indie games like ${data.title}, with similar gameplay, themes, and feel.`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: {
       canonical: canonicalUrl,

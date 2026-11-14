@@ -1,6 +1,7 @@
 import { ShelfHeading } from "@/components/ShelfHeading";
 import type { RecommendationCard } from "@/lib/catalog";
 import { GameCard } from "@/components/GameCard";
+import { EmptyNote } from "@/components/EmptyNote";
 
 export function SuggestionsSection({ appId, gameTitle, recs }: { appId: number; gameTitle: string; recs: RecommendationCard[] }) {
   return (
@@ -11,7 +12,7 @@ export function SuggestionsSection({ appId, gameTitle, recs }: { appId: number; 
           <GameCard key={game.appid} {...game} pageAppid={appId} position={index + 1} />
         ))}
       </div>
-      {!recs.length && <p className="empty-note">Recommendations are being prepared for this game.</p>}
+      {!recs.length && <EmptyNote>Recommendations are being prepared for this game. Check back soon.</EmptyNote>}
     </section>
   );
 }

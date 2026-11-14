@@ -1,11 +1,10 @@
 import { adsenseClient } from "@/lib/monetization";
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Geist_Mono, Inter } from "next/font/google";
+import Link from "next/link";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { Suspense } from "react";
 import { Navbar } from "@/components/Navbar";
-import { ScrollToTopOnNavigation } from "@/components/ScrollToTopOnNavigation";
 
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -18,17 +17,20 @@ const inter = Inter({
   display: "swap",
 });
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
   display: "swap",
+  preload: false,
 });
+
+// Lets art fade up once it has loaded (see globals.css). It runs in the head, before any image starts, so it doesn't
+// wait for hydration. Each loaded URL gets a rule in its own stylesheet instead of an attribute on the <img>, which
+// React owns; a cover that's already loaded then shows at once on the next page, with no fade. A failed image gets no
+// rule and keeps its placeholder. It listens on document because element load events never reach window.
+// The empty touchstart listener is what makes iOS Safari apply :active while a finger is down; without one, a press
+// only flashes on release, which reads as a bounce.
+const ART_FADE = `(function(){var d=document,s=new CSSStyleSheet,seen={};d.adoptedStyleSheets=d.adoptedStyleSheets.concat(s);d.documentElement.dataset.artFade="";d.addEventListener("load",function(e){var t=e.target,u=t.tagName==="IMG"&&t.getAttribute("src");if(!u||seen[u])return;seen[u]=1;u='[src="'+CSS.escape(u)+'"]';s.insertRule("img"+u+"{opacity:1!important}");s.insertRule(":has(>img"+u+")::before{animation:none!important}")},true);d.addEventListener("touchstart",function(){},{passive:true})})()`;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 
@@ -39,7 +41,7 @@ export const metadata: Metadata = {
   ),
   title: {
     default: "IndieFindr: Find your next favorite indie game",
-    template: "%s",
+    template: "%s — IndieFindr",
   },
   description:
     "Find games like your favorites. Discover similar indie games on Steam with recommendations based on gameplay, themes, and feel.",
@@ -50,11 +52,13 @@ export const metadata: Metadata = {
   },
 };
 
+// Pinch zoom stays available: inputs are 16px on phones, so iOS has no reason to zoom on focus.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#ffffff",
+  colorScheme: "light",
 };
 
 const organizationSchema = {
@@ -80,8 +84,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: ART_FADE }} />
         <link
           rel="preconnect"
           href="https://cdn.akamai.steamstatic.com"
@@ -92,7 +97,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistMono.variable} antialiased`}
       >
         <script
           type="application/ld+json"
@@ -106,13 +111,14 @@ export default function RootLayout({
             __html: JSON.stringify(websiteSchema),
           }}
         />
-        <Suspense fallback={null}>
-          <ScrollToTopOnNavigation />
-        </Suspense>
         <div className="site-shell">
+          <a href="#content" className="skip-link">Skip to content</a>
           <Navbar />
-          <div className="px-4 sm:px-7">{children}</div>
-          <footer className="site-footer"><a href="/agents">Agent access</a><a href="/privacy">Privacy</a><span>indiefindr</span><span>Game information and media from Steam.</span></footer>
+          <div id="content" className="px-4 sm:px-7">{children}</div>
+          <footer className="site-footer">
+            <nav aria-label="Footer"><Link href="/agents">Agent access</Link><Link href="/privacy">Privacy</Link></nav>
+            <p>indiefindr · Game information and media from Steam.</p>
+          </footer>
         </div>
 
         <Toaster />

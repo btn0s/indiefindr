@@ -1,6 +1,10 @@
 import { ImageResponse } from "next/og";
 
 export const OG_SIZE = { width: 1200, height: 630 };
+// Tiles keep Steam's 460:215 header shape, so titles printed on the art are never cropped. Shared with scripts/generate-home-og.ts.
+const TILE_W = 360;
+const TILE_H = 168;
+const GAP = 16;
 
 async function fetchImageAsDataUrl(url: string, timeoutMs: number): Promise<string | null> {
   const controller = new AbortController();
@@ -27,12 +31,13 @@ export async function gameGridImage(headerImages: (string | null)[]) {
     <div
       key={i}
       style={{
-        width: 350,
-        height: 200,
+        width: TILE_W,
+        height: TILE_H,
         display: "flex",
-        borderRadius: 0,
+        borderRadius: 14,
         overflow: "hidden",
-        backgroundColor: "#151515",
+        backgroundColor: "#151517",
+        border: "1px solid rgba(255,255,255,0.10)",
         boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
       }}
     >
@@ -41,8 +46,8 @@ export async function gameGridImage(headerImages: (string | null)[]) {
         <img
           src={src}
           alt=""
-          width={350}
-          height={200}
+          width={TILE_W}
+          height={TILE_H}
           style={{
             objectFit: "cover",
             width: "100%",
@@ -76,8 +81,8 @@ export async function gameGridImage(headerImages: (string | null)[]) {
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: 16,
-            width: 3 * 350 + 2 * 16,
+            gap: GAP,
+            width: 3 * TILE_W + 2 * GAP,
             justifyContent: "center",
           }}
         >
