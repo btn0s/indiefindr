@@ -8,8 +8,9 @@ import {
   within,
 } from "@testing-library/react";
 import { GameMetadata } from "../src/components/GameMetadata";
-import { CardRating } from "../src/components/Rating";
+import { ReviewBombBanner } from "../src/components/ReviewBombBanner";
 import {
+  bombSpans,
   isRescued,
   recommendationEligible,
   qualityFields,
@@ -45,7 +46,6 @@ test("retains unrated games and rejects ordinary Mixed games or positive-dominan
     review_bombed: true,
   });
 });
-const facts = { ...game, developers: [], release_date: null, is_indie: true };
 const history = {
   appid: 1,
   granularity: "month",
@@ -56,47 +56,49 @@ const history = {
     { start: Date.UTC(2025, 5, 1) / 1000, end: Date.UTC(2025, 6, 1) / 1000, up: 30, down: 3 },
   ],
 };
-test("a review-bombed game shows its adjusted score, and the note under it opens the story", async () => {
-  render(<GameMetadata game={facts} history={history} />);
-  expect(screen.getByText("91%")).toBeTruthy();
-  expect(screen.getByText(/Very Positive/)).toBeTruthy();
-  const note = screen.getByRole("button", {
-    name: "Adjusted for review bombs in 2025 and 2026. Steam shows 60%.",
-  });
-  expect(note.getAttribute("aria-expanded")).toBe("false");
-  fireEvent.click(note);
-  expect(note.getAttribute("aria-expanded")).toBe("true");
-  expect(
-    screen.getByText(/was review-bombed twice, in 2025 and 2026: 330 reviews, 91% of them negative/),
-  ).toBeTruthy();
-  const rows = within(screen.getByRole("table")).getAllByRole("row");
-  expect(rows.map((row) => row.textContent)).toEqual([
+const banner = (
+  <ReviewBombBanner
+    title={game.title}
+    steam={{ pct: 60, count: 1000 }}
+    cleanScore={91}
+    spans={bombSpans(game.bomb_windows)}
+    history={history}
+  />
+);
+test("Steam's score stays as Steam gives it", () => {
+  render(<GameMetadata game={{ ...game, developers: [], release_date: null, is_indie: true }} />);
+  expect(screen.getByText("60%")).toBeTruthy();
+  expect(screen.getByText(/Mixed/)).toBeTruthy();
+  expect(screen.queryByText(/91%/)).toBeNull();
+});
+test("the banner says what happened, and opens the history with every figure from one source", async () => {
+  render(banner);
+  const open = screen.getByRole("button", { name: /Example & Game was review-bombed twice, in 2025 and 2026\./ });
+  expect(open.textContent).toContain("330 reviews across both, 91% negative. Without them, players rate it 91%.");
+  fireEvent.click(open);
+  const dialog = await screen.findByRole("dialog", { hidden: true });
+  expect(within(dialog).getByRole("heading", { name: "Review history", hidden: true })).toBeTruthy();
+  const rows = within(dialog).getAllByRole("row", { hidden: true }).map((row) => row.textContent);
+  expect(rows).toEqual([
     "PeriodReviewsPositive",
     "Before Dec 20244295%",
     "Review bomb Jan 20251109%",
     "Between Jun 20253391%",
     "Review bomb Nov 20262209%",
-    "Adjusted score everything but the bombs7591%",
+    "All reviews18543%",
+    "Without the review bombs7591%",
   ]);
-  const link = screen.getByRole("link", { name: "Look up what happened" });
-  expect(link.getAttribute("target")).toBe("_blank");
+  expect(dialog.textContent).toContain("Steam’s headline score of 60% from 1,000 reviews");
+  const link = within(dialog).getByRole("link", { name: "Look up what happened", hidden: true });
   expect(link.getAttribute("rel")).toContain("noopener");
   expect(link.getAttribute("href")).toBe(
-    "https://www.google.com/search?q=" +
-      encodeURIComponent("Example & Game review bombing"),
+    "https://www.google.com/search?q=" + encodeURIComponent("Example & Game review bombing"),
   );
-  fireEvent.click(note);
-  await waitFor(() => expect(note.getAttribute("aria-expanded")).toBe("false"));
-});
-test("cards show the adjusted score with a quiet line", () => {
-  render(<CardRating pct={91} count={1000} bombs={2} />);
-  expect(screen.getByText("91%")).toBeTruthy();
-  expect(screen.getByText("Adjusted for review bombs")).toBeTruthy();
-});
-test("ordinary and unrated games show Steam's score with no note", () => {
-  const view = render(<GameMetadata game={{ ...facts, review_positive_pct: 95 }} />);
-  expect(screen.getByText("95%")).toBeTruthy();
-  expect(screen.queryByRole("button")).toBeNull();
-  view.rerender(<GameMetadata game={{ ...facts, review_count: 1 }} />);
-  expect(screen.queryByRole("button")).toBeNull();
+  const plot = within(dialog).getByRole("group", { name: /reviews per month/, hidden: true });
+  fireEvent.keyDown(plot, { key: "Home" });
+  expect(within(dialog).getByText("December 2024")).toBeTruthy();
+  fireEvent.keyDown(plot, { key: "ArrowRight" });
+  expect(within(dialog).getByText("10 positive · 100 negative")).toBeTruthy();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Close", hidden: true }));
+  await waitFor(() => expect(dialog.hasAttribute("data-closed")).toBe(true));
 });

@@ -4,16 +4,9 @@ import { useEffect, useRef } from "react";
 import { track } from "@/lib/tracking";
 import Link from "next/link";
 import Image from "next/image";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@ui-sdk/react/tooltip";
-import {
-  adjustedNote,
-  bombSpans,
-  shownScore,
-  type ReviewQuality,
-} from "@/lib/review-quality";
 import { CardRating } from "./Rating";
 
-export interface GameCardProps extends ReviewQuality {
+export interface GameCardProps {
   appid: number;
   title: string;
   header_image: string | null;
@@ -31,8 +24,6 @@ export function GameCard({
   header_image,
   review_count = 0,
   review_positive_pct = null,
-  clean_score,
-  bomb_windows,
   preload = false,
   pageAppid,
   position = 0,
@@ -52,12 +43,6 @@ export function GameCard({
     observer.observe(ref.current);
     return () => observer.disconnect();
   }, [appid, pageAppid, position]);
-  const { pct, rescued } = shownScore({
-    review_positive_pct,
-    review_count,
-    clean_score,
-    bomb_windows,
-  });
   const content = (
     <div>
       <div className="game-card-art">
@@ -75,30 +60,18 @@ export function GameCard({
       <div className="game-card-title">
         <span>{title}</span>
       </div>
-      <CardRating
-        pct={pct}
-        count={review_count}
-        bombs={rescued ? bombSpans(bomb_windows).length : 0}
-      />
+      <CardRating pct={review_positive_pct} count={review_count} />
     </div>
   );
-  const link = (
+  return (
     <Link
       ref={ref}
       onClick={() => track("click_card", pageAppid ?? null, appid, position)}
       href={`/games/${appid}`}
       className="game-card"
       prefetch
-    />
-  );
-  if (!rescued) return <Link {...link.props}>{content}</Link>;
-  return (
-    <Tooltip delay={150}>
-      <TooltipTrigger render={link}>{content}</TooltipTrigger>
-      <TooltipContent className="review-tooltip">
-        {adjustedNote(bombSpans(bomb_windows))}. Steam shows{" "}
-        {review_positive_pct}%.
-      </TooltipContent>
-    </Tooltip>
+    >
+      {content}
+    </Link>
   );
 }

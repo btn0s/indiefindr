@@ -6,11 +6,6 @@ export function bombWindows(value: unknown): BombWindow[] {
 export function isRescued(game: ReviewQuality & { review_positive_pct: number | null; review_count: number }) {
   return game.review_count >= 10 && game.review_positive_pct !== null && game.review_positive_pct < 70 && (game.clean_score ?? 0) >= 70 && Array.isArray(game.bomb_windows) && game.bomb_windows.length > 0 && bombWindows(game.bomb_windows).length === game.bomb_windows.length;
 }
-/** The score indiefindr shows: the adjusted one for a review-bombed game, otherwise Steam's. */
-export function shownScore(game: ReviewQuality & { review_positive_pct: number | null; review_count: number }) {
-  const rescued = isRescued(game);
-  return { pct: rescued ? Math.round(game.clean_score!) : game.review_positive_pct, rescued };
-}
 export function recommendationEligible(game: ReviewQuality & { review_positive_pct: number | null; review_count: number }) {
   return game.review_count < 10 || game.review_positive_pct === null || game.review_positive_pct >= 70 || isRescued(game);
 }
@@ -46,26 +41,26 @@ export function monthRange(start: number, end: number, month: 'short' | 'long' =
   return `${monthName(start, month, !sameYear)}–${monthName(last, month)}`;
 }
 
-/** The quiet line under an adjusted score: "Adjusted for a 2023 review bomb". */
-export function adjustedNote(spans: BombSpan[]) {
-  const years = [...new Set(spans.map((s) => String(monthOf(s.start).getUTCFullYear())))];
-  if (spans.length === 1) return `Adjusted for a ${years[0]} review bomb`;
-  if (years.length === 1) return `Adjusted for ${spans.length} review bombs in ${years[0]}`;
-  return `Adjusted for review bombs in ${listOf(years)}`;
+const yearsOf = (spans: BombSpan[]) => [...new Set(spans.map((s) => String(monthOf(s.start).getUTCFullYear())))];
+
+/** The banner's first sentence: what happened and when. */
+export function bombHeadline(title: string, spans: BombSpan[]) {
+  if (spans.length === 1) {
+    const range = monthRange(spans[0].start, spans[0].end, 'long');
+    return range.includes('–') ? `${title} was review-bombed from ${range.replace('–', ' to ')}.` : `${title} was review-bombed in ${range}.`;
+  }
+  const times = ordinal[spans.length - 1] ?? `${spans.length} times`;
+  const years = yearsOf(spans);
+  return years.length === 1 ? `${title} was review-bombed ${times} in ${years[0]}.` : `${title} was review-bombed ${times}, in ${listOf(years)}.`;
 }
 
-/** One sentence on what happened, in the order a reader needs it. */
-export function bombSummary(title: string, spans: BombSpan[]) {
+/** The banner's second sentence: how big it was, and the score without it. */
+export function bombDetail(spans: BombSpan[], cleanScore: number) {
   const up = spans.reduce((n, s) => n + s.up, 0);
   const down = spans.reduce((n, s) => n + s.down, 0);
-  const share = `${(up + down).toLocaleString('en-US')} reviews, ${Math.round((100 * down) / (up + down))}% of them negative`;
-  if (spans.length === 1) {
-    const [s] = spans;
-    const range = monthRange(s.start, s.end, 'long');
-    return `${range.includes('–') ? `From ${range.replace('–', ' to ')}` : `In ${range}`}, ${title} was review-bombed: ${share}.`;
-  }
-  const years = [...new Set(spans.map((s) => String(monthOf(s.start).getUTCFullYear())))];
-  return `${title} was review-bombed ${ordinal[spans.length - 1] ?? `${spans.length} times`}, in ${listOf(years)}: ${share}.`;
+  const across = spans.length === 1 ? '' : spans.length === 2 ? ' across both' : ` across all ${spans.length}`;
+  const them = spans.length === 1 ? 'those reviews' : 'them';
+  return `${(up + down).toLocaleString('en-US')} reviews${across}, ${Math.round((100 * down) / (up + down))}% negative. Without ${them}, players rate it ${cleanScore}%.`;
 }
 
 export type LedgerRow = { kind: 'before' | 'bomb' | 'between' | 'since'; start: number; end: number; up: number; down: number };

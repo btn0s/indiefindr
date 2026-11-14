@@ -1,6 +1,6 @@
 import { WebMCP } from "@/components/WebMCP";
 import { getReviewHistory } from "@/lib/review-history";
-import { isRescued } from "@/lib/review-quality";
+import { bombSpans, isRescued } from "@/lib/review-quality";
 import { notFound } from "next/navigation";
 import { GameTrailer, type Trailer } from "@/components/GameTrailer";
 import type { Metadata } from "next";
@@ -8,6 +8,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
 import { GameMetadata } from "@/components/GameMetadata";
+import { ReviewBombBanner } from "@/components/ReviewBombBanner";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
 
@@ -176,8 +177,17 @@ export default async function GamePage({
           <header className="source-header">
             <div className="page-head">
             <h1 className="page-title"><span className="title-lead">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
-            <GameMetadata game={game} history={reviewHistory} />
+            <GameMetadata game={game} />
             </div>
+            {isRescued(game) && (
+              <ReviewBombBanner
+                title={game.title}
+                steam={{ pct: game.review_positive_pct!, count: game.review_count }}
+                cleanScore={Math.round(game.clean_score!)}
+                spans={bombSpans(game.bomb_windows)}
+                history={reviewHistory}
+              />
+            )}
           </header>
           <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}
             trailer={((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null} />

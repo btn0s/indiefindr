@@ -2,11 +2,10 @@
 import { POPULAR_INDIES } from "./popular-indies";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { ReviewQuality } from "@/lib/review-quality";
 
 export type SearchGame = { appid: number; title: string };
 /** What a result row shows beyond its title. The title index stays small; the visible rows fetch this. */
-export type SearchDetail = ReviewQuality & { appid: number; header_image: string | null; release_date: string | null; review_positive_pct: number | null; review_count: number };
+export type SearchDetail = { appid: number; header_image: string | null; release_date: string | null; review_positive_pct: number | null; review_count: number };
 
 export function useGameSearch() {
   const worker = useRef<Worker | null>(null);
@@ -26,7 +25,7 @@ export function useGameSearch() {
     if (!missing.length) return;
     missing.forEach(appid => requested.current.add(appid));
     const { data } = await getSupabaseBrowserClient().from("games")
-      .select("appid,header_image,release_date,review_positive_pct,review_count,clean_score,bomb_windows").in("appid", missing).returns<SearchDetail[]>();
+      .select("appid,header_image,release_date,review_positive_pct,review_count").in("appid", missing).returns<SearchDetail[]>();
     if (data?.length) setDetails(previous => new Map([...previous, ...data.map(row => [row.appid, row] as const)]));
   }, []);
 
@@ -50,7 +49,7 @@ export function useGameSearch() {
   // Curated empty-state picks load their artwork and ratings in one catalog lookup.
   const loadPopular = useCallback(async (id: number) => {
     const { data } = await getSupabaseBrowserClient().from("games")
-      .select("appid,title,header_image,release_date,review_positive_pct,review_count,clean_score,bomb_windows")
+      .select("appid,title,header_image,release_date,review_positive_pct,review_count")
       .in("appid", POPULAR_INDIES.map(game => game.appid))
       .returns<(SearchDetail & { title: string })[]>();
     const rows = POPULAR_INDIES.flatMap(pick => { const game = data?.find(row => row.appid === pick.appid); return game ? [game] : []; });

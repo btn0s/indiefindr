@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useGameSearch, type SearchDetail } from "@/lib/use-game-search";
 import { steamRating } from "@/lib/rating";
-import { shownScore } from "@/lib/review-quality";
 
 export function Navbar() {
   const router = useRouter();
@@ -49,8 +48,7 @@ export function Navbar() {
 }
 
 function SearchRow({ title, detail }: { title: string; detail?: SearchDetail }) {
-  const score = detail ? shownScore(detail) : null;
-  const rating = detail && score && steamRating(score.pct, detail.review_count);
+  const rating = detail && steamRating(detail.review_positive_pct, detail.review_count);
   const year = detail?.release_date?.slice(0, 4);
   return <>
     <span className="search-art">{detail?.header_image && <Image src={detail.header_image} alt="" width={92} height={43} />}</span>
@@ -58,8 +56,7 @@ function SearchRow({ title, detail }: { title: string; detail?: SearchDetail }) 
       <span className="search-title">{title}</span>
       {(year || rating) && <span className="search-meta">
         {year && <span>{year}</span>}
-        {rating && <span><strong>{score?.pct}%</strong> {rating}</span>}
-        {rating && score?.rescued && <span>Adjusted</span>}
+        {rating && <span><strong>{detail.review_positive_pct}%</strong> {rating}</span>}
       </span>}
     </span>
   </>;

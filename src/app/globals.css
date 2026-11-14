@@ -135,7 +135,7 @@
   --background: #f7f7f8; --foreground: #131316; --card: #ffffff; --popover: #ffffff;
   --muted: #ececef; --muted-foreground: #6b6b75; --border: #e3e3e8; --input: #e3e3e8;
   --primary: #131316; --primary-foreground: #ffffff; --ring: #131316;
-  --positive: #357f65; --negative: #bc5a5c;
+  --positive: #2f6fb5; --negative: #c8553d;
   --brand: var(--foreground); --media: #0d0d0f; --radius: 0.9rem;
 
   /* Text tiers: ink for names and headings, body for reading, muted for metadata. */
@@ -167,13 +167,13 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Lead: heading size at reading weight; the one introductory sentence on a page. */
 .home-intro .lede { font-size: var(--type-heading); line-height: 1.5; }
 /* Body: running text and notes. */
-.source-description, .review-story-lead, .section-heading p, .page-note, .empty-note, .home-intro .examples, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; }
+.source-description, .section-heading p, .page-note, .empty-note, .home-intro .examples, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; }
 /* Label: names and actions. */
 .game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; }
 /* Meta: facts about a game, captions, the footer. */
-.review-ledger, .review-chart, .review-story-foot, .review-tooltip, .card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
+.card-rating, .search-meta, .search-label, .game-meta, .showcase-source span, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; }
 /* Emphasis inside a role keeps its size and gains weight. */
-.card-rating strong, .game-meta strong, .review-ledger tfoot, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
+.card-rating strong, .game-meta strong, .search-meta strong, .showcase-source strong, .home-intro .examples a { font-weight: 600; }
 
 .site-shell { min-height: 100vh; background: var(--background); }
 
@@ -257,7 +257,6 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-card-title { padding-top: 10px; }
 .card-rating { margin-top: 2px; color: var(--muted-foreground); }
 .card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
-.card-adjusted { display: block; }
 
 /* Game page */
 .source-game { display: flex; flex-direction: column; gap: 20px; padding-bottom: var(--divider-gap); border-bottom: 1px solid var(--border); }
@@ -310,76 +309,123 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .agent-docs pre { overflow-x: auto; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
 .agent-docs a { text-decoration: underline; text-underline-offset: 3px; }
 
-/* Review-bombed games: the score shown is the adjusted one. The note under it opens the story in place:
-   what happened, how players rated it before, during and after, and the histogram as proof. */
+/* Review-bombed games: a banner under the facts says what happened beside the review history,
+   and opens the full history in a dialog, a bottom sheet on phones. Steam's score stays as Steam gives it. */
 .meta-score { white-space: nowrap; }
-.game-meta > .review-story-note { display: block; flex-basis: 100%; margin-top: -4px; }
-.review-story-trigger { position: relative; display: inline-block; padding: 0; border: 0; background: none; color: var(--muted-foreground); font: inherit; text-align: left; cursor: pointer; }
-.review-story-trigger::before { content: ""; position: absolute; inset: -12px -6px; }
-.review-story-trigger > span { text-decoration: underline dotted color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: 3px; }
-.review-story-trigger:hover { color: var(--foreground); }
-.review-story-trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: 2px; }
-.review-story-trigger svg { display: inline; margin-left: 4px; vertical-align: -2px; transition: rotate var(--story-duration) var(--story-ease); }
-.review-story-trigger[data-open] svg { rotate: 180deg; }
-.review-story { --story-duration: 320ms; --story-ease: cubic-bezier(.2, 0, 0, 1); }
-.review-story-panel { height: var(--collapsible-panel-height); overflow: hidden; transition: height var(--story-duration) var(--story-ease); }
-.review-story-panel:is([data-starting-style], [data-ending-style]) { height: 0; }
-.review-story-body { display: flex; flex-direction: column; gap: 24px; margin-top: 16px; padding: 20px 0 8px; border-top: 1px solid var(--border); transition: opacity var(--story-duration) var(--story-ease); }
-.review-story-panel[data-ending-style] { transition-duration: 220ms; }
-.review-story-panel[data-ending-style] .review-story-body { opacity: 0; transition-duration: 160ms; }
-@starting-style { .review-story-body { opacity: 0; } }
-.review-story-lead { max-width: 60ch; color: var(--foreground); text-wrap: balance; }
+.bomb-banner, .history-chart, .bomb-dialog { --band: color-mix(in srgb, var(--foreground) 7%, transparent); }
+.bomb-banner { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px; width: 100%; margin-top: 24px; padding: 20px 24px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text-body); font: inherit; text-align: left; cursor: pointer; transition: border-color 160ms ease-out, box-shadow 160ms ease-out; }
+.bomb-banner:hover { border-color: color-mix(in srgb, var(--foreground) 16%, var(--border)); box-shadow: 0 1px 2px rgb(19 19 22 / 4%), 0 6px 20px rgb(19 19 22 / 5%); }
+.bomb-banner:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.bomb-banner { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.bomb-banner:active { background: color-mix(in srgb, var(--foreground) 2%, var(--card)); }
+.bomb-banner-text { display: flex; flex-direction: column; gap: 4px; }
+.bomb-banner-eyebrow { margin-bottom: 6px; color: var(--muted-foreground); font-size: var(--type-meta); line-height: 1.4; }
+.bomb-banner-headline { color: var(--foreground); font-size: var(--type-body); font-weight: 600; line-height: 1.5; text-wrap: balance; }
+.bomb-banner-detail { font-size: var(--type-body); line-height: 1.6; text-wrap: pretty; }
+.bomb-banner-more { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 14px; color: var(--foreground); font-size: var(--type-meta); font-weight: 500; }
+.bomb-banner-more svg { transition: translate 160ms ease-out; }
+.bomb-banner:hover .bomb-banner-more svg { translate: 3px 0; }
 
-.review-ledger { width: 100%; max-width: 480px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.review-ledger th, .review-ledger td { padding: 6px 0; text-align: left; font-weight: inherit; vertical-align: baseline; }
-.review-ledger td { width: 88px; text-align: right; }
-.review-ledger thead th { padding-top: 0; color: var(--muted-foreground); }
-.review-ledger thead th + th { text-align: right; }
-.review-ledger tbody tr { border-top: 1px solid var(--border); }
-.review-ledger th span { display: inline-block; margin-left: 8px; color: var(--muted-foreground); white-space: nowrap; }
-.review-ledger tbody th, .review-ledger tbody td { color: var(--text-body); }
-.review-ledger [data-kind=bomb] :is(th, td) { color: var(--muted-foreground); }
-.review-ledger tfoot tr { border-top: 1px solid var(--foreground); }
-.review-ledger tfoot :is(th, td) { padding-top: 8px; color: var(--foreground); }
+.history-chart { display: flex; flex-direction: column; min-width: 0; margin: 0; color: var(--muted-foreground); font-size: var(--type-meta); line-height: 1.4; font-variant-numeric: tabular-nums; }
+.history-chart[data-compact] { align-self: end; }
+.history-caption { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; margin-bottom: 16px; }
+.history-readout strong { margin-right: 6px; color: var(--foreground); font-weight: 600; }
+.history-legend { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; }
+.history-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.history-legend > span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--key); }
+.history-legend [data-key=up] { --key: var(--positive); }
+.history-legend [data-key=down] { --key: var(--negative); }
+.history-legend [data-key=band]::before { width: 12px; height: 12px; border-radius: 3px; background: var(--band); }
+.history-labels { position: relative; display: block; height: 18px; margin-bottom: 4px; }
+.history-labels > span { position: absolute; bottom: 0; translate: -50% 0; color: var(--text-body); white-space: nowrap; }
+.history-labels > [data-edge=start] { translate: -16px 0; }
+.history-labels > [data-edge=end] { translate: calc(-100% + 16px) 0; }
+.history-label-short, .history-labels[data-tight] .history-label-long { display: none; }
+.history-labels[data-tight] .history-label-short { display: inline; }
+.history-plot { position: relative; display: block; height: 88px; container-type: inline-size; }
+.history-chart:not([data-compact]) .history-plot { height: 184px; touch-action: pan-y; border-radius: 4px; }
+.history-plot:focus-visible { outline: 2px solid var(--ring); outline-offset: 6px; }
+.history-band { position: absolute; top: -4px; bottom: -4px; border-radius: 3px; background: var(--band); }
+.history-bar { position: absolute; background: var(--fill); transition: opacity 120ms ease-out; }
+.history-bar[data-sign=up] { --fill: var(--positive); border-radius: 2px 2px 0 0; }
+.history-bar[data-sign=down] { --fill: var(--negative); border-radius: 0 0 2px 2px; }
+.history-plot[data-active] .history-period:not([data-active]) .history-bar { opacity: .28; }
+.history-axis { position: absolute; left: 0; right: 0; height: 1px; translate: 0 -.5px; background: color-mix(in srgb, var(--foreground) 32%, transparent); }
+.history-grid { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); }
+.history-grid > span { position: absolute; right: 0; bottom: 3px; padding-left: 6px; background: var(--card); line-height: 1; }
+.history-grid[data-side=down] > span { top: 4px; bottom: auto; }
+.history-years { position: relative; height: 18px; margin-top: 10px; }
+.history-years > span { position: absolute; top: 0; padding-left: 6px; border-left: 1px solid var(--border); line-height: 18px; }
+.history-years > [data-end] { display: none; }
+.history-ends { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
 
-.review-chart figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; color: var(--muted-foreground); }
-.review-chart figcaption > span:first-child { color: var(--text-body); }
-.review-chart-key { display: flex; gap: 14px; }
-.review-chart-key span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 1px; background: var(--key); }
-.review-chart-key [data-key=positive] { --key: var(--positive); }
-.review-chart-key [data-key=negative] { --key: var(--negative); }
-.review-chart-key [data-key=left-out]::before { background: var(--band); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 22%, transparent); }
-.review-chart { --band: color-mix(in srgb, var(--foreground) 8%, transparent); }
-.review-chart-plot { position: relative; height: 136px; margin-top: 32px; }
-.review-chart-plot svg { position: relative; display: block; width: 100%; height: 100%; overflow: visible; }
-.review-chart-up { fill: var(--positive); }
-.review-chart-down { fill: var(--negative); }
-.review-chart-axis { stroke: color-mix(in srgb, var(--foreground) 40%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.review-chart-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
-.review-chart-band { position: absolute; top: -6px; bottom: -6px; background: var(--band); }
-.review-chart-band > span + span { display: none; }
-.review-chart-band > span { position: absolute; bottom: 100%; left: 50%; translate: -50% 0; padding-bottom: 4px; color: var(--text-body); white-space: nowrap; }
-.review-chart-tick { position: absolute; right: 0; translate: 0 -100%; padding-bottom: 1px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; text-shadow: 0 0 3px var(--background), 0 0 3px var(--background); pointer-events: none; }
-.review-chart-tick + .review-chart-tick { translate: 0 0; padding: 1px 0 0; }
-.review-chart-years { position: relative; height: 20px; margin-top: 10px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
-.review-chart-years span { position: absolute; top: 0; padding-left: 4px; border-left: 1px solid var(--border); line-height: 20px; }
+.bomb-dialog-backdrop { position: fixed; inset: 0; z-index: 50; background: rgb(19 19 22 / 36%); transition: opacity 220ms cubic-bezier(.2, 0, 0, 1); }
+.bomb-dialog-backdrop:is([data-starting-style], [data-ending-style]) { opacity: 0; }
+.bomb-dialog { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; width: min(760px, calc(100vw - 48px)); height: fit-content; max-height: calc(100dvh - 64px); margin: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--foreground); box-shadow: 0 24px 64px rgb(19 19 22 / 16%), 0 2px 6px rgb(19 19 22 / 6%); outline: none; transition: opacity 220ms cubic-bezier(.2, 0, 0, 1), scale 220ms cubic-bezier(.2, 0, 0, 1); }
+.bomb-dialog:is([data-starting-style], [data-ending-style]) { opacity: 0; scale: .97; }
+.bomb-dialog[data-ending-style] { transition-duration: 150ms; transition-timing-function: cubic-bezier(.4, 0, 1, 1); }
+.bomb-dialog-grabber { display: none; }
+/* On phones the dialog is a bottom sheet; the SDK places it and drives its motion and swipe. */
+.bomb-dialog[data-presentation=sheet] { width: 100%; max-height: 92dvh; margin: 0; padding-bottom: env(safe-area-inset-bottom); border-width: 1px 0 0; border-radius: 16px 16px 0 0; transition: none; }
+.bomb-dialog[data-presentation=sheet]:is([data-starting-style], [data-ending-style]) { opacity: 1; scale: 1; }
+/* Pulling down with the history scrolled to the top carries on into the sheet and dismisses it. */
+.bomb-dialog[data-presentation=sheet] .bomb-dialog-body { overscroll-behavior-y: auto; }
+.bomb-dialog[data-presentation=sheet] .bomb-dialog-grabber { display: block; flex-shrink: 0; width: 36px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: color-mix(in srgb, var(--foreground) 18%, transparent); }
+.bomb-dialog-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 20px 0 32px; }
+.bomb-dialog-header h2 { font-size: var(--type-heading); font-weight: 600; line-height: 1.3; letter-spacing: -0.015em; }
+.bomb-dialog-close { display: grid; flex-shrink: 0; place-items: center; width: 36px; height: 36px; border-radius: 999px; color: var(--muted-foreground); cursor: pointer; transition: background-color 120ms ease-out, color 120ms ease-out; }
+.bomb-dialog-close:hover { background: var(--muted); color: var(--foreground); }
+.bomb-dialog-close:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.bomb-dialog-body { display: flex; flex-direction: column; gap: 32px; min-height: 0; padding: 12px 32px 28px; overflow-y: auto; overscroll-behavior: contain; }
+.bomb-dialog-lead { max-width: 62ch; color: var(--text-body); font-size: var(--type-body); line-height: 1.6; text-wrap: pretty; }
+.bomb-dialog-lead strong { color: var(--foreground); font-weight: 600; }
+.bomb-dialog-method { max-width: 66ch; color: var(--muted-foreground); font-size: var(--type-meta); line-height: 1.55; text-wrap: pretty; }
+.bomb-dialog-method a { display: inline-flex; align-items: center; gap: 2px; color: var(--foreground); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 3px; }
+.bomb-dialog-method a:hover { text-decoration-color: currentColor; }
 
-.review-story-foot { max-width: 60ch; color: var(--muted-foreground); }
-.review-story-foot a { display: inline-flex; align-items: center; gap: 2px; color: var(--foreground); text-decoration: underline; text-underline-offset: 3px; }
-.review-story-foot a:hover { text-decoration-thickness: 2px; }
+.bomb-ledger { width: calc(100% + 20px); margin-inline: -10px; border-collapse: collapse; font-size: var(--type-meta); line-height: 1.4; font-variant-numeric: tabular-nums; }
+.bomb-ledger caption { padding: 0 10px 10px; color: var(--foreground); font-size: var(--type-body); font-weight: 600; text-align: left; }
+.bomb-ledger :is(th, td) { padding: 11px 10px; border-top: 1px solid var(--border); color: var(--text-body); font-weight: inherit; text-align: left; vertical-align: top; }
+.bomb-ledger td { width: 64px; text-align: right; }
+.bomb-ledger [data-kind=bomb] > * { background: var(--band); }
+.bomb-ledger [data-kind=bomb] > :first-child { border-radius: 6px 0 0 6px; }
+.bomb-ledger [data-kind=bomb] > :last-child { border-radius: 0 6px 6px 0; }
+.bomb-ledger [data-kind=bomb] > *, .bomb-ledger [data-kind=bomb] + tr > * { border-top-color: transparent; }
+.bomb-ledger-cell { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 24px; }
+.bomb-ledger-name { white-space: nowrap; }
+.bomb-ledger-name > span { margin-left: 8px; color: var(--muted-foreground); }
+.bomb-ledger tfoot tr:first-child > * { border-top-color: color-mix(in srgb, var(--foreground) 32%, transparent); }
+.bomb-ledger [data-kind=kept] > * { color: var(--foreground); font-weight: 600; }
+.bomb-split { display: flex; gap: 2px; height: 6px; }
+.bomb-split > span { min-width: 2px; border-radius: 3px; background: var(--fill); }
+.bomb-split > [data-sign=up] { --fill: var(--positive); }
+.bomb-split > [data-sign=down] { --fill: var(--negative); }
 
-@media(max-width: 640px) {
-  .game-meta:has(.review-story-note) > * { order: 2; }
-  .game-meta > .meta-score { order: 0; }
-  .game-meta > .review-story-note { order: 1; margin-bottom: 4px; }
-  .review-chart-plot { height: 112px; }
-  .review-chart-years :is([data-minor], [data-end]) { display: none; }
-  .review-ledger tfoot th span { display: block; margin-left: 0; }
-  .review-chart-band > span:first-child { display: none; }
-  .review-chart-band > span + span { display: block; }
-  .review-ledger td { width: 64px; }
+@media(max-width: 700px) {
+  .bomb-banner { grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 20px; padding: 16px; }
+  .bomb-banner-text { display: contents; }
+  .bomb-banner-headline { margin-bottom: 4px; }
+  .history-chart[data-compact] { margin-top: 20px; }
+  .bomb-banner-more { order: 1; padding-top: 16px; }
+  .history-plot { height: 64px; }
+  .history-chart:not([data-compact]) .history-plot { height: 152px; }
+  .history-labels .history-label-long { display: none; }
+  .history-labels .history-label-short { display: inline; }
+  .history-years > [data-minor] { display: none; }
+  .bomb-dialog-header { padding: 12px 12px 0 20px; }
+  .bomb-dialog-header h2 { font-size: var(--type-heading); }
+  .bomb-dialog-body { gap: 28px; padding: 8px 20px 24px; }
+  .bomb-ledger { width: calc(100% + 16px); margin-inline: -8px; }
+  .bomb-ledger caption { padding-inline: 8px; }
+  .bomb-ledger :is(th, td) { padding: 10px 8px; }
+  .bomb-ledger td { width: 52px; }
+  .bomb-ledger-cell { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }
 @media(prefers-reduced-motion: reduce) {
-  .review-story-panel, .review-story-body, .review-story-trigger svg { transition: none; }
+  .bomb-banner, .bomb-banner-more svg, .history-bar, .bomb-dialog-close { transition: none; }
 }
-.review-tooltip { max-width: 280px; margin: 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--foreground); box-shadow: var(--shadow-md); }
+@media(forced-colors: active) {
+  .history-band { border: 1px dashed CanvasText; }
+  .history-bar[data-sign=up], .bomb-split > [data-sign=up] { background: Highlight; }
+  .history-bar[data-sign=down], .bomb-split > [data-sign=down] { background: CanvasText; }
+}
