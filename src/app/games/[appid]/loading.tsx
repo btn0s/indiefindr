@@ -1,8 +1,11 @@
+import { ViewTransition } from "react";
 import { GridSkeleton } from "@/components/CardSkeleton";
 
-/** The game page's own layout in outline: title, facts, trailer, blurb, Steam button, then the recommendation grid. */
+/** The game page's own layout in outline: title, facts, trailer, blurb, Steam button, then the recommendation grid.
+ *  It arrives the way the page would (sliding in from a card) and fades out under the page when that lands. */
 export default function Loading() {
   return (
+    <ViewTransition default="none" enter={{ "nav-forward": "slide-from-right", default: "none" }} exit="skeleton-out">
     <main className="discovery-page" aria-busy="true" aria-label="Loading game">
       <div className="source-game">
         <div className="page-head">
@@ -20,5 +23,6 @@ export default function Loading() {
         <GridSkeleton count={8} />
       </section>
     </main>
+    </ViewTransition>
   );
 }

@@ -4,9 +4,21 @@ const nextConfig: NextConfig = {
   // Externalize steam-user and its dependencies to avoid bundling issues
   // steam-crypto needs to access system.pem file at runtime
   serverExternalPackages: ["steam-user", "@doctormckay/steam-crypto"],
-  // Steam's CDN already serves right-sized, immutable images (10-year cache); re-optimizing them
-  // only added cold misses per deployment and per-image billing.
-  images: { unoptimized: true },
+  // Game page heroes (trailer posters and screenshots, 1920px at Steam) go through the image optimizer, so a phone gets
+  // a sharp ~1200px file at a fraction of the bytes. Store headers are already right-sized; those images opt out
+  // with `unoptimized` where they render (GameCard, search rows, home showcase). WebP only: AVIF encodes far slower on
+  // a cache miss, and every deploy starts cold. The hero paints over the cached store header (GameTrailer), so a cold
+  // transform never leaves the frame empty.
+  images: {
+    formats: ["image/webp"],
+    remotePatterns: [{ protocol: "https", hostname: "*.akamai.steamstatic.com", pathname: "/**" }],
+  },
+  // Cached data, prerendered shells, and the router keeps recent routes mounted (hidden) so back and forward restore
+  // a page as it was left, Browse all's loaded pages and scroll included. Game pages are prerendered and cheap, so every
+  // card on screen asks for its whole page with prefetch={true} and a tap navigates with no network wait (CardLink).
+  // Other links prefetch the route's static shell.
+  cacheComponents: true,
+  partialPrefetching: true,
   async redirects() {
     return [
       {

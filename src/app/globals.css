@@ -157,6 +157,9 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --duration-press: 100ms; --duration-release: 160ms; --duration-hover: 200ms;
   --duration-enter: 180ms; --duration-exit: 110ms; --duration-morph: 260ms; --duration-morph-back: 200ms;
+  /* Route changes: short, so a prefetched page never feels held back by its own entrance. The search morph keeps
+     --duration-morph. */
+  --duration-route: 170ms;
 }
 @media(max-width: 700px) {
   :root { --type-title: 26px; --type-heading: 18px; --page-top: 20px; --section-gap: 40px; --divider-gap: 28px; }
@@ -215,9 +218,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
   .site-search[data-open=true] .search-results { position: fixed !important; inset: calc(60px + env(safe-area-inset-top)) 0 0 !important; width: 100%; grid-column: 1 / -1; margin: 12px -16px 0; padding: 0 10px calc(16px + env(safe-area-inset-bottom)); border: 0; border-radius: 0; background: none; box-shadow: none; overflow-y: auto; overscroll-behavior: contain; }
   html:has(.site-search[data-open=true]) { overflow: hidden; }
 }
-/* The highlight follows the pointer and arrow keys exactly, with no transition. */
+/* One highlight, following the arrow keys and the moving pointer exactly, with no transition. The autocomplete moves it
+   on pointermove, so rows shifting under a resting cursor don't take it from the keyboard; a :hover style would. */
 .search-results a[data-highlighted] { background: var(--muted); }
-@media (hover: hover) and (pointer: fine) { .search-results a:hover { background: var(--muted); } }
 
 /* Page frame: every page opens with a title block, then sections a fixed gap apart. */
 .discovery-page { max-width: 896px; margin: auto; padding: var(--page-top) 0 64px; }
@@ -256,7 +259,11 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 @media (hover: hover) and (pointer: fine) { .see-all:hover svg { transform: translateX(2px); } }
 
 /* Cards */
+.card-grid { display: grid; row-gap: 28px; }
 .game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; }
+/* Off-screen blocks of cards skip layout and paint until scrolled near; `auto` remembers each block's real height once
+   seen, so the scrollbar doesn't jump. Home's later sections do the same. Find in page still finds their text. */
+.card-grid > .game-grid + .game-grid, .discovery-page > section:nth-of-type(n+3) { content-visibility: auto; contain-intrinsic-size: auto 520px; }
 @media(min-width: 768px) { .game-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .game-card { display: block; }
 @media (hover: hover) and (pointer: fine) { .game-card:hover .game-card-title { text-decoration: underline; text-underline-offset: 3px; } }
@@ -278,8 +285,14 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-trailer { position: relative; aspect-ratio: 16/9; overflow: hidden; border-radius: 8px; background: var(--media); }
 .game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .4s ease-out; }
 .game-trailer video[data-playing=true] { opacity: 1; }
-.trailer-sound { position: absolute; right: 12px; bottom: 12px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--media) 65%, transparent); color: #fff; }
-.trailer-sound::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+.trailer-controls { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 8px; }
+.trailer-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, var(--media) 65%, transparent); color: #fff; }
+.trailer-button::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+/* Each button holds both icons; the state crossfades between them (same swap as the copy button). */
+.trailer-button svg { position: absolute; transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out), filter var(--duration-enter) var(--ease-out); }
+.trailer-button .icon-on, .trailer-button[data-on] .icon-off { opacity: 0; transform: scale(.6); filter: blur(2px); }
+.trailer-button[data-on] .icon-on { opacity: 1; transform: none; filter: none; }
+@media(prefers-reduced-motion: reduce) { .trailer-button svg { transform: none !important; filter: none !important; } }
 .source-description { max-width: 65ch; color: var(--text-body); text-wrap: pretty; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
 @media(max-width: 640px) {
@@ -339,16 +352,18 @@ code, pre { font-family: var(--font-geist-mono), ui-monospace, monospace; }
 .skip-link { position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 8px; z-index: 60; padding: 10px 14px; border-radius: 8px; background: var(--foreground); color: var(--background); font-weight: 500; transform: translateY(-200%); }
 .skip-link:focus-visible { transform: none; }
 #content { scroll-margin-top: 80px; }
+/* Keeps focus and in-page jumps clear of the sticky header. */
+html { scroll-padding-top: 72px; }
 /* Pinch zoom stays; double-tap zoom goes, so taps land without a delay. */
 html { touch-action: manipulation; }
 
 /* Presses. A plain scale-down, in fast and back a touch slower on an ease-out that never overshoots. Elements with
    their own press drop iOS's grey tap flash, which would otherwise flash on top of it. */
-:is(.button, .game-card, .showcase-source, .showcase-recs a, .trailer-sound, .search-results a, .wordmark, .see-all, .search-cancel) { -webkit-tap-highlight-color: transparent; }
-.game-card > div, .showcase-source, .showcase-tile, .trailer-sound { transition: transform var(--duration-release) var(--ease-out); }
+:is(.button, .game-card, .showcase-source, .showcase-recs a, .trailer-button, .search-results a, .wordmark, .see-all, .search-cancel) { -webkit-tap-highlight-color: transparent; }
+.game-card > div, .showcase-source, .showcase-tile, .trailer-button { transition: transform var(--duration-release) var(--ease-out); }
 .showcase-source:active { transform: scale(.98); transition-duration: var(--duration-press); }
 .game-card:active > div, .showcase-recs a:active .showcase-tile { transform: scale(.97); transition-duration: var(--duration-press); }
-.trailer-sound:active { transform: scale(.92); transition-duration: var(--duration-press); }
+.trailer-button:active { transform: scale(.92); transition-duration: var(--duration-press); }
 .see-all:active, .search-cancel:active, .wordmark:active, .home-intro .examples a:active, .site-footer a:active, .game-meta a:active { opacity: .6; }
 .search-results a:active { background: var(--muted); }
 
@@ -370,10 +385,38 @@ html { touch-action: manipulation; }
 
 /* Desktop search: the panel grows out of the field, and goes faster than it came. */
 @media (min-width: 701px) {
-  .search-results { transform-origin: var(--transform-origin); transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out); }
+  .search-results { transform-origin: var(--transform-origin); transition: opacity var(--duration-enter) var(--ease-out), transform var(--duration-enter) var(--ease-out), height 120ms var(--ease-out); }
   .search-results[data-starting-style] { opacity: 0; transform: scale(.97); }
   .search-results[data-ending-style] { opacity: 0; transform: scale(.98); transition-duration: var(--duration-exit); }
+  /* Opened with / or ⌘K: there at once. Keyboard-invoked panels don't animate in. */
+  .search-results[data-instant] { transition-property: height; }
+  /* The panel's height follows its rows (Navbar.tsx followHeight), so a change in the result count glides, not jumps. */
+  .search-results { box-sizing: content-box; padding: 0; height: var(--panel-height, auto); overflow: hidden; }
+  .search-panel { padding: 6px; }
 }
+
+/* The field's icon: a spinner replaces the glass while a submitted search waits for its page, after 120ms so an instant
+   navigation never shows it. */
+.search-icon { display: grid; flex-shrink: 0; }
+.search-icon > svg { grid-area: 1 / 1; }
+.search-icon > svg:last-child { opacity: 0; }
+.search-box[data-pending] .search-icon > svg:first-child { animation: icon-out var(--duration-exit) 120ms var(--ease-out) forwards; }
+.search-box[data-pending] .search-icon > svg:last-child { animation: icon-in var(--duration-enter) 120ms var(--ease-out) forwards, icon-spin .8s linear infinite; }
+@keyframes icon-in { to { opacity: 1; } }
+@keyframes icon-out { to { opacity: 0; } }
+@keyframes icon-spin { to { rotate: 1turn; } }
+/* The / hint, for keyboard and mouse users only, gone once the field has focus. */
+.search-kbd { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .search-kbd { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; margin-right: 6px; border: 1px solid var(--border); border-radius: 5px; box-shadow: 0 1px 0 var(--border); font: 500 12px/1 var(--font-geist-mono), monospace; color: var(--muted-foreground); }
+  .search-box:focus-within .search-kbd { display: none; }
+}
+/* Matched words: the rest of the title steps back a shade, so the match reads without the line reflowing. */
+.search-title:has(mark) { color: color-mix(in srgb, var(--foreground) 62%, transparent); }
+.search-title mark { background: none; color: var(--foreground); }
+/* A card whose page is still on the way dims its art, after a beat. */
+.game-card:has(> [data-link-pending]) .game-card-art { animation: pending-dim var(--duration-enter) 120ms var(--ease-out) forwards; }
+@keyframes pending-dim { to { opacity: .6; } }
 
 /* Phone search: opening and closing run as a React view transition typed search-open / search-close (Navbar.tsx). The field's frame morphs from the header
    into the takeover while its icon and text ride along unstretched; the page fades beneath; results rise in.
@@ -388,7 +431,7 @@ html { touch-action: manipulation; }
 }
 :root:active-view-transition-type(search-open) { --vt-duration: var(--duration-morph); }
 :root:active-view-transition-type(search-close) { --vt-duration: var(--duration-morph-back); }
-::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--vt-duration, 250ms); animation-timing-function: var(--ease-out); }
+::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--vt-duration, var(--duration-route)); animation-timing-function: var(--ease-out); }
 ::view-transition-old(search-input), ::view-transition-new(search-input) { height: 100%; width: auto; object-fit: none; object-position: left center; }
 /* The takeover fades in over a still page and fades back out over it, so the two never cross-dissolve into a ghost. */
 :root:is(:active-view-transition-type(search-open), :active-view-transition-type(search-close))::view-transition-old(root),
@@ -406,6 +449,25 @@ html { touch-action: manipulation; }
   ::view-transition-new(search-results):only-child { animation-name: -ua-view-transition-fade-in; }
   ::view-transition-old(search-results):only-child { animation-name: -ua-view-transition-fade-out; }
   .search-results[data-starting-style], .search-results[data-ending-style] { transform: none; }
+}
+
+/* Card to game page (CardLink, games/[appid]/page.tsx). The card's art grows into the hero and its title moves into the
+   heading while the page slides in from the right; back plays the morph in reverse. The art boxes differ in shape
+   (460:215 into 16:9), so both snapshots fill the morphing box. Titles differ in size, so the old one is dropped and
+   the new heading rides the box at full resolution instead of scaling a blurry bitmap. The page stays clickable
+   while anything moves. */
+::view-transition { pointer-events: none; }
+::view-transition-group(.art-morph) { animation-duration: var(--duration-route); animation-timing-function: var(--ease-out); }
+::view-transition-old(.art-morph), ::view-transition-new(.art-morph) { height: 100%; object-fit: cover; }
+::view-transition-new(.slide-from-right) { animation: fade-in var(--duration-route) var(--ease-out) both, slide-in-right var(--duration-route) var(--ease-out) both; }
+::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-exit) var(--ease-out) both, slide-out-left var(--duration-route) var(--ease-out) both; }
+::view-transition-new(.page-in) { animation: fade-in var(--duration-enter) var(--ease-out) both; }
+::view-transition-old(.skeleton-out) { animation: fade-out var(--duration-exit) var(--ease-out) both; }
+@keyframes slide-in-right { from { translate: 24px 0; } }
+@keyframes slide-out-left { to { translate: -24px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-new(.slide-from-right) { animation: fade-in var(--duration-enter) var(--ease-out) both; }
+  ::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-exit) var(--ease-out) both; }
 }
 
 /* Empty states: the sword over a short note, centred, so a missing list reads as a place, not a gap. */

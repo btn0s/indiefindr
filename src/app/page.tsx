@@ -1,20 +1,27 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import { GameGrid } from "@/components/GameGrid";
 import type { GameCardGame } from "@/lib/supabase/types";
 import { getBrowsePage, getGame, getHomeShelves, getRecommendations, SHELVES, type ShelfSlug } from "@/lib/catalog";
 import { ShelfHeading } from "@/components/ShelfHeading";
-import { GameCard } from "@/components/GameCard";
+import { CardGrid } from "@/components/CardGrid";
 import { EmptyNote } from "@/components/EmptyNote";
 
 // Well-known indies whose pages show off the recommendations; one is featured per revalidation.
 const SHOWCASE = [413150, 367520, 105600, 1145360, 504230, 646570];
 // Any game works as a starting point, AAA included; recommendations are always indie.
 const EXAMPLES = [[413150, "Stardew Valley"], [367520, "Hollow Knight"], [2379780, "Balatro"]] as const;
-const pickShowcase = () => SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)];
 
-export const revalidate = 60;
+/** The featured game and its first recommendations. A new pick each time the cache refreshes, about once a minute. */
+async function getShowcase() {
+  "use cache";
+  cacheLife("minutes");
+  const appid = SHOWCASE[Math.floor(Math.random() * SHOWCASE.length)];
+  const [game, recs] = await Promise.all([getGame(appid), getRecommendations(appid)]);
+  return { game, recs: recs.slice(0, 3) };
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl =
@@ -68,8 +75,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Home() {
   const games = await getBrowsePage(0);
 
-  const showcaseId = pickShowcase();
-  const [showcase, showcaseRecs, shelves] = await Promise.all([getGame(showcaseId), getRecommendations(showcaseId), getHomeShelves()]);
+  const [{ game: showcase, recs: showcaseRecs }, shelves] = await Promise.all([getShowcase(), getHomeShelves()]);
 
   return (
     <main className="discovery-page">
@@ -83,12 +89,14 @@ export default async function Home() {
         </div>
         {showcase && <div className="showcase">
           <Link href={`/games/${showcase.appid}`} prefetch={true} className="showcase-source">
-            {showcase.header_image && <Image src={showcase.header_image} alt="" width={460} height={215} preload loading="eager" fetchPriority="high" />}
+            {/* The showcase is hidden on phones, so its art is preloaded only where it shows. */}
+            {showcase.header_image && <link rel="preload" as="image" href={showcase.header_image} fetchPriority="high" media="(min-width: 701px)" />}
+            {showcase.header_image && <Image src={showcase.header_image} alt="" width={460} height={215} unoptimized fetchPriority="high" loading="eager" />}
             <span>Games like <strong>{showcase.title}</strong></span>
           </Link>
           <div className="showcase-recs">
-            {showcaseRecs.slice(0, 3).map(({ game }) => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true} title={game.title}>
-              <span className="showcase-tile">{game.header_image && <Image src={game.header_image} alt={game.title} width={230} height={108} preload />}</span>
+            {showcaseRecs.map(({ game }) => <Link key={game.appid} href={`/games/${game.appid}`} prefetch={true} title={game.title}>
+              <span className="showcase-tile">{game.header_image && <Image src={game.header_image} alt={game.title} width={230} height={108} unoptimized />}</span>
             </Link>)}
           </div>
         </div>}
@@ -110,8 +118,6 @@ function Shelf({ slug, games, aboveFold = false }: { slug: ShelfSlug; games: Gam
   if (!games.length) return null;
   return <section>
     <ShelfHeading title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} />
-    <div className="game-grid">
-      {games.map((game, index) => <GameCard key={game.appid} {...game} preload={aboveFold && index < 4} />)}
-    </div>
+    <CardGrid games={games} eager={aboveFold ? 4 : 0} />
   </section>;
 }

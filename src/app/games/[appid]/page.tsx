@@ -1,6 +1,8 @@
 import { WebMCP } from "@/components/WebMCP";
 import { ReviewQualityNote } from "@/components/ReviewQualityNote";
 import { notFound } from "next/navigation";
+import { ViewTransition } from "react";
+import { heroImage } from "@/lib/hero";
 import { GameTrailer, type Trailer } from "@/components/GameTrailer";
 import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
@@ -13,9 +15,7 @@ import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
 
-// Popular pages are built ahead of time; other catalog pages are cached on demand.
-export const revalidate = 3600;
-export const dynamic = "force-static";
+// The 100 most-reviewed games are prerendered at build; the rest render on first visit and are cached after.
 export async function generateStaticParams() {
   const { data, error } = await getSupabaseServerClient().from("games")
     .select("appid").order("review_count", { ascending: false }).limit(100);
@@ -94,6 +94,7 @@ export default async function GamePage({
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
+  const trailer = ((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null;
 
   // Structured data schemas
   const videoGameSchema = {
@@ -170,6 +171,10 @@ export default async function GamePage({
         }}
       />}
       <WebMCP />
+      {/* Opened from a card, the page slides in from the right; its hero and title morph out of the card (CardLink).
+          Replacing its loading skeleton, it fades in. */}
+      <ViewTransition default="none" enter={{ "nav-forward": "slide-from-right", default: "page-in" }}
+        exit={{ "nav-forward": "slide-to-left", default: "none" }}>
       <main className="discovery-page">
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <header className="source-header">
@@ -179,8 +184,10 @@ export default async function GamePage({
             <ReviewQualityNote game={game} />
             </div>
           </header>
-          <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}
-            trailer={((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null} />
+          <ViewTransition name={`art-${appId}`} share="art-morph" default="none">
+            <GameTrailer title={game.title} trailer={trailer} base={game.header_image}
+              image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
+          </ViewTransition>
           {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}
           <div className="source-game-actions"><SteamLink appid={appId} price={game.is_free ? "Free" : game.price_cents != null ? `$${(game.price_cents / 100).toFixed(2)}` : null} /></div>
           <ShopLinks appid={appId} />
@@ -189,6 +196,7 @@ export default async function GamePage({
         <SuggestionsSection appId={appId} gameTitle={game.title} recs={recs} />
         <AdSlot />
       </main>
+      </ViewTransition>
     </>
   );
 }

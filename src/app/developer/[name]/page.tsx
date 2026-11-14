@@ -1,11 +1,10 @@
 import { CARD_FIELDS } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { GameCard } from "@/components/GameCard";
+import { CardGrid } from "@/components/CardGrid";
 
-export const revalidate = 3600;
-export const dynamic = "force-static";
 
 export async function generateMetadata({
   params,
@@ -45,6 +44,8 @@ export async function generateMetadata({
 }
 
 async function getGamesByDeveloper(developerName: string) {
+  "use cache";
+  cacheLife("hours");
   const supabase = getSupabaseServerClient();
 
   const { data: games, error } = await supabase
@@ -135,11 +136,7 @@ export default async function DeveloperQueryPage({
           </p>
         </header>
 
-        <div className="game-grid">
-          {games.map((game, index) => (
-            <GameCard key={game.appid} {...game} preload={index < 8} />
-          ))}
-        </div>
+        <CardGrid games={games} eager={8} />
       </main>
     </>
   );

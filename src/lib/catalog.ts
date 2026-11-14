@@ -1,9 +1,16 @@
 import { recommendationEligible, type ReviewQuality } from "@/lib/review-quality";
-import { cache } from "react";
+import { cacheLife } from "next/cache";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { HERO_FIELDS } from "@/lib/hero";
+import { POPULAR_INDIES } from "@/lib/popular-indies";
+import type { PopularPick } from "@/lib/use-game-search";
 
-/** Shared by metadata and page rendering; one lookup per render. */
-export const getGame = cache(async (appid: number) => {
+/** Shared by metadata and page rendering. Catalog reads are cached server-side: games and their recommendations
+ *  shelves and Browse all change hourly at most (home's showcase rotates by the minute). Anything shown on every page
+ *  (the 404's Browse all is prerendered into each route) must not be shorter-lived than the pages themselves. */
+export async function getGame(appid: number) {
+  "use cache";
+  cacheLife("hours");
   const { data, error } = await getSupabaseServerClient()
     .from("games")
     .select("appid,title,short_description,header_image,developers,publishers,release_date,genres,review_count,review_positive_pct,clean_score,bomb_windows,checked_at,price_cents,is_free,is_indie,screenshots,trailers")
@@ -11,7 +18,7 @@ export const getGame = cache(async (appid: number) => {
     .maybeSingle();
   if (error) throw new Error("Catalog unavailable");
   return data;
-});
+}
 
 export type RecommendationCard = {
   rank: number;
@@ -21,10 +28,12 @@ export type RecommendationCard = {
 
 /** The game's full list: hand-written (LLM) picks first where a game has them, then the model's, without repeats.
  *  Cards are joined in the same database read. */
-export const getRecommendations = cache(async (appid: number): Promise<RecommendationCard[]> => {
+export async function getRecommendations(appid: number): Promise<RecommendationCard[]> {
+  "use cache";
+  cacheLife("hours");
   const { data, error } = await getSupabaseServerClient()
     .from("game_recs")
-    .select("rank,source,game:games!game_recs_rec_appid_fkey!inner(appid,title,header_image,review_count,review_positive_pct,is_indie,clean_score,bomb_windows,checked_at)")
+    .select(`rank,source,game:games!game_recs_rec_appid_fkey!inner(${CARD_FIELDS},is_indie)`)
     .eq("appid", appid)
     .eq("game.is_indie", true)
     .eq("game.is_companion", false)
@@ -35,20 +44,25 @@ export const getRecommendations = cache(async (appid: number): Promise<Recommend
   return [...recs.filter(rec => rec.source === "llm"), ...recs.filter(rec => rec.source === "model")]
     .filter(rec => recommendationEligible(rec.game))
     .filter(rec => rec.game.appid !== appid && !seen.has(rec.game.appid) && seen.add(rec.game.appid));
-});
+}
 
 /** Up to four more indies from the same developer(s), newest first. */
-export const getDeveloperGames = cache(async (appid: number, developers: string[]): Promise<CardGame[]> => {
+export async function getDeveloperGames(appid: number, developers: string[]): Promise<CardGame[]> {
+  "use cache";
+  cacheLife("hours");
   if (!developers.length) return [];
   const { data } = await getSupabaseServerClient().from("games").select(CARD_FIELDS)
     .neq("appid", appid).eq("is_indie", true).eq("is_companion", false).or(developers.map(dev => `developers.cs.{${dev}}`).join(","))
     .order("release_date", { ascending: false }).limit(4);
   return (data ?? []).filter(recommendationEligible);
-});
+}
 
 /** Everything a game card shows, selected the same way everywhere. */
-export const CARD_FIELDS = "appid,title,header_image,review_count,review_positive_pct,clean_score,bomb_windows,checked_at";
-export type CardGame = ReviewQuality & { appid: number; title: string; header_image: string | null; review_count: number; review_positive_pct: number | null };
+export const CARD_FIELDS = `appid,title,header_image,review_count,review_positive_pct,clean_score,bomb_windows,checked_at,${HERO_FIELDS}`;
+export type CardGame = ReviewQuality & {
+  appid: number; title: string; header_image: string | null; review_count: number; review_positive_pct: number | null;
+  hero_poster: string | null; hero_still: string | null;
+};
 type ShelfGame = CardGame;
 const SHELF_FIELDS = CARD_FIELDS;
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
@@ -103,6 +117,8 @@ export type ShelfSlug = keyof typeof SHELVES;
 export const isShelf = (slug: string): slug is ShelfSlug => slug in SHELVES;
 
 export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGame[]> {
+  "use cache";
+  cacheLife("hours");
   const { data, error } = await SHELVES[slug].query(shelfBase()).limit(limit);
   if (error) throw new Error("Catalog unavailable");
   return data.filter(recommendationEligible);
@@ -118,6 +134,8 @@ const HOME_SHELVES: { slug: ShelfSlug; fetch: number; show: number }[] = [
 ];
 
 export async function getHomeShelves() {
+  "use cache";
+  cacheLife("hours");
   const fetched = await Promise.all(HOME_SHELVES.map(({ slug, fetch }) => getShelf(slug, fetch)));
   const shown = new Set<number>();
   const shelves = {} as Record<ShelfSlug, ShelfGame[]>;
@@ -133,13 +151,29 @@ export const BROWSE_PAGE_SIZE = 24;
 
 /** "Browse all": every indie game (no companion apps), most-reviewed first. */
 export async function getBrowsePage(offset: number): Promise<CardGame[]> {
+  "use cache";
+  cacheLife("hours");
   const { data, error } = await getSupabaseServerClient().from("games").select(CARD_FIELDS).eq("is_indie", true).eq("is_companion", false)
     .order("review_count", { ascending: false }).order("appid").range(offset, offset + BROWSE_PAGE_SIZE - 1);
   if (error) throw new Error("Catalog unavailable");
   return data;
 }
 
-export const getGamePageSlate = cache(async (appid: number, developers: string[]) => {
+export async function getGamePageSlate(appid: number, developers: string[]) {
+  "use cache";
+  cacheLife("hours");
   const [all, developerGames] = await Promise.all([getRecommendations(appid), getDeveloperGames(appid, developers)]);
   return { developerGames, recs: all.filter(rec => !developerGames.some(game => game.appid === rec.game.appid)) };
-});
+}
+
+/** Search's empty state: the curated picks with their art and ratings, drawn on the server so the panel opens complete.
+ *  A failed read leaves the empty state blank rather than breaking every page. */
+export async function getPopularIndies(): Promise<PopularPick[]> {
+  "use cache";
+  cacheLife("hours");
+  const { data } = await getSupabaseServerClient().from("games")
+    .select("appid,title,header_image,release_date,review_positive_pct,review_count")
+    .in("appid", POPULAR_INDIES.map(game => game.appid))
+    .returns<PopularPick[]>();
+  return POPULAR_INDIES.flatMap(pick => data?.find(row => row.appid === pick.appid) ?? []);
+}

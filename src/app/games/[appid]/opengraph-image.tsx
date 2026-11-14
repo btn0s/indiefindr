@@ -1,8 +1,6 @@
 import { getRecommendations } from "@/lib/catalog";
 import { gameGridImage, OG_SIZE } from "@/lib/og-grid";
 
-export const runtime = "nodejs";
-export const revalidate = 3600;
 export const alt = "Indie games like this one, on IndieFindr";
 export const size = OG_SIZE;
 export const contentType = "image/png";

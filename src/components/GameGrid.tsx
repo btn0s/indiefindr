@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { GameCard } from "./GameCard";
-import { CardSkeleton } from "./CardSkeleton";
+import { CardGrid } from "./CardGrid";
+import { GridSkeleton } from "./CardSkeleton";
 import { loadMoreGames } from "@/lib/actions/games";
 import type { GameCardGame } from "@/lib/supabase/types";
 
@@ -59,15 +59,10 @@ export function GameGrid({ initialGames }: GameGridProps) {
 
   return (
     <>
-      <div className="game-grid">
-        {games.map((game) => (
-          <GameCard
-            key={game.appid}
-            {...game}
-          />
-        ))}
+      <div className="card-grid">
+        <CardGrid games={games} />
         {/* The next page holds its place as cards, so nothing below jumps when it lands. */}
-        {isPending && Array.from({ length: 4 }, (_, index) => <CardSkeleton key={index} />)}
+        {isPending && <GridSkeleton count={4} />}
       </div>
       {hasMore && <div ref={loaderRef} aria-hidden="true" className="h-px" />}
     </>
