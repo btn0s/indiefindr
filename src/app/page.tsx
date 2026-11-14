@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { cacheLife } from "next/cache";
 import { GameGrid } from "@/components/GameGrid";
-import type { GameCardGame } from "@/lib/supabase/types";
-import { getBrowsePage, getGame, getHomeShelves, getRecommendations, SHELVES, type ShelfSlug } from "@/lib/catalog";
+import { getBrowsePage, getGame, getHomeShelves, getRecommendations, SHELVES, type BoxGame, type ShelfSlug } from "@/lib/catalog";
 import { heroImage } from "@/lib/hero";
+import { clipUrl, pickTrailer } from "@/lib/trailer";
 import { ShelfHeading } from "@/components/ShelfHeading";
 import { CardRail } from "@/components/CardRail";
 import { EmptyNote } from "@/components/EmptyNote";
@@ -23,12 +23,11 @@ async function getFeatures(): Promise<Feature[]> {
   const features = await Promise.all(picks.map(async appid => {
     const [game, recs] = await Promise.all([getGame(appid), getRecommendations(appid)]);
     if (!game) return null;
-    const trailer = (Array.isArray(game.trailers) ? game.trailers : [])[0] as { poster?: string | null } | undefined;
-    const still = game.screenshots?.[0] ?? null;
+    const trailer = pickTrailer(game.trailers);
     return {
       appid, title: game.title,
-      cover: still ?? trailer?.poster ?? game.header_image,
-      hero: heroImage({ hero_poster: trailer?.poster, hero_still: still, header_image: game.header_image }),
+      cover: heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image }),
+      clip: trailer && clipUrl(trailer),
       recs: recs.slice(0, 3).map(({ game: rec }) => rec),
     };
   }));
@@ -107,6 +106,6 @@ export default async function Home() {
   );
 }
 
-function Shelf({ slug, games }: { slug: ShelfSlug; games: GameCardGame[] }) {
-  return <CardRail games={games} title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} />;
+function Shelf({ slug, games }: { slug: ShelfSlug; games: BoxGame[] }) {
+  return <CardRail games={games} title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} box />;
 }

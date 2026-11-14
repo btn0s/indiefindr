@@ -241,6 +241,10 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .rail > li { min-width: 0; scroll-snap-align: start; }
 @media (min-width: 640px) { .rail { grid-auto-columns: calc((100% - 2 * var(--rail-gap)) / 2.4); } }
 @media (min-width: 1000px) { .rail { --rail-gap: 20px; grid-auto-columns: calc((100% - 2 * var(--rail-gap)) / 3); } }
+/* Home's shelves are box art at 2:3: about 2.3 to a phone, 3.4 to a tablet, five to a desktop page. */
+.rail.box { grid-auto-columns: calc((100% - 2 * var(--rail-gap)) / 2.3); }
+@media (min-width: 640px) { .rail.box { grid-auto-columns: calc((100% - 3 * var(--rail-gap)) / 3.4); } }
+@media (min-width: 1000px) { .rail.box { grid-auto-columns: calc((100% - 4 * var(--rail-gap)) / 5); } }
 /* Previous and Next: for a fine pointer only (touch swipes), and only on a rail with more cards than fit. That is known
    from the count, before any script runs, so nothing in the heading moves once the page is live. */
 .rail-buttons { display: none; gap: 8px; }
@@ -248,6 +252,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 @media (max-width: 639px) { .rail-section:not(:has(> .rail > li:nth-child(2))) .rail-buttons { display: none; } }
 @media (min-width: 640px) and (max-width: 999px) { .rail-section:not(:has(> .rail > li:nth-child(3))) .rail-buttons { display: none; } }
 @media (min-width: 1000px) { .rail-section:not(:has(> .rail > li:nth-child(4))) .rail-buttons { display: none; } }
+@media (max-width: 639px) { .rail-section:has(> .rail.box):not(:has(> .rail > li:nth-child(3))) .rail-buttons { display: none; } }
+@media (min-width: 640px) and (max-width: 999px) { .rail-section:has(> .rail.box):not(:has(> .rail > li:nth-child(4))) .rail-buttons { display: none; } }
+@media (min-width: 1000px) { .rail-section:has(> .rail.box):not(:has(> .rail > li:nth-child(6))) .rail-buttons { display: none; } }
 .rail-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: var(--foreground); background: var(--card);
   box-shadow: 0 0 0 1px var(--border); cursor: pointer; transition: transform var(--duration-s) var(--ease-out), background-color var(--duration-s) var(--ease-out), opacity var(--duration-s) var(--ease-out); }
 .rail-button::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
@@ -263,7 +270,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Off-screen blocks of cards skip layout and paint until scrolled near; `auto` remembers each block's real height once
    seen. Home's later sections do the same. Find in page still finds their text. Until a block is seen it stands at an
    estimate close to its real height, so the page's length and the scrollbar barely move as blocks arrive: twelve cards
-   are six rows on phones, four from 768px; a later home section is mostly a four-card shelf, except Browse all, the
+   are six rows on phones, four from 768px; a later home section is mostly a rail of box art, except Browse all, the
    last, at two blocks. */
 .card-grid > .game-grid + .game-grid, .discovery-page > section:nth-of-type(n+3) { content-visibility: auto; }
 .card-grid > .game-grid + .game-grid { contain-intrinsic-size: auto 1000px; }
@@ -285,6 +292,19 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-card-title { padding-top: 12px; }
 .card-rating { margin-top: 2px; color: var(--muted-foreground); }
 .card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+/* Box art: the cover stands at 2:3 with the name and rating under it. A game without box art gets a cover built from
+   its first screenshot, its name set across the foot on a dark scrim, as box art carries its name. */
+.game-card.box { container-type: inline-size; }
+.game-card.box .game-card-art { aspect-ratio: 2/3; }
+.cover-name { position: absolute; inset: auto 0 0; z-index: 1; padding: 48px 12px 12px; color: #fff; font-size: var(--type-body); line-height: 1.25; font-weight: 600;
+  letter-spacing: -0.01em; text-wrap: balance; overflow-wrap: anywhere; background: linear-gradient(to top, rgb(0 0 0 / .72), rgb(0 0 0 / .38) 55%, transparent); }
+/* "Overwhelmingly Positive" is wider than a box card on a phone: there it shows short ("Overwhelming"), so the rating
+   keeps to two lines. Screen readers still read the whole label. */
+.rating-short { display: none; }
+@container (max-width: 179px) {
+  .rating-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .rating-short { display: inline; }
+}
 
 /* Game page */
 /* Plate: the cover is an object on the page, whole and unfaded, with a hairline edge. On desktop the title,
@@ -348,8 +368,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 @media (min-width: 1000px) { .source-header .page-title [itemprop=name] { font-size: 40px; line-height: 1.08; } }
 .source-header .source-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; margin-top: 2px; }
 @media (max-width: 700px) { .source-header .source-description { -webkit-line-clamp: 3; } }
-.game-trailer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--duration-l) var(--ease-out); }
-.game-trailer video[data-playing=true] { opacity: 1; }
+/* Gameplay over a still (GameplayLoop): it fades up over the picture once it is actually playing. */
+.gameplay-loop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity var(--duration-l) var(--ease-out); }
+.gameplay-loop[data-playing=true] { opacity: 1; }
 .trailer-controls { position: absolute; z-index: 2; right: 12px; top: 12px; display: flex; gap: 8px; }
 .trailer-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgb(0 0 0 / .38); backdrop-filter: blur(12px); color: #fff; }
 .trailer-button::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }

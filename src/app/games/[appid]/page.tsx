@@ -1,7 +1,8 @@
 import { WebMCP } from "@/components/WebMCP";
 import { notFound } from "next/navigation";
 import { heroImage } from "@/lib/hero";
-import { GameTrailer, type Trailer } from "@/components/GameTrailer";
+import { GameTrailer } from "@/components/GameTrailer";
+import { pickTrailer } from "@/lib/trailer";
 import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
@@ -93,7 +94,7 @@ export default async function GamePage({
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
-  const trailer = ((Array.isArray(game.trailers) ? game.trailers : []) as Trailer[])[0] ?? null;
+  const trailer = pickTrailer(game.trailers);
 
   // Structured data schemas
   const videoGameSchema = {
@@ -173,7 +174,7 @@ export default async function GamePage({
       />}
       <WebMCP />
       <main className="discovery-page">
-        {/* Cover hero: the trailer (its poster or still until it plays). On phones it runs edge to edge with the title,
+        {/* Cover hero: the gameplay clip over the first screenshot. On phones it runs edge to edge with the title,
             facts, blurb and Steam button beneath it; on desktop it's a framed plate with them beside it. The
             screenshots follow as a rail. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">

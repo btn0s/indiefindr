@@ -3,6 +3,7 @@ import { cacheLife } from "next/cache";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { HERO_FIELDS } from "@/lib/hero";
 import { POPULAR_INDIES } from "@/lib/popular-indies";
+import { getBoxArt } from "@/lib/steam-art";
 import type { PopularPick } from "@/lib/use-game-search";
 
 /** Shared by metadata and page rendering. Catalog reads are cached server-side: games and their recommendations
@@ -68,6 +69,8 @@ export type CardGame = ReviewQuality & {
 };
 type ShelfGame = CardGame;
 const SHELF_FIELDS = CARD_FIELDS;
+/** A home shelf's card: drawn as box art, the game's own where Steam has it (steam-art.ts). */
+export type BoxGame = CardGame & { cover: string | null };
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
 /** Same order for everyone on a given day, different the next day. */
@@ -128,7 +131,8 @@ export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGam
 }
 
 /** Home rails in claim order: a game appears on one shelf at most, the first that claims it. Hidden gems is a daily
- *  pick. A rail costs no height for its length, so each holds a dozen; See all has the rest. */
+ *  pick. A rail costs no height for its length, so each holds a dozen; See all has the rest. Their cards are box art,
+ *  looked up for all of them in one go. */
 const HOME_SHELVES: { slug: ShelfSlug; fetch: number; show: number }[] = [
   { slug: "rising", fetch: 12, show: 12 },
   { slug: "early-access", fetch: 24, show: 12 },
@@ -142,12 +146,16 @@ export async function getHomeShelves() {
   cacheLife("hours");
   const fetched = await Promise.all(HOME_SHELVES.map(({ slug, fetch }) => getShelf(slug, fetch)));
   const shown = new Set<number>();
-  const shelves = {} as Record<ShelfSlug, ShelfGame[]>;
+  const picked = {} as Record<ShelfSlug, ShelfGame[]>;
   HOME_SHELVES.forEach(({ slug, show }, index) => {
     const unclaimed = fetched[index].filter(game => !shown.has(game.appid));
-    shelves[slug] = slug === "hidden-gems" ? dailyPick(unclaimed, show) : unclaimed.slice(0, show);
-    for (const game of shelves[slug]) shown.add(game.appid);
+    picked[slug] = slug === "hidden-gems" ? dailyPick(unclaimed, show) : unclaimed.slice(0, show);
+    for (const game of picked[slug]) shown.add(game.appid);
   });
+  // With Steam unreachable there is no box art, and every card builds its own cover until the shelves next refresh.
+  const art = await getBoxArt([...shown]).catch((): Record<number, string> => ({}));
+  const shelves = {} as Record<ShelfSlug, BoxGame[]>;
+  for (const { slug } of HOME_SHELVES) shelves[slug] = picked[slug].map(game => ({ ...game, cover: art[game.appid] ?? null }));
   return shelves;
 }
 
