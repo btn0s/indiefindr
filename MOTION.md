@@ -1,6 +1,6 @@
 # Motion timing audit
 
-Status: the family in §4 is implemented (tokens in `src/app/globals.css`, springs read by `ScreenshotViewer`), with felt changes 2–4 from §4.3. The card morph (change 1) and any stagger belong to the card expansion PR (#69). Line references in §1 are to `main` at `0ddb809`, before this change.
+Status: the family in §4 is implemented (tokens in `src/app/globals.css`, springs read by `ScreenshotViewer`), with the felt changes from §4.3. Line references in §1 are to `main` at `0ddb809`, before this change.
 
 bt's goal: every timing on the site comes from one consistent family. This doc lists what exists today (§1), where it disagrees (§2), what the published guidance says (§3), and a proposed token family mapped to every use (§4).
 
@@ -18,7 +18,6 @@ bt's goal: every timing on the site comes from one consistent family. This doc l
 | `--duration-exit` | 110ms | "exits beat enters" |
 | `--duration-morph` | 260ms | phone search open |
 | `--duration-morph-back` | 200ms | phone search close |
-| `--duration-route` | 170ms | card → game page |
 
 ### 1.2 Every use
 
@@ -42,11 +41,6 @@ bt's goal: every timing on the site comes from one consistent family. This doc l
 | 16 | Desktop search popover height follows rows | `globals.css:495`, `Navbar.tsx:98` | **120** | `--ease-out` | **no** |
 | 17 | Phone search takeover morph (view transition) | `globals.css:539-547`, `Navbar.tsx:59` | open 260, close 200 | `--ease-out` | yes |
 | 18 | Phone search rows rise in 12px / drop out 8px | `globals.css:550-553` | open 260, close 200 | `--ease-out` | yes |
-| 19 | **Card morph**: card art → game hero (view transition) | `globals.css:567-568`, `CardLink.tsx:48`, `games/[appid]/page.tsx:185` | 170 | `--ease-out` | yes |
-| 20 | Game page slides in 24px + fades | `globals.css:569` | 170 | `--ease-out` | yes |
-| 21 | Old page fades + slides out 24px | `globals.css:570` | fade 110, slide 170 | `--ease-out` | yes |
-| 22 | Game page fade-in, no slide (direct load / back) | `globals.css:571` | 180 | `--ease-out` | yes |
-| 23 | Loading skeleton fades out | `globals.css:572`, `loading.tsx:9` | 110 | `--ease-out` | yes |
 | 24 | Any other view transition (fallback) | `globals.css:541` | 170 | `--ease-out` | yes |
 | 25 | **Lightbox open**: shot morphs from thumbnail, page dims and recedes | `ScreenshotViewer.tsx:13` | spring 440, bounce .08 | spring | **no** |
 | 26 | Lightbox close (tap, Esc, flick) into thumbnail, velocity carried | `ScreenshotViewer.tsx:15, 249-266` | spring 240, bounce 0 | spring | **no** |
@@ -69,7 +63,7 @@ Notes:
 
 ## 2. Where it's inconsistent
 
-1. **Two vocabularies.** Rows 1-24 mostly use the tokens. The lightbox (rows 25-33) and a handful of others (6, 8, 10, 11, 13, 16) hard-code their own numbers. In practice the lightbox ships a second motion system.
+1. **Two vocabularies.** Rows 1-18 and 24 mostly use the tokens. The lightbox (rows 25-33) and a handful of others (6, 8, 10, 11, 13, 16) hard-code their own numbers. In practice the lightbox ships a second motion system.
 2. **Four easing curves where one is intended.**
    - The token `--ease-out` is `cubic-bezier(0.23, 1, 0.32, 1)`.
    - The CSS `ease` keyword is `(0.25, 0.1, 0.25, 1)`, a slow-start curve. Rows 31-33 use it.
@@ -78,16 +72,13 @@ Notes:
 
    The `ease` keyword's slow start is exactly what the source comment rules out.
 3. **About 15 distinct durations between 100 and 440ms:** 100, 110, 120, 150, 160, 170, 180, 200, 240, 250, 260, 340, 400, 440. Several pairs are below what anyone can tell apart: 110/120, 150/160, 170/180, 240/250/260. Those are noise, not intent.
-4. **Three shared-element morphs on three models.**
+4. **Two shared-element morphs on two models.**
 
    | Morph | Model | Time |
    |---|---|---|
-   | Card → page (row 19) | CSS curve | 170ms |
    | Phone search (row 17) | CSS curve | 260ms |
    | Lightbox (row 25) | Spring with bounce | ~440ms |
-
-   The card morph moves the biggest object on the site, yet it's the fastest of the three, and 2.6× shorter than the lightbox.
-5. **Tokens named by place, not by role.** `--duration-route` (170) and `--duration-enter` (180) both mean "a page enters" (rows 20 and 22). The art load-fade borrows `--duration-hover` (row 9). `--duration-morph` / `-back` are really "search takeover" timings.
+5. **Tokens named by place, not by role.** The art load-fade borrows `--duration-hover` (row 9). `--duration-morph` / `-back` are really "search takeover" timings.
 6. **Press feedback in five flavours.**
    - Scale .97 on cards and buttons.
    - Scale .98 on the showcase source.
@@ -151,7 +142,7 @@ One ladder of four durations, three curves and three springs. The springs reuse 
 | Spring | `duration` / `bounce` | For | Follows |
 |---|---|---|---|
 | **snap** | 0.24 / 0 | Closing into the thumbnail (velocity carried), reduced-motion fades | M3 effects springs (damping 1.0); SwiftUI default bounce 0; Material "exits shorter" |
-| **glide** | 0.40 / 0 | Lightbox open, page swipe, and (as `--ease-glide`) the card and search morphs | WWDC23 "when unsure, bounce 0"; Carbon slow-01 / M3 "slow for full-screen" |
+| **glide** | 0.40 / 0 | Lightbox open, page swipe, and (as `--ease-glide`) the search morph | WWDC23 "when unsure, bounce 0"; Carbon slow-01 / M3 "slow for full-screen" |
 | **release** | 0.40 / 0.15 | Settling back after a drag that didn't dismiss; rubber band at the ends | SwiftUI `.snappy` base bounce 0.15; Rauno: a thrown object keeps its momentum |
 
 The springs live once, as CSS custom properties beside the durations (`--spring-snap: 0.24 0`, etc.). `ScreenshotViewer` reads them on mount instead of declaring its own constants, so there's a single source of truth.
@@ -183,11 +174,6 @@ Bold marks a change you would feel; the rest moves by ≤20ms or only changes it
 | 15 | Desktop search popover | in 180, out 110 | in `s`, out `xs` |
 | 16 | Popover height follows rows | 120 `--ease-out` | `s`, `--ease-in-out` (already on screen, changing size) |
 | 17-18 | Phone search takeover morph and rows | open 260, close 200 | **open `--ease-glide` over `l`; close `m`, `--ease-out`** |
-| 19 | **Card morph** → game hero | 170 `--ease-out` | **`--ease-glide` over `l`** (see the note below) |
-| 20 | New page slides in 24px | 170 | `m`, `--ease-out` |
-| 21 | Old page fades / slides out | 110 / 170 | `xs` / `m` |
-| 22 | Page fade-in (no slide) | 180 | `s` |
-| 23 | Skeleton fades out | 110 | `xs` |
 | 24 | Default view transition | 170 | `m` |
 | 25 | Lightbox open | spring 0.44 / .08 | **glide 0.40 / 0** |
 | 26 | Lightbox close | spring 0.24 / 0 | snap (same) |
@@ -203,18 +189,15 @@ Bold marks a change you would feel; the rest moves by ≤20ms or only changes it
 
 Housekeeping that comes with it:
 - Drop the unused `tw-animate-css` import.
-- Replace the eight role-named tokens (`--duration-press`, `-route`, `-morph-back`…) with the ladder.
+- Replace the role-named tokens (`--duration-press`, `-morph-back`…) with the ladder.
 
 ### 4.3 The calls that are bt's to feel
 
-The table changes timing almost everywhere by a frame or less. These four you would notice, so they're yours to judge on a preview before anything ships:
+The table changes timing almost everywhere by a frame or less. These three you would notice, so they're yours to judge on a preview before anything ships:
 
-1. **Card morph gets longer and springier: 170ms ease-out → `--ease-glide` over 400ms.** It's the biggest object that moves on the site, and today it's the fastest morph. Every guideline ties duration to size (Carbon, M3, Vercel). The glide curve is visually done by ~300ms (critically damped: ~95% at 0.3s), and the remaining 100ms is an imperceptible tail. Clicks stay live throughout (`::view-transition { pointer-events: none }`), so it never blocks. This makes the card morph and the lightbox open the same motion.
-
-   **Recommendation:** try it. The fallback is `m` (240ms) on the same curve.
-2. **Lightbox open loses its slight overshoot (bounce .08 → 0).** It's the only overshoot on an opening anywhere on the site, and SwiftUI's default and M3 Standard both say no bounce unless it's expressive. The overshoot is small enough that most people won't see it go.
-3. **Drag-settle gets a touch more bounce (.12 → .15, 0.34 → 0.40s).** This aligns it with SwiftUI `.snappy` and keeps one "released" feel.
-4. **Phone search open: 260 → glide over 400.** Same reasoning as the card morph: it's a full-screen takeover.
+1. **Lightbox open loses its slight overshoot (bounce .08 → 0).** It's the only overshoot on an opening anywhere on the site, and SwiftUI's default and M3 Standard both say no bounce unless it's expressive. The overshoot is small enough that most people won't see it go.
+2. **Drag-settle gets a touch more bounce (.12 → .15, 0.34 → 0.40s).** This aligns it with SwiftUI `.snappy` and keeps one "released" feel.
+3. **Phone search open: 260 → glide over 400.** It's a full-screen takeover, and every guideline ties duration to size (Carbon, M3, Vercel).
 
    **Recommendation:** open on glide, close stays fast at `m`.
 

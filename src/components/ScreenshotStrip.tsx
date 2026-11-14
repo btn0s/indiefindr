@@ -16,8 +16,8 @@ export function ScreenshotStrip({ title, screenshots }: { title: string; screens
       {screenshots.map((src, index) => <li key={src}>
         <button type="button" ref={button => { thumbs.current[index] = button; }} onClick={() => setViewing(index)}
           aria-label={`Screenshot ${index + 1} of ${screenshots.length}, open full screen`}>
-          {/* The first few are in view as the page arrives and come in with its entrance, so they load at once,
-              decoded by the time their turn comes; the rest wait until they're scrolled near. */}
+          {/* The first few are in view as the page arrives, so they load at once; the rest wait until they're
+              scrolled near. */}
           <Image src={thumbSrc(src)} alt="" width={600} height={338} unoptimized loading={index < 3 ? "eager" : "lazy"} />
         </button>
       </li>)}
