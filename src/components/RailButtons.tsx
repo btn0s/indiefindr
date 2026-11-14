@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /** Paging for a row that scrolls sideways on its own (native scrolling and snap; nothing here moves it frame by frame).
  *  Previous and Next page by the visible width, the snap lands each step on an item, and either button disables at
- *  its end. Until the row is measured, both are off and the pair is hidden, so a row that fits never shows them. */
+ *  its end. Until the row is measured, both are off. */
 export function useRailPaging(ref: RefObject<HTMLElement | null>) {
   const [edges, setEdges] = useState({ start: true, end: true });
   useEffect(() => {
@@ -24,16 +24,21 @@ export function useRailPaging(ref: RefObject<HTMLElement | null>) {
   const page = (direction: 1 | -1) => {
     const row = ref.current;
     if (!row) return;
-    row.scrollBy({ left: direction * row.clientWidth * 0.9, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    // A rail pads its cards in to the page frame; what counts as visible is the frame, not the padding either side.
+    const { paddingLeft, paddingRight } = getComputedStyle(row);
+    const visible = row.clientWidth - parseFloat(paddingLeft) - parseFloat(paddingRight);
+    row.scrollBy({ left: direction * visible, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   };
   return { ...edges, page };
 }
 
-/** Previous and Next for a rail, for mouse and keyboard users (globals.css shows them only with a fine pointer; touch
- *  swipes). They keep their place while hidden, so nothing beside them moves once the row is measured. */
-export function RailButtons({ rail, controls, label }: { rail: RefObject<HTMLElement | null>; controls: string; label: string }) {
+/** Previous and Next for a rail, for mouse and keyboard users (globals.css shows them only with a fine pointer, and
+ *  only when the rail has more cards than fit; touch swipes). */
+export function RailButtons({ rail, controls, label, className = "rail-buttons" }: {
+  rail: RefObject<HTMLElement | null>; controls: string; label: string; className?: string;
+}) {
   const { start, end, page } = useRailPaging(rail);
-  return <div className="rail-buttons" data-scrolls={!(start && end) || undefined}>
+  return <div className={className}>
     <button type="button" className="rail-button" onClick={() => page(-1)} disabled={start} aria-controls={controls} aria-label={`Previous ${label}`}>
       <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
     </button>

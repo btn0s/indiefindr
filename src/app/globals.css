@@ -216,11 +216,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .card-rating strong, .game-facts strong, .bomb-readout strong, .search-meta strong { font-weight: 600; }
 
 .site-shell { min-height: 100vh; background: var(--background); }
-/* Frame: pages, header and footer share one width. The gutter is the page's side margin; rails and the phone hero run
-   past it to the screen edges. */
+/* Frame: pages, header and footer share one width, with at least a gutter either side. */
 :root { --frame: 1120px; --gutter: 16px; }
 @media (min-width: 640px) { :root { --gutter: 28px; } }
-.site-content { padding-inline: var(--gutter); }
 
 /* Header */
 /* Opaque white, matching theme-color, so Safari 26 tints its own top area the same white and the two read as one
@@ -264,8 +262,13 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    on pointermove, so rows shifting under a resting cursor don't take it from the keyboard; a :hover style would. */
 .search-results a[data-highlighted] { background: var(--muted); }
 
-/* Page frame: every page opens with a title block, then sections a fixed gap apart. */
-.discovery-page { max-width: var(--frame); margin: auto; padding: var(--page-top) 0 64px; }
+/* Page frame: every page opens with a title block, then sections a fixed gap apart. Sections sit in the frame column;
+   a rail (and home's feature row) takes the full width instead and pads its content in to the frame by --edge, so its
+   heading and first card line up with everything else while its row runs on past the frame to the screen edges. */
+.discovery-page { display: grid; grid-template-columns: [full-start] minmax(var(--gutter), 1fr) [frame-start] minmax(0, var(--frame)) [frame-end] minmax(var(--gutter), 1fr) [full-end];
+  padding: var(--page-top) 0 64px; }
+.discovery-page > * { grid-column: frame; min-width: 0; }
+.discovery-page > :is(.rail-section, .features) { grid-column: full; --edge: max(var(--gutter), calc((100% - var(--frame)) / 2)); }
 .discovery-page > * + * { margin-top: var(--section-gap); }
 .page-head { display: flex; flex-direction: column; gap: 8px; }
 .title-lead { color: var(--muted-foreground); }
@@ -280,8 +283,8 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 
 /* Feature cards: art with the game's name over it, its first recommendations beneath, on one white card. On phones and
    tablets a row that scrolls and snaps, edge to edge, the next card peeking in. */
-.feature-row { display: grid; grid-auto-flow: column; grid-auto-columns: 88%; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory; scrollbar-width: none; margin: -8px calc(-1 * var(--gutter)) -28px; padding: 8px var(--gutter) 28px; scroll-padding-inline: var(--gutter); }
+.feature-row { display: grid; grid-auto-flow: column; grid-auto-columns: calc(100% - 36px); gap: 12px; overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory; scrollbar-width: none; margin-block: -8px -28px; padding: 8px var(--edge) 28px; scroll-padding-inline: var(--edge); }
 .feature-row::-webkit-scrollbar { display: none; }
 @media (min-width: 640px) { .feature-row { grid-auto-columns: calc((100% - 12px) / 1.6); } }
 .feature { display: flex; flex-direction: column; min-width: 0; scroll-snap-align: start; overflow: hidden; border-radius: 18px; background: var(--card);
@@ -291,9 +294,10 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .feature-name { position: absolute; inset: auto 0 0; z-index: 1; display: flex; flex-direction: column; gap: 2px; padding: 56px 16px 14px;
   background: linear-gradient(to top, rgb(0 0 0 / .64), rgb(0 0 0 / .34) 45%, transparent); }
 .feature-lead { color: rgb(255 255 255 / .8); }
-.feature-recs { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 16px; }
+/* Picks as rows. If a neighbour's rating wraps and the row grows, the extra height goes between the picks. */
+.feature-recs { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 14px 14px 16px; }
 .feature-rec { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.feature-rec-art { position: relative; flex-shrink: 0; width: 92px; aspect-ratio: 460/215; overflow: hidden; border-radius: 6px; }
+.feature-rec-art { position: relative; flex-shrink: 0; width: 88px; aspect-ratio: 460/215; overflow: hidden; border-radius: 6px; }
 .feature-rec-art::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .07); pointer-events: none; }
 .feature-rec-text { display: flex; flex-direction: column; min-width: 0; }
 .feature-rec-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -303,12 +307,12 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 /* Desktop: one large card beside a pair. The large card's art takes whatever height the pair leaves it; its picks run
    across beneath, named. The pair's picks are art alone (each tile's store art carries its name). */
 @media (min-width: 1000px) {
-  .feature-row { grid-auto-flow: row; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; overflow: visible; margin: 0; padding: 0; scroll-snap-type: none; }
+  .feature-row { grid-auto-flow: row; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; overflow: visible; margin: 0; padding-block: 0; scroll-snap-type: none; }
   .feature:first-child { grid-row: span 2; }
   .feature:first-child .feature-cover { flex: 1 1 0; min-height: 280px; aspect-ratio: auto; }
   .feature:first-child .feature-name { padding: 80px 24px 20px; gap: 4px; }
   .feature:not(:first-child) .feature-cover { flex: 1 0 auto; }
-  .feature-recs { flex-direction: row; gap: 10px; padding: 12px; }
+  .feature-recs { flex: none; flex-direction: row; justify-content: normal; gap: 10px; padding: 12px; }
   .feature-recs > li { flex: 1; min-width: 0; }
   .feature-rec-art { width: 100%; }
   .feature:first-child .feature-recs { gap: 16px; padding: 16px 20px 20px; }
@@ -327,20 +331,24 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .see-all svg { transition: transform var(--duration-s) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .see-all:hover svg { transform: translateX(2px); } }
 
-/* Rails: a shelf as one row that scrolls and snaps on its own. Phones and tablets run it to the screen edges with the
-   next card peeking in (about 1.4 cards on a phone, 2.4 on a tablet); desktop fits three to a page in the frame, paged
-   by Previous and Next. Cards are the store art at 2.14:1, larger than in a grid at every width. */
+/* Rails: a shelf as one row that scrolls and snaps on its own, running the full width of the screen with its cards
+   lined up on the frame. Cards are the store art at 2.14:1, sized by the frame: about 1.4 to a phone, 2.4 to a tablet,
+   three to a desktop page, larger than in a grid at every width; the next card always shows past the frame's edge. */
+.rail-section > .section-heading { margin-inline: var(--edge); }
 .rail { --rail-gap: 12px; display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - var(--rail-gap)) / 1.4); gap: var(--rail-gap);
   overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
-  margin: -4px calc(-1 * var(--gutter)); padding: 4px var(--gutter); scroll-padding-inline: var(--gutter); }
+  margin-block: -4px; padding: 4px var(--edge); scroll-padding-inline: var(--edge); }
 .rail::-webkit-scrollbar { display: none; }
 .rail > li { min-width: 0; scroll-snap-align: start; }
 @media (min-width: 640px) { .rail { grid-auto-columns: calc((100% - 2 * var(--rail-gap)) / 2.4); } }
-@media (min-width: 1000px) { .rail { --rail-gap: 20px; grid-auto-columns: calc((100% - 2 * var(--rail-gap)) / 3); margin-inline: -4px; padding-inline: 4px; scroll-padding-inline: 4px; } }
-/* Previous and Next: for a fine pointer only (touch swipes), and only when the row overflows. Hidden, they keep
-   their place, so See all never moves. */
+@media (min-width: 1000px) { .rail { --rail-gap: 20px; grid-auto-columns: calc((100% - 2 * var(--rail-gap)) / 3); } }
+/* Previous and Next: for a fine pointer only (touch swipes), and only on a rail with more cards than fit. That is known
+   from the count, before any script runs, so nothing in the heading moves once the page is live. */
 .rail-buttons { display: none; gap: 8px; }
-@media (hover: hover) and (pointer: fine) { .rail-buttons { display: flex; } .rail-buttons:not([data-scrolls]) { visibility: hidden; } }
+@media (hover: hover) and (pointer: fine) { .rail-buttons { display: flex; } }
+@media (max-width: 639px) { .rail-section:not(:has(> .rail > li:nth-child(2))) .rail-buttons { display: none; } }
+@media (min-width: 640px) and (max-width: 999px) { .rail-section:not(:has(> .rail > li:nth-child(3))) .rail-buttons { display: none; } }
+@media (min-width: 1000px) { .rail-section:not(:has(> .rail > li:nth-child(4))) .rail-buttons { display: none; } }
 .rail-button { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: var(--foreground); background: var(--card);
   box-shadow: 0 0 0 1px var(--border); cursor: pointer; transition: transform var(--duration-s) var(--ease-out), background-color var(--duration-s) var(--ease-out), opacity var(--duration-s) var(--ease-out); }
 .rail-button::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
@@ -450,6 +458,18 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 @media (max-width: 999px) { .screenshot-strip { margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); } }
 @media (max-width: 639px) { .screenshot-strip li { flex-basis: 72%; } }
 @media (hover: hover) and (pointer: fine) { .screenshot-strip button:hover img { opacity: .85; } }
+/* With a mouse, Previous and Next float over the row's ends while it's hovered (or one has focus), and leave at the end
+   they can't go past. */
+.screenshot-rail { position: relative; }
+.screenshot-buttons { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .screenshot-buttons { display: contents; }
+  .screenshot-buttons .rail-button { position: absolute; z-index: 2; top: 50%; translate: 0 -50%; opacity: 0; pointer-events: none;
+    box-shadow: 0 0 0 1px rgb(19 19 22 / .08), 0 4px 14px rgb(19 19 22 / .22); }
+  .screenshot-buttons .rail-button:first-child { left: 12px; }
+  .screenshot-buttons .rail-button:last-child { right: 12px; }
+  .screenshot-rail:is(:hover, :focus-within) .rail-button:not(:disabled) { opacity: 1; pointer-events: auto; }
+}
 /* Room above and below for the focus ring, which the strip's horizontal scroll would otherwise clip. After the viewer
    closes by pointer or touch, the thumbnail it returns focus to shows no ring (ScreenshotViewer). */
 .screenshot-strip { padding-block: 4px; margin-block: -4px; }

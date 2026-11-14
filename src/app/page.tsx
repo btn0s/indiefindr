@@ -24,9 +24,11 @@ async function getFeatures(): Promise<Feature[]> {
     const [game, recs] = await Promise.all([getGame(appid), getRecommendations(appid)]);
     if (!game) return null;
     const trailer = (Array.isArray(game.trailers) ? game.trailers : [])[0] as { poster?: string | null } | undefined;
+    const still = game.screenshots?.[0] ?? null;
     return {
       appid, title: game.title,
-      cover: heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image }),
+      cover: still ?? trailer?.poster ?? game.header_image,
+      hero: heroImage({ hero_poster: trailer?.poster, hero_still: still, header_image: game.header_image }),
       recs: recs.slice(0, 3).map(({ game: rec }) => rec),
     };
   }));
