@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { ReviewQualityNote } from "../src/components/ReviewQualityNote";
 import { createAgent } from "@ui-sdk/react/agent";
+import { GameMetadata } from "../src/components/GameMetadata";
 import { CardRating } from "../src/components/Rating";
 import {
   isRescued,
@@ -58,7 +59,9 @@ test("shows both scores, accessible periods and a neutral learn-more link", asyn
       }}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Learn more" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: /91% excluding review bomb/ }),
+  );
   expect(
     screen
       .getByRole("dialog", { hidden: true })
@@ -103,7 +106,7 @@ test("shows both scores, accessible periods and a neutral learn-more link", asyn
     expect(tooltip?.textContent).toContain("100 negative");
   });
   const link = screen.getByRole("link", {
-    name: "Search for more about this ↗",
+    name: "Search for more about this",
     hidden: true,
   });
   expect(link.getAttribute("target")).toBe("_blank");
@@ -132,4 +135,22 @@ test("ordinary and unrated pages have no disclosure", () => {
   expect(view.container.textContent).toBe("");
   view.rerender(<ReviewQualityNote game={{ ...game, review_count: 1 }} />);
   expect(view.container.textContent).toBe("");
+});
+
+test("keeps the rescue chip with the Steam rating as one metadata group", () => {
+  render(
+    <GameMetadata
+      game={{ ...game, developers: [], release_date: null, is_indie: true }}
+      reviewDetail={<ReviewQualityNote game={game} />}
+    />,
+  );
+  const chip = screen.getByRole("button", {
+    name: /91% excluding review bomb/,
+  });
+  expect(chip.closest(".meta-rating-group")?.textContent).toContain(
+    "60% Mixed",
+  );
+  expect(
+    screen.queryByRole("button", { name: "Learn more", exact: true }),
+  ).toBeNull();
 });

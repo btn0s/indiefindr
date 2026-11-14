@@ -177,8 +177,7 @@ export default async function GamePage({
           <header className="source-header">
             <div className="page-head">
             <h1 className="page-title"><span className="title-lead">Games like</span>{" "}<span itemProp="name">{game.title}</span></h1>
-            <GameMetadata game={game} />
-            <ReviewQualityNote game={game} history={reviewHistory} />
+            <GameMetadata game={game} reviewDetail={<ReviewQualityNote game={game} history={reviewHistory} />} />
             </div>
           </header>
           <GameTrailer title={game.title} still={game.screenshots?.[0] ?? game.header_image}
