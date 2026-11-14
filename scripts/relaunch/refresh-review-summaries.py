@@ -14,9 +14,13 @@ for start in range(0,len(ids),100):
   try:
    with urllib.request.urlopen(url,timeout=60) as response:items=json.load(response)['response'].get('store_items',[])
    break
-  except (urllib.error.URLError,TimeoutError,ValueError):
+  except (urllib.error.URLError,TimeoutError,ValueError) as error:
    if attempt==6:raise
-   time.sleep(min(120,2**(attempt+2)))
+   delay=min(120,2**(attempt+2))
+   if isinstance(error,urllib.error.HTTPError) and error.code==429:
+    try:delay=max(delay,float(error.headers.get('Retry-After') or 60))
+    except ValueError:delay=max(delay,60)
+   time.sleep(delay)
  for item in items:
   summary=(item.get('reviews') or {}).get('summary_filtered')
   if item.get('success')==1 and summary is not None:
