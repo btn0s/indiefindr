@@ -35,6 +35,7 @@ with (ROOT/'data/ingest.lock').open('a') as lock:
   if prior_quality.exists() and not (source/'review-quality.json').exists():(source/'review-quality.json').write_bytes(prior_quality.read_bytes())
   stage('reviews','scripts/relaunch/check-reviews.py','--source',source,'--refresh')
   prior_quality.write_bytes((source/'review-quality.json').read_bytes())
+  stage('upcoming','scripts/relaunch/upcoming.py','--source',source)
   stage('encode','scripts/recommender/run.py','encode','--source',source,'--artifacts',artifacts)
   stage('score','scripts/recommender/run.py','score','--source',source,'--artifacts',artifacts)
   stage('prepare','scripts/relaunch/prepare.py',source,'--out',imports)

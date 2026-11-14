@@ -1,28 +1,40 @@
-"""Resumable, rate-limited histogram enrichment on the offline ingest host."""
+"""Resumable, rate-limited histogram enrichment on the offline ingest host.
+
+One fetch per game serves both review-bomb checks (rated-low or dropped games) and review momentum for the
+Rising (recent indie launches) and Early Access (indies still in early access, any age) shelves, below the indie+ line."""
 import argparse,datetime,json,pathlib,time,threading,urllib.request,urllib.error,fcntl
 from concurrent.futures import ThreadPoolExecutor,as_completed
-from review_quality import analyze,rated_low,VERSION
+from review_quality import analyze,rated_low,momentum,VERSION,TREND_MIN_REVIEWS,TREND_MIN_POSITIVE,TREND_MAX_AGE_DAYS
+from selection import INDIE_PLUS_REVIEWS
 p=argparse.ArgumentParser();p.add_argument('--source',type=pathlib.Path,required=True);p.add_argument('--cache',type=pathlib.Path,default=pathlib.Path('data/review-histograms'));p.add_argument('--refresh',action='store_true');p.add_argument('--workers',type=int,default=4);p.add_argument('--interval',type=float,default=.5);a=p.parse_args();a.cache.mkdir(parents=True,exist_ok=True)
 fetch_lock=(a.cache/'fetch.lock').open('a')
 fcntl.flock(fetch_lock,fcntl.LOCK_EX)
 tags=json.loads((a.source/'data/steam_tags.json').read_text());output=a.source/'review-quality.json'
 previous=json.loads(output.read_text()) if output.exists() else {};results={};pending=[]
 now=datetime.datetime.now(datetime.timezone.utc);today=now.date().isoformat()
+# Rising age runs from the later of first review and steam_release_date (an early-access 1.0 counts as a launch),
+# so only indies released, or released from early access, within the window need a histogram.
+trend_since=(now.date()-datetime.timedelta(days=TREND_MAX_AGE_DAYS)).isoformat()
+# Early Access games trend at any age, so their momentum skips the age gate.
+rows=[r for r in json.loads((a.source/'data/catalog.json').read_text())['rows'] if r.get('is_indie')]
+recent_indies={str(r['appid']):r.get('steam_release_date') for r in rows if r.get('is_early_access') or (r.get('steam_release_date') or '9999')>=trend_since}
+early_access={str(r['appid']) for r in rows if r.get('is_early_access')}
 for key,tag in tags.items():
  pop=tag.get('popularity') or {};score=pop.get('percent_positive');count=pop.get('review_count') or 0;old=previous.get(key,{})
  dropped=old.get('default_score') is not None and score is not None and old['default_score']-score>15
- needs=rated_low(score,count) or dropped
- if not needs:
-  results[key]=dict(clean_score=score,bomb_windows=[],checked_at=now.isoformat(),default_score=score)
+ quality=rated_low(score,count) or dropped
+ trend=key in recent_indies and TREND_MIN_REVIEWS<=count<INDIE_PLUS_REVIEWS and score is not None and score>=TREND_MIN_POSITIVE
+ if not quality and not trend:
+  results[key]=dict(clean_score=score,bomb_windows=[],checked_at=now.isoformat(),default_score=score,trend=None)
   continue
- pending.append((key,score,old))
+ pending.append((key,score,quality,trend))
 print('Histogram candidates',len(pending),flush=True)
 lock=threading.Lock();next_request=0.;cooldown=0.
 def save(path,value):
  tmp=path.with_suffix('.tmp');tmp.write_text(json.dumps(value));tmp.replace(path)
 def fetch(job):
  global next_request,cooldown
- key,score,old=job;path=a.cache/(key+'.json');cached=json.loads(path.read_text()) if path.exists() else None
+ key,score,quality,trend=job;path=a.cache/(key+'.json');cached=json.loads(path.read_text()) if path.exists() else None
  valid=cached and isinstance(cached.get('payload'),dict) and (not a.refresh or cached['checked_at'][:10]==today)
  if not valid:
   for attempt in range(7):
@@ -41,8 +53,10 @@ def fetch(job):
      with lock:cooldown=max(cooldown,time.monotonic()+wait)
     if attempt==6:return key,None
     time.sleep(wait)
- try:result=analyze(cached['payload'],score)
+ try:result=analyze(cached['payload'],score) if quality else dict(clean_score=score,bomb_windows=[])
  except ValueError as error:result=dict(clean_score=score,bomb_windows=[],unavailable=str(error),detector_version=VERSION)
+ try:result['trend']=momentum(cached['payload'],score,now,recent_indies[key],None if key in early_access else TREND_MAX_AGE_DAYS) if trend else None
+ except ValueError:result['trend']=None
  result.update(checked_at=cached['checked_at'],default_score=score)
  return key,result
 failures=[]

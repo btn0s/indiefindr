@@ -94,8 +94,10 @@ export default async function Home() {
         </div>}
       </section>
       <Shelf slug="rising" games={shelves.rising} aboveFold />
-      <Shelf slug="hidden-gems" games={shelves.gems} />
-      {shelves.fresh.length >= 4 && <Shelf slug="new" games={shelves.fresh} />}
+      <Shelf slug="early-access" games={shelves["early-access"]} />
+      <Shelf slug="hidden-gems" games={shelves["hidden-gems"]} />
+      {shelves.new.length >= 4 && <Shelf slug="new" games={shelves.new} />}
+      <Shelf slug="upcoming" games={shelves.upcoming} />
       <section>
         <ShelfHeading title="Browse all" />
         {games.length ? <GameGrid initialGames={games} /> : <EmptyNote>The catalog is being updated. Please check back soon.</EmptyNote>}

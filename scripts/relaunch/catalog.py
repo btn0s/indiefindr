@@ -39,3 +39,22 @@ def is_indie(row, tags):
  if any(is_major(name) for name in (row.get('publishers') or [])+(row.get('developers') or [])):return False
  genres=[genre.get('description','') if isinstance(genre,dict) else genre for genre in (row.get('genres') or [])]
  return any(str(genre).casefold()=='indie' for genre in genres) or any(tag.get('tagid')==492 or str(tag.get('name','')).casefold()=='indie' for tag in tags)
+def _title_key(title):
+ return re.sub(r'[\W_]+',' ',str(title).casefold()).strip()
+def companions(rows):
+ """Appids that ship alongside a main game rather than being one: non-game Steam app types (DLC, demo,
+ soundtrack, mod, video, episode), and free game-type apps whose title extends a paid same-developer game's
+ title. Steam publishes many demos and prologues ("Homicipher: Demo", "X: Prologue") as standalone free games
+ with no link to the full game, so app type alone misses them. Companions stay searchable but never appear
+ on discovery shelves or as recommendation targets."""
+ paid={}
+ for r in rows:
+  if r.get('steam_type','game')=='game' and not r.get('is_free') and len(_title_key(r['title']))>=3:
+   for developer in r.get('developers') or []:paid.setdefault(developer,set()).add(_title_key(r['title']))
+ found=set()
+ for r in rows:
+  if r.get('steam_type','game')!='game':found.add(r['appid']);continue
+  if not r.get('is_free'):continue
+  title=_title_key(r['title'])
+  if any(title.startswith(parent+' ') for developer in r.get('developers') or [] for parent in paid.get(developer,())):found.add(r['appid'])
+ return found
