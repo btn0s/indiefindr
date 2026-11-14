@@ -352,7 +352,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .source-description { color: #55555e; }
 .source-game-actions { display: flex; align-items: center; gap: 16px; }
 /* Screenshots: a row that scrolls and snaps inside itself; on phones it runs to the screen edges. */
-.screenshot-strip { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.screenshot-strip { position: relative; display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .screenshot-strip::-webkit-scrollbar { display: none; }
 .screenshot-strip li { flex: 0 0 clamp(220px, 32%, 288px); scroll-snap-align: start; }
 @media (max-width: 700px) { .screenshot-strip button { border-radius: 10px; } }
@@ -366,19 +366,38 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 }
 @media (hover: hover) and (pointer: fine) { .screenshot-strip button:hover img { opacity: .85; } }
 .screenshot-strip button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-/* The viewer: full screen on black, one shot per page of a snapping track (swipe, arrows), tap anywhere or Esc to close. */
-.screenshot-viewer { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #000; color: #fff; overflow: hidden; }
-.screenshot-viewer::backdrop { background: #000; }
-html:has(.screenshot-viewer[open]) { overflow: hidden; }
-.screenshot-track { display: flex; height: 100%; overflow-x: auto; overscroll-behavior: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
-.screenshot-track::-webkit-scrollbar { display: none; }
-.screenshot-track figure { position: relative; flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; }
-.screenshot-track img { object-fit: contain; }
-.viewer-button { position: absolute; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: rgb(255 255 255 / .14); color: #fff; }
-.viewer-close { top: calc(12px + env(safe-area-inset-top)); right: 12px; }
+/* The viewer (ScreenshotViewer): shots on black over the receded page. Script drives every moving value; CSS only
+   lays it out and fades the chrome. The page keeps its scrollbar's gutter while locked, so nothing shifts. */
+html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable; }
+.screenshot-viewer { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
+  background: none; color: #fff; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: zoom-out; }
+.screenshot-viewer::backdrop { background: none; }
+.viewer-backdrop { position: absolute; inset: 0; background: #000; opacity: 0; }
+.viewer-track, .viewer-page { position: absolute; inset: 0; }
+/* While a shot is picked up or flying home, the others step out of the way. */
+.viewer-page { transition: opacity .15s ease; }
+.screenshot-viewer:is([data-phase=dragging], [data-phase=closing]) .viewer-page:not([data-current]) { opacity: 0; }
+.viewer-shot { position: absolute; top: 0; left: 0; transform-origin: 0 0; background: rgb(255 255 255 / .06); }
+.viewer-shot img { object-fit: cover; pointer-events: none; }
+.viewer-shot .viewer-full { object-fit: contain; opacity: 0; transition: opacity .25s ease; }
+.viewer-shot[data-shown] .viewer-full { opacity: 1; }
+/* The shot being viewed leaves an empty slot in the strip, as it would if it had been lifted out. */
+.screenshot-strip button[data-viewing] img { visibility: hidden; }
+.viewer-button { position: absolute; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+  background: rgb(255 255 255 / .14); color: #fff; cursor: pointer; opacity: 0; pointer-events: none;
+  transition: opacity .12s ease, background-color .15s ease, scale .15s ease-out; }
+.viewer-button:active { scale: .94; }
+.screenshot-viewer[data-phase=open] .viewer-close { opacity: 1; pointer-events: auto; transition-duration: .2s, .15s, .15s; }
+.viewer-close { top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); }
 .viewer-prev, .viewer-next { top: 50%; translate: 0 -50%; }
-.viewer-prev { left: 12px; } .viewer-next { right: 12px; }
-@media (hover: none) { .viewer-prev, .viewer-next { display: none; } }
+.viewer-prev { left: 16px; } .viewer-next { right: 16px; }
+/* Prev and next show while the mouse moves (and on keyboard focus), and not at the ends. Touch swipes instead. */
+@media (hover: none) { .viewer-nav { display: none; } }
+@media (hover: hover) and (pointer: fine) {
+  .viewer-button:hover { background: rgb(255 255 255 / .24); }
+  .screenshot-viewer[data-phase=open]:is([data-pointer], :has(.viewer-nav:focus-visible)) .viewer-nav:not([aria-disabled=true]) {
+    opacity: 1; pointer-events: auto; transition-duration: .2s, .15s, .15s; }
+}
 .viewer-button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media(max-width: 640px) {
   .source-game-actions { width: 100%; }
