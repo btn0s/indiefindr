@@ -9,7 +9,7 @@ export interface GameCardProps extends ReviewQuality, HeroFields {
   title: string;
   review_count?: number;
   review_positive_pct?: number | null;
-  /** On the first screen: fetch the art with the page instead of lazily, and the game page without waiting for intent. */
+  /** On the first screen: fetch the art with the page instead of lazily. */
   preload?: boolean;
   /** 1-based place in its list, for click and impression tracking (CardTracker); 0 when the order means nothing. */
   position?: number;
@@ -22,7 +22,7 @@ export function GameCard({
   preload = false, position = 0,
 }: GameCardProps) {
   return (
-    <CardLink appid={appid} hero={heroImage({ hero_poster, hero_still, header_image })} eager={preload} className="game-card"
+    <CardLink appid={appid} hero={heroImage({ hero_poster, hero_still, header_image })} className="game-card"
       data-appid={appid} data-position={position}>
       <div>
         <CardMorph part="art" appid={appid}>

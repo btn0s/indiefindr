@@ -15,7 +15,12 @@ const saveData = () => (navigator as Navigator & { connection?: { saveData?: boo
 /** The hero: a muted, looping trailer over its still. The stream starts only after the still has painted, when the
  *  browser is idle, so it never competes with the page's first images. It plays only while on screen and the tab is
  *  visible, and not at all for reduced motion or Save-Data, which keep the still. */
-export function GameTrailer({ title, trailer, image }: { title: string; trailer: Trailer | null; image: string | null }) {
+export function GameTrailer({ title, trailer, image, base }: {
+  title: string; trailer: Trailer | null; image: string | null;
+  /** The store header, already cached from the card that was opened: it fills the frame at once, and the optimised
+   *  hero fades in over it, so a cold image transform never leaves the frame empty. */
+  base: string | null;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
   const [heroPainted, setHeroPainted] = useState(!image);
   const [loaded, setLoaded] = useState(false);
@@ -81,6 +86,7 @@ export function GameTrailer({ title, trailer, image }: { title: string; trailer:
   };
 
   return <div className="game-trailer" onKeyDown={event => { if (loaded && event.key.toLowerCase() === "k") togglePause(); }}>
+    {base && base !== image && <Image src={base} alt="" fill unoptimized className="object-cover" />}
     {image && <Image src={image} alt={`${title} screenshot`} fill preload sizes={HERO_SIZES} className="object-cover"
       onLoad={() => setHeroPainted(true)} onError={() => setHeroPainted(true)} />}
     {trailer && <video ref={ref} muted={muted} loop playsInline aria-label={`${title} trailer`}

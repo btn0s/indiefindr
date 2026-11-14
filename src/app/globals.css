@@ -157,6 +157,9 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --duration-press: 100ms; --duration-release: 160ms; --duration-hover: 200ms;
   --duration-enter: 180ms; --duration-exit: 110ms; --duration-morph: 260ms; --duration-morph-back: 200ms;
+  /* Route changes: short, so a prefetched page never feels held back by its own entrance. The search morph keeps
+     --duration-morph. */
+  --duration-route: 170ms;
 }
 @media(max-width: 700px) {
   :root { --type-title: 26px; --type-heading: 18px; --page-top: 20px; --section-gap: 40px; --divider-gap: 28px; }
@@ -428,7 +431,7 @@ html { touch-action: manipulation; }
 }
 :root:active-view-transition-type(search-open) { --vt-duration: var(--duration-morph); }
 :root:active-view-transition-type(search-close) { --vt-duration: var(--duration-morph-back); }
-::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--vt-duration, 250ms); animation-timing-function: var(--ease-out); }
+::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--vt-duration, var(--duration-route)); animation-timing-function: var(--ease-out); }
 ::view-transition-old(search-input), ::view-transition-new(search-input) { height: 100%; width: auto; object-fit: none; object-position: left center; }
 /* The takeover fades in over a still page and fades back out over it, so the two never cross-dissolve into a ghost. */
 :root:is(:active-view-transition-type(search-open), :active-view-transition-type(search-close))::view-transition-old(root),
@@ -454,16 +457,16 @@ html { touch-action: manipulation; }
    the new heading rides the box at full resolution instead of scaling a blurry bitmap. The page stays clickable
    while anything moves. */
 ::view-transition { pointer-events: none; }
-::view-transition-group(.art-morph), ::view-transition-group(.title-morph) { animation-duration: var(--duration-morph); animation-timing-function: var(--ease-out); }
+::view-transition-group(.art-morph), ::view-transition-group(.title-morph) { animation-duration: var(--duration-route); animation-timing-function: var(--ease-out); }
 ::view-transition-old(.art-morph), ::view-transition-new(.art-morph) { height: 100%; object-fit: cover; }
 ::view-transition-old(.title-morph) { display: none; }
 ::view-transition-new(.title-morph) { animation: none; object-fit: none; object-position: left top; }
-::view-transition-new(.slide-from-right) { animation: fade-in var(--duration-enter) var(--ease-out) both, slide-in-right var(--duration-morph) var(--ease-out) both; }
-::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-exit) var(--ease-out) both, slide-out-left var(--duration-morph) var(--ease-out) both; }
+::view-transition-new(.slide-from-right) { animation: fade-in var(--duration-route) var(--ease-out) both, slide-in-right var(--duration-route) var(--ease-out) both; }
+::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-exit) var(--ease-out) both, slide-out-left var(--duration-route) var(--ease-out) both; }
 ::view-transition-new(.page-in) { animation: fade-in var(--duration-enter) var(--ease-out) both; }
 ::view-transition-old(.skeleton-out) { animation: fade-out var(--duration-exit) var(--ease-out) both; }
-@keyframes slide-in-right { from { translate: 40px 0; } }
-@keyframes slide-out-left { to { translate: -40px 0; } }
+@keyframes slide-in-right { from { translate: 24px 0; } }
+@keyframes slide-out-left { to { translate: -24px 0; } }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-new(.slide-from-right) { animation: fade-in var(--duration-enter) var(--ease-out) both; }
   ::view-transition-old(.slide-to-left) { animation: fade-out var(--duration-exit) var(--ease-out) both; }

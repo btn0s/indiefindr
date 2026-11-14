@@ -185,7 +185,7 @@ export default async function GamePage({
             </div>
           </header>
           <ViewTransition name={`art-${appId}`} share="art-morph" default="none">
-            <GameTrailer title={game.title} trailer={trailer}
+            <GameTrailer title={game.title} trailer={trailer} base={game.header_image}
               image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />
           </ViewTransition>
           {game.short_description && <p className="source-description" itemProp="description">{game.short_description}</p>}

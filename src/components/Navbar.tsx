@@ -61,8 +61,8 @@ export function Navbar({ popular }: { popular: PopularPick[] }) {
     <div className="site-search" data-open={open}>
       <Autocomplete presentation="popover" modal={false} value={query} open={open} filter={false} autoHighlight openOnFocus loop submitOnSelect
         onOpenChange={changeOpen}
-        // Rows prefetch only the shared shell; the one under the highlight (the top result while typing, or the row
-        // the arrow keys or pointer rest on) fetches its whole page.
+        // Rows don't prefetch as they appear; the one under the highlight (the top result while typing, or the row the
+        // arrow keys or pointer rest on) fetches its whole page.
         onHighlight={value => { if (value) router.prefetch(`/games/${value}`); }}
         onValueChange={(value, detail) => { if (detail.reason === "item-press") { navigate(value); return; } setQuery(value); search(value); }}
         onSubmit={navigate}>
@@ -80,7 +80,7 @@ export function Navbar({ popular }: { popular: PopularPick[] }) {
             {!query && games.length > 0 && <p className="search-label" aria-hidden="true">Popular indies</p>}
             <AutocompleteList>
               {games.map(game => <AutocompleteItem key={game.appid} value={String(game.appid)} label={game.title}
-                render={<Link href={`/games/${game.appid}`} onClick={closeNow} />}>
+                render={<Link href={`/games/${game.appid}`} prefetch={false} onClick={closeNow} />}>
                 <SearchRow title={game.title} query={query} detail={details.get(game.appid)} />
               </AutocompleteItem>)}
             </AutocompleteList>

@@ -1,6 +1,6 @@
 "use client";
 import Link, { useLinkStatus } from "next/link";
-import { createContext, use, useEffect, useId, useRef, useState, useSyncExternalStore, ViewTransition, type ComponentProps, type ReactNode } from "react";
+import { createContext, use, useEffect, useId, useRef, useSyncExternalStore, ViewTransition, type ComponentProps, type ReactNode } from "react";
 import { preloadHero, watchIntent } from "@/lib/intent";
 
 // The card the visitor opened last. Only that card names its art and title, so they morph into the game page's hero
@@ -12,24 +12,21 @@ const CardId = createContext<string | null>(null);
 
 type CardLinkProps = Omit<ComponentProps<typeof Link>, "href" | "prefetch"> & {
   appid: number;
-  /** The game page's hero, warmed along with the page. */
+  /** The game page's hero image, warmed when the visitor is about to open the card. */
   hero: string | null;
-  /** On the first screen: fetch the whole page now rather than waiting for intent. */
-  eager?: boolean;
 };
 
-/** A link to a game page. Every card shares one prefetched App Shell; the full page and its hero are fetched only
- *  when the visitor is about to open this one (or at once, for the first screen). */
-export function CardLink({ appid, hero, eager = false, children, onClick, ...props }: CardLinkProps) {
+/** A link to a game page. Every card on screen prefetches its whole page, so opening one never waits on the network;
+ *  the hero image, which the prefetch doesn't carry, is fetched when the visitor is about to open this one. */
+export function CardLink({ appid, hero, children, onClick, ...props }: CardLinkProps) {
   const id = useId();
   const ref = useRef<HTMLAnchorElement>(null);
-  const [warm, setWarm] = useState(eager);
   useEffect(() => {
     if (!ref.current) return;
-    return watchIntent(ref.current, () => { setWarm(true); preloadHero(hero); });
+    return watchIntent(ref.current, () => preloadHero(hero));
   }, [hero]);
   return <CardId value={id}>
-    <Link ref={ref} href={`/games/${appid}`} prefetch={warm ? true : "auto"} transitionTypes={["nav-forward"]}
+    <Link ref={ref} href={`/games/${appid}`} prefetch={true} transitionTypes={["nav-forward"]}
       onClick={event => { openedCard = id; listeners.forEach(listener => listener()); onClick?.(event); }} {...props}>
       {children}
       <PendingMark />
