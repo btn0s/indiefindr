@@ -2,79 +2,70 @@
 import { POPULAR_INDIES } from "./popular-indies";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { API_CONFIG } from "@/lib/config";
 
-export type SearchGame = { appid: number; title: string };
-/** What a result row shows beyond its title. The title index stays small; the visible rows fetch this. */
-export type SearchDetail = { appid: number; header_image: string | null; release_date: string | null; review_positive_pct: number | null; review_count: number };
+/** A search box row: the same shape /api/search returns to agents and the CLI. */
+export type SearchGame = { appid: number; name: string; year: string | null; header_image: string | null; review_percent: number | null; review_count: number };
+
+type PopularRow = { appid: number; title: string; header_image: string | null; release_date: string | null; review_positive_pct: number | null; review_count: number };
 
 export function useGameSearch() {
-  const worker = useRef<Worker | null>(null);
   const sequence = useRef(0);
   const cache = useRef(new Map<string, SearchGame[]>());
-  const lastQuery = useRef("");
-  const requested = useRef(new Set<number>());
-  // The title index is several megabytes, so it downloads the first time someone searches, not on every page view.
-  const loaded = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const inflight = useRef<AbortController>(undefined);
   const [games, setGames] = useState<SearchGame[]>([]);
-  const [details, setDetails] = useState<Map<number, SearchDetail>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const loadDetails = useCallback(async (results: SearchGame[]) => {
-    const missing = results.map(game => game.appid).filter(appid => !requested.current.has(appid));
-    if (!missing.length) return;
-    missing.forEach(appid => requested.current.add(appid));
-    const { data } = await getSupabaseBrowserClient().from("games")
-      .select("appid,header_image,release_date,review_positive_pct,review_count").in("appid", missing).returns<SearchDetail[]>();
-    if (data?.length) setDetails(previous => new Map([...previous, ...data.map(row => [row.appid, row] as const)]));
+  useEffect(() => () => { clearTimeout(timer.current); inflight.current?.abort(); }, []);
+
+  const show = useCallback((id: number, results: SearchGame[]) => {
+    if (id !== sequence.current) return;
+    setGames(results); setLoading(false); setError("");
   }, []);
-
-  const show = useCallback((results: SearchGame[]) => {
-    setGames(results); setLoading(false); loadDetails(results);
-  }, [loadDetails]);
-
-  useEffect(() => {
-    const engine = new Worker("/search-worker.js");
-    worker.current = engine;
-    engine.onmessage = ({ data }) => {
-      if (data.type === "error") { setError("Search couldn't load. Please refresh and try again."); setLoading(false); }
-      if (data.type === "results" && data.id === sequence.current) {
-        cache.current.set(lastQuery.current, data.games);
-        show(data.games);
-      }
-    };
-    return () => { engine.terminate(); worker.current = null; loaded.current = false; };
-  }, [show]);
 
   // Curated empty-state picks load their artwork and ratings in one catalog lookup.
   const loadPopular = useCallback(async (id: number) => {
     const { data } = await getSupabaseBrowserClient().from("games")
       .select("appid,title,header_image,release_date,review_positive_pct,review_count")
       .in("appid", POPULAR_INDIES.map(game => game.appid))
-      .returns<(SearchDetail & { title: string })[]>();
-    const rows = POPULAR_INDIES.flatMap(pick => { const game = data?.find(row => row.appid === pick.appid); return game ? [game] : []; });
-    rows.forEach(row => requested.current.add(row.appid));
-    setDetails(previous => new Map([...previous, ...rows.map(row => [row.appid, row] as const)]));
-    const popular = rows.map(({ appid, title }) => ({ appid, title }));
+      .returns<PopularRow[]>();
+    const popular = POPULAR_INDIES.flatMap(pick => {
+      const row = data?.find(game => game.appid === pick.appid);
+      return row ? [{ appid: row.appid, name: row.title, year: row.release_date?.slice(0, 4) ?? null, header_image: row.header_image, review_percent: row.review_positive_pct, review_count: row.review_count }] : [];
+    });
     cache.current.set("", popular);
-    if (id === sequence.current) show(popular);
+    show(id, popular);
+  }, [show]);
+
+  const fetchResults = useCallback(async (id: number, key: string) => {
+    inflight.current?.abort();
+    const controller = new AbortController();
+    inflight.current = controller;
+    try {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(key)}`, { signal: controller.signal });
+      if (!response.ok) throw new Error(String(response.status));
+      const { games: results } = await response.json() as { games: SearchGame[] };
+      cache.current.set(key, results);
+      show(id, results);
+    } catch {
+      if (controller.signal.aborted || id !== sequence.current) return;
+      setError("Search is unavailable right now. Please try again."); setLoading(false);
+    }
   }, [show]);
 
   const search = useCallback((query: string) => {
-    if (!loaded.current && worker.current) {
-      loaded.current = true;
-      worker.current.postMessage({ type: "load", url: "https://rqcqlpoxtdddjcylhopk.supabase.co/storage/v1/object/public/search/titles.json" });
-    }
-    const key = query.trim().toLowerCase();
-    lastQuery.current = key;
+    const key = query.trim().toLowerCase().replace(/\s+/g, " ");
     const id = ++sequence.current;
+    clearTimeout(timer.current);
     const cached = cache.current.get(key);
-    if (cached) return show(cached);
+    if (cached) return show(id, cached);
     setLoading(true);
     if (!key) return void loadPopular(id);
     // Keep the previous rows on screen until the new ones arrive, so typing doesn't flash an empty list.
-    worker.current?.postMessage({ type: "search", query: key, id });
-  }, [show, loadPopular]);
+    timer.current = setTimeout(() => fetchResults(id, key), API_CONFIG.SEARCH_DEBOUNCE_MS);
+  }, [show, loadPopular, fetchResults]);
 
-  return { games, details, loading, error, search };
+  return { games, loading, error, search };
 }

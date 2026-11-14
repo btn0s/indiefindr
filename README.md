@@ -150,9 +150,9 @@ Submit a Steam URL to add a game to your collection.
 
 Get game details by Steam AppID.
 
-### GET `/api/games/search?q=query`
+### GET `/api/search?q=query`
 
-Search games in your collection or Steam store.
+Search catalog titles. Typos, missing or extra words, accents and subtitles are tolerated; results are ranked exact match, prefix, all words, then fuzzy, with popularity breaking ties. Matching lives in the `search_games` SQL function.
 
 ## Development
 

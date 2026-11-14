@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { createAgent } from '@ui-sdk/react/agent';
 import { Navbar } from '../src/components/Navbar';
 vi.mock('next/navigation',()=>({useRouter:()=>({push:vi.fn()})}));
-vi.mock('@/lib/use-game-search',()=>({useGameSearch:()=>({games:[{appid:413150,title:'Stardew Valley'}],details:new Map(),loading:false,error:null,search:vi.fn()})}));
+vi.mock('@/lib/use-game-search',()=>({useGameSearch:()=>({games:[{appid:413150,name:'Stardew Valley',year:'2016',header_image:null,review_percent:98,review_count:600000}],loading:false,error:null,search:vi.fn()})}));
 test('search is named and usable through the SDK agent',async()=>{
  const agent=createAgent();
  render(<Navbar/>);

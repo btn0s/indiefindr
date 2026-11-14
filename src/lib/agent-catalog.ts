@@ -1,18 +1,12 @@
 import { qualityFields } from "./review-quality";
 import { getGame, getGamePageSlate } from './catalog';
-import { getSupabaseServerClient } from './supabase/server';
+import { searchGames as searchCatalog } from './search';
 import { steamRating } from './rating';
 const origin='https://www.indiefindr.gg';
 export const links=(appid:number)=>({url:`${origin}/games/${appid}`,steam_url:`https://store.steampowered.com/app/${appid}/`});
+/** Catalog search in the agent-facing shape, used by /api/search and the MCP search tool. */
 export async function searchGames(query:string){
- const db=getSupabaseServerClient();
- const {data,error}=await db.rpc('search_games',{search_query:query.trim(),max_results:8});
- if(error)throw new Error('Search unavailable. Retry shortly or use a Steam appid.');
- const ids=(data??[]).map((g:{appid:number})=>g.appid);
- if(!ids.length)return [];
- const {data:rows,error:detailsError}=await db.from('games').select('appid,title,release_date,review_positive_pct').in('appid',ids);
- if(detailsError)throw new Error('Game metadata unavailable. Retry shortly.');
- return ids.map((id:number)=>rows?.find(g=>g.appid===id)).filter(Boolean).map((g:{appid:number;title:string;release_date:string|null;review_positive_pct:number|null}|undefined)=>({appid:g!.appid,name:g!.title,year:g!.release_date?.slice(0,4)??null,review_percent:g!.review_positive_pct}));
+ return (await searchCatalog(query)).map(g=>({appid:g.appid,name:g.title,year:g.release_date?.slice(0,4)??null,header_image:g.header_image,review_percent:g.review_positive_pct,review_count:g.review_count,...links(g.appid)}));
 }
 export async function gameDetails(appid:number){
  const game=await getGame(appid);if(!game)return null;

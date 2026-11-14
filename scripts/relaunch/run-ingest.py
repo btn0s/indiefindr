@@ -40,7 +40,6 @@ with (ROOT/'data/ingest.lock').open('a') as lock:
   stage('prepare','scripts/relaunch/prepare.py',source,'--out',imports)
   stage('publish','scripts/relaunch/publish.py','--data',imports)
   stage('media','scripts/relaunch/media.py','--top','250000')
-  stage('search','scripts/relaunch/publish-search.py','--games',imports/'games.jsonl')
   stage('verify','scripts/relaunch/verify-publication.py')
   state.pop('failed_script',None);state.pop('exit_code',None)
   state['status']='published';state['finished_at']=datetime.datetime.now(datetime.timezone.utc).isoformat();save(state)
