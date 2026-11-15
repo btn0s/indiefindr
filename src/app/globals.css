@@ -403,7 +403,6 @@ html { touch-action: manipulation; }
 @keyframes pending-dim { to { opacity: .6; } }
 
 @media (max-width: 700px) {
-  .search-box { view-transition-name: search-field; }
   .search-icon { view-transition-name: search-icon; }
   .search-box input { view-transition-name: search-input; }
   .search-results { view-transition-name: search-results; }

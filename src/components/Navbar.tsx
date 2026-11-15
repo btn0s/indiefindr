@@ -48,8 +48,6 @@ export function Navbar({ popular }: { popular: PopularPick[] }) {
   const status = error || (loading ? "Loading search…" : query ? "No matching games." : "");
   return <header className="site-header"><div className="site-nav">
     <Link href="/" className="wordmark"><SwordMark /><span>indiefindr</span></Link>
-    <ViewTransition default="none" update={{ "search-open": "search-morph", "search-close": "search-morph", default: "none" }}
-      onUpdate={dropKeyboardAfterClose}>
     <div className="site-search" data-open={open}>
       <Autocomplete presentation="popover" modal={false} value={query} open={open} filter={false} autoHighlight openOnFocus loop submitOnSelect
         onOpenChange={changeOpen}
@@ -57,6 +55,8 @@ export function Navbar({ popular }: { popular: PopularPick[] }) {
         onValueChange={(value, detail) => { if (detail.reason === "item-press") { navigate(value); return; } setQuery(value); search(value); }}
         onSubmit={navigate}>
         <AutocompleteLabel htmlFor="game-search" className="sr-only">Search games</AutocompleteLabel>
+        <ViewTransition name="search-field" default="none" update={{ "search-open": "auto", "search-close": "auto", default: "none" }}
+          onUpdate={dropKeyboardAfterClose}>
         <div className="search-box" data-pending={pending || undefined}>
           <span className="search-icon text-muted-foreground"><Search size={18} /><LoaderCircle size={18} aria-hidden="true" /></span>
           <AutocompleteInput aria-label="Search games" aria-keyshortcuts="/ Meta+K Control+K" aria-busy={pending}
@@ -64,6 +64,7 @@ export function Navbar({ popular }: { popular: PopularPick[] }) {
           <kbd className="search-kbd" aria-hidden="true">/</kbd>
           <Button aria-label="Open selected game" onClick={() => { if (games[0]) navigate(String(games[0].appid)); }}><ArrowUpRight size={18} /></Button>
         </div>
+        </ViewTransition>
         {open && <Button className="search-cancel" onClick={() => changeOpen(false)}>Cancel</Button>}
         <AutocompleteContent className="search-results" anchor=".site-search" sideOffset={8} data-instant={instant || undefined}>
           <div className="search-panel" ref={followHeight}>
@@ -79,7 +80,6 @@ export function Navbar({ popular }: { popular: PopularPick[] }) {
         </AutocompleteContent>
       </Autocomplete>
     </div>
-    </ViewTransition>
   </div></header>;
 }
 
