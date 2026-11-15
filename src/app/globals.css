@@ -35,6 +35,10 @@
   /* Ink on neutral: the game art carries all the color. */
   --background: #f7f7f8; --foreground: #131316; --card: #ffffff;
   --muted: #ececef; --muted-foreground: #6b6b75; --border: #e3e3e8;
+  /* Rating chips: a soft ground and a darker ink of the same hue, for each way a Steam rating leans. */
+  --rating-positive: #1d6f3b; --rating-positive-ground: #e1f2e6;
+  --rating-mixed: #855417; --rating-mixed-ground: #f6ead6;
+  --rating-negative: #a8291f; --rating-negative-ground: #f8e2df;
   --primary-foreground: #ffffff; --ring: #131316;
   --brand: var(--foreground); --media: #0d0d0f;
 
@@ -103,16 +107,15 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; text-wrap: balance; overflow-wrap: anywhere; }
 .see-all, .steam-link, .search-cancel { white-space: nowrap; }
 /* Meta: facts about a game, captions, the footer. */
-.card-rating, .search-meta, .search-label, .game-facts, .bomb-readout, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; text-wrap: pretty; }
+.rating-chip, .search-meta, .search-label, .game-facts, .bomb-readout, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; text-wrap: pretty; }
 .site-footer p { max-width: var(--measure); }
 /* Meta units. Each moves to the next line whole; one wider than its line (a long name in a narrow card) wraps inside
    itself rather than pushing the page wide. A fact chip never truncates: a name longer than its line wraps inside the
    chip. */
-.rating-label { display: inline-block; }
 .game-facts li { max-width: 100%; white-space: nowrap; }
 .game-facts li > * { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 /* Emphasis inside a role keeps its size and gains weight. */
-.card-rating strong, .game-facts strong, .bomb-readout strong, .search-meta strong, .home-intro .examples a { font-weight: 600; }
+.rating-chip, .bomb-readout strong, .home-intro .examples a { font-weight: 600; }
 
 .site-shell { min-height: 100vh; background: var(--background); }
 /* Frame: pages, header and footer share one width, with at least a gutter either side. */
@@ -138,8 +141,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .search-art img { width: 100%; height: 100%; object-fit: cover; }
 .search-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .search-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.search-meta { display: flex; gap: 10px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; }
-.search-meta strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+.search-meta { display: flex; align-items: center; gap: 10px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; }
 .search-status { padding: 12px; color: var(--muted-foreground); }
 .search-cancel { display: none; }
 .search-label { padding: 6px 6px 4px; color: var(--muted-foreground); }
@@ -255,23 +257,18 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-card-art::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .07); pointer-events: none; }
 @media(max-width: 700px) { .game-card-art { border-radius: 10px; } }
 .game-card-title { padding-top: 12px; }
-.card-rating { margin-top: 2px; color: var(--muted-foreground); }
-.card-rating strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+/* Rating: a small pill under the title, a signal rather than a badge (Rating.tsx). */
+.rating-chip { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px; border-radius: 10px; white-space: nowrap; font-variant-numeric: tabular-nums;
+  color: var(--rating-positive); background: var(--rating-positive-ground); }
+.rating-chip[data-tone=mixed] { color: var(--rating-mixed); background: var(--rating-mixed-ground); }
+.rating-chip[data-tone=negative] { color: var(--rating-negative); background: var(--rating-negative-ground); }
+.rating-chip svg { flex-shrink: 0; width: 12px; height: 12px; }
+.game-card .rating-chip { display: flex; width: fit-content; margin-top: 6px; }
 /* Box art: the cover stands at 2:3 with the name and rating under it. A game without box art gets a cover built from
    its first screenshot, its name set across the foot on a dark scrim, as box art carries its name. */
-.game-card.box { container-type: inline-size; }
 .game-card.box .game-card-art { aspect-ratio: 2/3; }
 .cover-name { position: absolute; inset: auto 0 0; z-index: 1; padding: 48px 12px 12px; color: #fff; font-size: var(--type-body); line-height: 1.25; font-weight: 600;
   letter-spacing: -0.01em; text-wrap: balance; overflow-wrap: anywhere; background: linear-gradient(to top, rgb(0 0 0 / .72), rgb(0 0 0 / .38) 55%, transparent); }
-/* "Overwhelmingly Positive" is wider than a box card on a phone: there it shows short ("Overwhelming"), so the rating
-   keeps to two lines. Screen readers still read the whole label. */
-.rating-short { display: none; }
-@container (max-width: 179px) {
-  /* Hidden to the eye, held inside its own line so it never stands out past the rail's scroll. */
-  .card-rating { position: relative; }
-  .rating-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .rating-short { display: inline; }
-}
 
 /* Game page */
 /* The page opens on the game's gameplay clip: a framed banner the width of the column, whole and unfaded, with a
@@ -291,7 +288,10 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    inside itself, so its radius stays modest enough for two lines. */
 .game-facts { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted-foreground); }
 .game-facts li { display: inline-flex; align-items: baseline; gap: 4px; padding: 4px 10px; border-radius: 14px; background: rgb(19 19 22 / .055); }
-.game-facts strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
+/* The rating is its own chip (Rating.tsx), at the height of the facts beside it. */
+.game-facts .rating-fact { padding: 0; background: none; }
+.game-facts .rating-chip { height: auto; padding: 4px 10px 4px 9px; border-radius: 14px; gap: 5px; }
+.game-facts .rating-chip svg { width: 13px; height: 13px; }
 .game-facts a { color: var(--foreground); text-underline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) { .game-facts a:hover { text-decoration: underline; } }
 
@@ -583,7 +583,7 @@ html { touch-action: manipulation; }
 @media(prefers-reduced-motion: reduce) { .skeleton::after { animation: none; opacity: 0; } }
 .card-skeleton .skeleton-art { aspect-ratio: 460/215; border-radius: 6px; }
 .card-skeleton .skeleton-line { height: 14px; margin-top: 13px; width: 72%; }
-.card-skeleton .skeleton-line + .skeleton-line { height: 12px; margin-top: 9px; width: 54%; }
+.card-skeleton .skeleton-chip { height: 20px; margin-top: 11px; width: 56px; border-radius: 10px; }
 .skeleton-title { height: calc(var(--type-title) * 1.15); width: min(440px, 80%); border-radius: 6px; }
 .source-header .skeleton-lead { height: 14px; width: 76px; margin-bottom: 2px; }
 .source-header .skeleton-title { height: calc(var(--type-display) * 1.05); }

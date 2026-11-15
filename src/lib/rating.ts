@@ -9,5 +9,11 @@ export function steamRating(positivePct: number | null, count: number): string |
   return count >= 500 ? "Overwhelmingly Negative" : count >= 50 ? "Very Negative" : "Negative";
 }
 
+/** Which way a Steam label leans: positive (Mostly Positive and better), Mixed, or negative (Mostly Negative and worse).
+ *  Read from the label, so the bands live in steamRating alone. */
+export type RatingTone = "positive" | "mixed" | "negative";
+export const ratingTone = (label: string): RatingTone =>
+  label === "Mixed" ? "mixed" : label.endsWith("Positive") ? "positive" : "negative";
+
 export const compactCount = (count: number) =>
   new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(count);

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Flame } from "lucide-react";
 import { compactCount, steamRating } from "@/lib/rating";
+import { RatingChip } from "./Rating";
 import { reviewBomb, type ReviewQuality } from "@/lib/review-quality";
 
 type FactsGame = ReviewQuality & {
@@ -25,7 +26,7 @@ export function GameFacts({ game }: { game: FactsGame }) {
   const when = bomb ? monthYear(bomb.when.start) : "";
   return <>
     <ul className="game-facts">
-      {rating && <li title="Steam user reviews"><strong>{game.review_positive_pct}%</strong> {rating}</li>}
+      {rating && <li className="rating-fact"><RatingChip pct={game.review_positive_pct} count={game.review_count} /></li>}
       {game.review_count > 0 && <li>{compactCount(game.review_count)}{"\u00a0"}reviews</li>}
       {game.developers.map(developer => <li key={developer}>
         <Link title={developer} href={game.is_indie ? `/developer/${encodeURIComponent(developer)}` : `https://store.steampowered.com/search/?developer=${encodeURIComponent(developer)}`}>{developer}</Link>

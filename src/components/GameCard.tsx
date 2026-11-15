@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { heroImage, type HeroFields } from "@/lib/hero";
-import { CardRating } from "./Rating";
+import { RatingChip } from "./Rating";
 import { CardLink } from "./CardLink";
 import { ArtMark } from "./ArtMark";
 
@@ -45,7 +45,7 @@ export function GameCard({
             </>}
         </div>
         <div className="game-card-title"><span>{title}</span></div>
-        <CardRating pct={review_positive_pct} count={review_count} compact={box} />
+        <RatingChip pct={review_positive_pct} count={review_count} />
       </div>
     </CardLink>
   );
