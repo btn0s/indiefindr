@@ -546,6 +546,12 @@ html { touch-action: manipulation; }
 :root:active-view-transition-type(search-close) { --vt-duration: var(--duration-m); }
 ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: var(--vt-duration, var(--duration-m)); animation-timing-function: var(--vt-ease, var(--ease-out)); }
 ::view-transition-old(search-input), ::view-transition-new(search-input) { height: 100%; width: auto; object-fit: none; object-position: left center; }
+/* One field, resizing: the group draws the frame itself as it moves from the header slot to the takeover. Its two
+   snapshots, scaled by width to a box of another shape, would show as two mismatched fields crossfading. The field is
+   focused at both ends of either transition (focus comes first on open; the blur waits for close to finish), hence
+   the focused border. Its icon and text ride above as their own groups. */
+::view-transition-group(search-field) { box-sizing: border-box; border: 1px solid var(--brand); border-radius: 8px; background: var(--background); }
+::view-transition-old(search-field), ::view-transition-new(search-field) { animation: none; opacity: 0; }
 /* The takeover fades in over a still page and fades back out over it, so the two never cross-dissolve into a ghost. */
 :root:is(:active-view-transition-type(search-open), :active-view-transition-type(search-close))::view-transition-old(root),
 :root:is(:active-view-transition-type(search-open), :active-view-transition-type(search-close))::view-transition-new(root) { animation: none; }
