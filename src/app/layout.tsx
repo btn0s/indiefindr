@@ -24,16 +24,6 @@ const geistMono = Geist_Mono({
   preload: false,
 });
 
-// Lets art fade up once it has loaded (see globals.css). It runs in the head, before any image starts, so it doesn't
-// wait for hydration. Each art image is marked on its own element as it loads: data-art="fade" fades it up, "shown" puts
-// it there at once. A picture already in hand shows at once with no fade: one already decoded when it's inserted (the
-// observer runs before the next paint), or one this page has loaded before (an earlier card's header, a cover seen on a
-// previous page). A failed image is never marked and keeps its placeholder. It listens on document because element load
-// events never reach window. An image that finished before its load event could be seen (Safari, a preloaded or cached
-// one) is caught once the page has parsed. React owns these <img>s, so each art image carries suppressHydrationWarning
-// for the mark, and a new src clears the mark so the new picture loads like any other.
-// The empty touchstart listener is what makes iOS Safari apply :active while a finger is down; without one, a press
-// only flashes on release, which reads as a bounce.
 const ART_FADE = `(function(){var d=document,r=d.documentElement,seen=new Set,ART=":is(.game-card-art,.search-art,.game-trailer)>img";r.dataset.artFade="";function mark(i,now){if(i.tagName!=="IMG"||!i.complete||!i.naturalWidth||i.hasAttribute("data-art")||!i.matches(ART))return;var u=i.getAttribute("src");i.setAttribute("data-art",now||seen.has(u)?"shown":"fade");seen.add(u)}function all(n){n.querySelectorAll(ART).forEach(function(i){mark(i,1)})}d.addEventListener("load",function(e){mark(e.target)},true);d.addEventListener("DOMContentLoaded",function(){for(var i=0,m=d.images;i<m.length;i++)mark(m[i])});new MutationObserver(function(l){l.forEach(function(m){var t=m.target;if(m.type==="attributes"){if(t.tagName==="IMG"&&t.hasAttribute("data-art")){t.removeAttribute("data-art");mark(t,1)}}else m.addedNodes.forEach(function(n){if(n.tagName==="IMG")mark(n,1);else if(n.firstElementChild)all(n)})})}).observe(r,{childList:true,subtree:true,attributes:true,attributeFilter:["src"]});d.addEventListener("touchstart",function(){},{passive:true})})()`;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
@@ -56,7 +46,6 @@ export const metadata: Metadata = {
   },
 };
 
-// Pinch zoom stays available: inputs are 16px on phones, so iOS has no reason to zoom on focus.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -91,7 +80,6 @@ export default async function RootLayout({
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: ART_FADE }} />
-        {/* Every store image (headers, screenshots, trailer posters) is served from this host. */}
         <link rel="preconnect" href="https://shared.akamai.steamstatic.com" />
         <link rel="dns-prefetch" href="https://shared.akamai.steamstatic.com" />
       </head>
@@ -116,7 +104,7 @@ export default async function RootLayout({
           <div id="content">{children}</div>
           <footer className="site-footer">
             <nav aria-label="Footer"><Link href="/agents">Agent access</Link><Link href="/privacy">Privacy</Link></nav>
-            <p>indiefindr · Game information and media from Steam.</p>
+            <p>indiefindr. Game information and media from Steam.</p>
           </footer>
         </div>
 

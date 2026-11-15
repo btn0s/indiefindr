@@ -2,10 +2,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let cachedServiceClient: SupabaseClient | null = null;
 
-/**
- * Server-only Supabase client using the service role key.
- * Use this ONLY in trusted server contexts (route handlers, server actions, etc.).
- */
 export function getSupabaseServiceClient(): SupabaseClient {
   if (cachedServiceClient) return cachedServiceClient;
 

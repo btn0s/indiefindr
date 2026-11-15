@@ -15,7 +15,6 @@ import { getGamePageSlate, getGame, getRecommendations } from "@/lib/catalog";
 import { SuggestionsSection } from "./suggestions-section";
 import { SameDeveloperSection } from "./same-developer-section";
 
-// The 100 most-reviewed games are prerendered at build; the rest render on first visit and are cached after.
 export async function generateStaticParams() {
   const { data, error } = await getSupabaseServerClient().from("games")
     .select("appid").order("review_count", { ascending: false }).limit(100);
@@ -85,7 +84,6 @@ export default async function GamePage({
     notFound();
   }
 
-  // Only fetch critical game data - suggestions load separately via Suspense
   const game = await getGame(appId);
 
   if (!game) {
@@ -96,7 +94,6 @@ export default async function GamePage({
     process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
   const trailer = pickTrailer(game.trailers);
 
-  // Structured data schemas
   const videoGameSchema = {
     "@context": "https://schema.org",
     "@type": "VideoGame",
@@ -174,8 +171,6 @@ export default async function GamePage({
       />}
       <WebMCP />
       <main className="discovery-page">
-        {/* The page opens on the game's gameplay clip over its first screenshot, a framed banner the width of the column.
-            The title, facts, blurb and Steam button follow, then the screenshots. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <GameTrailer title={game.title} trailer={trailer}
             image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />

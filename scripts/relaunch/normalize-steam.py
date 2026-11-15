@@ -1,4 +1,3 @@
-"""Convert cached Steam batch metadata to the offline scorer/catalog contracts."""
 import argparse,json,pathlib,datetime,re,html
 from catalog import is_indie
 p=argparse.ArgumentParser();p.add_argument('--input',type=pathlib.Path,default=pathlib.Path('data/steam-full'));p.add_argument('--out',type=pathlib.Path,default=pathlib.Path('data/full-source'));p.add_argument('--previous',type=pathlib.Path);p.add_argument('--allow-partial',action='store_true');a=p.parse_args()
@@ -37,15 +36,12 @@ for f in files:
   r.update(appid=appid,title=item['name'],short_description=info.get('short_description') or r.get('short_description'),long_description=plain_description(item.get('full_description_bbcode')) or r.get('long_description'),header_image=header,developers=[d['name'] for d in info.get('developers',[])],publishers=[d['name'] for d in info.get('publishers',[])],release_date=date,steam_release_date=date,steam_type='game',price_overview={'currency':'USD','initial':initial,'final':cents} if cents is not None else None,is_free=bool(item.get('is_free')),recommendations={'total':review_count},genres=genres,categories=categories,content_descriptors={'ids':item.get('content_descriptorids') or (r.get('content_descriptors') or {}).get('ids') or []},steamspy_tags=r.get('steamspy_tags') or {})
   r['is_indie']=is_indie(r,tags);r['is_early_access']=bool(item.get('is_early_access') or release.get('is_early_access'))
   rows[appid]=r;enriched[str(appid)]={'appid':appid,'tags':tags,'popularity':{'review_count':review_count,'percent_positive':summary.get('percent_positive'),'owners':r.get('steamspy_owners')},'source':'IStoreBrowseService/GetItems'}
-# Preserve legacy delisted/region-limited sources, whose stored pages must continue working.
 preserved=0
 for appid,r in old.items():
  if appid not in rows:
   r['price_overview']=None
   r['is_indie']=is_indie(r,oldtags[str(appid)]['tags'])
   rows[appid]=r;enriched[str(appid)]=oldtags[str(appid)];preserved+=1
-# Steam returns some text HTML-escaped ("DU&amp;I"). Decode every Steam text field once, here, for fresh and
-# preserved rows alike, so the site, search and developer joins all see the same plain string.
 def decode(value):
  if isinstance(value,str):return html.unescape(value)
  if isinstance(value,list):return [decode(v) for v in value]

@@ -1,4 +1,3 @@
-"""Install the authorized native Mac nightly job; no agent/model API calls."""
 import os,pathlib,plistlib,subprocess
 from nightly_release import build_snapshot
 root=pathlib.Path(__file__).resolve().parents[2];label='gg.indiefindr.offline-ingest';directory=pathlib.Path.home()/'Library/LaunchAgents';directory.mkdir(exist_ok=True)

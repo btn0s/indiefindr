@@ -1,4 +1,3 @@
-"""Exercise the import boundary: legacy currencies must never become USD cents."""
 import json,pathlib,subprocess,sys,tempfile,unittest
 PREPARE=pathlib.Path(__file__).with_name('prepare.py')
 class PricesTest(unittest.TestCase):

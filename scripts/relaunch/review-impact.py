@@ -1,4 +1,3 @@
-"""Compare a complete prepared slate generation with its published predecessor."""
 import argparse,collections,json,pathlib
 from review_quality import eligible,rated_low
 p=argparse.ArgumentParser();p.add_argument('--old',type=pathlib.Path,required=True);p.add_argument('--new',type=pathlib.Path,required=True);p.add_argument('--source',type=pathlib.Path,required=True);p.add_argument('--old-model-slates',type=pathlib.Path);a=p.parse_args()

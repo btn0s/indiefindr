@@ -1,5 +1,4 @@
 data
-archive
 .env*
 .git
 scripts/recommender

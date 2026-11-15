@@ -1,4 +1,3 @@
-"""Apply fresh migration and load exports. Explicit new-project allowlist prevents archive writes."""
 import pathlib,json,urllib.request,sys
 values=dict(l.split('=',1) for l in pathlib.Path('.env.relaunch-admin').read_text().splitlines() if '=' in l)
 ref=values['RELAUNCH_PROJECT_REF']

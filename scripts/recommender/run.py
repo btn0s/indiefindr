@@ -1,9 +1,3 @@
-"""Production offline merged recommender. Frozen encoder and LambdaRank weights.
-
-Encode and score in separate processes to avoid mixing Torch/LightGBM OpenMP.
-The Fable scorer's global normalization is preserved over the eligible catalog.
-Only indie targets enter the two retrieval lists and final stored slate.
-"""
 import os
 os.environ.update(HF_HUB_OFFLINE='1',TOKENIZERS_PARALLELISM='false',OMP_NUM_THREADS='2',OPENBLAS_NUM_THREADS='2',MKL_NUM_THREADS='2',VECLIB_MAXIMUM_THREADS='2')
 import argparse,hashlib,html,json,pathlib,re,sys,fcntl
@@ -14,14 +8,12 @@ from catalog import is_indie
 from review_quality import eligible
 from selection import MODEL_VERSION, SLATE_SIZE, select_targets
 p=argparse.ArgumentParser();p.add_argument('stage',choices=['encode','score']);p.add_argument('--source',type=pathlib.Path,default=ROOT/'data/full-source');p.add_argument('--artifacts',type=pathlib.Path,default=ROOT/'data/full-model');p.add_argument('--model',type=pathlib.Path,default=ROOT/'data/model');a=p.parse_args();a.artifacts.mkdir(parents=True,exist_ok=True)
-# Serialize native model work even when invoked outside the nightly runner.
 compute_lock=(ROOT/'data/recommender.lock').open('a')
 fcntl.flock(compute_lock,fcntl.LOCK_EX)
 rows=sorted(json.loads((a.source/'data/catalog.json').read_text())['rows'],key=lambda r:int(r['appid']))
 enrichment=json.loads((a.source/'data/steam_tags.json').read_text());ids=[int(r['appid']) for r in rows]
 quality=json.loads((a.source/'review-quality.json').read_text())
 allowed=np.array([eligible(dict(review_count=enrichment[str(i)]['popularity'].get('review_count') or 0,review_positive_pct=enrichment[str(i)]['popularity'].get('percent_positive'),clean_score=quality[str(i)]['clean_score'],bomb_windows=quality[str(i)]['bomb_windows'])) for i in ids])
-# Frozen training recipe uses raw catalog text plus top-15 actual Steam tags.
 def clean(text):return html.unescape(re.sub('<[^>]+>',' ',str(text or ''))).strip()
 def text(row):
  tags=sorted(enrichment[str(row['appid'])]['tags'],key=lambda t:-t['weight'])[:15]
@@ -35,7 +27,6 @@ if a.stage=='encode':
  assert torch.backends.mps.is_available(),'Offline encoding requires MPS; no CPU fallback'
  torch.set_num_threads(2);model=SentenceTransformer(str(a.model/'encoder'),device='mps',local_files_only=True);model.max_seq_length=256
  path=a.artifacts/'embeddings.npy';journal=a.artifacts/'embedding-keys.json'
- # Save by chunks to recover interrupted encoding without redoing completed rows.
  chunks=ROOT/'data/embedding-chunks';chunks.mkdir(exist_ok=True);output=np.lib.format.open_memmap(path,mode='w+',dtype=np.float32,shape=(len(rows),384))
  for start in range(0,len(rows),512):
   subset=keys[start:start+512];digest=hashlib.sha256('\n'.join(subset).encode()).hexdigest();chunk=chunks/(digest+'.npy')
@@ -68,7 +59,6 @@ def owners(value):
  nums=re.findall(r'[\d,]+',str(value or ''));nums=[float(n.replace(',','')) for n in nums];return sum(nums[:2])/len(nums[:2]) if nums else 0
 pop=np.array([owners(enrichment[str(i)]['popularity'].get('owners')) for i in ids]);owner_known=np.array([bool(enrichment[str(i)]['popularity'].get('owners')) for i in ids])
 def top(scores,k=200):
- # Exact score selection, deterministic appid tie-break including the boundary.
  chosen=np.argpartition(-scores,k-1)[:k];cut=scores[chosen].min();head=np.flatnonzero(scores>cut);ties=np.flatnonzero(scores==cut)[:k-len(head)];chosen=np.r_[head,ties];return chosen[np.lexsort((chosen,-scores[chosen]))]
 path=a.artifacts/'slates.progress.jsonl';manifest=a.artifacts/'scoring-inputs.json'
 inputs={str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in [a.source/'data/catalog.json',a.source/'data/steam_tags.json',a.source/'review-quality.json',ROOT/'scripts/relaunch/review_quality.py',a.model/'ranker.txt',a.artifacts/'ids.json',ROOT/'scripts/relaunch/catalog.py',ROOT/'scripts/relaunch/selection.py',pathlib.Path(__file__)]}

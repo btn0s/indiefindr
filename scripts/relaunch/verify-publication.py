@@ -1,4 +1,3 @@
-"""Save final database counts, canonical prices, and uploaded search index size."""
 import gzip,hashlib,json,pathlib,urllib.request
 from selection import SLATE_SIZE
 ROOT=pathlib.Path(__file__).resolve().parents[2]
@@ -7,7 +6,6 @@ ref=v['RELAUNCH_PROJECT_REF'];assert ref=='rqcqlpoxtdddjcylhopk'
 def query(sql):
  request=urllib.request.Request(f'https://api.supabase.com/v1/projects/{ref}/database/query',headers={'Authorization':'Bearer '+v['SUPABASE_ACCESS_TOKEN'],'Content-Type':'application/json'},data=json.dumps({'query':sql}).encode())
  with urllib.request.urlopen(request,timeout=180) as response:return json.load(response)
-# Aggregate each table once, without repeated correlated counts per source.
 report=query("select count(*) as games,count(*) filter(where is_indie) as indie_games,count(*) filter(where cardinality(screenshots)>0 or jsonb_array_length(trailers)>0) as games_with_media from public.games")[0]
 recs=query(f"with slates as (select appid,count(*) as rows,count(*) filter(where source='model') as model_rows,count(*) filter(where source='llm') as llm_rows from public.game_recs group by appid) select sum(rows) as rec_rows,sum(model_rows) as model_rows,sum(llm_rows) as llm_rows,count(*) filter(where llm_rows>0) as llm_slates,count(*) filter(where model_rows={SLATE_SIZE}) as valid_model_slates from slates")[0]
 report.update(recs);report['invalid_model_slates']=report['games']-report.pop('valid_model_slates')

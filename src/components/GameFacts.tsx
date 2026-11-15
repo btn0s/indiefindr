@@ -16,9 +16,6 @@ type FactsGame = ReviewQuality & {
 const monthYear = (date: string) =>
   new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 
-/** The game's facts in one row of quiet chips: rating, review count, developer, year (the Steam button carries
- *  the price). A missing fact leaves no
- *  gap or punctuation behind, and the chips wrap whole. */
 export function GameFacts({ game }: { game: FactsGame }) {
   const rating = steamRating(game.review_positive_pct, game.review_count);
   const year = game.release_date?.slice(0, 4);

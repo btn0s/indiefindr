@@ -1,4 +1,3 @@
-"""Free, resumable Steam catalog acquisition. Raw blobs stay on disk."""
 import argparse,json,pathlib,time,datetime,os,threading
 from concurrent.futures import ThreadPoolExecutor,as_completed
 import requests

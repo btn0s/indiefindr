@@ -5,32 +5,19 @@ import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { smallCopy } from "@/lib/hero";
 
-// Motion. Every moving value is a spring, so any of them can be retargeted mid-flight and keeps its velocity: a tap
-// while it opens sends it back, a finger catches it, a release hands the finger's speed to the spring that takes over.
-// The springs are the site's motion tokens (globals.css, MOTION.md): glide opens and pages, snap closes (one progress
-// spring, release pose to thumbnail, so everything lands together without a tail) and fades under reduced motion,
-// release (letGo here) settles back after a drag that didn't dismiss.
-// Flights run on the compositor. Once the springs are aimed, the whole flight is stepped ahead to rest and handed to
-// the Web Animations API as transform and opacity keyframes, so it plays at the screen's own rate with no script per
-// frame. Whatever interrupts a flight (a tap, a finger, a key, a resize) reads where everything is and how fast it is
-// going from the same simulation at the animation's current time, then aims the next flight from there. Only a finger
-// is followed from script.
 type Feel = { duration: number; bounce: number };
-/** Reads a `--spring-*` token, written as "duration bounce". */
 function feel(from: Element, token: string): Feel {
   const [duration, bounce] = getComputedStyle(from).getPropertyValue(token).trim().split(/\s+/).map(Number);
   return { duration, bounce };
 }
-const GAP = 24; // between shots while swiping
-const RECEDE = 0.04; // how far the page shrinks back behind the open viewer
-const SHRINK = 0.5; // how small a shot gets dragged down a whole screen
-const PROJECT = 0.998 / (1 - 0.998); // iOS scroll deceleration: how far a release at 1px/ms would coast, in px
-const STEP = 1 / 120; // seconds between a flight's keyframes; the compositor interpolates between them
+const GAP = 24;
+const RECEDE = 0.04;
+const SHRINK = 0.5;
+const PROJECT = 0.998 / (1 - 0.998);
+const STEP = 1 / 120;
 
 type Spring = { x: number; v: number; to: number; k: number; c: number };
 const spring = (x = 0): Spring => ({ x, v: 0, to: x, k: 0, c: 0 });
-/** Sends a spring toward `to`, keeping its velocity unless given one (px/s). Stiffness and damping from duration and
- *  bounce, as Motion and SwiftUI define them. */
 function aim(s: Spring, to: number, feel: Feel, v?: number) {
   s.to = to;
   s.k = (2 * Math.PI / feel.duration) ** 2;
@@ -38,7 +25,6 @@ function aim(s: Spring, to: number, feel: Feel, v?: number) {
   if (v !== undefined) s.v = v;
 }
 function jump(s: Spring, x: number) { s.x = s.to = x; s.v = 0; }
-/** Steps a spring by dt seconds; false once it is within `rest` of its target and slower than `restSpeed` per second. */
 function advance(s: Spring, dt: number, rest: number, restSpeed = rest * 10) {
   if (s.x === s.to && s.v === 0) return false;
   for (let t = 0; t < dt; t += 1 / 240) {
@@ -49,37 +35,25 @@ function advance(s: Spring, dt: number, rest: number, restSpeed = rest * 10) {
   if (Math.abs(s.x - s.to) < rest && Math.abs(s.v) < restSpeed) { jump(s, s.to); return false; }
   return true;
 }
-/** iOS rubber band: follows at first, then resists, never passing `size`. */
 const rubber = (over: number, size: number) => Math.sign(over) * (1 - 1 / (Math.abs(over) * 0.55 / size + 1)) * size;
 const clamp = (x: number, min: number, max: number) => Math.min(max, Math.max(min, x));
 
-/** Where a shot sits: top-left corner in its page (px), uniform scale, and a symmetric crop and corner radius in
- *  screen px. At rest open it is the shot's fitted box at scale 1 with no crop; over its thumbnail, it is scaled to
- *  cover the thumbnail's box and cropped to it. */
 type Pose = { x: number; y: number; s: number; cx: number; cy: number; r: number };
 type Box = { x: number; y: number; w: number; h: number };
-/** A shot's corner radius in its own px, horizontal and vertical (see shotTransforms). */
 type Corner = { x: number; y: number };
 const KEYS = ["x", "y", "s", "cx", "cy", "r"] as const;
 
-/** A shot is a window (rounded, clipping) holding the picture. The window is scaled to the part of the shot that shows
- *  and the picture inside is scaled back, so the picture keeps the pose's uniform scale and the crop costs no
- *  clip-path. Scaling the window scales its corners too, so they grow as the shot does; the window then also reaches
- *  past the picture's edges, by just enough that the picture's own corner trims the curve to the pose's radius and,
- *  at radius 0, hides it. On a shot cropped along one axis (its shape isn't the thumbnail's), that axis stays on the
- *  crop and only the other reaches out. `corner` is the window's radius for the whole flight, chosen so that where the
- *  pose's radius is largest against its size (over the thumbnail) the window's corner is exactly that radius. */
 function shotTransforms(f: Box, p: Pose, corner: Corner, pinned: "x" | "y" | null) {
   const s = p.s, cx = Math.max(0, p.cx), cy = Math.max(0, p.cy), r = Math.max(0, p.r);
   const vw = Math.max(1, f.w * s - 2 * cx), vh = Math.max(1, f.h * s - 2 * cy);
   let ox = 0, oy = 0;
   if (corner.x > 0) {
-    const pad = Math.max(0, 1 - r); // at radius 0, clear the corner by a pixel more, so antialiasing leaves it square
+    const pad = Math.max(0, 1 - r);
     for (let i = 0; i < 3; i++) {
       const rx = corner.x * (vw + 2 * ox) / f.w, ry = corner.y * (vh + 2 * oy) / f.h;
-      if (pinned === "y") ox = Math.max(0, rx - r) + pad; // the curve leaves the window's edge r from the corner
+      if (pinned === "y") ox = Math.max(0, rx - r) + pad;
       else if (pinned === "x") oy = Math.max(0, ry - r) + pad;
-      else ox = oy = (rx > r ? rx - (r + Math.sqrt(2 * rx * rx - r * r)) / 2 : 0) + pad; // the curve meets each edge r in
+      else ox = oy = (rx > r ? rx - (r + Math.sqrt(2 * rx * rx - r * r)) / 2 : 0) + pad;
     }
   }
   const sx = (vw + 2 * ox) / f.w, sy = (vh + 2 * oy) / f.h;
@@ -94,11 +68,6 @@ type Drag = {
   base: number; ax: number; ay: number; s0: number; b0: number; samples: { x: number; y: number; t: number }[];
 };
 
-/** The full-screen screenshot viewer. It opens out of the tapped thumbnail and closes back into the thumbnail of the
- *  shot it is showing, wherever the strip has scrolled. Swipe or arrow keys between shots; drag down, tap, click, Esc
- *  or the close button to close. The page behind recedes a little and its scroll is locked. Each shot shows the
- *  strip's already-loaded image at once and crossfades to the full-size one once that has decoded and the shot is at
- *  rest. Reduced motion: it fades in and out in place. Mounted only while open. */
 export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onClosed }: {
   title: string; screenshots: string[]; start: number;
   thumbs: RefObject<(HTMLButtonElement | null)[]>; strip: RefObject<HTMLUListElement | null>; onClosed: () => void;
@@ -113,7 +82,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
   const prev = useRef<HTMLButtonElement>(null);
   const next = useRef<HTMLButtonElement>(null);
   const controls = useRef<{ close(byKeyboard: boolean): void; step(direction: number): void; loaded(index: number, img: HTMLImageElement): void }>(null);
-  // Shots whose full-size image is wanted: the one shown and its neighbours, kept once asked for.
   const [wanted, setWanted] = useState(() => new Set([start - 1, start, start + 1]));
   const closed = useEffectEvent(onClosed);
   const want = useEffectEvent((index: number) => {
@@ -135,17 +103,13 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
     let current = start;
     let phase: Phase = "opening";
     let drag: Drag | null = null;
-    let fallback = false; // closing with the thumbnail off screen: shrink and fade instead
-    let byKeyboard = false; // how the viewer was closed, for whether the thumbnail it returns focus to shows a ring
+    let fallback = false;
+    let byKeyboard = false;
     const ready = new Set<number>();
     const trackX = spring(), shade = spring();
     const pose = { x: spring(), y: spring(), s: spring(1), cx: spring(), cy: spring(), r: spring() };
-    // While closing: progress from the pose and backdrop at the start of the close (0) to the thumbnail (1), which is
-    // wherever `to` puts it with the page receded by a given amount.
     let land: { t: Spring; from: Pose; shade: number; rest: number; to: (recede: number) => Pose } | null = null;
-    // The shown shot's window corner and cropped axis for the current flight (shotTransforms).
     let corner: Corner = { x: 0, y: 0 }, pinned: "x" | "y" | null = null;
-    // The page recedes about a point fixed on screen (set on open), so where a thumbnail will be is arithmetic.
     let origin = { x: 0, y: 0 };
 
     const fitPose = (): Pose => { const f = fits[current]; return { x: f.x, y: f.y, s: 1, cx: 0, cy: 0, r: 0 }; };
@@ -158,9 +122,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
     const pageLeft = () => trackX.x + current * stride;
     const recede = () => reduce || !shell ? 0 : clamp(shade.x, 0, 1);
 
-    /** Lays the shown shot exactly over its thumbnail: a function from how far the page is receded to the pose, or null
-     *  if the thumbnail is off screen. It is measured once, as the page draws it now, and the recede undone by
-     *  arithmetic. The pose is relative to the shot's page, so it reads the track where it is when called. */
     const thumbPose = (): ((recede: number) => Pose) | null => {
       const thumb = thumbAt(current);
       if (!thumb) return null;
@@ -204,7 +165,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       });
     };
 
-    // One frame of everything that moves, as styles: from the springs now, or from a step of a flight being laid out.
     type Look = { track: number; shade: number; pose: Pose };
     type Frame = { row: string; shot: string; art: string; shotOpacity: string; shade: string; shell: string };
     const look = (): Look => ({ track: trackX.x, shade: shade.x, pose: posed() });
@@ -229,14 +189,12 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         if (shell) shell.style.transform = frame.shell;
       }
     };
-    /** Sets the shown shot's window corner, for a flight or for rest (none). */
     const setCorner = (to: Corner, axis: "x" | "y" | null) => {
       corner = to; pinned = axis;
       const shot = shots.current[current];
       if (shot) shot.style.borderRadius = to.x > 0 ? `${to.x}px / ${to.y}px` : "";
     };
 
-    // The full-size image fades in over the thumbnail-size one once decoded, but never on a shot that is moving.
     const reveal = (i: number) => {
       if (ready.has(i) && (i !== current || phase === "open")) shots.current[i]?.setAttribute("data-shown", "");
     };
@@ -246,7 +204,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       if (to === "open") reveal(current);
     };
 
-    /** Keeps the shown shot's thumbnail scrolled into the strip, so the page under the viewer is ready to close into. */
     const keepInStrip = (i: number) => {
       const list = strip.current, item = thumbAt(i)?.parentElement;
       if (!list || !item) return;
@@ -274,11 +231,10 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       next.current?.setAttribute("aria-disabled", String(i === n - 1));
     };
 
-    /** Steps every spring by dt seconds; false once all are at rest. */
     const physics = (dt: number) => {
       let moving = false;
       if (land) {
-        moving = advance(land.t, dt, land.rest, land.rest * 30); // a pixel away, under 30px/s: landed
+        moving = advance(land.t, dt, land.rest, land.rest * 30);
         const t = Math.min(1, land.t.x), o = land.shade * (1 - t), to = land.to(o), from = land.from;
         for (const key of KEYS) jump(pose[key], from[key] + (to[key] - from[key]) * t);
         jump(shade, o);
@@ -294,12 +250,10 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       return Math.abs(shade.x - 1) < 0.02 && Math.abs(pose.s.x - 1) < 0.01 && Math.abs(pose.x.x - f.x) < 2 && Math.abs(pose.y.x - f.y) < 2;
     };
 
-    // The flight playing now: the springs as it began, its animations, and its timers.
     type Flight = { springs: [Spring, Spring][]; steps: number; anims: Animation[]; timers: number[] };
     let flight: Flight | null = null;
     const springs = () => [trackX, shade, ...KEYS.map(key => pose[key]), ...(land ? [land.t] : [])];
 
-    /** Brings the springs to where the flight playing now has got to, with their speeds, and stops it there. */
     const sync = () => {
       const f = flight;
       if (!f) return;
@@ -316,9 +270,8 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       paint(frameAt(look()));
     };
 
-    /** Plays the springs from where they are to rest on the compositor. */
     const fly = () => {
-      if (flight) { flight.timers.forEach(clearTimeout); flight.anims.forEach(anim => anim.cancel()); flight = null; } // callers sync first
+      if (flight) { flight.timers.forEach(clearTimeout); flight.anims.forEach(anim => anim.cancel()); flight = null; }
       const began: [Spring, Spring][] = springs().map(live => [live, { ...live }]);
       const looks = [look()];
       let openAt = phase === "opening" && opened() ? 0 : -1;
@@ -338,7 +291,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       }
       setCorner(to, cropX > 1 ? "x" : cropY > 1 ? "y" : null);
       const frames = looks.map(frameAt);
-      // Held once the flight ends; meanwhile the animations draw over it.
       paint(frames[frames.length - 1]);
 
       const anims: Animation[] = [], timers: number[] = [];
@@ -367,7 +319,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         if (flight !== self) return;
         flight = null;
         if (phase === "closing") return finish();
-        // At rest the window needs no corner, and an unscaled window keeps the picture's raster at its own size.
         setCorner({ x: 0, y: 0 }, null);
         paint(frameAt(look()));
       };
@@ -375,7 +326,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       else Promise.all(anims.map(anim => anim.finished)).then(landed, () => {});
     };
 
-    // A finger is followed from script: each move sets the springs it holds, and the rest keep stepping each frame.
     let frame = 0, last = 0;
     const kick = () => {
       if (frame) return;
@@ -392,8 +342,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
     };
     const stopTick = () => { cancelAnimationFrame(frame); frame = 0; };
 
-    /** Flies the shown shot into its thumbnail (or, off screen, shrinks and fades it). A release's velocity (px/s)
-     *  carries over as far as it heads toward the thumbnail. */
     const flyHome = (velocity = { x: 0, y: 0 }) => {
       aim(trackX, -current * stride, snap);
       if (reduce) { aim(shade, 0, snap); fly(); return; }
@@ -437,8 +385,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       setPhase("done");
       restore();
       if (box.open) box.close();
-      // Focus goes back to the thumbnail. Only a keyboard close shows the focus ring there: after a pointer or touch
-      // close the thumbnail carries a marker that hides the ring until focus leaves it.
       const thumb = thumbAt(current);
       if (thumb && !byKeyboard) {
         thumb.setAttribute("data-quiet-focus", "");
@@ -453,7 +399,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       sync();
       const to = clamp(current + direction, 0, n - 1);
       if (to === current) {
-        // A nudge against the end, so the key visibly did something.
         if (!reduce) aim(trackX, -current * stride, letGo, -direction * 700);
       } else if (reduce) jump(trackX, -to * stride);
       else aim(trackX, -to * stride, glide);
@@ -461,8 +406,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       fly();
     };
 
-    // Gestures. A finger that moves past the slop picks an axis: sideways pages through the shots, down (or any way
-    // while it is opening or closing) picks the shot up. A mouse never drags; its click closes.
     const velocity = (d: Drag, at: number) => {
       const end = d.samples[d.samples.length - 1];
       if (at - end.t > 60) return { x: 0, y: 0 };
@@ -471,7 +414,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       return dt > 0 ? { x: (end.x - begin.x) / dt, y: (end.y - begin.y) / dt } : { x: 0, y: 0 };
     };
     const onPointerDown = (event: PointerEvent) => {
-      if (drag) { if (event.pointerId !== drag.id) release(event, true); return; } // a second finger: no pinch, settle
+      if (drag) { if (event.pointerId !== drag.id) release(event, true); return; }
       if (event.button !== 0 || (event.target as Element).closest("button") || phase === "done") return;
       drag = {
         id: event.pointerId, mouse: event.pointerType === "mouse", x0: event.clientX, y0: event.clientY, mode: "none",
@@ -489,10 +432,8 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       if (drag.mouse) return;
       if (drag.mode === "none") {
         if (!drag.moved) return;
-        // The finger catches whatever is in flight, where it is.
         sync();
         const sideways = Math.abs(dx) > Math.abs(dy);
-        // Start from here, so the shot doesn't jump by the slop.
         drag.x0 = event.clientX; drag.y0 = event.clientY; dx = dy = 0;
         if (phase === "open" && sideways) {
           drag.mode = "pan";
@@ -534,7 +475,6 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       }
       stopTick();
       if (d.mode === "pan") {
-        // At most one shot from the one it was headed to, so quick repeated swipes each count.
         const page = current;
         const inside = trackX.x <= 0 && trackX.x >= -(n - 1) * stride;
         const to = clamp(Math.round(-(trackX.x + v.x * PROJECT) / stride), Math.max(0, page - 1), Math.min(n - 1, page + 1));
@@ -565,10 +505,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       idle = window.setTimeout(() => box.removeAttribute("data-pointer"), 1800);
     };
     const onCancel = (event: Event) => { event.preventDefault(); close(true); };
-    // Closed by the browser (a second Esc) rather than by us. A close event can also arrive late, after the dialog was
-    // shown again; that one is stale.
     const onNativeClose = () => { if (phase !== "done" && !box.open) { byKeyboard = true; finish(); } };
-    // The game page's own pull-down-to-go-back listens on window; a drag in here is the viewer's.
     const keep = (event: Event) => event.stopPropagation();
     const onResize = () => {
       sync();
@@ -582,13 +519,9 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       paint(frameAt(look()));
     };
 
-    // Open: lay the shot over its thumbnail, hide the thumbnail, and spring both into place, all before first paint.
     box.showModal();
-    // Focus the viewer itself rather than its first button, so opening by touch or mouse draws no ring on the close
-    // button; Tab still reaches it.
     box.focus({ preventScroll: true });
     layout();
-    // The shot lifts out of the strip, leaving its slot empty; with reduced motion it only fades, so the slot stays.
     if (!reduce) thumbAt(current)?.setAttribute("data-viewing", "");
     pages.current.forEach((page, j) => page?.toggleAttribute("data-current", j === current));
     prev.current?.setAttribute("aria-disabled", String(current === 0));

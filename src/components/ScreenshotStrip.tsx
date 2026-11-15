@@ -5,9 +5,6 @@ import { smallCopy } from "@/lib/hero";
 import { ScreenshotViewer } from "./ScreenshotViewer";
 import { RailButtons } from "./RailButtons";
 
-/** The game's screenshots in a row that scrolls and snaps inside itself. Each holds its 16:9 box before it
- *  loads, so nothing shifts. A tap opens the full-screen viewer, which grows out of the tapped shot. With a mouse,
- *  Previous and Next sit over the row's ends while it's hovered. */
 export function ScreenshotStrip({ title, screenshots }: { title: string; screenshots: string[] }) {
   const [viewing, setViewing] = useState<number | null>(null);
   const strip = useRef<HTMLUListElement>(null);
@@ -22,8 +19,6 @@ export function ScreenshotStrip({ title, screenshots }: { title: string; screens
         {screenshots.map((src, index) => <li key={src}>
           <button type="button" ref={button => { thumbs.current[index] = button; }} onClick={() => setViewing(index)}
             aria-label={`Screenshot ${index + 1} of ${screenshots.length}, open full screen`}>
-            {/* Steam's 600px copy. The first few are in view as the page arrives, so they load at once; the rest
-                wait until they're scrolled near. */}
             <Image src={smallCopy(src)} alt="" width={600} height={338} unoptimized loading={index < 3 ? "eager" : "lazy"} />
           </button>
         </li>)}

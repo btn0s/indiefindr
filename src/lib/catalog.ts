@@ -6,9 +6,6 @@ import { POPULAR_INDIES } from "@/lib/popular-indies";
 import { getBoxArt } from "@/lib/steam-art";
 import type { PopularPick } from "@/lib/use-game-search";
 
-/** Shared by metadata and page rendering. Catalog reads are cached server-side: games and their recommendations
- *  shelves and Browse all change hourly at most. Anything shown on every page
- *  (the 404's Browse all is prerendered into each route) must not be shorter-lived than the pages themselves. */
 export async function getGame(appid: number) {
   "use cache";
   cacheLife("hours");
@@ -27,8 +24,6 @@ export type RecommendationCard = {
   game: CardGame & { is_indie: boolean };
 };
 
-/** The game's full list: hand-written (LLM) picks first where a game has them, then the model's, without repeats.
- *  Cards are joined in the same database read. */
 export async function getRecommendations(appid: number): Promise<RecommendationCard[]> {
   "use cache";
   cacheLife("hours");
@@ -47,8 +42,6 @@ export async function getRecommendations(appid: number): Promise<RecommendationC
     .filter(rec => rec.game.appid !== appid && !seen.has(rec.game.appid) && seen.add(rec.game.appid));
 }
 
-/** Up to four more indies from the same developer(s), newest first. */
-/** Array-filter elements for postgrest-js, which joins them unquoted: quoting keeps names like "Studio, Inc." intact. */
 export const textArray = (values: string[]) => values.map(value => `"${value.replace(/["\\]/g, "\\$&")}"`);
 
 export async function getDeveloperGames(appid: number, developers: string[]): Promise<CardGame[]> {
@@ -61,7 +54,6 @@ export async function getDeveloperGames(appid: number, developers: string[]): Pr
   return (data ?? []).filter(recommendationEligible);
 }
 
-/** Everything a game card shows, selected the same way everywhere. */
 export const CARD_FIELDS = `appid,title,header_image,review_count,review_positive_pct,clean_score,bomb_windows,checked_at,${HERO_FIELDS}`;
 export type CardGame = ReviewQuality & {
   appid: number; title: string; header_image: string | null; review_count: number; review_positive_pct: number | null;
@@ -69,11 +61,9 @@ export type CardGame = ReviewQuality & {
 };
 type ShelfGame = CardGame;
 const SHELF_FIELDS = CARD_FIELDS;
-/** A home shelf's card: drawn as box art, the game's own where Steam has it (steam-art.ts). */
 export type BoxGame = CardGame & { cover: string | null };
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
-/** Same order for everyone on a given day, different the next day. */
 function dailyPick<T>(items: T[], count: number): T[] {
   let seed = Math.floor(Date.now() / 86_400_000);
   const random = () => ((seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648) / 2_147_483_648);
@@ -82,19 +72,12 @@ function dailyPick<T>(items: T[], count: number): T[] {
   return pool.slice(0, count);
 }
 
-/** Discovery shelves boost indies that still need it: indie+ games (lifetime reviews past the pipeline's
- *  notoriety line) stay searchable and recommendable but never appear here, nor do Steam adult-only titles or
- *  companion apps (demos, prologues, DLC, soundtracks; scripts/relaunch/catalog.py). */
 const shelfBase = () => getSupabaseServerClient().from("games").select(SHELF_FIELDS)
   .eq("is_indie", true).eq("indie_plus", false).eq("is_adult", false).eq("is_companion", false);
 type ShelfQuery = ReturnType<typeof shelfBase>;
 
-/** Discovery shelves: one definition drives both the home preview and the shelf's own page. */
 export const SHELVES = {
   rising: {
-    // momentum is set nightly for indies launched (or released from early access) within a year, and for indies still in early
-    // access at any age, with 30+ reviews in the last 14 days at 80%+ positive, moving at 1.5x+ their own earlier pace; ranked by
-    // that ratio (scripts/relaunch/review_quality.py). Rising takes the released games, Early Access the rest.
     title: "Rising", note: "Indies picking up players right now",
     query: (q: ShelfQuery) => q.not("momentum", "is", null).eq("is_early_access", false).order("momentum", { ascending: false }).order("appid"),
   },
@@ -103,7 +86,6 @@ export const SHELVES = {
     query: (q: ShelfQuery) => q.not("momentum", "is", null).eq("is_early_access", true).order("momentum", { ascending: false }).order("appid"),
   },
   upcoming: {
-    // upcoming_rank is Steam's wishlist order among indies dated within six months, refreshed nightly (scripts/relaunch/upcoming.py).
     title: "Upcoming", note: "The most-wishlisted indies coming soon",
     query: (q: ShelfQuery) => q.not("upcoming_rank", "is", null).order("upcoming_rank"),
   },
@@ -114,7 +96,6 @@ export const SHELVES = {
   },
   new: {
     title: "New on Steam", note: "Released in the last two months",
-    // Same quality bar as Rising: 30+ reviews so the score means something, 80%+ positive.
     query: (q: ShelfQuery) => q.gte("release_date", daysAgo(60)).lte("release_date", daysAgo(0)).gte("review_count", 30).gte("review_positive_pct", 80)
       .order("release_date", { ascending: false }).order("review_count", { ascending: false }),
   },
@@ -130,9 +111,6 @@ export async function getShelf(slug: ShelfSlug, limit: number): Promise<ShelfGam
   return data.filter(recommendationEligible);
 }
 
-/** Home rails in claim order: a game appears on one shelf at most, the first that claims it. Hidden gems is a daily
- *  pick. A rail costs no height for its length, so each holds a dozen; See all has the rest. Their cards are box art,
- *  looked up for all of them in one go. */
 const HOME_SHELVES: { slug: ShelfSlug; fetch: number; show: number }[] = [
   { slug: "rising", fetch: 12, show: 12 },
   { slug: "early-access", fetch: 24, show: 12 },
@@ -152,7 +130,6 @@ export async function getHomeShelves() {
     picked[slug] = slug === "hidden-gems" ? dailyPick(unclaimed, show) : unclaimed.slice(0, show);
     for (const game of picked[slug]) shown.add(game.appid);
   });
-  // With Steam unreachable there is no box art, and every card builds its own cover until the shelves next refresh.
   const art = await getBoxArt([...shown]).catch((): Record<number, string> => ({}));
   const shelves = {} as Record<ShelfSlug, BoxGame[]>;
   for (const { slug } of HOME_SHELVES) shelves[slug] = picked[slug].map(game => ({ ...game, cover: art[game.appid] ?? null }));
@@ -161,7 +138,6 @@ export async function getHomeShelves() {
 
 export const BROWSE_PAGE_SIZE = 24;
 
-/** "Browse all": every indie game (no companion apps), most-reviewed first. */
 export async function getBrowsePage(offset: number): Promise<CardGame[]> {
   "use cache";
   cacheLife("hours");
@@ -178,8 +154,6 @@ export async function getGamePageSlate(appid: number, developers: string[]) {
   return { developerGames, recs: all.filter(rec => !developerGames.some(game => game.appid === rec.game.appid)) };
 }
 
-/** Search's empty state: the curated picks with their art and ratings, drawn on the server so the panel opens complete.
- *  A failed read leaves the empty state blank rather than breaking every page. */
 export async function getPopularIndies(): Promise<PopularPick[]> {
   "use cache";
   cacheLife("hours");

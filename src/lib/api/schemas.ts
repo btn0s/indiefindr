@@ -1,11 +1,4 @@
-/**
- * Zod schemas for API route validation
- */
 import { z } from "zod";
-
-// =============================================================================
-// Common Schemas
-// =============================================================================
 
 export const AppIdSchema = z.coerce.number().int().positive();
 
@@ -14,7 +7,6 @@ export const SteamUrlSchema = z
   .min(1, "Steam URL is required")
   .refine(
     (url) => {
-      // Accept either a URL or a plain app ID
       const urlPattern = /store\.steampowered\.com\/app\/\d+/i;
       const appIdPattern = /^\d+$/;
       return urlPattern.test(url) || appIdPattern.test(url);
@@ -22,13 +14,6 @@ export const SteamUrlSchema = z
     { message: "Invalid Steam URL or app ID" }
   );
 
-// =============================================================================
-// API Route Schemas
-// =============================================================================
-
-/**
- * POST /api/games/submit
- */
 export const SubmitGameSchema = z.object({
   steamUrl: SteamUrlSchema,
   skipSuggestions: z.boolean().optional().default(false),
@@ -36,17 +21,10 @@ export const SubmitGameSchema = z.object({
 });
 export type SubmitGameInput = z.infer<typeof SubmitGameSchema>;
 
-/**
- * GET /api/games/search?q=...
- */
 export const SearchGamesSchema = z.object({
   q: z.string().min(2, "Search query must be at least 2 characters"),
 });
 export type SearchGamesInput = z.infer<typeof SearchGamesSchema>;
-
-// =============================================================================
-// Steam API Response Schemas (for runtime validation)
-// =============================================================================
 
 export const SteamScreenshotSchema = z.object({
   path_full: z.string().optional(),
@@ -105,10 +83,6 @@ export const SteamMetacriticSchema = z.object({
   url: z.string().optional(),
 });
 
-/**
- * Steam API raw game data schema
- * Used to validate the `raw` field stored in Supabase
- */
 export const SteamRawGameDataSchema = z.object({
   steam_appid: z.number().optional(),
   type: z.string().optional(),
@@ -129,9 +103,6 @@ export const SteamRawGameDataSchema = z.object({
 });
 export type SteamRawGameData = z.infer<typeof SteamRawGameDataSchema>;
 
-/**
- * Safely parse Steam raw data with fallback
- */
 export function parseSteamRawData(raw: unknown): SteamRawGameData | null {
   const result = SteamRawGameDataSchema.safeParse(raw);
   if (result.success) {

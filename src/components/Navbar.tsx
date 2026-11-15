@@ -18,20 +18,10 @@ export function Navbar({ popular }: { popular: PopularPick[] }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  // Opened from the keyboard: the panel appears at once, with no scale-in (globals.css [data-instant]).
   const [instant, setInstant] = useState(false);
-  // A search submit that has to wait for its page shows a spinner in the field, after a beat (globals.css).
   const [pending, startNavigation] = useTransition();
-  // The target state, ahead of React: Cancel also blurs the field, which asks to close a second time mid-transition.
   const target = useRef(false);
-  // Picking a game closes at once: the next page replaces the takeover, so there is nothing to animate back to.
   const closeNow = () => { target.current = false; setOpen(false); };
-  // On phones search opens as a full-screen takeover. Opening and closing are a view transition, typed search-open or
-  // search-close: the field morphs between the header and the takeover while the page fades beneath it (globals.css).
-  // Desktop keeps its popover and runs no transition. However the takeover closes (Cancel, or a tap outside the field,
-  // which is how Cancel reaches the Autocomplete), it leaves search as it found it: empty, unfocused, keyboard down.
-  // The query clears inside the transition; the keyboard drops once it finishes, because the viewport resize that
-  // causes would cut it short.
   const changeOpen = (next: boolean) => {
     if (next === target.current) return;
     target.current = next;
@@ -63,8 +53,6 @@ export function Navbar({ popular }: { popular: PopularPick[] }) {
     <div className="site-search" data-open={open}>
       <Autocomplete presentation="popover" modal={false} value={query} open={open} filter={false} autoHighlight openOnFocus loop submitOnSelect
         onOpenChange={changeOpen}
-        // Rows don't prefetch as they appear; the one under the highlight (the top result while typing, or the row the
-        // arrow keys or pointer rest on) fetches its whole page.
         onHighlight={value => { if (value) router.prefetch(`/games/${value}`); }}
         onValueChange={(value, detail) => { if (detail.reason === "item-press") { navigate(value); return; } setQuery(value); search(value); }}
         onSubmit={navigate}>
@@ -95,8 +83,6 @@ export function Navbar({ popular }: { popular: PopularPick[] }) {
   </div></header>;
 }
 
-/** Writes the panel's content height to the popup, so a change in the number of rows animates (globals.css). The
- *  write goes straight to the element, coalesced to one per frame, without a React render. */
 function followHeight(panel: HTMLDivElement) {
   let frame = 0;
   const observer = new ResizeObserver(([entry]) => {
@@ -107,8 +93,6 @@ function followHeight(panel: HTMLDivElement) {
   return () => { cancelAnimationFrame(frame); observer.disconnect(); };
 }
 
-/** The title with each word of the query marked where it matched, so a row shows why it's there. Matching folds case
- *  and accents the way the autocomplete does. */
 function MarkedTitle({ title, query }: { title: string; query: string }) {
   const ranges = query.split(/\s+/).flatMap(word => word ? matchRanges(title, word, "contains") : [])
     .sort((a, b) => a.start - b.start)
