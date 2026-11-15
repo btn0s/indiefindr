@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { CRIMP, PERSPECTIVE, RATIO, STRIP, packLayout, type PackLayout } from "./pack-layout";
+import { createBeam, createHalo, createRing, createSparks, type Spark } from "./pack-fx";
 
 export type PackPrint = { art: string | null; still: string | null; title: string; code: string; printed: string; font: string };
 
@@ -230,15 +231,145 @@ async function printPack(print: PackPrint) {
   return { color, orm };
 }
 
+function printBack(print: PackPrint) {
+  const color = document.createElement("canvas");
+  const orm = document.createElement("canvas");
+  color.width = orm.width = TEX_W;
+  color.height = orm.height = TEX_H;
+  const c = color.getContext("2d")!;
+  const o = orm.getContext("2d")!;
+  const k = TEX_W / REF_W;
+  const crimp = CRIMP * TEX_H;
+  const tear = STRIP * TEX_H;
+  const frame = 7 * k;
+  const ink = "rgb(0,107,51)";
+  const foil = "rgb(64,64,255)";
+  const stamp = "rgb(255,36,255)";
+
+  const silver = c.createLinearGradient(0, 0, TEX_W, 0);
+  silver.addColorStop(0, "#9da3ad");
+  silver.addColorStop(0.5, "#e6e8ec");
+  silver.addColorStop(1, "#9aa0aa");
+  c.fillStyle = silver;
+  c.fillRect(0, 0, TEX_W, TEX_H);
+  o.fillStyle = foil;
+  o.fillRect(0, 0, TEX_W, TEX_H);
+
+  const top = crimp + frame;
+  const height = TEX_H - 2 * crimp - 2 * frame;
+  const panel = c.createLinearGradient(0, top, TEX_W, top + height);
+  panel.addColorStop(0, "#221a3d");
+  panel.addColorStop(0.5, "#110e1d");
+  panel.addColorStop(1, "#24173a");
+  c.fillStyle = panel;
+  c.fillRect(frame, top, TEX_W - 2 * frame, height);
+  o.fillStyle = ink;
+  o.fillRect(frame, top, TEX_W - 2 * frame, height);
+
+  c.save();
+  o.save();
+  for (const ctx of [c, o]) {
+    ctx.beginPath();
+    ctx.rect(frame, top, TEX_W - 2 * frame, height);
+    ctx.clip();
+  }
+  const step = 26 * k;
+  for (let row = 0, y = top - step / 2; y < top + height + step; row++, y += step * 0.6) {
+    for (let x = (row % 2) * step / 2 - step / 2; x < TEX_W + step; x += step) {
+      sword(c, x, y, 8 * k, "rgba(255,255,255,0.09)");
+      sword(o, x, y, 8 * k, stamp);
+    }
+  }
+  c.restore();
+  o.restore();
+
+  const cx = TEX_W / 2;
+  const cy = top + height * 0.44;
+  const radius = 44 * k;
+  c.fillStyle = "#0d0b16";
+  c.beginPath();
+  c.arc(cx, cy, radius + 10 * k, 0, Math.PI * 2);
+  c.fill();
+  o.fillStyle = ink;
+  o.beginPath();
+  o.arc(cx, cy, radius + 10 * k, 0, Math.PI * 2);
+  o.fill();
+  for (const [ctx, fill] of [[c, "rgba(255,255,255,0.92)"], [o, stamp]] as const) {
+    ctx.lineWidth = 3 * k;
+    ctx.strokeStyle = fill;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 1.2 * k;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 6 * k, 0, Math.PI * 2);
+    ctx.stroke();
+    sword(ctx, cx - 32 * k, cy - 32 * k, 64 * k, fill);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = `750 ${24 * k}px ${print.font}`;
+    ctx.fillStyle = fill;
+    ctx.fillText("indiefindr", cx, cy + radius + 46 * k);
+  }
+
+  c.font = `700 ${6.5 * k}px ${print.font}`;
+  c.fillStyle = "rgba(255,255,255,0.55)";
+  c.textAlign = "center";
+  c.fillText("G A M E S   L I K E", cx, top + height - 30 * k);
+  c.font = `650 ${8 * k}px ${print.font}`;
+  c.fillStyle = "rgba(255,255,255,0.8)";
+  let title = print.title;
+  while (c.measureText(title).width > TEX_W - 2 * frame - 40 * k && title.length > 4) title = `${title.slice(0, -2).trimEnd()}…`;
+  c.fillText(title, cx, top + height - 16 * k);
+
+  const period = TEX_W / 46;
+  for (let x = 0; x < TEX_W; x += period) {
+    for (const [y, h] of [[0, crimp], [TEX_H - crimp, crimp]]) {
+      const stripe = c.createLinearGradient(x, 0, x + period, 0);
+      stripe.addColorStop(0, "rgba(255,255,255,0.35)");
+      stripe.addColorStop(0.5, "rgba(0,0,0,0.18)");
+      stripe.addColorStop(1, "rgba(255,255,255,0.35)");
+      c.fillStyle = stripe;
+      c.fillRect(x, y, period, h);
+    }
+  }
+
+  c.save();
+  c.globalCompositeOperation = "destination-out";
+  for (const side of [0, TEX_W]) {
+    c.beginPath();
+    c.moveTo(side, tear - 9 * k);
+    c.lineTo(side + (side ? -7 : 7) * k, tear);
+    c.lineTo(side, tear + 9 * k);
+    c.closePath();
+    c.fill();
+  }
+  c.restore();
+
+  return { color, orm };
+}
+
+export type Tint = [number, number, number];
+
 export type PackScene = {
   layout(width: number, height: number): PackLayout;
   look(x: number, y: number): void;
   tear(progress: number): void;
   fling(): void;
   drop(): Promise<void>;
-  arrive(): Promise<void>;
+  show(tint: Tint): Promise<void>;
+  arrive(tint: Tint): Promise<void>;
+  skip(): void;
+  burst(x: number, y: number, tint: Tint, power: number): void;
   dispose(): void;
 };
+
+type Plan = { beam: [number, number, number, number]; fall: [number, number]; turns: number; end: number; motes: number; swirl: number; burst: number; level: number };
+
+const FULL: Plan = { beam: [0.15, 1.0, 2.05, 2.9], fall: [0.8, 2.1], turns: 2, end: 3.3, motes: 240, swirl: 140, burst: 180, level: 1 };
+const SHORT: Plan = { beam: [0, 0.3, 0.95, 1.5], fall: [0.05, 0.95], turns: 1, end: 1.8, motes: 0, swirl: 0, burst: 90, level: 0.7 };
+
+const random = (min: number, max: number) => min + Math.random() * (max - min);
 
 export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrint, still: boolean): Promise<PackScene> {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
@@ -258,46 +389,67 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
   scene.environmentIntensity = 1.1;
   const key = new THREE.DirectionalLight(0xffffff, 1.4);
   key.position.set(-300, 500, 900);
-  scene.add(key);
+  const spot = new THREE.DirectionalLight(0xffffff, 0);
+  spot.position.set(0, 1200, 300);
+  scene.add(key, spot);
 
   const camera = new THREE.PerspectiveCamera(45, 1, 1, PERSPECTIVE * 4);
   camera.position.set(0, 0, PERSPECTIVE);
 
-  const { color, orm } = await printPack(print);
+  const [front, back] = await Promise.all([printPack(print), printBack(print)]);
   const anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const map = new THREE.CanvasTexture(color);
-  map.colorSpace = THREE.SRGBColorSpace;
-  map.anisotropy = anisotropy;
-  const surface = new THREE.CanvasTexture(orm);
-  surface.anisotropy = anisotropy;
-
-  const printed = new THREE.MeshPhysicalMaterial({
-    map, metalnessMap: surface, roughnessMap: surface, iridescenceMap: surface,
-    metalness: 1, roughness: 1, iridescence: 1, iridescenceIOR: 1.8, iridescenceThicknessMinimum: 180, iridescenceThicknessMaximum: 520,
-    clearcoat: 1, clearcoatRoughness: 0.12, alphaTest: 0.5,
-  });
+  const textures: THREE.Texture[] = [];
+  const foilMaterial = ({ color, orm }: { color: HTMLCanvasElement; orm: HTMLCanvasElement }) => {
+    const map = new THREE.CanvasTexture(color);
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.anisotropy = anisotropy;
+    const surface = new THREE.CanvasTexture(orm);
+    surface.anisotropy = anisotropy;
+    textures.push(map, surface);
+    return new THREE.MeshPhysicalMaterial({
+      map, metalnessMap: surface, roughnessMap: surface, iridescenceMap: surface,
+      metalness: 1, roughness: 1, iridescence: 1, iridescenceIOR: 1.8, iridescenceThicknessMinimum: 180, iridescenceThicknessMaximum: 520,
+      clearcoat: 1, clearcoatRoughness: 0.12, alphaTest: 0.5,
+    });
+  };
+  const printed = foilMaterial(front);
+  const printedBack = foilMaterial(back);
   const inside = new THREE.MeshPhysicalMaterial({ color: 0xdfe2e8, metalness: 1, roughness: 0.32, side: THREE.BackSide });
 
   const root = new THREE.Group();
   const body = new THREE.Mesh(panel(-REF_H / 2, TEAR_Y, 132), printed);
+  const backGeometry = panel(-REF_H / 2, REF_H / 2, 150);
+  backGeometry.scale(-1, 1, -1);
+  const backing = new THREE.Mesh(backGeometry, printedBack);
   const stripGeometry = panel(TEAR_Y, REF_H / 2, 14);
   const rest = Float32Array.from(stripGeometry.attributes.position.array as ArrayLike<number>);
   const strip = new THREE.Group();
   strip.add(new THREE.Mesh(stripGeometry, printed), new THREE.Mesh(stripGeometry, inside));
-  root.add(body, strip);
+  root.add(body, backing, strip);
   scene.add(root);
 
+  const sparks = createSparks(renderer.getPixelRatio());
+  const beam = createBeam();
+  const halo = createHalo();
+  const ring = createRing();
+  scene.add(sparks.object, beam.mesh, halo.mesh, ring.mesh);
+
   let size = { width: 0, height: 0 };
+  let pack = { width: 0, height: 0 };
   let center = 0;
   let pointer = { x: 0, y: 0 };
   const tilt = { x: 0, y: 0, vx: 0, vy: 0 };
   let peel = 0;
   let flight: { start: number; vx: number; vy: number; vz: number; spin: number } | null = null;
   let tween: { from: number; to: number; start: number; duration: number; ease: (t: number) => number; done: () => void } | null = null;
+  let entrance: { start: number; plan: Plan; tint: THREE.Color; landed: boolean; land: () => void } | null = null;
+  let flare: { x: number; y: number; start: number; power: number; tint: THREE.Color } | null = null;
   let level = false;
   let frame = 0;
   let last = performance.now();
   const born = last;
+  const clock = () => (performance.now() - born) / 1000;
+  const unit = () => Math.max(0.6, Math.min(1.4, Math.min(size.width, size.height) / 800));
 
   const curl = (progress: number) => {
     const position = stripGeometry.attributes.position as THREE.BufferAttribute;
@@ -322,20 +474,139 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
     stripGeometry.computeVertexNormals();
   };
 
+  const shade = (tint: THREE.Color, amount: number) => new THREE.Color(1, 1, 1).lerp(tint, amount);
+
+  const sparkle = (t: number, x: number, y: number, tint: THREE.Color, count: number, power: number) => {
+    const u = unit() * power;
+    const list: Spark[] = [];
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = random(220, 860) * u;
+      list.push({
+        x, y, z: random(-20, 60), vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, vz: random(-120, 220),
+        life: random(0.8, 1.7), size: random(1.6, 4.6) * Math.min(1.2, u), color: shade(tint, Math.random() * 0.8),
+        star: Math.random() < 0.3, drag: 2.4, gravity: 240 * u,
+      });
+    }
+    for (let i = 0; i < count / 4; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = random(20, 110) * u;
+      list.push({
+        x: x + random(-40, 40) * u, y: y + random(-60, 60) * u, z: random(0, 80), vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed + 30,
+        life: random(1.8, 3), size: random(1.4, 3.2), color: shade(tint, Math.random()), star: Math.random() < 0.5, drag: 0.8, gravity: 30,
+        delay: random(0, 0.4),
+      });
+    }
+    sparks.emit(t, list);
+    flare = { x, y, start: t, power, tint };
+  };
+
+  const begin = (plan: Plan, tint: THREE.Color) => {
+    const t = clock();
+    const u = unit();
+    const list: Spark[] = [];
+    for (let i = 0; i < plan.motes; i++) {
+      list.push({
+        x: random(-0.55, 0.55) * size.width, y: random(-0.5, 0.5) * size.height, z: random(-600, 200),
+        vx: random(-6, 6), vy: random(8, 32), life: random(3, 4.6), size: random(1.1, 3.1),
+        color: shade(tint, Math.random() * 0.7), star: Math.random() < 0.12, delay: random(0, 0.9),
+      });
+    }
+    for (let i = 0; i < plan.swirl; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const reach = Math.max(size.width, size.height) * random(0.42, 0.62);
+      const k = 2.4;
+      const inward = reach * k * 0.92;
+      const around = reach * k * random(0.25, 0.45);
+      list.push({
+        x: Math.cos(angle) * reach, y: center + Math.sin(angle) * reach, z: random(-200, 100),
+        vx: -Math.cos(angle) * inward - Math.sin(angle) * around, vy: -Math.sin(angle) * inward + Math.cos(angle) * around,
+        life: random(1, 1.3), size: random(1.4, 3.4) * u, color: shade(tint, 0.3 + Math.random() * 0.7), star: Math.random() < 0.25,
+        drag: k, delay: random(0.5, 1.05),
+      });
+    }
+    if (list.length) sparks.emit(t, list);
+    level = true;
+    peel = 0;
+    curl(0);
+    strip.position.set(0, 0, 0);
+    strip.rotation.set(0, 0, 0);
+    strip.visible = true;
+    flight = null;
+    tween = null;
+    root.userData.offset = 0;
+    root.visible = false;
+    return new Promise<void>(resolve => {
+      entrance = { start: t, plan, tint, landed: false, land: resolve };
+      run();
+    });
+  };
+
+  const stage = (t: number) => {
+    let fall = { y: 0, z: 0, spin: 0, tilt: 0 };
+    if (entrance) {
+      const { plan, tint } = entrance;
+      const s = t - entrance.start;
+      const p = clamp((s - plan.fall[0]) / (plan.fall[1] - plan.fall[0]));
+      const lift = (1 - p) ** 4;
+      fall = { y: lift * size.height * 0.95, z: -lift * 1500, spin: lift * plan.turns * Math.PI * 2, tilt: lift * 0.6 };
+      root.visible = s >= plan.fall[0];
+      const [a, b, c, d] = plan.beam;
+      const light = s < c ? smooth(clamp((s - a) / (b - a))) : 1 - smooth(clamp((s - c) / (d - c)));
+      const topY = size.height / 2 + 60;
+      const bottomY = center - pack.height * 0.2;
+      beam.mesh.position.set(0, (topY + bottomY) / 2, -180);
+      beam.mesh.scale.set(pack.width * 1.7, topY - bottomY, 1);
+      beam.material.uniforms.color.value.copy(shade(tint, 0.35));
+      beam.set(light * plan.level);
+      spot.intensity = light * 2.4;
+      if (!entrance.landed && s >= plan.fall[1]) {
+        entrance.landed = true;
+        level = false;
+        sparkle(t, 0, center, tint, plan.burst, plan.level);
+        entrance.land();
+      }
+      if (!entrance.landed) halo.set(light * p * 0.35 * plan.level);
+      if (s >= plan.end) {
+        entrance = null;
+        beam.set(0);
+        spot.intensity = 0;
+      }
+    }
+    if (flare) {
+      const since = t - flare.start;
+      const { tint } = flare;
+      halo.mesh.position.set(flare.x, flare.y, -90);
+      halo.mesh.scale.setScalar(Math.max(pack.height, 260) * 2.8 * Math.max(0.6, flare.power));
+      halo.material.uniforms.color.value.copy(shade(tint, 0.4));
+      halo.set(Math.exp(-since * 3.2) * flare.power);
+      ring.mesh.position.set(flare.x, flare.y, 40);
+      ring.mesh.scale.setScalar(Math.max(size.width, size.height) * 1.3 * Math.max(0.6, flare.power));
+      ring.material.uniforms.radius.value = easeOut(clamp(since / 0.9));
+      ring.material.uniforms.color.value.copy(shade(tint, 0.5));
+      ring.set(since < 0.9 ? 1 : 0);
+      if (since > 1.6) { flare = null; halo.set(0); ring.set(0); }
+    }
+    for (const effect of [beam, halo, ring]) effect.material.uniforms.now.value = t;
+    sparks.tick(t);
+    return fall;
+  };
+
   const render = (now: number) => {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     const t = (now - born) / 1000;
-    const sway = still || level ? 0 : 1;
-    const targetY = level ? 0 : pointer.x * 0.32 + Math.sin(t * 0.7) * 0.05 * sway;
-    const targetX = level ? 0 : -pointer.y * 0.22 + Math.sin(t * 0.9 + 1) * 0.03 * sway;
+    const fall = stage(t);
+    const calm = still || level || !!entrance;
+    const targetY = calm ? 0 : pointer.x * 0.32 + Math.sin(t * 0.7) * 0.05;
+    const targetX = calm ? 0 : -pointer.y * 0.22 + Math.sin(t * 0.9 + 1) * 0.03;
     const stiffness = 90;
     const damping = 2 * Math.sqrt(stiffness) * 0.9;
     tilt.vy += ((targetY - tilt.y) * stiffness - tilt.vy * damping) * dt;
     tilt.vx += ((targetX - tilt.x) * stiffness - tilt.vx * damping) * dt;
     tilt.y += tilt.vy * dt;
     tilt.x += tilt.vx * dt;
-    root.rotation.set(tilt.x, tilt.y, 0);
+    root.rotation.set(tilt.x + fall.tilt, tilt.y + fall.spin, 0);
     scene.environmentRotation.set(-tilt.x * 0.8, tilt.y * 1.6 + 0.4, 0);
 
     let offset = 0;
@@ -345,7 +616,7 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
       if (p >= 1) { const done = tween.done; tween = null; done(); }
     } else if (root.userData.offset !== undefined) offset = root.userData.offset;
     root.userData.offset = offset;
-    root.position.set(0, center + offset + (still || level ? 0 : Math.sin(t * 1.1) * 3), 0);
+    root.position.set(0, center + offset + fall.y + (calm ? 0 : Math.sin(t * 1.1) * 3), fall.z);
 
     if (flight) {
       const s = (now - flight.start) / 1000;
@@ -355,7 +626,8 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
     }
 
     renderer.render(scene, camera);
-    frame = requestAnimationFrame(render);
+    const busy = root.visible || !!entrance || !!flare || !!tween || sparks.alive(t);
+    frame = busy && !document.hidden ? requestAnimationFrame(render) : 0;
   };
 
   const run = () => {
@@ -384,6 +656,7 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
       root.scale.setScalar(layout.width / REF_W);
       center = height / 2 - layout.center;
       size = { width, height };
+      pack = { width: layout.width, height: layout.height };
       if (!frame) renderer.render(scene, camera);
       return layout;
     },
@@ -401,29 +674,47 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
       level = true;
       await animate(root.userData.offset ?? 0, -size.height * 1.1, 520, easeIn);
       root.visible = false;
-      renderer.render(scene, camera);
-      halt();
     },
-    async arrive() {
-      level = false;
-      peel = 0;
-      curl(0);
-      strip.position.set(0, 0, 0);
-      strip.rotation.set(0, 0, 0);
-      strip.visible = true;
-      flight = null;
-      root.visible = true;
-      await animate(size.height * 1.1, 0, 640, easeOut);
+    show(tint) {
+      return begin(FULL, new THREE.Color(...tint));
+    },
+    arrive(tint) {
+      if (still) {
+        level = false;
+        peel = 0;
+        curl(0);
+        strip.position.set(0, 0, 0);
+        strip.rotation.set(0, 0, 0);
+        strip.visible = true;
+        flight = null;
+        root.userData.offset = 0;
+        root.visible = true;
+        run();
+        return Promise.resolve();
+      }
+      return begin(SHORT, new THREE.Color(...tint));
+    },
+    skip() {
+      if (entrance && !entrance.landed) entrance.start = clock() - entrance.plan.fall[1];
+    },
+    burst(x, y, tint, power) {
+      sparkle(clock(), x - size.width / 2, size.height / 2 - y, new THREE.Color(...tint), Math.round(140 * power), power);
+      run();
     },
     dispose() {
       halt();
       document.removeEventListener("visibilitychange", onVisibility);
       body.geometry.dispose();
+      backGeometry.dispose();
       stripGeometry.dispose();
       printed.dispose();
+      printedBack.dispose();
       inside.dispose();
-      map.dispose();
-      surface.dispose();
+      textures.forEach(texture => texture.dispose());
+      sparks.dispose();
+      beam.dispose();
+      halo.dispose();
+      ring.dispose();
       environment.dispose();
       renderer.dispose();
     },

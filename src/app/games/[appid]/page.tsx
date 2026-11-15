@@ -7,8 +7,7 @@ import type { Metadata } from "next";
 import { AdSlot } from "@/components/AdSlot";
 import { ShopLinks } from "@/components/ShopLinks";
 import { SteamLink } from "@/components/SteamLink";
-import { PackIcon } from "@/components/pack/PackIcon";
-import Link from "next/link";
+import { PackEntry } from "@/components/pack/PackEntry";
 import { GameFacts } from "@/components/GameFacts";
 import { ScreenshotStrip } from "@/components/ScreenshotStrip";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -184,7 +183,7 @@ export default async function GamePage({
             </header>
             <div className="source-game-actions">
               <SteamLink appid={appId} price={price} />
-              <Link className="button button-secondary pack-entry" href={`/pack/${appId}`}><PackIcon />Open a pack</Link>
+              <PackEntry appid={appId} />
             </div>
           </div>
           <ScreenshotStrip title={game.title} screenshots={game.screenshots ?? []} />

@@ -121,3 +121,24 @@ export function chime(secret: boolean) {
 export function buzz(ms: number) {
   if ("vibrate" in navigator) navigator.vibrate(ms);
 }
+
+export function rise() {
+  const ctx = ready();
+  if (!ctx) return;
+  burst(ctx, { at: 0.1, length: 2, gain: 0.07, type: "bandpass", frequency: 300, sweep: 6400, q: 4 });
+  [392, 523, 659, 784, 1047].forEach((frequency, index) => {
+    tone(ctx, { at: 0.55 + index * 0.24, frequency, length: 1.1, gain: 0.03 });
+  });
+  tone(ctx, { at: 0.2, frequency: 55, to: 110, length: 1.9, gain: 0.08 });
+}
+
+export function land(secret: boolean) {
+  const ctx = ready();
+  if (!ctx) return;
+  tone(ctx, { frequency: 140, to: 38, length: 0.5, gain: 0.32 });
+  burst(ctx, { length: 0.35, gain: 0.2, type: "lowpass", frequency: 900 });
+  burst(ctx, { at: 0.02, length: 0.9, gain: 0.06, type: "highpass", frequency: 6000 });
+  (secret ? [1047, 1319, 1568, 2093] : [1047, 1319, 1568]).forEach((frequency, index) => {
+    tone(ctx, { at: 0.04 + index * 0.05, frequency, length: 1.2, gain: 0.04 });
+  });
+}

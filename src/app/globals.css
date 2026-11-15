@@ -457,18 +457,24 @@ html { touch-action: manipulation; }
 .skeleton-button { height: 40px; width: 168px; border-radius: 8px; }
 @media(max-width: 640px) { .skeleton-button { width: 100%; height: 46px; } }
 
-.pack-stage { --stage-top: 49px; position: relative; height: calc(100dvh - var(--stage-top)); min-height: 600px; overflow: clip; isolation: isolate;
-  background: #0c0c10; color: #f4f4f6; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
-@media(max-width: 700px) { .pack-stage { --stage-top: calc(65px + env(safe-area-inset-top)); min-height: 560px; } }
-.pack-backdrop { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+html:has(.pack-stage) { overflow: hidden; }
+.pack-stage { position: fixed; inset: 0; z-index: 45; overflow: clip; isolation: isolate; background: #000; color: #f4f4f6;
+  user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.pack-backdrop { position: absolute; inset: 0; z-index: -1; overflow: hidden; transition: opacity 1.2s var(--ease-out); }
+.pack-stage[data-phase=show] .pack-backdrop { opacity: 0; }
+.pack-hud, .pack-controls { transition: opacity 700ms var(--ease-out) 150ms; }
+.pack-stage[data-phase=show] .pack-hud, .pack-stage[data-phase=show] .pack-controls { opacity: 0; pointer-events: none; transition-duration: 0ms; }
 .pack-backdrop img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.25); filter: blur(44px) saturate(1.5) brightness(.42);
   transition: filter var(--duration-l) var(--ease-out); }
 .pack-backdrop::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, transparent 20%, rgb(6 6 9 / .78) 85%); }
 .pack-stage[data-phase=walkout] .pack-backdrop img, .pack-stage[data-phase=ready] .pack-backdrop img { filter: blur(44px) saturate(1.5) brightness(.24); }
 
 .pack-hud { position: absolute; inset: 0 0 auto; z-index: 5; display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px;
-  padding: 14px var(--gutter) 0; }
-.pack-set { font-size: 15px; line-height: 1.35; color: rgb(255 255 255 / .66); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  padding: calc(14px + env(safe-area-inset-top)) var(--gutter) 0; }
+.pack-set { display: flex; align-items: center; gap: 2px; margin-left: -6px; font-size: 15px; line-height: 1.35; color: rgb(255 255 255 / .66); min-width: 0; }
+.pack-set > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pack-set svg { width: 20px; height: 20px; flex-shrink: 0; }
+.pack-count { padding-left: 16px; }
 .pack-set strong { color: #fff; font-weight: 650; }
 .pack-count { grid-column: 1; font-size: var(--type-meta); line-height: 1.5; color: rgb(255 255 255 / .5); font-variant-numeric: tabular-nums; }
 .pack-mute { grid-column: 2; grid-row: 1 / span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 20px; color: rgb(255 255 255 / .72);
@@ -508,7 +514,24 @@ html { touch-action: manipulation; }
 .pack-fallback { position: absolute; left: 0; top: 0; z-index: 2; border-radius: 6px; overflow: hidden; background: #c9ccd3; padding: 22px 6px; box-shadow: 0 20px 60px rgb(0 0 0 / .5); }
 .pack-fallback img { width: 100%; height: 100%; object-fit: cover; }
 .pack-fallback span { position: absolute; inset: auto 16px 34px; font-size: 18px; font-weight: 750; line-height: 1.15; color: #fff; text-shadow: 0 2px 12px rgb(0 0 0 / .8); }
-.pack-placeholder { position: absolute; left: 50%; top: 47%; width: min(280px, 60vw); aspect-ratio: 1 / 1.62; transform: translate(-50%, -50%); border-radius: 8px; background: rgb(255 255 255 / .06); }
+.pack-wait { position: absolute; left: 50%; top: 47%; width: 44px; height: 44px; margin: -22px 0 0 -22px; animation: pack-wait 1.4s ease-in-out infinite; }
+.pack-wait::before, .pack-wait::after { content: ""; position: absolute; inset: 0; background: radial-gradient(closest-side, #fff, rgb(255 255 255 / .5) 20%, transparent); }
+.pack-wait::before { clip-path: polygon(48% 0, 52% 0, 52% 100%, 48% 100%); }
+.pack-wait::after { clip-path: polygon(0 48%, 100% 48%, 100% 52%, 0 52%); }
+@keyframes pack-wait { 0%, 100% { opacity: .25; transform: scale(.6) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(45deg); } }
+.pack-curtain { position: fixed; inset: 0; z-index: 80; background: #000; clip-path: circle(0 at var(--x) var(--y));
+  animation: pack-curtain 460ms cubic-bezier(.7, 0, .3, 1) forwards; }
+@keyframes pack-curtain { to { clip-path: circle(150vmax at var(--x) var(--y)); } }
+
+.sparkle { position: relative; isolation: isolate; color: #17131f; box-shadow: none;
+  background: linear-gradient(105deg, #f4d3ff, #cfe6ff 30%, #fff0c4 55%, #d9cbff 80%, #f4d3ff); }
+.sparkle[data-sparkle=on] { background: transparent; }
+.sparkle-canvas { position: absolute; left: -14px; top: -14px; width: calc(100% + 28px); height: calc(100% + 28px); z-index: -1; pointer-events: none; }
+.sparkle-label { position: relative; display: inline-flex; align-items: center; gap: 7px; font-weight: 650; text-shadow: 0 1px 0 rgb(255 255 255 / .45); }
+.pack-entry { transition: transform var(--duration-s) var(--ease-out); }
+.pack-entry:active { transform: scale(.97); transition-duration: var(--duration-xs); }
+.pack-entry .pack-icon { color: currentColor; }
+.pack-button.sparkle { overflow: visible; box-shadow: 0 6px 24px rgb(0 0 0 / .35); }
 .pack-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px; }
 .pack-empty a { text-decoration: underline; text-underline-offset: 3px; }
 
@@ -614,5 +637,4 @@ html { touch-action: manipulation; }
 .pack-count { display: flex; gap: 12px; }
 .pack-backdrop img { position: absolute; }
 .card-blurb { font-size: 3.9cqw; line-height: 1.42; color: #3b3b42; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; text-wrap: pretty; }
-.pack-entry .pack-icon { color: #6a3fd6; }
 @media(max-width: 700px) { .source-game-actions { flex-direction: column; align-items: stretch; gap: 10px; } .pack-entry { min-height: 46px; } }

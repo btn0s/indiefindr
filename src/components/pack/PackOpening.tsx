@@ -2,14 +2,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { ChevronLeft, Volume2, VolumeX } from "lucide-react";
 import { GameplayLoop } from "@/components/GameplayLoop";
+import { Sparkle } from "@/components/Sparkle";
 import { RatingChip } from "@/components/Rating";
 import { SwordMark } from "@/components/SwordMark";
 import { smallCopy } from "@/lib/hero";
 import { FINDS, type CardClass, type PackCard } from "@/lib/packs";
 import { CARD_RATIO, packLayout } from "./pack-layout";
-import type { PackScene } from "./pack-scene";
+import type { PackScene, Tint } from "./pack-scene";
 import * as sound from "./pack-sound";
 
 export type Seed = { appid: number; title: string; art: string | null; still: string | null };
@@ -21,7 +22,7 @@ const subscribeMotion = (listener: () => void) => {
   return () => query.removeEventListener("change", listener);
 };
 
-type Phase = "sealed" | "opening" | "rising" | "deck" | "ready" | "walkout" | "fan" | "leaving" | "arriving";
+type Phase = "show" | "sealed" | "opening" | "rising" | "deck" | "ready" | "walkout" | "fan" | "leaving" | "arriving";
 type Step = "lift" | "veil" | "stamp";
 
 const CLASS_NAME: Record<CardClass, string> = {
@@ -40,6 +41,9 @@ const releaseLabel = (release: string | null) => {
 };
 
 const isFind = (card: PackCard | undefined) => !!card && FINDS.includes(card.cls);
+
+const TINT: Partial<Record<CardClass, Tint>> = { gem: [0.72, 0.56, 1], secret: [1, 0.8, 0.42] };
+const tintOf = (pack: PackCard[] | undefined): Tint => TINT[pack?.[pack.length - 1]?.cls ?? "classic"] ?? [0.8, 0.88, 1];
 
 function Verdict({ card }: { card: PackCard }) {
   if (card.cls === "prerelease") return <span className="card-stamp">{card.earlyAccess ? "Early Access soon" : releaseLabel(card.release)}</span>;
@@ -114,7 +118,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scene = useRef<PackScene | null>(null);
   const [gl, setGl] = useState<"wait" | "on" | "off">("wait");
-  const [phase, setPhase] = useState<Phase>("sealed");
+  const [phase, setPhase] = useState<Phase>("show");
   const [packIndex, setPackIndex] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
   const [faceUp, setFaceUp] = useState(0);
@@ -127,6 +131,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
   const clipReady = useRef(false);
   const drag = useRef<{ id: number; x: number; from: number; given: boolean; last: number } | null>(null);
   const timers = useRef<number[]>([]);
+  const firstPack = useRef(packs[0]);
   const code = useMemo(() => setCode(seed.title), [seed.title]);
   const numbers = useMemo(() => { let n = 0; return packs.map(pack => pack.map(card => (card.via ? null : ++n))); }, [packs]);
 
@@ -154,8 +159,15 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
         scene.current = made;
         made.layout(canvas.clientWidth, canvas.clientHeight);
         setGl("on");
+        if (matchMedia(MOTION).matches) { setPhase("sealed"); return; }
+        sound.rise();
+        await made.show(tintOf(firstPack.current));
+        if (!live) return;
+        sound.land(firstPack.current?.[firstPack.current.length - 1]?.cls === "secret");
+        sound.buzz(24);
+        setPhase("sealed");
       } catch {
-        if (live) setGl("off");
+        if (live) { setGl("off"); setPhase("sealed"); }
       }
     })();
     return () => { live = false; made?.dispose(); scene.current = null; };
@@ -249,8 +261,12 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
       clipReady.current = false;
       peel.current = 0;
       setPhase("arriving");
-      const done = () => setPhase("sealed");
-      if (scene.current) void scene.current.arrive().then(done);
+      const coming = packs[packIndex + 1];
+      const done = () => {
+        if (!reduced) { sound.land(coming?.[coming.length - 1]?.cls === "secret"); sound.buzz(16); }
+        setPhase("sealed");
+      };
+      if (scene.current) void scene.current.arrive(tintOf(coming)).then(done);
       else done();
     }, 320);
   };
@@ -323,8 +339,8 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
     const n = pack.length;
     const mid = (n - 1) / 2;
     const k = i - cardIndex;
-    if (phase === "sealed" || phase === "opening" || phase === "arriving") {
-      return { x: stage.w / 2, y: layout.center + 10, s: inside, r: 0, z: 10 + n - i, o: phase === "arriving" ? 0 : 1, ms: 0 };
+    if (phase === "show" || phase === "sealed" || phase === "opening" || phase === "arriving") {
+      return { x: stage.w / 2, y: layout.center + 10, s: inside, r: 0, z: 10 + n - i, o: phase === "arriving" || phase === "show" ? 0 : 1, ms: 0 };
     }
     if (phase === "rising") {
       return { x: stage.w / 2 + i * 1.5, y: layout.mouth - inside * cardH * 0.04 + i * 2, s: inside, r: 0, z: 10 + n - i, o: 1, ms: 620 };
@@ -380,11 +396,11 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
   }
 
   return (
-    <main ref={stageRef} className="pack-stage" data-phase={phase} data-step={step} data-ready={ready} data-gl={gl} onPointerMove={onStageMove} onPointerDown={sound.wake} onPointerUp={sound.wake}>
+    <main ref={stageRef} className="pack-stage" data-phase={phase} data-step={step} data-ready={ready} data-gl={gl} onPointerMove={onStageMove} onPointerDown={() => { sound.wake(); if (phase === "show") scene.current?.skip(); }} onPointerUp={sound.wake}>
       <div className="pack-backdrop" aria-hidden="true">{seed.still && <Image src={smallCopy(seed.still)} alt="" fill sizes="160px" priority />}</div>
 
       <header className="pack-hud">
-        <Link href={`/games/${seed.appid}`} className="pack-set">Games like <strong>{seed.title}</strong></Link>
+        <Link href={`/games/${seed.appid}`} className="pack-set"><ChevronLeft aria-hidden="true" /><span>Games like <strong>{seed.title}</strong></span></Link>
         <p className="pack-count"><span>Pack {packIndex + 1} of {packs.length}</span><span>{found} of {setSize} found</span></p>
         <button type="button" className="pack-mute" onClick={toggleMute} aria-label={muted ? "Turn sound on" : "Turn sound off"} aria-pressed={!muted}>
           {muted ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
@@ -443,7 +459,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
       <div className="pack-controls">
         {sealed && ready && <>
           <p className="pack-hint">{peeling ? "Keep going" : "Drag across the top to tear it open"}</p>
-          <button type="button" className="pack-button" onClick={openByButton}>Open pack</button>
+          <button type="button" className="pack-button sparkle" onClick={openByButton}><Sparkle /><span className="sparkle-label">Open pack</span></button>
         </>}
         {(phase === "deck" || phase === "ready" || phase === "walkout") && <>
           <div className="pack-pips" aria-hidden="true">{pack.map((card, i) => <span key={card.appid} data-on={i < faceUp} data-finale={i === finale} />)}</div>
@@ -457,7 +473,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
             </div>
           ) : (
             <div className="pack-actions">
-              {done ? <p className="pack-hint">That&apos;s every pack in this set.</p> : <button type="button" className="pack-button" onClick={nextPack}>Open the next pack</button>}
+              {done ? <p className="pack-hint">That&apos;s every pack in this set.</p> : <button type="button" className="pack-button sparkle" onClick={nextPack}><Sparkle /><span className="sparkle-label">Open the next pack</span></button>}
               <Link className="pack-link" href={`/games/${seed.appid}`}>See all {setSize} games like {seed.title}</Link>
             </div>
           )}
