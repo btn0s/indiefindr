@@ -15,6 +15,6 @@ export const smallCopy = (src: string) => src
 /** The hero's two candidates, picked out of the game row by PostgREST. */
 export const HERO_FIELDS = "hero_poster:trailers->0->>poster,hero_still:screenshots->>0";
 
-/** How wide the hero renders. Shared by the page's <Image> and the warm-up, so both ask for the same file. Below 1000px
- *  it runs the width of the screen; above, it sits beside the facts. */
-export const HERO_SIZES = "(max-width: 999px) 100vw, 640px";
+/** How wide the hero renders. Shared by the page's <Image> and the warm-up, so both ask for the same file. It spans the
+ *  page's column: the width of the screen, up to the 1120px frame. */
+export const HERO_SIZES = "(max-width: 1175px) 100vw, 1120px";
