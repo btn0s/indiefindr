@@ -572,8 +572,14 @@ html:has(.pack-stage) { overflow: hidden; }
 .card-art img { width: 100%; height: 100%; object-fit: cover; }
 .card-window[data-cover=true] .gameplay-loop[data-playing=true] { transition-duration: 700ms; transition-delay: 900ms; }
 .card-shine { position: absolute; inset: 0; overflow: hidden; pointer-events: none; mix-blend-mode: color-dodge;
-  -webkit-mask-image: radial-gradient(circle at var(--mx, 35%) var(--my, 20%), #000, rgb(0 0 0 / .45) 26%, transparent 58%);
-  mask-image: radial-gradient(circle at var(--mx, 35%) var(--my, 20%), #000, rgb(0 0 0 / .45) 26%, transparent 58%); }
+  --lx: var(--mx, 35%); --ly: var(--my, 20%);
+  -webkit-mask-image: radial-gradient(circle at var(--lx) var(--ly), #000, rgb(0 0 0 / .45) 26%, transparent 58%);
+  mask-image: radial-gradient(circle at var(--lx) var(--ly), #000, rgb(0 0 0 / .45) 26%, transparent 58%); }
+@property --lx { syntax: "<percentage>"; inherits: false; initial-value: 35%; }
+@property --ly { syntax: "<percentage>"; inherits: false; initial-value: 20%; }
+.pack-card[data-focus=true] .card-shine { animation: light-drift 5.2s ease-in-out infinite alternate; }
+@media (hover: hover) { .pack-card-hit:hover .card-shine { animation: none; } }
+@keyframes light-drift { 0% { --lx: 18%; --ly: 14%; } 50% { --lx: 78%; --ly: 42%; } 100% { --lx: 30%; --ly: 82%; } }
 .card-rainbow, .card-glitter { position: absolute; inset: -100%;
   transform: translate3d(calc((var(--px, .5) - .5) * -24%), calc((var(--py, .5) - .5) * -24%), 0); }
 .card-rainbow { opacity: var(--holo);
@@ -682,7 +688,7 @@ html:has(.pack-stage) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .pack-card, .pack-card-hit { transition-duration: 0ms !important; }
   .pack-card-flip { transition: none; }
-  .pack-guide::after, .pack-rays::before, .pack-flash, .card-rainbow, .card-glitter, .card-sheen, .pack-card-front, .pack-card-hit { animation: none !important; }
+  .pack-guide::after, .pack-rays::before, .pack-flash, .card-rainbow, .card-glitter, .card-sheen, .card-shine, .pack-card-front, .pack-card-hit { animation: none !important; }
   .pack-flash { display: none; }
   .pack-stage .pack-card .pack-card-back { animation: none !important; }
 }

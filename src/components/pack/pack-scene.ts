@@ -163,7 +163,7 @@ function normals(relief: HTMLCanvasElement, strength: number) {
     for (let x = 0; x < width; x++) {
       const nx = ((src[(row + Math.max(0, x - 1)) * 4] - src[(row + Math.min(width - 1, x + 1)) * 4]) / 255) * strength;
       const ny = ((src[(down + x) * 4] - src[(up + x) * 4]) / 255) * strength;
-      const scale = 127.5 / Math.hypot(nx, ny, 1);
+      const scale = 127.5 / Math.sqrt(nx * nx + ny * ny + 1);
       const i = (row + x) * 4;
       d[i] = 127.5 + nx * scale;
       d[i + 1] = 127.5 + ny * scale;
@@ -202,7 +202,7 @@ function studio() {
   const geometries: THREE.BufferGeometry[] = [];
   const materials: THREE.Material[] = [];
   const shell = new THREE.BoxGeometry(12, 12, 12);
-  const walls = new THREE.MeshBasicMaterial({ color: 0x2e2f36, side: THREE.BackSide });
+  const walls = new THREE.MeshBasicMaterial({ color: 0x464852, side: THREE.BackSide });
   geometries.push(shell);
   materials.push(walls);
   room.add(new THREE.Mesh(shell, walls));
@@ -216,7 +216,7 @@ function studio() {
     mesh.lookAt(0, 0, 0);
     room.add(mesh);
   };
-  light(3.2, 2.2, -2.6, 2.8, 4.2, 6);
+  light(3.2, 2.2, -2.6, 2.8, 4.2, 3.5);
   light(0.5, 7, 4.6, 0.4, 2.6, 7);
   light(0.5, 7, -4.8, -0.6, 1.4, 4);
   light(7, 0.45, 0.4, 4.8, 2.2, 6);
@@ -240,9 +240,9 @@ async function printPack(print: PackPrint, field: HTMLCanvasElement) {
   const crimp = CRIMP * TEX_H;
   const tear = STRIP * TEX_H;
   const frame = 7 * k;
-  const ink = "rgb(0,107,51)";
+  const ink = "rgb(0,107,18)";
   const foil = "rgb(140,44,255)";
-  const stamp = "rgb(255,36,255)";
+  const stamp = "rgb(255,36,150)";
 
   const silver = c.createLinearGradient(0, 0, TEX_W, 0);
   silver.addColorStop(0, "#9da3ad");
@@ -403,9 +403,9 @@ function printBack(print: PackPrint, field: HTMLCanvasElement) {
   const crimp = CRIMP * TEX_H;
   const tear = STRIP * TEX_H;
   const frame = 7 * k;
-  const ink = "rgb(0,107,51)";
+  const ink = "rgb(0,107,18)";
   const foil = "rgb(140,44,255)";
-  const stamp = "rgb(255,36,255)";
+  const stamp = "rgb(255,36,150)";
 
   const silver = c.createLinearGradient(0, 0, TEX_W, 0);
   silver.addColorStop(0, "#9da3ad");
