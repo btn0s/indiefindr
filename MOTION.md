@@ -1,6 +1,6 @@
 # Motion timing audit
 
-Status: the family in §4 is implemented (tokens in `src/app/globals.css`, springs read by `ScreenshotViewer`), with the felt changes from §4.3. Line references in §1 are to `main` at `0ddb809`, before this change.
+Status: the family in §4 is implemented (tokens in `src/app/globals.css`, springs read by `ScreenshotViewer`), with the felt changes from §4.3. Line references in §1 are to `main` at `0ddb809`, before this change. §5 records a later pass against Emil Kowalski's guidance that tightened three rows and dropped `--ease-in-out`.
 
 bt's goal: every timing on the site comes from one consistent family. This doc lists what exists today (§1), where it disagrees (§2), what the published guidance says (§3), and a proposed token family mapped to every use (§4).
 
@@ -134,15 +134,14 @@ One ladder of four durations, three curves and three springs. The springs reuse 
 
 /* Curves */
 --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);       /* unchanged: enters, exits, presses, hovers, fades (Emil; ≈ M3 emphasized-decelerate) */
---ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1); /* something already on screen changes size in place (Emil; M3 "emphasized" for start-and-end-on-screen) */
 --ease-glide:  linear(…);                            /* the glide spring below, sampled for CSS morphs (Vercel: keep it CSS) */
 /* Loops use plain linear (Emil: constant motion is linear). */
 ```
 
 | Spring | `duration` / `bounce` | For | Follows |
 |---|---|---|---|
-| **snap** | 0.24 / 0 | Closing into the thumbnail (velocity carried), reduced-motion fades | M3 effects springs (damping 1.0); SwiftUI default bounce 0; Material "exits shorter" |
-| **glide** | 0.40 / 0 | Lightbox open, page swipe, and (as `--ease-glide`) the search morph | WWDC23 "when unsure, bounce 0"; Carbon slow-01 / M3 "slow for full-screen" |
+| **snap** | 0.24 / 0 | Closing into the thumbnail (velocity carried), paging by key or button, reduced-motion fades | M3 effects springs (damping 1.0); SwiftUI default bounce 0; Material "exits shorter" |
+| **glide** | 0.40 / 0 | Lightbox open, paging by swipe, and (as `--ease-glide`) the search morph | WWDC23 "when unsure, bounce 0"; Carbon slow-01 / M3 "slow for full-screen" |
 | **release** | 0.40 / 0.15 | Settling back after a drag that didn't dismiss; rubber band at the ends | SwiftUI `.snappy` base bounce 0.15; Rauno: a thrown object keeps its momentum |
 
 The springs live once, as CSS custom properties beside the durations (`--spring-snap: 0.24 0`, etc.). `ScreenshotViewer` reads them on mount instead of declaring its own constants, so there's a single source of truth. It steps each flight ahead with them (starting from whatever velocity it inherits) and plays the result as Web Animations keyframes, so open, close and paging run on the compositor; only a finger is followed from script.
@@ -172,12 +171,12 @@ Bold marks a change you would feel; the rest moves by ≤20ms or only changes it
 | 13 | Search spinner | 800 linear | unchanged (a spinner's speed is its own; Emil: faster spinners feel faster) |
 | 14 | Card pending dim | 180, delay 120 | `s`, delay `--delay-beat` |
 | 15 | Desktop search popover | in 180, out 110 | in `s`, out `xs` |
-| 16 | Popover height follows rows | 120 `--ease-out` | `s`, `--ease-in-out` (already on screen, changing size) |
+| 16 | Popover height follows rows | 120 `--ease-out` | `xs`, `--ease-out` (typing drives it, so it keeps up; §5) |
 | 17-18 | Phone search takeover morph and rows | open 260, close 200 | **open `--ease-glide` over `l`; close `m`, `--ease-out`** |
 | 24 | Default view transition | 170 | `m` |
 | 25 | Lightbox open | spring 0.44 / .08 | **glide 0.40 / 0** |
 | 26 | Lightbox close | spring 0.24 / 0 | snap (same) |
-| 27 | Lightbox page swipe | spring 0.40 / 0 | glide (same) |
+| 27 | Lightbox paging | spring 0.40 / 0 | swipe: glide, carrying the finger's speed; keys and buttons: snap (§5) |
 | 28 | Lightbox settle / rubber band | spring 0.34 / .12 | **release 0.40 / .15** |
 | 29 | Lightbox reduced motion | spring 0.24 / 0 | snap (same) |
 | 31 | Other shots step aside | 150 `ease` | `s`, `--ease-out` |
@@ -202,3 +201,20 @@ The table changes timing almost everywhere by a frame or less. These three you w
    **Recommendation:** open on glide, close stays fast at `m`.
 
 Everything else is a ≤20ms nudge or a curve swap to the site's own `--ease-out`. I'd ship those without a separate review.
+
+## 5. Pass against Emil Kowalski's guidance (2026-11-14)
+
+Sources: the `animate` skill (animations.dev) and [7 practical animation tips](https://emilkowal.ski/ui/7-practical-animation-tips), [great animations](https://emilkowal.ski/ui/great-animations) and [you don't need animations](https://emilkowal.ski/ui/you-dont-need-animations). Three rows broke a rule; everything else already followed it.
+
+| Row | Was | Now | Rule |
+|---|---|---|---|
+| Card press | in over `s` on `--ease-glide`, out over `l` on a sampled release spring (a leftover from the card morph #79 removed) | in `xs`, out `s`, `--ease-out`, like every other press | Press feedback is felt, not seen: about 150ms on an ease-out. The spring curves start from rest, so the card got halfway at 42ms against 13ms for a button. |
+| Popover height (16) | `s` on `--ease-in-out` | `xs` on `--ease-out` | Keyboard-driven motion stays quick. ease-in-out is halfway only at half its duration, so the panel trailed each keystroke. |
+| Lightbox paging by key or button (27) | glide, 0.40s from rest | snap, 0.24s | Repeated keyboard actions shouldn't feel slow. Swipes keep glide, since they carry the finger's speed. |
+
+Smaller: the MCP app's button hover went from 200ms `ease` to the ladder's 160ms `--ease-out`, and the copy button's icon swap gained the trailer buttons' 2px blur, so the two swaps match as their comments say. `--ease-in-out` and the sampled release curve had no users left and are gone; the release spring still settles the lightbox after a drag.
+
+Left as they are, on purpose:
+- Hovers use `--ease-out`, not the `ease` keyword the skill suggests for colour. At 160ms on a colour, the two can't be told apart, and one curve is simpler.
+- Phone search opens on glide over 400ms. That's a bounce-0 spring on a full-screen morph, within the skill's springs, though at the long end; it was judged on a preview (§4.3).
+

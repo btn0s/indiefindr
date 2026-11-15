@@ -7,9 +7,10 @@ import { smallCopy } from "@/lib/hero";
 
 // Motion. Every moving value is a spring, so any of them can be retargeted mid-flight and keeps its velocity: a tap
 // while it opens sends it back, a finger catches it, a release hands the finger's speed to the spring that takes over.
-// The springs are the site's motion tokens (globals.css, MOTION.md): glide opens and pages, snap closes (one progress
-// spring, release pose to thumbnail, so everything lands together without a tail) and fades under reduced motion,
-// release (letGo here) settles back after a drag that didn't dismiss.
+// The springs are the site's motion tokens (globals.css, MOTION.md): glide opens and pages a swipe, snap closes (one
+// progress spring, release pose to thumbnail, so everything lands together without a tail), pages by key or button
+// (pressed again and again, so it keeps up) and fades under reduced motion, release (letGo here) settles back after a
+// drag that didn't dismiss.
 // Flights run on the compositor. Once the springs are aimed, the whole flight is stepped ahead to rest and handed to
 // the Web Animations API as transform and opacity keyframes, so it plays at the screen's own rate with no script per
 // frame. Whatever interrupts a flight (a tap, a finger, a key, a resize) reads where everything is and how fast it is
@@ -456,7 +457,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
         // A nudge against the end, so the key visibly did something.
         if (!reduce) aim(trackX, -current * stride, letGo, -direction * 700);
       } else if (reduce) jump(trackX, -to * stride);
-      else aim(trackX, -to * stride, glide);
+      else aim(trackX, -to * stride, snap);
       show(to);
       fly();
     };

@@ -68,18 +68,15 @@
   --duration-xs: 100ms; --duration-s: 160ms; --duration-m: 240ms; --duration-l: 400ms;
   --delay-beat: var(--duration-s); /* before pending feedback shows, so an instant result never flashes it */
   --loop: 1.6s; /* one period for every loading loop, so they move in step side by side */
-  /* Enters, exits, presses, hovers, fades: an ease-out that never overshoots. Something already on screen changing size
-     in place: ease-in-out. */
+  /* Enters, exits, presses, hovers, fades, resizes: an ease-out that never overshoots. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
   /* Springs as duration and bounce (SwiftUI, Motion). The screenshot viewer steps them, from whatever velocity a flight
      inherits, into compositor keyframes; --ease-glide is the glide spring sampled for CSS, played over --duration-l,
      for full-screen morphs.
-     snap: closing into place, fades. glide: opening, paging, full-screen morphs. release: settling after a let-go. */
+     snap: closing into place, paging by key or button, fades. glide: opening, paging by swipe, full-screen morphs.
+     release: settling after a let-go. */
   --spring-snap: 0.24 0; --spring-glide: 0.4 0; --spring-release: 0.4 0.15;
   --ease-glide: linear(0, 0.0003 0.4%, 0.0027 1.2%, 0.0093 2.3%, 0.0222 3.6%, 0.0426 5.1%, 0.0712 6.9%, 0.1079 8.8%, 0.1522 10.9%, 0.2032 13.1%, 0.2593 15.6%, 0.3192 18.1%, 0.3812 20.8%, 0.4438 23.7%, 0.5055 26.6%, 0.5652 29.8%, 0.6218 33%, 0.6746 36.3%, 0.7231 39.8%, 0.7669 43.4%, 0.8061 47.1%, 0.8406 51%, 0.8706 54.9%, 0.8964 59%, 0.9183 63.1%, 0.9368 67.4%, 0.9522 71.7%, 0.9649 76.2%, 0.9753 80.8%, 0.9837 85.4%, 0.9904 90.2%, 0.9958 95%, 1);
-  /* --ease-glide over --duration-m is the snap (both bounce 0). --ease-release is the release spring sampled the same way. */
-  --ease-release: linear(0 0%, 0.0006 0.6%, 0.0043 1.5%, 0.0127 2.7%, 0.0271 4%, 0.0481 5.4%, 0.0758 7%, 0.1099 8.7%, 0.1498 10.5%, 0.1949 12.4%, 0.2441 14.4%, 0.2964 16.4%, 0.3509 18.5%, 0.4065 20.7%, 0.4621 23%, 0.517 25.3%, 0.5703 27.7%, 0.6213 30.2%, 0.6696 32.7%, 0.7147 35.3%, 0.7562 37.9%, 0.7941 40.6%, 0.8282 43.3%, 0.8586 46.1%, 0.8853 48.9%, 0.9085 51.8%, 0.9284 54.7%, 0.9453 57.7%, 0.9594 60.7%, 0.9711 63.7%, 0.9805 66.8%, 0.9879 70%, 0.9937 73.2%, 0.9981 76.4%, 1.0013 79.7%, 1.0036 82.9%, 1.005 86.3%, 1.0059 89.7%, 1.0062 93.1%, 1.0063 96.5%, 1 100%);
 }
 @media(max-width: 700px) {
   :root { --type-title: 26px; --type-heading: 18px; --page-top: 20px; --section-gap: 40px; --divider-gap: 28px; }
@@ -449,12 +446,12 @@ code, pre { font-family: var(--font-geist-mono), ui-monospace, monospace; }
 .code-block { position: relative; }
 .copy-button { position: absolute; top: 8px; right: 8px; width: 32px; min-height: 32px; padding: 0; color: var(--muted-foreground); }
 .copy-button::before { content: ""; position: absolute; inset: -6px; }
-/* The copy icon crossfades to a check and back. */
-.copy-button svg { position: absolute; transition: opacity var(--duration-s) var(--ease-out), transform var(--duration-s) var(--ease-out); }
+/* The copy icon crossfades to a check and back (the same swap as the trailer buttons). */
+.copy-button svg { position: absolute; transition: opacity var(--duration-s) var(--ease-out), transform var(--duration-s) var(--ease-out), filter var(--duration-s) var(--ease-out); }
 .copy-button[data-copied] { color: var(--foreground); }
-.copy-button .copy-check, .copy-button[data-copied] .copy-icon { opacity: 0; transform: scale(.6); }
-.copy-button[data-copied] .copy-check { opacity: 1; transform: none; }
-@media(prefers-reduced-motion: reduce) { .copy-button svg { transform: none !important; } }
+.copy-button .copy-check, .copy-button[data-copied] .copy-icon { opacity: 0; transform: scale(.6); filter: blur(2px); }
+.copy-button[data-copied] .copy-check { opacity: 1; transform: none; filter: none; }
+@media(prefers-reduced-motion: reduce) { .copy-button svg { transform: none !important; filter: none !important; } }
 .agent-docs a { text-decoration: underline; text-underline-offset: 3px; }
 
 /* Focus: one ring, keyboard only; a mouse click never draws it. */
@@ -473,9 +470,8 @@ html { touch-action: manipulation; }
    their own press drop iOS's grey tap flash, which would otherwise flash on top of it. */
 :is(.button, .game-card, .rail-button, .trailer-button, .search-results a, .wordmark, .see-all, .search-cancel) { -webkit-tap-highlight-color: transparent; }
 .trailer-button { transition: transform var(--duration-s) var(--ease-out); }
-/* Cards press like App Store cards: in on a quick spring, out on the release spring with a hair of bounce. */
-.game-card > div { transition: transform var(--duration-l) var(--ease-release); }
-.game-card:active > div { transform: scale(.97); transition: transform var(--duration-s) var(--ease-glide); }
+.game-card > div { transition: transform var(--duration-s) var(--ease-out); }
+.game-card:active > div { transform: scale(.97); transition-duration: var(--duration-xs); }
 .trailer-button:active { transform: scale(.92); transition-duration: var(--duration-xs); }
 .see-all:active, .search-cancel:active, .wordmark:active, .home-intro .examples a:active, .site-footer a:active, .game-facts a:active { opacity: .6; }
 .search-results a:active { background: var(--muted); }
@@ -498,12 +494,13 @@ html { touch-action: manipulation; }
 
 /* Desktop search: the panel grows out of the field, and goes faster than it came. */
 @media (min-width: 701px) {
-  .search-results { transform-origin: var(--transform-origin); transition: opacity var(--duration-s) var(--ease-out), transform var(--duration-s) var(--ease-out), height var(--duration-s) var(--ease-in-out); }
+  .search-results { transform-origin: var(--transform-origin); transition: opacity var(--duration-s) var(--ease-out), transform var(--duration-s) var(--ease-out), height var(--duration-xs) var(--ease-out); }
   .search-results[data-starting-style] { opacity: 0; transform: scale(.97); }
   .search-results[data-ending-style] { opacity: 0; transform: scale(.98); transition-duration: var(--duration-xs); }
   /* Opened with / or ⌘K: there at once. Keyboard-invoked panels don't animate in. */
   .search-results[data-instant] { transition-property: height; }
-  /* The panel's height follows its rows (Navbar.tsx followHeight), so a change in the result count glides, not jumps. */
+  /* The panel's height follows its rows (Navbar.tsx followHeight), so a change in the result count doesn't jump. Typing
+     drives it, so it keeps up: the shortest step, fast from the first frame. */
   .search-results { box-sizing: content-box; padding: 0; height: var(--panel-height, auto); overflow: hidden; }
   .search-panel { padding: 6px; }
 }
