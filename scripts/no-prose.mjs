@@ -277,6 +277,7 @@ function tracked(only) {
 
 function install() {
   if (spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { stdio: "ignore" }).status !== 0) return 0;
+  if (spawnSync("git", ["config", "--get", "core.hooksPath"], { encoding: "utf8" }).stdout.trim() === ".githooks") return 0;
   git("config", "core.hooksPath", ".githooks");
   return 0;
 }
