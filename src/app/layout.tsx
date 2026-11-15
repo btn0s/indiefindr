@@ -34,7 +34,7 @@ const geistMono = Geist_Mono({
 // for the mark, and a new src clears the mark so the new picture loads like any other.
 // The empty touchstart listener is what makes iOS Safari apply :active while a finger is down; without one, a press
 // only flashes on release, which reads as a bounce.
-const ART_FADE = `(function(){var d=document,r=d.documentElement,seen=new Set,ART=":is(.game-card-art,.search-art,.showcase-source,.showcase-tile,.game-trailer)>img";r.dataset.artFade="";function mark(i,now){if(i.tagName!=="IMG"||!i.complete||!i.naturalWidth||i.hasAttribute("data-art")||!i.matches(ART))return;var u=i.getAttribute("src");i.setAttribute("data-art",now||seen.has(u)?"shown":"fade");seen.add(u)}function all(n){n.querySelectorAll(ART).forEach(function(i){mark(i,1)})}d.addEventListener("load",function(e){mark(e.target)},true);d.addEventListener("DOMContentLoaded",function(){for(var i=0,m=d.images;i<m.length;i++)mark(m[i])});new MutationObserver(function(l){l.forEach(function(m){var t=m.target;if(m.type==="attributes"){if(t.tagName==="IMG"&&t.hasAttribute("data-art")){t.removeAttribute("data-art");mark(t,1)}}else m.addedNodes.forEach(function(n){if(n.tagName==="IMG")mark(n,1);else if(n.firstElementChild)all(n)})})}).observe(r,{childList:true,subtree:true,attributes:true,attributeFilter:["src"]});d.addEventListener("touchstart",function(){},{passive:true})})()`;
+const ART_FADE = `(function(){var d=document,r=d.documentElement,seen=new Set,ART=":is(.game-card-art,.search-art,.game-trailer)>img";r.dataset.artFade="";function mark(i,now){if(i.tagName!=="IMG"||!i.complete||!i.naturalWidth||i.hasAttribute("data-art")||!i.matches(ART))return;var u=i.getAttribute("src");i.setAttribute("data-art",now||seen.has(u)?"shown":"fade");seen.add(u)}function all(n){n.querySelectorAll(ART).forEach(function(i){mark(i,1)})}d.addEventListener("load",function(e){mark(e.target)},true);d.addEventListener("DOMContentLoaded",function(){for(var i=0,m=d.images;i<m.length;i++)mark(m[i])});new MutationObserver(function(l){l.forEach(function(m){var t=m.target;if(m.type==="attributes"){if(t.tagName==="IMG"&&t.hasAttribute("data-art")){t.removeAttribute("data-art");mark(t,1)}}else m.addedNodes.forEach(function(n){if(n.tagName==="IMG")mark(n,1);else if(n.firstElementChild)all(n)})})}).observe(r,{childList:true,subtree:true,attributes:true,attributeFilter:["src"]});d.addEventListener("touchstart",function(){},{passive:true})})()`;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 
@@ -113,7 +113,7 @@ export default async function RootLayout({
         <div className="site-shell">
           <a href="#content" className="skip-link">Skip to content</a>
           <Navbar popular={await getPopularIndies()} />
-          <div id="content" className="px-4 sm:px-7">{children}</div>
+          <div id="content">{children}</div>
           <footer className="site-footer">
             <nav aria-label="Footer"><Link href="/agents">Agent access</Link><Link href="/privacy">Privacy</Link></nav>
             <p>indiefindr · Game information and media from Steam.</p>

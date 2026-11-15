@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useGameSearch, type PopularPick, type SearchDetail } from "@/lib/use-game-search";
 import { steamRating } from "@/lib/rating";
+import { RatingChip } from "./Rating";
 
 export function Navbar({ popular }: { popular: PopularPick[] }) {
   const router = useRouter();
@@ -128,7 +129,7 @@ function SearchRow({ title, query, detail }: { title: string; query: string; det
       <span className="search-title"><MarkedTitle title={title} query={query} /></span>
       {(year || rating) && <span className="search-meta">
         {year && <span>{year}</span>}
-        {rating && <span><strong>{detail.review_positive_pct}%</strong> {rating}</span>}
+        {rating && <RatingChip pct={detail.review_positive_pct} count={detail.review_count} />}
       </span>}
     </span>
   </>;
