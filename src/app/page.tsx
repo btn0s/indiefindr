@@ -1,38 +1,13 @@
 import type { Metadata } from "next";
-import { cacheLife } from "next/cache";
+import Link from "next/link";
 import { GameGrid } from "@/components/GameGrid";
-import { getBrowsePage, getGame, getHomeShelves, getRecommendations, SHELVES, type BoxGame, type ShelfSlug } from "@/lib/catalog";
-import { heroImage } from "@/lib/hero";
-import { clipUrl, pickTrailer } from "@/lib/trailer";
+import { getBrowsePage, getHomeShelves, SHELVES, type BoxGame, type ShelfSlug } from "@/lib/catalog";
 import { ShelfHeading } from "@/components/ShelfHeading";
 import { CardRail } from "@/components/CardRail";
 import { EmptyNote } from "@/components/EmptyNote";
-import { FeatureCards, type Feature } from "@/components/FeatureCards";
 
-// Well-known games whose pages show off the recommendations. Any game works as a starting point, AAA included;
-// recommendations are always indie.
-const FEATURED = [413150, 367520, 105600, 1145360, 504230, 646570, 2379780];
-
-/** Three featured games, each with its first recommendations. A new draw each time the cache refreshes, about once a
- *  minute. */
-async function getFeatures(): Promise<Feature[]> {
-  "use cache";
-  cacheLife("minutes");
-  const pool = [...FEATURED];
-  const picks = Array.from({ length: 3 }, () => pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-  const features = await Promise.all(picks.map(async appid => {
-    const [game, recs] = await Promise.all([getGame(appid), getRecommendations(appid)]);
-    if (!game) return null;
-    const trailer = pickTrailer(game.trailers);
-    return {
-      appid, title: game.title,
-      cover: heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image }),
-      clip: trailer && clipUrl(trailer),
-      recs: recs.slice(0, 3).map(({ game: rec }) => rec),
-    };
-  }));
-  return features.filter(feature => feature !== null);
-}
+// Any game works as a starting point, AAA included; recommendations are always indie.
+const EXAMPLES = [[413150, "Stardew Valley"], [367520, "Hollow Knight"], [2379780, "Balatro"]] as const;
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl =
@@ -84,16 +59,18 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [features, shelves, games] = await Promise.all([getFeatures(), getHomeShelves(), getBrowsePage(0)]);
+  const [shelves, games] = await Promise.all([getHomeShelves(), getBrowsePage(0)]);
 
   return (
-    <main className="discovery-page home">
-      <header className="home-head">
-        <h1 className="page-title">Find your next favorite indie game</h1>
-        <p className="page-note">Name a game you can&rsquo;t stop thinking about, and we&rsquo;ll find the indies that give you that feeling again.</p>
-      </header>
-      <FeatureCards features={features} />
-      <Shelf slug="rising" games={shelves.rising} />
+    <main className="discovery-page">
+      <section className="home-intro">
+        <h1>Find your next favorite indie game</h1>
+        <p className="lede">Name a game you can&rsquo;t stop thinking about, and we&rsquo;ll find the indies that give you that feeling again.</p>
+        <p className="examples">Try {EXAMPLES.map(([appid, title], index) => <span key={appid}>
+          <Link href={`/games/${appid}`} prefetch={true}>{title}</Link>{index < EXAMPLES.length - 1 ? ", " : ""}
+        </span>)}</p>
+      </section>
+      <Shelf slug="rising" games={shelves.rising} eager={5} />
       <Shelf slug="early-access" games={shelves["early-access"]} />
       <Shelf slug="hidden-gems" games={shelves["hidden-gems"]} />
       {shelves.new.length >= 4 && <Shelf slug="new" games={shelves.new} />}
@@ -106,6 +83,8 @@ export default async function Home() {
   );
 }
 
-function Shelf({ slug, games }: { slug: ShelfSlug; games: BoxGame[] }) {
-  return <CardRail games={games} title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} box />;
+/** A home shelf as a rail of box art. The first one is on screen as the page opens, so its first row of covers loads
+ *  with the page. */
+function Shelf({ slug, games, eager = 0 }: { slug: ShelfSlug; games: BoxGame[]; eager?: number }) {
+  return <CardRail games={games} title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} box eager={eager} />;
 }

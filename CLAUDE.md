@@ -24,7 +24,7 @@ before `pnpm dev`. Never print env values.
 
 Routes (`src/app`):
 
-- `/`: intro, showcase, shelves, and Browse all, which loads further pages from `GET /api/browse` as you scroll.
+- `/`: intro, shelves (rails of box art), and Browse all, which loads further pages from `GET /api/browse` as you scroll.
 - `/games/[appid]`: cover (`GameTrailer`), screenshots (`ScreenshotStrip`, `ScreenshotViewer`), facts, More from the
   developer, then the recommendation slate.
 - `/discover/[shelf]`: list pages; the shelves are `SHELVES` in `src/lib/catalog.ts` (rising, early-access, upcoming,

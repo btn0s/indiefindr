@@ -88,22 +88,22 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    last word); lede, body and meta text wraps pretty within a measure; and a meta unit (a score's label, a count, a name
    in a chip) never splits. Text that holds a catalog name may break inside a word, since some names have no spaces;
    running text never does. */
+.home-intro h1 { font-size: var(--type-display); line-height: 1.05; font-weight: 650; letter-spacing: -0.045em; text-wrap: balance; }
 .page-title { font-size: var(--type-title); line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; text-wrap: balance; overflow-wrap: anywhere; }
 /* The game page's name is its display line: the size of the home headline, at the title's tracking. */
 .source-header .page-title [itemprop=name] { font-size: var(--type-display); line-height: 1.05; letter-spacing: -0.025em; }
-.section-heading h2, .agent-docs h2, .feature-title { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; overflow-wrap: anywhere; }
-/* Home's large feature card names its game at the title size. */
-@media (min-width: 1000px) { .feature:first-child .feature-title { font-size: var(--type-title); line-height: 1.15; letter-spacing: -0.025em; } }
+.section-heading h2, .agent-docs h2 { font-size: var(--type-heading); line-height: 1.3; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; overflow-wrap: anywhere; }
+/* Lead: heading size at reading weight; the one introductory sentence on a page. */
+.home-intro .lede { font-size: var(--type-heading); line-height: 1.5; text-wrap: pretty; max-width: var(--measure-lede); }
 /* Body: running text and notes. Notes sit under a heading and keep the shorter measure. */
-.source-description, .agent-docs p, .section-heading p, .page-note, .empty-note, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; text-wrap: pretty; }
+.source-description, .agent-docs p, .section-heading p, .page-note, .empty-note, .home-intro .examples, .search-status, .search-box input { font-size: var(--type-body); line-height: 1.6; text-wrap: pretty; }
 .source-description, .agent-docs p, .empty-note p { max-width: var(--measure); }
 .section-heading p, .page-note { max-width: var(--measure-note); }
-/* Label: names and actions. Actions never wrap; a name balances, or truncates where it shares a line (search rows,
-   feature card rows). */
-.game-card-title, .feature-rec-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; text-wrap: balance; overflow-wrap: anywhere; }
+/* Label: names and actions. Actions never wrap; a name balances, or truncates where it shares a line (search rows). */
+.game-card-title, .search-title, .see-all, .steam-link, .search-cancel { font-size: var(--type-body); line-height: 1.4; font-weight: 500; text-wrap: balance; overflow-wrap: anywhere; }
 .see-all, .steam-link, .search-cancel { white-space: nowrap; }
 /* Meta: facts about a game, captions, the footer. */
-.card-rating, .search-meta, .search-label, .game-facts, .bomb-readout, .feature-lead, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; text-wrap: pretty; }
+.card-rating, .search-meta, .search-label, .game-facts, .bomb-readout, .site-footer, .ad-label { font-size: var(--type-meta); line-height: 1.5; text-wrap: pretty; }
 .site-footer p { max-width: var(--measure); }
 /* Meta units. Each moves to the next line whole; one wider than its line (a long name in a narrow card) wraps inside
    itself rather than pushing the page wide. A fact chip never truncates: a name longer than its line wraps inside the
@@ -112,7 +112,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .game-facts li { max-width: 100%; white-space: nowrap; }
 .game-facts li > * { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 /* Emphasis inside a role keeps its size and gains weight. */
-.card-rating strong, .game-facts strong, .bomb-readout strong, .search-meta strong { font-weight: 600; }
+.card-rating strong, .game-facts strong, .bomb-readout strong, .search-meta strong, .home-intro .examples a { font-weight: 600; }
 
 .site-shell { min-height: 100vh; background: var(--background); }
 /* Frame: pages, header and footer share one width, with at least a gutter either side. */
@@ -162,65 +162,28 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .search-results a[data-highlighted] { background: var(--muted); }
 
 /* Page frame: every page opens with a title block, then sections a fixed gap apart, all in the frame column. A rail
-   (home's shelves and feature row, a game's screenshots and more-from-developer) keeps to the frame too, lined up with
+   (home's shelves, a game's screenshots and more-from-developer) keeps to the frame too, lined up with
    its heading on both sides, its cards clipped at the frame's edge. On phones it runs to the screen edges instead,
    padding its first card in to the gutter by --edge, the next card peeking in. */
 .discovery-page { display: grid; grid-template-columns: [full-start] minmax(var(--gutter), 1fr) [frame-start] minmax(0, var(--frame)) [frame-end] minmax(var(--gutter), 1fr) [full-end];
   padding: var(--page-top) 0 64px; }
 .discovery-page > * { grid-column: frame; min-width: 0; }
-.discovery-page > :is(.rail-section, .features), .source-game > .screenshot-rail { --edge: 0px; }
-@media (max-width: 639px) { .discovery-page > :is(.rail-section, .features), .source-game > .screenshot-rail { grid-column: full; --edge: var(--gutter); } }
+.discovery-page > .rail-section, .source-game > .screenshot-rail { --edge: 0px; }
+@media (max-width: 639px) { .discovery-page > .rail-section, .source-game > .screenshot-rail { grid-column: full; --edge: var(--gutter); } }
 .discovery-page > * + * { margin-top: var(--section-gap); }
 .page-head { display: flex; flex-direction: column; gap: 8px; }
 .title-lead { color: var(--muted-foreground); }
 .page-note { color: var(--muted-foreground); }
 .empty-note { color: var(--muted-foreground); }
 
-/* Home head: the headline and its one sentence, at title size; the feature cards carry the examples. On desktop the
-   sentence sits beside the headline. */
-.home-head { display: flex; flex-direction: column; gap: 6px; }
-@media (min-width: 1000px) { .home-head { flex-direction: row; justify-content: space-between; align-items: end; gap: 40px; } .home-head .page-note { max-width: var(--measure-lede); padding-bottom: 3px; } }
-.discovery-page.home > .features { margin-top: 24px; }
-
-/* Feature cards: art with the game's name over it, its first recommendations beneath, on one white card. On phones and
-   tablets a row that scrolls and snaps, the next card peeking in (on phones from past the screen edge). */
-.feature-row { display: grid; grid-auto-flow: column; grid-auto-columns: calc(100% - 36px); gap: 12px; overflow-x: auto; overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory; scrollbar-width: none; margin-block: -8px -28px; padding: 8px var(--edge) 28px; scroll-padding-inline: var(--edge); }
-.feature-row::-webkit-scrollbar { display: none; }
-@media (min-width: 640px) { .feature-row { grid-auto-columns: calc((100% - 12px) / 1.6); } }
-.feature { display: flex; flex-direction: column; min-width: 0; scroll-snap-align: start; overflow: hidden; border-radius: 18px; background: var(--card);
-  box-shadow: 0 0 0 1px rgb(19 19 22 / .06), 0 1px 2px rgb(19 19 22 / .04), 0 14px 28px -14px rgb(19 19 22 / .22); }
-.feature-cover { position: relative; display: block; aspect-ratio: 16/9; overflow: hidden; color: #fff; }
-/* The name sits on a dark scrim at the art's foot, so it reads on any art. */
-.feature-name { position: absolute; inset: auto 0 0; z-index: 1; display: flex; flex-direction: column; gap: 2px; padding: 56px 16px 14px;
-  background: linear-gradient(to top, rgb(0 0 0 / .64), rgb(0 0 0 / .34) 45%, transparent); }
-.feature-lead { color: rgb(255 255 255 / .8); }
-/* Picks as rows. If a neighbour's rating wraps and the row grows, the extra height goes between the picks. */
-.feature-recs { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 14px 14px 16px; }
-.feature-rec { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.feature-rec-art { position: relative; flex-shrink: 0; width: 88px; aspect-ratio: 460/215; overflow: hidden; border-radius: 6px; }
-.feature-rec-art::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .07); pointer-events: none; }
-.feature-rec-text { display: flex; flex-direction: column; min-width: 0; }
-.feature-rec-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (hover: hover) and (pointer: fine) {
-  .feature-cover:hover .feature-title, .feature-rec:hover .feature-rec-title { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
-}
-/* Desktop: one large card beside a pair. The large card's art takes whatever height the pair leaves it; its picks run
-   across beneath, named. The pair's picks are art alone (each tile's store art carries its name). */
-@media (min-width: 1000px) {
-  .feature-row { grid-auto-flow: row; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; overflow: visible; margin: 0; padding-block: 0; scroll-snap-type: none; }
-  .feature:first-child { grid-row: span 2; }
-  .feature:first-child .feature-cover { flex: 1 1 0; min-height: 280px; aspect-ratio: auto; }
-  .feature:first-child .feature-name { padding: 80px 24px 20px; gap: 4px; }
-  .feature:not(:first-child) .feature-cover { flex: 1 0 auto; }
-  .feature-recs { flex: none; flex-direction: row; justify-content: normal; gap: 10px; padding: 12px; }
-  .feature-recs > li { flex: 1; min-width: 0; }
-  .feature-rec-art { width: 100%; }
-  .feature:first-child .feature-recs { gap: 16px; padding: 16px 20px 20px; }
-  .feature:first-child .feature-rec { flex-direction: column; align-items: stretch; gap: 10px; }
-  .feature:first-child .feature-rec-art { border-radius: 8px; }
-  .feature:not(:first-child) .feature-rec-text { display: none; }
-}
+/* Home intro: the headline, its one sentence and three games to start from, then straight into the shelves. */
+.home-intro { padding-top: 8px; }
+.home-intro h1 { margin: 0 0 16px; }
+.home-intro .lede { color: var(--text-body); }
+.home-intro .examples { margin-top: 16px; color: var(--muted-foreground); }
+.home-intro .examples span { white-space: nowrap; }
+.home-intro .examples a { color: var(--foreground); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) { .home-intro .examples a:hover { text-decoration-color: currentColor; } }
 
 /* Section heading: title over a one-line note, optional See all on the right. */
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: var(--heading-gap); }
@@ -456,9 +419,9 @@ html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable;
    under it by transform, so the loop runs on the compositor and never repaints. It stops once the frame's art has
    loaded (the head script's data-art, layout.tsx). Without that script, a failed image draws the sword over its
    broken-image icon instead, unanimated (browsers render ::before/::after only on broken images). */
-:where(.game-card-art, .search-art, .feature-cover, .feature-rec-art, .game-trailer) { position: relative; isolation: isolate; background: var(--art-bg); --art-bg: var(--muted); --art-ink: #d3d3d9; --art-sheen: #e4e4e9; }
-.game-trailer, .feature-cover { --art-bg: var(--media); --art-ink: #1e1e23; --art-sheen: #2e2e35; }
-.art-mark, :is(.game-card-art, .search-art, .feature-cover, .feature-rec-art, .game-trailer) img::after {
+:where(.game-card-art, .search-art, .game-trailer) { position: relative; isolation: isolate; background: var(--art-bg); --art-bg: var(--muted); --art-ink: #d3d3d9; --art-sheen: #e4e4e9; }
+.game-trailer { --art-bg: var(--media); --art-ink: #1e1e23; --art-sheen: #2e2e35; }
+.art-mark, :is(.game-card-art, .search-art, .game-trailer) img::after {
   position: absolute; inset: 0; z-index: -1; overflow: hidden; background: var(--art-ink);
   mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%224.4%204.6%2015%2015%22%3E%3Cpath%20d%3D%22M12.7057%2017.9728L14.0299%2016.6487L10.7377%2013.3567L7.4396%2010.0586L6.11553%2011.3827L7.33348%2014.3331L4.85938%2017.8014L5.52604%2018.4681L6.19271%2019.1347L9.66681%2016.6487L12.7057%2017.9728Z%22/%3E%3Cpath%20d%3D%22M19%209.04753L13.6686%2014.3789L12.1159%2012.8262L15.5358%209.40755L14.5925%208.46419L11.1732%2011.8835L9.62109%2010.3314L14.9525%205H19V9.04753Z%22/%3E%3C/svg%3E") center / auto clamp(14px, 34%, 64px) no-repeat;
 }
@@ -466,10 +429,10 @@ html:has(.screenshot-viewer[open]) { overflow: hidden; scrollbar-gutter: stable;
   background: linear-gradient(100deg, var(--art-ink) 40%, var(--art-sheen) 50%, var(--art-ink) 60%);
   animation: art-sheen var(--loop) linear infinite; }
 @keyframes art-sheen { from { transform: translateX(-66.6667%); } }
-:is(.game-card-art, .search-art, .feature-cover, .feature-rec-art, .game-trailer):has(> img[data-art]) > .art-mark::before { animation: none; }
-:is(.game-card-art, .search-art, .feature-cover, .feature-rec-art, .game-trailer) img { color: transparent; }
-:is(.game-card-art, .search-art, .feature-cover, .feature-rec-art, .game-trailer) img::before { content: ""; position: absolute; inset: 0; background: var(--art-bg); }
-:is(.game-card-art, .search-art, .feature-cover, .feature-rec-art, .game-trailer) img::after { content: ""; z-index: auto; }
+:is(.game-card-art, .search-art, .game-trailer):has(> img[data-art]) > .art-mark::before { animation: none; }
+:is(.game-card-art, .search-art, .game-trailer) img { color: transparent; }
+:is(.game-card-art, .search-art, .game-trailer) img::before { content: ""; position: absolute; inset: 0; background: var(--art-bg); }
+:is(.game-card-art, .search-art, .game-trailer) img::after { content: ""; z-index: auto; }
 @media(prefers-reduced-motion: reduce) { .art-mark::before { animation: none; } }
 
 /* Footer */
@@ -508,17 +471,13 @@ html { touch-action: manipulation; }
 
 /* Presses. A plain scale-down, in fast and back a touch slower on an ease-out that never overshoots. Elements with
    their own press drop iOS's grey tap flash, which would otherwise flash on top of it. */
-:is(.button, .game-card, .feature-cover, .feature-rec, .rail-button, .trailer-button, .search-results a, .wordmark, .see-all, .search-cancel) { -webkit-tap-highlight-color: transparent; }
-.feature-rec-art, .trailer-button { transition: transform var(--duration-s) var(--ease-out); }
+:is(.button, .game-card, .rail-button, .trailer-button, .search-results a, .wordmark, .see-all, .search-cancel) { -webkit-tap-highlight-color: transparent; }
+.trailer-button { transition: transform var(--duration-s) var(--ease-out); }
 /* Cards press like App Store cards: in on a quick spring, out on the release spring with a hair of bounce. */
 .game-card > div { transition: transform var(--duration-l) var(--ease-release); }
 .game-card:active > div { transform: scale(.97); transition: transform var(--duration-s) var(--ease-glide); }
-/* A feature card presses whole when its art is pressed; a pick beneath presses its own tile. */
-.feature { transition: transform var(--duration-l) var(--ease-release); }
-.feature:has(> .feature-cover:active) { transform: scale(.98); transition: transform var(--duration-s) var(--ease-glide); }
-.feature-rec:active .feature-rec-art { transform: scale(.97); transition-duration: var(--duration-xs); }
 .trailer-button:active { transform: scale(.92); transition-duration: var(--duration-xs); }
-.see-all:active, .search-cancel:active, .wordmark:active, .site-footer a:active, .game-facts a:active { opacity: .6; }
+.see-all:active, .search-cancel:active, .wordmark:active, .home-intro .examples a:active, .site-footer a:active, .game-facts a:active { opacity: .6; }
 .search-results a:active { background: var(--muted); }
 
 /* Buttons. The primary (the Steam button) is the one physical object on the site: top-lit, a highlight on its top
@@ -569,7 +528,7 @@ html { touch-action: manipulation; }
 .search-title:has(mark) { color: color-mix(in srgb, var(--foreground) 62%, transparent); }
 .search-title mark { background: none; color: var(--foreground); }
 /* A card whose page is still on the way dims its art, after a beat. */
-.game-card:has(> [data-link-pending]) .game-card-art, .feature-cover:has(> [data-link-pending]), .feature-rec:has(> [data-link-pending]) .feature-rec-art { animation: pending-dim var(--duration-s) var(--delay-beat) var(--ease-out) forwards; }
+.game-card:has(> [data-link-pending]) .game-card-art { animation: pending-dim var(--duration-s) var(--delay-beat) var(--ease-out) forwards; }
 @keyframes pending-dim { to { opacity: .6; } }
 
 /* Phone search: opening and closing run as a React view transition typed search-open / search-close (Navbar.tsx). The field's frame morphs from the header
@@ -613,9 +572,9 @@ html { touch-action: manipulation; }
    image as it loads (data-art=fade), or at once if the picture is already in hand (data-art=shown: no fade), which also
    stops the placeholder sheen behind it. A failed image is never marked and keeps its placeholder. Without that
    script nothing is hidden. */
-:root[data-art-fade] :is(.game-card-art, .search-art, .feature-cover, .feature-rec-art, .game-trailer) > img:not([data-art]) { opacity: 0; }
-:is(.game-card-art, .search-art, .feature-cover, .feature-rec-art, .game-trailer) > img { transition: opacity var(--duration-m) var(--ease-out); }
-:is(.game-card-art, .search-art, .feature-cover, .feature-rec-art, .game-trailer) > img[data-art=shown] { transition: none; }
+:root[data-art-fade] :is(.game-card-art, .search-art, .game-trailer) > img:not([data-art]) { opacity: 0; }
+:is(.game-card-art, .search-art, .game-trailer) > img { transition: opacity var(--duration-m) var(--ease-out); }
+:is(.game-card-art, .search-art, .game-trailer) > img[data-art=shown] { transition: none; }
 
 /* Skeletons match the layout they stand in for, so nothing jumps when the content arrives. */
 .skeleton { position: relative; overflow: hidden; border-radius: 4px; background: var(--muted); }

@@ -7,7 +7,7 @@ import { getBoxArt } from "@/lib/steam-art";
 import type { PopularPick } from "@/lib/use-game-search";
 
 /** Shared by metadata and page rendering. Catalog reads are cached server-side: games and their recommendations
- *  shelves and Browse all change hourly at most (home's featured games rotate by the minute). Anything shown on every page
+ *  shelves and Browse all change hourly at most. Anything shown on every page
  *  (the 404's Browse all is prerendered into each route) must not be shorter-lived than the pages themselves. */
 export async function getGame(appid: number) {
   "use cache";
