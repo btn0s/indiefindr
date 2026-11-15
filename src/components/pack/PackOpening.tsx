@@ -260,7 +260,6 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { id: event.pointerId, x: event.clientX, from: peel.current, given: peel.current > 0.12, last: event.clientX };
     setPeeling(true);
-    sound.wake();
   };
 
   const onTearMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -381,7 +380,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
   }
 
   return (
-    <main ref={stageRef} className="pack-stage" data-phase={phase} data-step={step} data-ready={ready} data-gl={gl} onPointerMove={onStageMove}>
+    <main ref={stageRef} className="pack-stage" data-phase={phase} data-step={step} data-ready={ready} data-gl={gl} onPointerMove={onStageMove} onPointerDown={sound.wake} onPointerUp={sound.wake}>
       <div className="pack-backdrop" aria-hidden="true">{seed.still && <Image src={smallCopy(seed.still)} alt="" fill sizes="160px" priority />}</div>
 
       <header className="pack-hud">
