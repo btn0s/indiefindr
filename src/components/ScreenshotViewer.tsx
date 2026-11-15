@@ -401,7 +401,7 @@ export function ScreenshotViewer({ title, screenshots, start, thumbs, strip, onC
       if (to === current) {
         if (!reduce) aim(trackX, -current * stride, letGo, -direction * 700);
       } else if (reduce) jump(trackX, -to * stride);
-      else aim(trackX, -to * stride, glide);
+      else aim(trackX, -to * stride, snap);
       show(to);
       fly();
     };
