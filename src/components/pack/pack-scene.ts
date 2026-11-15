@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { CRIMP, PERSPECTIVE, RATIO, STRIP, packLayout, type PackLayout } from "./pack-layout";
 import { createBeam, createHalo, createRing, createSparks, type Spark } from "./pack-fx";
 
@@ -87,7 +86,146 @@ function sword(ctx: CanvasRenderingContext2D, x: number, y: number, size: number
   ctx.restore();
 }
 
-async function printPack(print: PackPrint) {
+function surfaceCanvas() {
+  const canvas = document.createElement("canvas");
+  canvas.width = TEX_W;
+  canvas.height = TEX_H;
+  return canvas;
+}
+
+function crinkles() {
+  const canvas = surfaceCanvas();
+  const c = canvas.getContext("2d")!;
+  const k = TEX_W / REF_W;
+  c.fillStyle = "rgb(128,128,128)";
+  c.fillRect(0, 0, TEX_W, TEX_H);
+  const tone = (v: number, a: number) => `rgba(${v},${v},${v},${a})`;
+  for (let i = 0; i < 34; i++) {
+    const x = Math.random() * TEX_W;
+    const y = Math.random() * TEX_H;
+    const r = (30 + Math.random() * 110) * k;
+    const v = Math.random() < 0.5 ? 255 : 0;
+    const dent = c.createRadialGradient(x, y, 0, x, y, r);
+    dent.addColorStop(0, tone(v, 0.12));
+    dent.addColorStop(1, tone(v, 0));
+    c.fillStyle = dent;
+    c.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (let i = 0; i < 46; i++) {
+    const edge = Math.random() < 0.55;
+    const x = edge ? (Math.random() < 0.5 ? Math.random() * 0.18 : 1 - Math.random() * 0.18) * TEX_W : Math.random() * TEX_W;
+    const y = Math.random() * TEX_H;
+    const length = (30 + Math.random() ** 1.4 * 120) * k;
+    const width = (2.5 + Math.random() * 5) * k;
+    const v = Math.random() < 0.5 ? 255 : 0;
+    c.save();
+    c.translate(x, y);
+    c.rotate(Math.PI / 2 + (Math.random() - 0.5) * (edge ? 0.9 : 2.6));
+    const ridge = c.createLinearGradient(0, -width, 0, width);
+    ridge.addColorStop(0, tone(v, 0));
+    ridge.addColorStop(0.5, tone(v, 0.08 + Math.random() * 0.12));
+    ridge.addColorStop(1, tone(v, 0));
+    c.fillStyle = ridge;
+    c.beginPath();
+    c.moveTo(-length / 2, 0);
+    c.quadraticCurveTo(0, -width * 2, length / 2, 0);
+    c.quadraticCurveTo(0, width * 2, -length / 2, 0);
+    c.fill();
+    c.restore();
+  }
+  return canvas;
+}
+
+function raise(ctx: CanvasRenderingContext2D, k: number, paint: (ctx: CanvasRenderingContext2D) => void) {
+  ctx.save();
+  ctx.lineJoin = "round";
+  for (const [width, alpha] of [[3.2, 0.1], [1.8, 0.12], [0.8, 0.14]]) {
+    ctx.lineWidth = width * k;
+    ctx.strokeStyle = ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    paint(ctx);
+  }
+  ctx.restore();
+}
+
+function normals(relief: HTMLCanvasElement, strength: number) {
+  const { width, height } = relief;
+  const src = relief.getContext("2d")!.getImageData(0, 0, width, height).data;
+  const out = document.createElement("canvas");
+  out.width = width;
+  out.height = height;
+  const o = out.getContext("2d")!;
+  const image = o.createImageData(width, height);
+  const d = image.data;
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    const up = Math.max(0, y - 1) * width;
+    const down = Math.min(height - 1, y + 1) * width;
+    for (let x = 0; x < width; x++) {
+      const nx = ((src[(row + Math.max(0, x - 1)) * 4] - src[(row + Math.min(width - 1, x + 1)) * 4]) / 255) * strength;
+      const ny = ((src[(down + x) * 4] - src[(up + x) * 4]) / 255) * strength;
+      const scale = 127.5 / Math.hypot(nx, ny, 1);
+      const i = (row + x) * 4;
+      d[i] = 127.5 + nx * scale;
+      d[i + 1] = 127.5 + ny * scale;
+      d[i + 2] = 127.5 + scale;
+      d[i + 3] = 255;
+    }
+  }
+  o.putImageData(image, 0, 0);
+  return out;
+}
+
+function holoBands() {
+  const width = 256;
+  const height = Math.round(width * RATIO);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const c = canvas.getContext("2d")!;
+  const image = c.createImageData(width, height);
+  const d = image.data;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const wave = Math.sin(((x + y * 0.55) / width) * Math.PI * 2 * 7 + Math.sin(y / 23) * 1.4);
+      const v = Math.max(0, Math.min(255, 128 + wave * 100 + (Math.random() - 0.5) * 70));
+      const i = (y * width + x) * 4;
+      d[i] = d[i + 1] = d[i + 2] = v;
+      d[i + 3] = 255;
+    }
+  }
+  c.putImageData(image, 0, 0);
+  return canvas;
+}
+
+function studio() {
+  const room = new THREE.Scene();
+  const geometries: THREE.BufferGeometry[] = [];
+  const materials: THREE.Material[] = [];
+  const shell = new THREE.BoxGeometry(12, 12, 12);
+  const walls = new THREE.MeshBasicMaterial({ color: 0x2e2f36, side: THREE.BackSide });
+  geometries.push(shell);
+  materials.push(walls);
+  room.add(new THREE.Mesh(shell, walls));
+  const light = (w: number, h: number, x: number, y: number, z: number, power: number, color = 0xffffff) => {
+    const geometry = new THREE.PlaneGeometry(w, h);
+    const material = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(power), side: THREE.DoubleSide });
+    geometries.push(geometry);
+    materials.push(material);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x, y, z);
+    mesh.lookAt(0, 0, 0);
+    room.add(mesh);
+  };
+  light(3.2, 2.2, -2.6, 2.8, 4.2, 6);
+  light(0.5, 7, 4.6, 0.4, 2.6, 7);
+  light(0.5, 7, -4.8, -0.6, 1.4, 4);
+  light(7, 0.45, 0.4, 4.8, 2.2, 6);
+  light(4, 1.6, 1.8, -4.4, 3, 2.2, 0xb8c8ff);
+  light(2.4, 2.4, 0, 0.6, -5.5, 3, 0xffe2c4);
+  return { room, dispose: () => { geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); } };
+}
+
+async function printPack(print: PackPrint, field: HTMLCanvasElement) {
   const [art, still] = await Promise.all([loadImage(print.art), loadImage(print.still)]);
   const color = document.createElement("canvas");
   const orm = document.createElement("canvas");
@@ -95,12 +233,15 @@ async function printPack(print: PackPrint) {
   color.height = orm.height = TEX_H;
   const c = color.getContext("2d")!;
   const o = orm.getContext("2d")!;
+  const relief = surfaceCanvas();
+  const r = relief.getContext("2d")!;
+  r.drawImage(field, 0, 0);
   const k = TEX_W / REF_W;
   const crimp = CRIMP * TEX_H;
   const tear = STRIP * TEX_H;
   const frame = 7 * k;
   const ink = "rgb(0,107,51)";
-  const foil = "rgb(64,64,255)";
+  const foil = "rgb(140,44,255)";
   const stamp = "rgb(255,36,255)";
 
   const silver = c.createLinearGradient(0, 0, TEX_W, 0);
@@ -163,6 +304,10 @@ async function printPack(print: PackPrint) {
   o.font = c.font;
   o.fillStyle = stamp;
   o.fillText("G A M E S   L I K E", TEX_W / 2, band + 13 * k);
+  r.font = c.font;
+  r.textAlign = "center";
+  r.textBaseline = "alphabetic";
+  raise(r, k * 0.5, ctx => { ctx.strokeText("G A M E S   L I K E", TEX_W / 2, band + 13 * k); ctx.fillText("G A M E S   L I K E", TEX_W / 2, band + 13 * k); });
   const titleW = TEX_W - 2 * frame - 28 * k;
   let titleSize = 17 * k;
   c.font = `800 ${titleSize}px ${print.font}`;
@@ -176,6 +321,8 @@ async function printPack(print: PackPrint) {
   c.fillText(title, TEX_W / 2, band + 31 * k);
   o.font = c.font;
   o.fillText(title, TEX_W / 2, band + 31 * k);
+  r.font = c.font;
+  raise(r, k, ctx => { ctx.strokeText(title, TEX_W / 2, band + 31 * k); ctx.fillText(title, TEX_W / 2, band + 31 * k); });
 
   if (!art && still) {
     const scrimTop = artY + artH * 0.55;
@@ -211,6 +358,17 @@ async function printPack(print: PackPrint) {
   c.fillText("indiefindr", pad + seal + 5 * k, mid + 0.5 * k);
   o.font = c.font;
   o.fillText("indiefindr", pad + seal + 5 * k, mid + 0.5 * k);
+  r.font = c.font;
+  r.textAlign = "left";
+  r.textBaseline = "middle";
+  raise(r, k * 0.6, ctx => {
+    ctx.strokeText("indiefindr", pad + seal + 5 * k, mid + 0.5 * k);
+    ctx.fillText("indiefindr", pad + seal + 5 * k, mid + 0.5 * k);
+    ctx.beginPath();
+    ctx.arc(pad + seal / 2, mid, seal / 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fill();
+  });
   c.textAlign = "right";
   c.font = `600 ${7 * k}px ${print.font}`;
   c.fillStyle = "rgba(255,255,255,0.66)";
@@ -228,22 +386,25 @@ async function printPack(print: PackPrint) {
   }
   c.restore();
 
-  return { color, orm };
+  return { color, orm, relief };
 }
 
-function printBack(print: PackPrint) {
+function printBack(print: PackPrint, field: HTMLCanvasElement) {
   const color = document.createElement("canvas");
   const orm = document.createElement("canvas");
   color.width = orm.width = TEX_W;
   color.height = orm.height = TEX_H;
   const c = color.getContext("2d")!;
   const o = orm.getContext("2d")!;
+  const relief = surfaceCanvas();
+  const r = relief.getContext("2d")!;
+  r.drawImage(field, 0, 0);
   const k = TEX_W / REF_W;
   const crimp = CRIMP * TEX_H;
   const tear = STRIP * TEX_H;
   const frame = 7 * k;
   const ink = "rgb(0,107,51)";
-  const foil = "rgb(64,64,255)";
+  const foil = "rgb(140,44,255)";
   const stamp = "rgb(255,36,255)";
 
   const silver = c.createLinearGradient(0, 0, TEX_W, 0);
@@ -311,6 +472,16 @@ function printBack(print: PackPrint) {
     ctx.fillStyle = fill;
     ctx.fillText("indiefindr", cx, cy + radius + 46 * k);
   }
+  r.font = `750 ${24 * k}px ${print.font}`;
+  r.textAlign = "center";
+  r.textBaseline = "alphabetic";
+  raise(r, k, ctx => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 6 * k, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeText("indiefindr", cx, cy + radius + 46 * k);
+    ctx.fillText("indiefindr", cx, cy + radius + 46 * k);
+  });
 
   c.font = `700 ${6.5 * k}px ${print.font}`;
   c.fillStyle = "rgba(255,255,255,0.55)";
@@ -346,7 +517,7 @@ function printBack(print: PackPrint) {
   }
   c.restore();
 
-  return { color, orm };
+  return { color, orm, relief };
 }
 
 export type Tint = [number, number, number];
@@ -383,9 +554,9 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const room = new RoomEnvironment();
-  const environment = pmrem.fromScene(room, 0.04).texture;
-  room.dispose();
+  const lights = studio();
+  const environment = pmrem.fromScene(lights.room, 0.035).texture;
+  lights.dispose();
   pmrem.dispose();
   scene.environment = environment;
   scene.environmentIntensity = 1.1;
@@ -398,20 +569,27 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
   const camera = new THREE.PerspectiveCamera(45, 1, 1, PERSPECTIVE * 4);
   camera.position.set(0, 0, PERSPECTIVE);
 
-  const [front, back] = await Promise.all([printPack(print), printBack(print)]);
+  const field = crinkles();
+  const [front, back] = await Promise.all([printPack(print, field), printBack(print, field)]);
+  const bands = new THREE.CanvasTexture(holoBands());
   const anisotropy = renderer.capabilities.getMaxAnisotropy();
   const textures: THREE.Texture[] = [];
-  const foilMaterial = ({ color, orm }: { color: HTMLCanvasElement; orm: HTMLCanvasElement }) => {
+  textures.push(bands);
+  const foilMaterial = ({ color, orm, relief }: { color: HTMLCanvasElement; orm: HTMLCanvasElement; relief: HTMLCanvasElement }) => {
     const map = new THREE.CanvasTexture(color);
     map.colorSpace = THREE.SRGBColorSpace;
     map.anisotropy = anisotropy;
     const surface = new THREE.CanvasTexture(orm);
     surface.anisotropy = anisotropy;
-    textures.push(map, surface);
+    const bumps = new THREE.CanvasTexture(normals(relief, 5));
+    bumps.anisotropy = anisotropy;
+    textures.push(map, surface, bumps);
     return new THREE.MeshPhysicalMaterial({
       map, metalnessMap: surface, roughnessMap: surface, iridescenceMap: surface,
       metalness: 1, roughness: 1, iridescence: 1, iridescenceIOR: 1.8, iridescenceThicknessMinimum: 180, iridescenceThicknessMaximum: 520,
       clearcoat: 1, clearcoatRoughness: 0.12, alphaTest: 0.5,
+      normalMap: bumps, normalScale: new THREE.Vector2(0.6, 0.6), clearcoatNormalMap: bumps, clearcoatNormalScale: new THREE.Vector2(0.25, 0.25),
+      iridescenceThicknessMap: bands,
     });
   };
   const printed = foilMaterial(front);
