@@ -31,6 +31,7 @@ export type PackCard = {
   earlyAccess: boolean;
   fresh: boolean;
   image: string | null;
+  art: string | null;
   still: string | null;
   clip: string | null;
   tags: string[];
@@ -64,6 +65,7 @@ function toCard(game: PackGame, { tags, today }: PackSet, via: PackGame | null):
     earlyAccess: game.is_early_access,
     fresh: cls !== "prerelease" && !!game.release_date && daysBetween(game.release_date, today) <= FRESH_DAYS,
     image: game.header_image,
+    art: null,
     still: game.hero_still ?? trailer?.poster ?? game.hero_poster ?? null,
     clip: trailer ? clipUrl(trailer) : null,
     tags: (game.tag_ids ?? []).slice(0, 3).flatMap(id => tags[id] ? [tags[id]] : []),

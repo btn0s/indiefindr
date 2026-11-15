@@ -54,36 +54,42 @@ function Verdict({ card }: { card: PackCard }) {
   </>;
 }
 
+const RARITY: Record<CardClass, string> = { classic: "●", cult: "◆", uncharted: "○", prerelease: "◇", gem: "✦", secret: "★" };
+
 function CardFront({ card, number, setSize, code, clip, onClip }: {
   card: PackCard; number: number | null; setSize: number; code: string; clip: boolean; onClip?: () => void;
 }) {
   const full = isFind(card);
+  const cover = !full && card.art;
   const still = card.still ? (full ? card.still : smallCopy(card.still)) : card.image;
+  const picture = cover || still;
   const finishes = [card.fresh && "Fresh", card.earlyAccess && card.cls !== "prerelease" && "Early Access"].filter(Boolean) as string[];
   return (
     <div className="pack-card-face pack-card-front">
-      <div className="card-art">
-        {still && <Image src={still} alt="" fill sizes={full ? "420px" : "300px"} draggable={false} />}
-        {clip && card.clip && <GameplayLoop src={card.clip} threshold={0.2} onLoaded={onClip} />}
-        <div className="card-holo" />
-      </div>
-      {full && <div className="card-tags-flash" aria-hidden="true">{card.tags.map((tag, index) => <span key={tag} style={{ "--i": index } as CSSProperties}>{tag}</span>)}</div>}
-      <div className="card-info">
-        <div className="card-top">
-          <span className="card-class">{CLASS_NAME[card.cls]}</span>
-          {finishes.map(finish => <span key={finish} className="card-finish">{finish}</span>)}
+      <div className="card-window" data-cover={!!cover}>
+        <div className="card-art">
+          {picture && <Image src={picture} alt="" fill sizes={full ? "420px" : "320px"} draggable={false} />}
+          {clip && card.clip && <GameplayLoop src={card.clip} threshold={0.2} onLoaded={onClip} />}
         </div>
-        <div className="card-title">{card.title}</div>
-        {!!card.tags.length && <p className="card-tags">{card.tags.join(", ")}</p>}
-        {!full && card.blurb && <p className="card-blurb">{card.blurb}</p>}
-        <div className="card-verdict"><Verdict card={card} /></div>
-        {card.via && <p className="card-via">via {card.via.title}</p>}
-        <div className="card-foot">
-          <SwordMark className="card-mark" />
-          <span>{code}</span>
-          <span>{number ? `${String(number).padStart(2, "0")}/${setSize}` : "★"}</span>
+        <div className="card-shine" aria-hidden="true"><div className="card-rainbow" /><div className="card-glitter" /></div>
+        {full && <div className="card-tags-flash" aria-hidden="true">{card.tags.map((tag, index) => <span key={tag} style={{ "--i": index } as CSSProperties}>{tag}</span>)}</div>}
+        <div className="card-info">
+          <div className="card-top">
+            <span className="card-class"><span className="card-gem" aria-hidden="true">{RARITY[card.cls]}</span>{CLASS_NAME[card.cls]}</span>
+            {finishes.map(finish => <span key={finish} className="card-finish">{finish}</span>)}
+          </div>
+          <div className="card-title">{card.title}</div>
+          {!!card.tags.length && <p className="card-tags">{card.tags.join(", ")}</p>}
+          <div className="card-verdict"><Verdict card={card} /></div>
+          {card.via && <p className="card-via">via {card.via.title}</p>}
+          <div className="card-foot">
+            <SwordMark className="card-mark" />
+            <span>{code}</span>
+            <span>{number ? `${String(number).padStart(2, "0")}/${setSize}` : "★"}</span>
+          </div>
         </div>
       </div>
+      <div className="card-sheen" aria-hidden="true" />
       <div className="card-glare" />
     </div>
   );
@@ -92,11 +98,44 @@ function CardFront({ card, number, setSize, code, clip, onClip }: {
 function CardBack() {
   return (
     <div className="pack-card-face pack-card-back" aria-hidden="true">
-      <div className="back-ring"><SwordMark /></div>
-      <span className="back-word">indiefindr</span>
+      <div className="back-field">
+        <div className="back-ring"><SwordMark /></div>
+        <span className="back-word">indiefindr</span>
+      </div>
+      <div className="card-sheen" />
     </div>
   );
 }
+
+function glitterTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  const c = canvas.getContext("2d");
+  if (!c) return "";
+  c.fillStyle = "#000";
+  c.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 520; i++) {
+    const x = Math.random() * 256;
+    const y = Math.random() * 256;
+    const r = 0.4 + Math.random() ** 3 * 2.2;
+    const light = 140 + Math.random() * 115;
+    const glow = c.createRadialGradient(x, y, 0, x, y, r * 2.4);
+    glow.addColorStop(0, `rgb(${light},${light},${light})`);
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = glow;
+    c.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
+    if (r > 1.6) {
+      c.fillStyle = `rgba(255,255,255,${light / 400})`;
+      c.fillRect(x - r * 4, y - 0.4, r * 8, 0.8);
+      c.fillRect(x - 0.4, y - r * 4, 0.8, r * 8);
+    }
+  }
+  return `url(${canvas.toDataURL("image/png")})`;
+}
+
+const subscribeNothing = () => () => {};
+let glitter: string | null = null;
+const glitterSnapshot = () => (glitter ??= glitterTexture());
 
 function useStage<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -126,6 +165,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
   const [inspect, setInspect] = useState<number | null>(null);
   const reduced = useSyncExternalStore(subscribeMotion, () => matchMedia(MOTION).matches, () => false);
   const muted = useSyncExternalStore(sound.subscribe, sound.isMuted, () => false);
+  const glitterUrl = useSyncExternalStore(subscribeNothing, glitterSnapshot, () => "");
   const [peeling, setPeeling] = useState(false);
   const peel = useRef(0);
   const clipReady = useRef(false);
@@ -224,15 +264,24 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
     setPhase("walkout");
     setStep("lift");
     const secret = pack[finale]?.cls === "secret";
+    const tint = tintOf(pack);
     sound.swell(secret);
     sound.buzz(20);
-    const started = performance.now();
+    if (!reduced) scene.current?.gather(stage.w / 2, deckY, tint);
+    let started = 0;
     const reveal = () => {
-      if (!clipReady.current && performance.now() - started < 1600 && !reduced) { later(reveal, 80); return; }
+      started ||= performance.now();
+      if (!clipReady.current && performance.now() - started < 1100 && !reduced) { later(reveal, 80); return; }
       setFaceUp(pack.length);
       setStep("veil");
       sound.flip();
-      later(() => { setStep("stamp"); sound.chime(secret); sound.buzz(30); }, reduced ? 0 : 2400);
+      if (!reduced) scene.current?.burst(stage.w / 2, deckY, tint, secret ? 1.5 : 1.2);
+      later(() => {
+        setStep("stamp");
+        sound.chime(secret);
+        sound.buzz(30);
+        if (!reduced) scene.current?.burst(stage.w / 2, deckY, tint, 0.55);
+      }, reduced ? 0 : 2400);
     };
     later(reveal, reduced ? 0 : 560);
   };
@@ -315,13 +364,15 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
     const y = (event.clientY - rect.top) / rect.height;
     event.currentTarget.style.setProperty("--mx", `${x * 100}%`);
     event.currentTarget.style.setProperty("--my", `${y * 100}%`);
+    event.currentTarget.style.setProperty("--px", `${x}`);
+    event.currentTarget.style.setProperty("--py", `${y}`);
     event.currentTarget.style.setProperty("--ry", `${(x - 0.5) * 14}deg`);
     event.currentTarget.style.setProperty("--rx", `${(0.5 - y) * 12}deg`);
     event.currentTarget.style.setProperty("--hover", "1");
   };
 
   const onCardLeave = (event: ReactPointerEvent<HTMLElement>) => {
-    for (const name of ["--ry", "--rx", "--hover"]) event.currentTarget.style.removeProperty(name);
+    for (const name of ["--ry", "--rx", "--hover", "--px", "--py"]) event.currentTarget.style.removeProperty(name);
   };
 
   const toggleMute = () => {
@@ -347,7 +398,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
     }
     if (phase === "fan" || phase === "leaving") {
       const o = phase === "leaving" ? 0 : 1;
-      if (inspect === i) return { x: stage.w / 2, y: deckY, s: Math.min(1, (stage.h - 150) / cardH), r: 0, z: 60, o, ms: 420 };
+      if (inspect === i) return { x: stage.w / 2, y: deckY - 30, s: Math.min(1, (stage.h - 300) / cardH), r: 0, z: 60, o, ms: 420 };
       if (wide) {
         const s = Math.min(0.62, (stage.w - 80) / (n * cardW + (n - 1) * 20));
         const spacing = cardW * s + 20;
@@ -370,6 +421,15 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
     }
     return { x: stage.w / 2 + k * 3, y: deckY + k * 4, s: 1, r: k ? (k % 2 ? 1.2 : -0.8) : 0, z: 10 + n - i, o: 1, ms: 640 };
   };
+
+  useEffect(() => {
+    if ((phase !== "ready" && phase !== "walkout") || reduced || finale < 0) return;
+    const tint = tintOf(pack);
+    const emit = () => scene.current?.ambient(stage.w / 2, deckY, cardW, cardH, tint);
+    emit();
+    const id = window.setInterval(emit, 1400);
+    return () => window.clearInterval(id);
+  }, [phase, reduced, finale, pack, stage.w, deckY, cardW, cardH]);
 
   const playing = (i: number) => {
     const card = pack[i];
@@ -396,7 +456,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
   }
 
   return (
-    <main ref={stageRef} className="pack-stage" data-phase={phase} data-step={step} data-ready={ready} data-gl={gl} onPointerMove={onStageMove} onPointerDown={() => { sound.wake(); if (phase === "show") scene.current?.skip(); }} onPointerUp={sound.wake}>
+    <main ref={stageRef} className="pack-stage" style={{ "--glitter": glitterUrl || "none" } as CSSProperties} data-phase={phase} data-step={step} data-ready={ready} data-gl={gl} onPointerMove={onStageMove} onPointerDown={() => { sound.wake(); if (phase === "show") scene.current?.skip(); }} onPointerUp={sound.wake}>
       <div className="pack-backdrop" aria-hidden="true">{seed.still && <Image src={smallCopy(seed.still)} alt="" fill sizes="160px" priority />}</div>
 
       <header className="pack-hud">
@@ -418,6 +478,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
           const spot = place(i);
           const up = i < faceUp;
           const top = (phase === "deck" || phase === "ready") && i === cardIndex;
+          const focus = (top && up) || inspect === i || (phase === "walkout" && i === finale);
           const fan = phase === "fan";
           const style = {
             transform: `translate3d(${spot.x - cardW / 2}px, ${spot.y - cardH / 2}px, 0) rotate(${spot.r}deg) scale(${spot.s})`,
@@ -431,7 +492,7 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
           const activate = () => { if (fan) setInspect(inspect === i ? null : i); else if (interactive) advance(); };
           return (
             <div key={`${packIndex}-${card.appid}`} className="pack-card" data-cls={card.cls} data-full={isFind(card)} data-top={top} data-finale={i === finale}
-              data-inspect={inspect === i} style={style}>
+              data-inspect={inspect === i} data-focus={focus} style={style}>
               <div role="button" className="pack-card-hit" tabIndex={interactive ? 0 : -1} aria-hidden={!interactive} aria-label={label}
                 onPointerMove={onCardMove} onPointerLeave={onCardLeave} onClick={activate}
                 onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); } }}>
@@ -444,7 +505,8 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
             </div>
           );
         })}
-        {phase === "walkout" && <div className="pack-burst" data-cls={pack[finale]?.cls} style={{ top: deckY, left: stage.w / 2 }} aria-hidden="true" />}
+        {finale >= 0 && <div className="pack-rays" data-cls={pack[finale]?.cls} style={{ top: deckY, left: stage.w / 2 }} aria-hidden="true" />}
+        {phase === "walkout" && step === "veil" && <div className="pack-flash" style={{ "--fx": `${stage.w / 2}px`, "--fy": `${deckY}px` } as CSSProperties} aria-hidden="true" />}
       </div>
 
       <canvas ref={canvasRef} className="pack-canvas" aria-hidden="true" />
@@ -468,7 +530,8 @@ export function PackOpening({ seed, packs, setSize, printed }: { seed: Seed; pac
         {phase === "fan" && <>
           {inspect !== null && pack[inspect] ? (
             <div className="pack-actions">
-              <Link className="pack-button" href={`/games/${pack[inspect].appid}`}>Open {pack[inspect].title}</Link>
+              {pack[inspect].blurb && <p className="pack-blurb">{pack[inspect].blurb}</p>}
+              <Link className="pack-button" href={`/games/${pack[inspect].appid}`}><span>Open {pack[inspect].title}</span></Link>
               <button type="button" className="pack-link" onClick={() => setInspect(null)}>Back to the pack</button>
             </div>
           ) : (

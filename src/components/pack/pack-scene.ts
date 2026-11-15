@@ -361,6 +361,8 @@ export type PackScene = {
   arrive(tint: Tint): Promise<void>;
   skip(): void;
   burst(x: number, y: number, tint: Tint, power: number): void;
+  gather(x: number, y: number, tint: Tint): void;
+  ambient(x: number, y: number, width: number, height: number, tint: Tint): void;
   dispose(): void;
 };
 
@@ -501,9 +503,27 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
     flare = { x, y, start: t, power, tint };
   };
 
+  const converge = (x: number, y: number, tint: THREE.Color, count: number, delay: [number, number]) => {
+    const u = unit();
+    const list: Spark[] = [];
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const reach = Math.max(size.width, size.height) * random(0.42, 0.62);
+      const k = 2.4;
+      const inward = reach * k * 0.92;
+      const around = reach * k * random(0.25, 0.45);
+      list.push({
+        x: x + Math.cos(angle) * reach, y: y + Math.sin(angle) * reach, z: random(-200, 100),
+        vx: -Math.cos(angle) * inward - Math.sin(angle) * around, vy: -Math.sin(angle) * inward + Math.cos(angle) * around,
+        life: random(1, 1.3), size: random(1.4, 3.4) * u, color: shade(tint, 0.3 + Math.random() * 0.7), star: Math.random() < 0.25,
+        drag: k, delay: random(...delay),
+      });
+    }
+    return list;
+  };
+
   const begin = (plan: Plan, tint: THREE.Color) => {
     const t = clock();
-    const u = unit();
     const list: Spark[] = [];
     for (let i = 0; i < plan.motes; i++) {
       list.push({
@@ -512,19 +532,7 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
         color: shade(tint, Math.random() * 0.7), star: Math.random() < 0.12, delay: random(0, 0.9),
       });
     }
-    for (let i = 0; i < plan.swirl; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const reach = Math.max(size.width, size.height) * random(0.42, 0.62);
-      const k = 2.4;
-      const inward = reach * k * 0.92;
-      const around = reach * k * random(0.25, 0.45);
-      list.push({
-        x: Math.cos(angle) * reach, y: center + Math.sin(angle) * reach, z: random(-200, 100),
-        vx: -Math.cos(angle) * inward - Math.sin(angle) * around, vy: -Math.sin(angle) * inward + Math.cos(angle) * around,
-        life: random(1, 1.3), size: random(1.4, 3.4) * u, color: shade(tint, 0.3 + Math.random() * 0.7), star: Math.random() < 0.25,
-        drag: k, delay: random(0.5, 1.05),
-      });
-    }
+    list.push(...converge(0, center, tint, plan.swirl, [0.5, 1.05]));
     if (list.length) sparks.emit(t, list);
     level = true;
     peel = 0;
@@ -699,6 +707,24 @@ export async function createPackScene(canvas: HTMLCanvasElement, print: PackPrin
     },
     burst(x, y, tint, power) {
       sparkle(clock(), x - size.width / 2, size.height / 2 - y, new THREE.Color(...tint), Math.round(140 * power), power);
+      run();
+    },
+    gather(x, y, tint) {
+      const t = clock();
+      sparks.emit(t - 0.5, converge(x - size.width / 2, size.height / 2 - y, new THREE.Color(...tint), 110, [0.5, 0.8]));
+      run();
+    },
+    ambient(x, y, width, height, tint) {
+      const color = new THREE.Color(...tint);
+      const list: Spark[] = [];
+      for (let i = 0; i < 26; i++) {
+        list.push({
+          x: x - size.width / 2 + random(-0.75, 0.75) * width, y: size.height / 2 - y + random(-0.65, 0.65) * height, z: random(-40, 120),
+          vx: random(-10, 10), vy: random(14, 40), life: random(2, 3.4), size: random(1, 2.8), color: shade(color, 0.4 + Math.random() * 0.6),
+          star: Math.random() < 0.35, delay: random(0, 1.4),
+        });
+      }
+      sparks.emit(clock(), list);
       run();
     },
     dispose() {

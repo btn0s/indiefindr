@@ -22,8 +22,10 @@ export default async function PackPage({ params }: { params: Promise<{ appid: st
   if (isNaN(appId)) notFound();
   const game = await getGame(appId);
   if (!game) notFound();
-  const [packSet, art] = await Promise.all([getPackSet(appId), getBoxArt([appId])]);
-  const packs = deal(packSet);
+  const packSet = await getPackSet(appId);
+  const dealt = deal(packSet);
+  const art = await getBoxArt([appId, ...dealt.flat().map(card => card.appid)]);
+  const packs = dealt.map(pack => pack.map(card => ({ ...card, art: art[card.appid] ?? null })));
   return (
     <PackOpening
       seed={{ appid: appId, title: game.title, art: art[appId] ?? null, still: game.screenshots?.[0] ?? game.header_image }}
