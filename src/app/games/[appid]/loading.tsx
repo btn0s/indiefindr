@@ -1,8 +1,6 @@
 import { GridSkeleton } from "@/components/CardSkeleton";
 import { ArtMark } from "@/components/ArtMark";
 
-/** The game page's own layout in outline: the banner, then title, facts, blurb and Steam button, then the
- *  recommendation grid. */
 export default function Loading() {
   return (
     <main className="discovery-page" aria-busy="true" aria-label="Loading game">

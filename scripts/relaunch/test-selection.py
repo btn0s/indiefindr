@@ -1,4 +1,3 @@
-"""Policy checks for ordered 24-target selection and candidate exhaustion."""
 import unittest
 from selection import SLATE_SIZE,select_targets
 class SelectionTest(unittest.TestCase):

@@ -1,9 +1,3 @@
-"""Publish a complete offline catalog to the relaunch database only.
-
-The compact games/tags are loaded first. Recommendation batches are replaced in
-transactions so a page's stored slate is never partially updated. LLM lists are
-preserved from their frozen export. Checks run before and after publication.
-"""
 import argparse,json,pathlib,urllib.request
 from review_quality import eligible
 from model_assertions import verify_model_slates
@@ -25,7 +19,6 @@ for g in games:
  assert all(r['model_version']==MODEL_VERSION for r in slate)
  assert all(sum(byid[r['rec_appid']]['review_count']>=threshold for r in slate)<=cap for threshold,cap in POPULARITY_CAPS)
  assert len(slate)<=SLATE_SIZE and sorted(r['rank'] for r in slate)==list(range(1,len(slate)+1)) and len({r['rec_appid'] for r in slate})==len(slate)
-# Check the actual plan entitlement with 10% operating headroom.
 capacity=check_capacity(management,len(games),len(recs));print(capacity,flush=True)
 assert capacity['publication_allowed'],'Expanded catalog publication needs capacity approval; no writes or plan changes made.'
 if a.check_budget_only:raise SystemExit
@@ -39,7 +32,6 @@ for table,rows in [('tags',tags),('games',games)]:
   except urllib.error.HTTPError as e:
    print(e.read().decode()[:1000]);raise SystemExit(1)
  print('loaded',table,len(rows),flush=True)
-# Keep eligible archived suggestions, but remove targets invalidated by ownership changes.
 query("delete from public.game_recs r using public.games g where r.rec_appid=g.appid and r.source='llm' and (not g.is_indie or g.is_companion or (g.review_count>=10 and coalesce(g.clean_score,g.review_positive_pct)<70))")
 ids=sorted(byid)
 for start in range(0,len(ids),100):

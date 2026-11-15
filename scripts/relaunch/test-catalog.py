@@ -1,4 +1,3 @@
-"""Companion apps: what ships alongside a main game rather than being one."""
 from catalog import companions
 rows=[
  dict(appid=1,title='Homicipher',developers=['Mafuyu'],is_free=False),

@@ -1,4 +1,3 @@
-"""Publish compact chart series from cached histograms; never refetch at request time."""
 import argparse,calendar,datetime,json,pathlib,urllib.request
 p=argparse.ArgumentParser();p.add_argument('--source',type=pathlib.Path,required=True);p.add_argument('--cache',type=pathlib.Path,default=pathlib.Path('data/review-histograms'));a=p.parse_args()
 v=dict(l.split('=',1) for l in pathlib.Path('.env.relaunch-admin').read_text().splitlines() if '=' in l);ref=v['RELAUNCH_PROJECT_REF'];assert ref=='rqcqlpoxtdddjcylhopk'

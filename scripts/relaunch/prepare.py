@@ -1,4 +1,3 @@
-"""Prepare compact import files from COPIES of the frozen exports; no network writes."""
 import argparse,json,pathlib,re,unicodedata,datetime
 p=argparse.ArgumentParser();p.add_argument('source',type=pathlib.Path);p.add_argument('--prices',type=pathlib.Path,default=pathlib.Path('data/steam-full/us-prices.json'));p.add_argument('--catalog-only',action='store_true');p.add_argument('--out',type=pathlib.Path,default=pathlib.Path('data/relaunch'));a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 from catalog import companions, is_indie
@@ -10,7 +9,7 @@ prices=json.loads(a.prices.read_text())
 assert all(price is None or price.get('currency')=='USD' for price in prices.values()),'Only canonical US prices may be published'
 tag_names=json.loads((a.source/'data/steam_tag_names.json').read_text())['response']['tags']
 tag_ids_by_name={t['name'].casefold():t['tagid'] for t in tag_names}
-ADULT_ONLY=3  # Steam content descriptor: Adult Only Sexual Content (hidden by Steam's default store filter)
+ADULT_ONLY=3
 upcoming=json.loads((a.source/'upcoming.json').read_text()) if not a.catalog_only else {}
 rows=json.loads((a.source/'data/catalog.json').read_text())['rows'];companion=companions(rows);tags=json.loads((a.source/'data/steam_tags.json').read_text());games=[]
 for r in rows:
@@ -21,7 +20,6 @@ for r in rows:
 for game in games:
  q=quality.get(str(game['appid']))
  assert q is not None, f"Missing review quality for {game['appid']}"
- # Indie+ games have outgrown discovery shelves; only shelf-eligible indies carry momentum (Rising, or Early Access).
  indie_plus=game['review_count']>=INDIE_PLUS_REVIEWS;trend=q.get('trend') if game['is_indie'] and not indie_plus else None
  game.update(clean_score=q['clean_score'],bomb_windows=q['bomb_windows'],checked_at=q['checked_at'],indie_plus=indie_plus,momentum=trend and trend['momentum'])
 byid={g['appid']:g for g in games};recs=[];empty={}

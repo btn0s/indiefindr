@@ -1,4 +1,3 @@
-"""Offline media enrichment. Store normalized URLs, never the raw Steam blob."""
 import argparse,hashlib,json,pathlib,time,urllib.request
 import requests
 ASSETS='https://shared.akamai.steamstatic.com/store_item_assets/'

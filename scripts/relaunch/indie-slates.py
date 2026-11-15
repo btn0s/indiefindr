@@ -1,8 +1,3 @@
-"""Select indie slates from the merged model's already-scored top-200.
-
-Filtering a score-ordered list before truncation preserves the saved LambdaRank
-ordering exactly. No retraining, alternate ranker, or request-time inference.
-"""
 import argparse, json, pathlib, hashlib
 import numpy as np
 from selection import MODEL_VERSION, SLATE_SIZE, select_targets

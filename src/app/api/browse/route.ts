@@ -2,9 +2,6 @@ import { BROWSE_PAGE_SIZE, getBrowsePage } from "@/lib/catalog";
 
 export const preferredRegion = "pdx1";
 
-/** Browse all's next page (GameGrid's infinite scroll). A plain GET, so pages load in parallel and the CDN serves them:
- *  the catalog changes hourly at most, like the cached read behind it. Offsets are whole pages only, which keeps the
- *  number of distinct cached responses bounded. */
 export async function GET(request: Request) {
   const raw = new URL(request.url).searchParams.get("offset") ?? "";
   const offset = Number(raw);

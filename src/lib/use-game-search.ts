@@ -3,19 +3,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type SearchGame = { appid: number; title: string };
-/** What a result row shows beyond its title. The title index stays small; the visible rows fetch this. */
 export type SearchDetail = { appid: number; header_image: string | null; release_date: string | null; review_positive_pct: number | null; review_count: number };
-/** A curated empty-state pick, read on the server (catalog.ts getPopularIndies). */
 export type PopularPick = SearchDetail & { title: string };
 
-/** `popular` is the empty state, already complete, so opening search shows it at once. */
 export function useGameSearch(popular: PopularPick[]) {
   const worker = useRef<Worker | null>(null);
   const sequence = useRef(0);
   const cache = useRef(new Map<string, SearchGame[]>([["", popular.map(({ appid, title }) => ({ appid, title }))]]));
   const lastQuery = useRef("");
   const requested = useRef(new Set<number>(popular.map(pick => pick.appid)));
-  // The title index is several megabytes, so it downloads the first time someone searches, not on every page view.
   const loaded = useRef(false);
   const [games, setGames] = useState<SearchGame[]>([]);
   const [details, setDetails] = useState(() => new Map<number, SearchDetail>(popular.map(pick => [pick.appid, pick])));
@@ -59,7 +55,6 @@ export function useGameSearch(popular: PopularPick[]) {
     const cached = cache.current.get(key);
     if (cached) return show(cached);
     setLoading(true);
-    // Keep the previous rows on screen until the new ones arrive, so typing doesn't flash an empty list.
     worker.current?.postMessage({ type: "search", query: key, id });
   }, [show]);
 

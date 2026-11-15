@@ -1,4 +1,3 @@
-"""Regress the Pro entitlement / undersized physical disk failure."""
 import unittest
 from unittest.mock import patch
 from capacity import check_capacity

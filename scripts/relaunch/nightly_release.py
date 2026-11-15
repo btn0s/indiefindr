@@ -1,4 +1,3 @@
-"""Pin nightly code independently of the mutable source checkout."""
 import hashlib,json,os,pathlib
 
 def build_snapshot(root):

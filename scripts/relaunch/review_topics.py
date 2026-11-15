@@ -1,21 +1,8 @@
-"""Is a review about the game, or about something outside it? Local, multilingual, no LLM.
-
-Zero-shot nearest-prototype classification with a small multilingual sentence
-encoder (paraphrase-multilingual-MiniLM-L12-v2, ~470 MB, CPU). Each review is
-compared with short descriptions of off-game topics (store deals, publisher,
-DRM, pricing and region, politics, accounts, launchers, the developer's
-conduct) and on-game topics (gameplay, bugs, updates, abandonment,
-monetisation inside the game, servers). Abandonment and in-game monetisation
-are deliberately on-game: players leaving over them is a real decline.
-
-The model must already be in HF_HOME (the nightly runs with HF_HUB_OFFLINE=1);
-fetch it once with `python review_topics.py --download`.
-"""
 import sys
 from sentence_transformers import SentenceTransformer
 
 MODEL = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
-MARGIN = .03  # off-game must beat on-game similarity by this much
+MARGIN = .03
 
 OFF_GAME = [
     'the game became an Epic Games Store exclusive',
@@ -65,7 +52,6 @@ def _encoder():
 
 
 def off_game(texts):
-    """One bool per text: True when the text is about something outside the game."""
     texts = [t.strip()[:1000] for t in texts]
     if not texts:
         return []

@@ -1,4 +1,3 @@
-"""Verify all stored model targets using narrow reads instead of large joins."""
 from review_quality import eligible
 from selection import SLATE_SIZE,POPULARITY_CAPS,MODEL_VERSION
 

@@ -30,7 +30,6 @@ export function GameGrid({ initialGames }: GameGridProps) {
       (entries) => {
         if (entries[0].isIntersecting) {
           startTransition(async () => {
-            // A cached GET (src/app/api/browse); a failed page ends the list rather than retrying in a loop.
             const response = await fetch(`/api/browse?offset=${offset}`);
             const newGames: GameCardGame[] = response.ok ? await response.json() : [];
             if (newGames.length === 0) {
@@ -62,7 +61,6 @@ export function GameGrid({ initialGames }: GameGridProps) {
     <>
       <div className="card-grid">
         <CardGrid games={games} />
-        {/* The next page holds its place as cards, so nothing below jumps when it lands. */}
         {isPending && <GridSkeleton count={4} />}
       </div>
       {hasMore && <div ref={loaderRef} aria-hidden="true" className="h-px" />}

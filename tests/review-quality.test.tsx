@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { recommendationEligible, reviewBomb } from "../src/lib/review-quality";
 
-// Russian Fishing 4 as the v3 run stored it: Steam 61% Mixed, 70.1% without its February 2024 bomb.
 const fishing = {
   review_positive_pct: 61,
   review_count: 92987,
@@ -24,9 +23,7 @@ test("a bomb that put a positive game into Mixed is reported with both ratings a
 });
 
 test("nothing is reported when the bomb no longer decides the rating", () => {
-  // Rated positive today: the bomb doesn't drag it out of the positive range.
   expect(reviewBomb({ ...fishing, review_positive_pct: 72 })).toBeNull();
-  // Still Mixed without the bomb: the bomb isn't what put it there.
   expect(reviewBomb({ ...fishing, clean_score: 64 })).toBeNull();
   expect(recommendationEligible({ ...fishing, clean_score: 64 })).toBe(false);
 });

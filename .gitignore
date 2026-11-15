@@ -1,6 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
 /node_modules
 /.pnp
 .pnp.*
@@ -10,62 +7,47 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
 /coverage
 
-# next.js
 /.next/
 /out/
 
-# production
 /build
 
-# misc
 .DS_Store
 *.pem
 
-# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
 .env*
 
-# vercel
 .vercel
 
-# typescript
 *.tsbuildinfo
 next-env.d.ts
 .cursor/debug.log
 
-# generated build-time OG images
 /public/og/home.png
 
-# Test result files
 results-*.json
 
-# Cursor IDE (personal workflow files)
 .cursor/
 !.cursor/debug.log  # Keep debug.log ignored if you want, or remove this line
 
-# Other common IDE/editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS files (if not already covered)
 .DS_Store
 Thumbs.db
 
-# Local development files
 .env.local
 .env*.local
-# Supabase local development state
 supabase/.temp/
 .supabase/
 

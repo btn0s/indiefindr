@@ -1,29 +1,3 @@
-"""Review-bomb detection: find sentiment breaks, then tell bombs from declines.
-
-The headline score (Steam's `summary_filtered`, what the site shows) is the
-authority. It already leaves out the periods Steam itself marked as off-topic
-review activity, so those are reported but never subtracted again. Every
-adjustment is computed in that same population (GetAppReviews counts for the
-window with Steam's default filters), so clean_score compares like with like.
-
-Pipeline per game:
-1. `buckets`: the histogram as non-overlapping periods (daily where Steam has
-   them, weekly/monthly before that).
-2. `candidates`: periods whose negative rate jumps far above a robust trailing
-   baseline (rolling median + MAD of the previous ~6 months) *and* whose
-   sentiment breaks from that baseline. Launch spikes, sales and free weekends
-   raise volume without breaking sentiment, so they do not qualify.
-3. `classify`: each merged window gets a verdict, a reason and its numbers.
-   - steam_flagged: Steam labelled it; already excluded from the headline.
-   - bomb: sentiment afterwards returned most of the way to where it was before
-     (recovery >= 0.6). Excluded from clean_score.
-   - decline: sentiment afterwards stayed down (recovery < 0.6). Players really
-     changed their minds; never adjusted.
-   - unresolved: too few reviews before or after to judge the shape. Promoted
-     to bomb only on strong off-topic evidence from the reviews themselves.
-   Positive bursts go through the same test and are reported, never subtracted
-   (see `POSITIVE`).
-"""
 from datetime import datetime, timezone
 import calendar,re
 from collections import Counter
@@ -34,29 +8,22 @@ DAY = 86400
 PACIFIC = ZoneInfo('America/Los_Angeles')
 VERSION = 'steam-review-events-v3'
 
-MIN_VOTES = 30          # a window needs this many votes of its polarity
-DAILY_GAP = 2           # quiet days allowed inside an ongoing daily window
-SURGE = 4               # rate must exceed baseline by this factor ...
-SURGE_MAD = 4           # ... and by this many robust deviations
-SENTIMENT_BREAK = .25   # share of the window's polarity above the baseline share
-BASELINE_DAYS = 183     # trailing reference period
-JUDGE_MIN = 20          # reviews needed before and after to judge recovery
-POST_GUARD = 28 * DAY   # skip the decay tail right after the window
-POST_DAYS = 730         # how far after the window recovery is measured
-POST_MIN_DAYS = 60      # ... and at least this much history must exist after the guard
-RECOVERED = .6          # fraction of the drop that must come back for a bomb ...
-SETTLED = 10            # ... and sentiment afterwards within this many points of before
-# Positive bursts (support campaigns, giveaways, launches of a sequel) are found
-# by the same test and reported as `positive_windows`, but never subtracted:
-# the site only uses the score to keep sub-70% games out of recommendations, so
-# removing them could only lower a score that is already below the gate, and a
-# positive burst is far more often real players (a fix, a free weekend) than a
-# brigade. Steam's own off-topic labels already remove flagged ones of either sign.
+MIN_VOTES = 30
+DAILY_GAP = 2
+SURGE = 4
+SURGE_MAD = 4
+SENTIMENT_BREAK = .25
+BASELINE_DAYS = 183
+JUDGE_MIN = 20
+POST_GUARD = 28 * DAY
+POST_DAYS = 730
+POST_MIN_DAYS = 60
+RECOVERED = .6
+SETTLED = 10
 POSITIVE = 'reported'
 
 
 def rated_low(score, count):
-    # Steam does not assign a sentiment label below ten reviews.
     return count >= 10 and score is not None and score < 70
 
 
@@ -65,15 +32,11 @@ def eligible(game):
         return True
     if game['review_positive_pct'] >= 70:
         return True
-    # Rescued only by a window that was actually subtracted (counter-reviews can leave
-    # one with up >= down). Open windows still being judged carry adjusted=False;
-    # rows from before v3 have no flag and only stored negative-majority windows.
     windows = [w for w in game.get('bomb_windows') or [] if isinstance(w, dict) and w.get('adjusted', w.get('down', 0) > w.get('up', 0))]
     return game.get('clean_score') is not None and game['clean_score'] >= 70 and bool(windows)
 
 
 def buckets(payload):
-    """Non-overlapping periods. Daily buckets win; weekly/monthly parents keep only their uncovered prefix."""
     if payload.get('success') != 1 or not isinstance(payload.get('results'), dict):
         raise ValueError('Steam histogram unavailable')
     data = payload['results']
@@ -111,7 +74,6 @@ def buckets(payload):
 
 
 def steam_events(payload):
-    """Steam's own off-topic labels as half-open [start, end) spans; end_date is the last day."""
     return [dict(start_ts=int(e['start_date']), end_ts=int(e['end_date']) + DAY) for e in payload.get('past_events') or []
             if e.get('start_date') and e.get('end_date')]
 
@@ -126,7 +88,6 @@ def _share(up, down):
 
 
 def _baseline(bs, i):
-    """Trailing ~6 months of rates; launch periods with no history look forward instead."""
     start = bs[i]['start']
     ref = [b for b in bs[:i] if b['start'] >= start - BASELINE_DAYS * DAY]
     if sum(b['up'] + b['down'] for b in ref) < JUDGE_MIN:
@@ -135,7 +96,6 @@ def _baseline(bs, i):
 
 
 def candidates(bs):
-    """Merged windows whose votes of one polarity surge and break from baseline sentiment."""
     flagged = []
     for i, b in enumerate(bs):
         ref = _baseline(bs, i)
@@ -152,14 +112,11 @@ def candidates(bs):
             rate = votes / days
             share = votes / (b['up'] + b['down'])
             base_share = (down_base if key == 'down' else up_base) / (up_base + down_base) if up_base + down_base else .5
-            # No majority rule: bombs draw counter-reviews (Borderlands 2's Steam-flagged
-            # April 2019 month was 46% negative against a 10% baseline).
             if rate >= SURGE * base and rate >= base + SURGE_MAD * mad and share >= base_share + SENTIMENT_BREAK:
                 flagged.append(dict(b, polarity=polarity, base_rate=base, base_share=base_share, index=i))
     windows = []
     for b in flagged:
         last = windows[-1] if windows else None
-        # Adjacent periods merge; an ongoing bomb's daily buckets may have up to two quiet days between.
         gap = bs[last['index'] + 1:b['index']] if last else []
         if last and last['polarity'] == b['polarity'] and (last['end_ts'] == b['start'] or (len(gap) <= DAILY_GAP and all(g['resolution'] == 'day' for g in gap + [b]))):
             up, down = _tally(gap)
@@ -174,7 +131,6 @@ def candidates(bs):
 
 
 def shape(bs, w):
-    """Sentiment before, during and after a window, from the histogram."""
     pre = [b for b in bs if b['end'] <= w['start_ts'] and b['start'] >= w['start_ts'] - 365 * DAY]
     if sum(b['up'] + b['down'] for b in pre) < JUDGE_MIN:
         pre = [b for b in bs if b['end'] <= w['start_ts']]
@@ -184,13 +140,11 @@ def shape(bs, w):
     out = dict(before_pct=_pct(before), during_pct=_pct(during), after_pct=_pct(after), before_n=pu + pd, after_n=au + ad,
                days=round((w['end_ts'] - w['start_ts']) / DAY))
     out['days_since'] = round((bs[-1]['end'] - w['end_ts']) / DAY)
-    # Open or too recent for a settled after-period: judged live, re-judged nightly.
     out['live'] = out['days_since'] * DAY < POST_GUARD + POST_MIN_DAYS * DAY
     if pu + pd >= JUDGE_MIN and au + ad >= JUDGE_MIN and not out['live']:
         sign = 1 if w['polarity'] == 'negative' else -1
         drop = sign * (before - during); moved = sign * (after - during)
         out['recovery'] = round(moved / drop, 2) if drop > 0 else 1.0
-        # Points still missing versus before; negative when it ended up better.
         out['settled_gap'] = round(100 * sign * (before - after), 1)
     return out
 
@@ -208,14 +162,6 @@ STOP = set('this that with have game games play played playing just like really 
 
 
 def evidence(window, baseline, topics=None):
-    """Per-review evidence for one window versus the year of reviews before it.
-
-    Each sample is GetAppReviews review objects. Everything here needs no data
-    from after the window, so an open bomb can be judged while it happens.
-    `topics` maps texts to off-game booleans (review_topics.off_game); without
-    it the off-topic shares are omitted. Returns plain numbers so every verdict
-    can be read back.
-    """
     if not window:
         return None
     def norm(r):
@@ -255,30 +201,16 @@ def evidence(window, baseline, topics=None):
     return out
 
 
-OUTSIDERS = .35         # language-mix shift that marks reviewers from outside the game's players
+OUTSIDERS = .35
 
 
 def outsiders(ev):
-    """The window's reviewers came from a different language community than the game's players.
-
-    Regional campaigns (pricing, politics, platform bans) are the commonest
-    off-topic bombs Steam labels, and they can stay negative for months, so in
-    hindsight this signal stands on its own, independent of recovery.
-    """
     if not ev or ev['sample'] < 20 or ev['baseline_sample'] < 20 or ev['language_shift'] is None or ev['language_shift'] < OUTSIDERS:
         return None
     return f"language mix shifted {ev['language_shift']:.0%} (now mostly {ev['top_language']})"
 
 
 def families(ev):
-    """Evidence grouped into three independent families, each with its readable signals.
-
-    what: the reviews are about something outside the game.
-    who: the reviewers are not the game's usual players (little playtime, new
-         accounts, free keys, another language community).
-    coordination: copy-paste text or one word dominating the window.
-    `players` is the opposite reading: established players writing about the game.
-    """
     if not ev or ev['sample'] < 20 or ev['baseline_sample'] < 20:
         return None
     what, who, coordination = [], [], []
@@ -306,15 +238,6 @@ def _overlaps(w, events):
 
 
 def classify(w, events):
-    """Verdict and plain reason for one window.
-
-    Steam's own label settles it. With enough history after the window,
-    recovery confirms a bomb or shows a decline (hindsight). While the window is
-    open or too recent, the reviews themselves decide (live): strong evidence
-    from at least two families is an active bomb, established players writing
-    about the game is a decline, anything else stays unresolved. Each nightly
-    run re-judges open windows until hindsight takes over.
-    """
     s = w['shape']; fam = families(w.get('evidence'))
     when = f"{_pos(s['before_pct'])} before, {_pos(s['during_pct'])} during, {_pos(s['after_pct'])} after"
     if _overlaps(w, events):
@@ -334,7 +257,6 @@ def classify(w, events):
         return 'decline', f"Sentiment stayed down afterwards: {when}{found}"
     during = f"{_pos(s['before_pct'])} before, {_pos(s['during_pct'])} since {w['start']}"
     if not s['live'] or s['before_n'] < JUDGE_MIN:
-        # Without a before there is no break to judge: a new game's bad launch week is not a bomb.
         return 'unresolved', f"Too few reviews to judge ({s['before_n']} before, {s['after_n']} after)"
     if fam and sum(bool(fam[k]) for k in ('what', 'who', 'coordination')) >= 2:
         return 'active_bomb', f"Review bomb in progress, adjusted on strong evidence from the reviews themselves: {'; '.join(signals)}; {during}"
@@ -355,7 +277,6 @@ def _dates(w):
 
 
 def detect(payload):
-    """Histogram-only phase: candidate windows with shape. Cheap; run on every candidate game."""
     return detect_buckets(buckets(payload))
 
 
@@ -367,34 +288,22 @@ def detect_buckets(bs):
 
 
 def needs_reviews(w):
-    """Windows whose verdict or adjustment depends on GetAppReviews data."""
     return w['polarity'] == 'negative'
 
 
 STORED = ('start', 'end', 'start_ts', 'end_ts', 'timezone', 'resolution', 'up', 'down', 'steam_up', 'steam_down', 'verdict', 'adjusted', 'reason', 'shape')
 ADJUSTS = ('bomb', 'active_bomb')
-HEADLINE_TOLERANCE = 2  # points between the API headline and the stored score
+HEADLINE_TOLERANCE = 2
 
 
 def analyze(payload, default_score, fetched=None, steam_labels=True, topics=None):
-    """Score a game. `fetched` holds GetAppReviews data for windows that need it:
-
-    {'headline': (up, down), 'windows': {start_ts: {'steam': (up, down), 'reviews': [...], 'baseline': [...]}}}
-
-    'headline' and each window's 'steam' counts are in the headline's own
-    population, so clean_score = headline minus adjusted windows, like for like.
-    A bomb verdict without those counts cannot adjust: missing data never rescues.
-    `topics` is the off-game text classifier (review_topics.off_game).
-    `steam_labels=False` judges windows blind to Steam's labels (evaluation only).
-    """
     events = steam_events(payload)
-    result = judge(buckets(payload), events if steam_labels else [], default_score, fetched, topics)  # labels off only to evaluate against them
+    result = judge(buckets(payload), events if steam_labels else [], default_score, fetched, topics)
     result['steam_events'] = [_dates(dict(e)) for e in events]
     return result
 
 
 def judge(bs, labels, default_score, fetched=None, topics=None):
-    """analyze() on explicit buckets and Steam labels, e.g. a history cut off mid-window."""
     bs, windows = detect_buckets(bs)
     fetched = fetched or {}
     for w in windows:
@@ -409,8 +318,6 @@ def judge(bs, labels, default_score, fetched=None, topics=None):
     adjusted = [w for w in windows if w['verdict'] in ADJUSTS and 'steam_up' in w]
     headline = fetched.get('headline')
     score = default_score
-    # Like for like or not at all: the API headline must reproduce the stored score
-    # (it is rounded, and may be a day older), or the window counts are in another population.
     mismatch = bool(headline and default_score is not None and sum(headline) and abs(100 * headline[0] / sum(headline) - default_score) > HEADLINE_TOLERANCE)
     if adjusted and headline and not mismatch:
         up = headline[0] - sum(w['steam_up'] for w in adjusted); down = headline[1] - sum(w['steam_down'] for w in adjusted)
@@ -418,9 +325,6 @@ def judge(bs, labels, default_score, fetched=None, topics=None):
             score = 100 * up / (up + down)
             for w in adjusted:
                 w['adjusted'] = True
-    # Stored on every game row and read by cards, so kept lean: adjusted windows,
-    # plus open ones still being judged (banner, no adjustment). review_events
-    # keeps every window with its full evidence for the offline report.
     stored = [w for w in windows if w['adjusted'] or (w['verdict'] == 'unresolved' and w['shape']['live'] and w['shape']['before_n'] >= JUDGE_MIN)]
     total_up, total_down = _tally(bs)
     return dict(clean_score=score, bomb_windows=[{k: w[k] for k in STORED if k in w} for w in stored],
@@ -432,11 +336,9 @@ def judge(bs, labels, default_score, fetched=None, topics=None):
 
 
 def open_windows(result):
-    """Windows the next nightly run must re-judge."""
     return [w for w in result.get('bomb_windows') or [] if w.get('verdict') in ('active_bomb', 'unresolved')]
 
 
-# Rising: review velocity over the last two weeks against the game's own earlier pace.
 TREND_DAYS = 14
 TREND_BASELINE_DAYS = 60
 TREND_MIN_REVIEWS = 30
@@ -447,22 +349,11 @@ TREND_MIN_MOMENTUM = 1.5
 
 
 def momentum(payload, score, now, released=None, max_age_days=TREND_MAX_AGE_DAYS):
-    """Momentum = (reviews in the last 14 complete days + k) / (reviews expected at the prior pace + k).
-
-    The prior pace comes from the 60 days before the window, or from first review if younger;
-    under a week of history counts as a launch (expected 0). Age runs from the later of the first
-    review and the Steam release date (`released`, ISO), so an early-access 1.0 release counts as a
-    launch event; indie+ already keeps relaunched giants off the shelf. max_age_days=None skips the age
-    gate (Early Access games and upcoming games' demos trend at any age). Returns None
-    when the game is too old, too quiet, below the quality floor (lifetime and recent), or not rising
-    (under 1.5x its own prior pace; launches clear this by volume alone).
-    """
     periods = buckets(payload)
     daily = payload['results'].get('recent') or []
     end = int(now.timestamp()) // DAY * DAY
     start = end - TREND_DAYS * DAY
     first = next((b['start'] for b in periods if b['up'] + b['down']), None)
-    # Daily data must cover the window, or the game's whole life (a launch inside the window).
     daily_start = min((r['date'] for r in daily), default=None)
     launched = max(first, int(datetime.fromisoformat(released).replace(tzinfo=timezone.utc).timestamp())) if released and first is not None else first
     if first is None or daily_start is None or daily_start > max(start, first) or (max_age_days is not None and launched < end - max_age_days * DAY):

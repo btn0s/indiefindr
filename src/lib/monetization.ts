@@ -12,7 +12,6 @@ const affiliate = z.object({
 });
 const links = z.record(z.string().regex(/^\d+$/), z.array(affiliate).max(3).refine((items) => new Set(items.map((item) => item.provider)).size === items.length));
 
-/** Only approved, game-specific tracking links supplied by the account owner. */
 export function affiliateLinks(appid: number) {
   if (process.env.AFFILIATES_ENABLED !== "true") return [];
   let value: unknown;

@@ -19,7 +19,6 @@ app.ontoolresult=result=>{
  const text=result.content?.find(block=>block.type==='text');
  try{const data=result.structuredContent??(text&&'text' in text?JSON.parse(text.text):null);if(data&&Array.isArray(data.recommendations))render(data as Slate);}catch{document.querySelector('#status')!.textContent='Could not read the recommendation result.';}
 };
-// Previous and Next page by what's visible; at either end the matching button is disabled. Arrow keys scroll the focused row natively, and snapping lands each step on a card.
 const games=document.getElementById('games')!,previous=document.getElementById('previous') as HTMLButtonElement,next=document.getElementById('next') as HTMLButtonElement;
 const edges=()=>{previous.disabled=games.scrollLeft<=1;next.disabled=games.scrollLeft+games.clientWidth>=games.scrollWidth-1;};
 games.addEventListener('scroll',edges,{passive:true});new ResizeObserver(edges).observe(games);new MutationObserver(edges).observe(games,{childList:true});

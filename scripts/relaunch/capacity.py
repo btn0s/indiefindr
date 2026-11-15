@@ -1,4 +1,3 @@
-"""Entitlement-aware publication guard; never changes plans or purchases capacity."""
 import functools,base64,json,pathlib,urllib.request,argparse
 PROJECT_REF='rqcqlpoxtdddjcylhopk'
 @functools.lru_cache(maxsize=8)
