@@ -174,8 +174,8 @@ export default async function GamePage({
       />}
       <WebMCP />
       <main className="discovery-page">
-        {/* Cover hero: the gameplay clip over the first screenshot, a framed plate across the column (edge to edge on
-            phones), with the title, facts, blurb and Steam button beneath it. The screenshots follow as a rail. */}
+        {/* The page opens on the game's gameplay clip over its first screenshot, a framed banner the width of the column.
+            The title, facts, blurb and Steam button follow, then the screenshots. */}
         <article className="source-game" itemScope itemType="https://schema.org/VideoGame">
           <GameTrailer title={game.title} trailer={trailer}
             image={heroImage({ hero_poster: trailer?.poster, hero_still: game.screenshots?.[0], header_image: game.header_image })} />

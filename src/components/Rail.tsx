@@ -5,8 +5,8 @@ import { CardTracker } from "./CardTracker";
 import { RailButtons } from "./RailButtons";
 
 /** A shelf as one horizontal row of cards: the heading (title, note, See all) with Previous and Next beside it, then
- *  the row, which scrolls and snaps on its own. On phones and tablets it runs to the screen edges with the next card
- *  peeking in. The cards render on the server and arrive as children, one <li> each; one tracker covers the row. */
+ *  the row, which scrolls and snaps on its own. It keeps to the page's column, except on phones, where it runs to the
+ *  screen edges with the next card peeking in. The cards render on the server and arrive as children, one <li> each; one tracker covers the row. */
 export function Rail({ title, note, href, pageAppid, box = false, children }: {
   title: string; note?: string; href?: string;
   /** Its cards are box art, narrower than store headers, so more fit across (globals.css). */

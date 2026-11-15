@@ -161,13 +161,15 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
    on pointermove, so rows shifting under a resting cursor don't take it from the keyboard; a :hover style would. */
 .search-results a[data-highlighted] { background: var(--muted); }
 
-/* Page frame: every page opens with a title block, then sections a fixed gap apart. Sections sit in the frame column;
-   a rail (and home's feature row) takes the full width instead and pads its content in to the frame by --edge, so its
-   heading and first card line up with everything else while its row runs on past the frame to the screen edges. */
+/* Page frame: every page opens with a title block, then sections a fixed gap apart, all in the frame column. A rail
+   (home's shelves and feature row, a game's screenshots and more-from-developer) keeps to the frame too, lined up with
+   its heading on both sides, its cards clipped at the frame's edge. On phones it runs to the screen edges instead,
+   padding its first card in to the gutter by --edge, the next card peeking in. */
 .discovery-page { display: grid; grid-template-columns: [full-start] minmax(var(--gutter), 1fr) [frame-start] minmax(0, var(--frame)) [frame-end] minmax(var(--gutter), 1fr) [full-end];
   padding: var(--page-top) 0 64px; }
 .discovery-page > * { grid-column: frame; min-width: 0; }
-.discovery-page > :is(.rail-section, .features) { grid-column: full; --edge: max(var(--gutter), calc((100% - var(--frame)) / 2)); }
+.discovery-page > :is(.rail-section, .features), .source-game > .screenshot-rail { --edge: 0px; }
+@media (max-width: 639px) { .discovery-page > :is(.rail-section, .features), .source-game > .screenshot-rail { grid-column: full; --edge: var(--gutter); } }
 .discovery-page > * + * { margin-top: var(--section-gap); }
 .page-head { display: flex; flex-direction: column; gap: 8px; }
 .title-lead { color: var(--muted-foreground); }
@@ -181,7 +183,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .discovery-page.home > .features { margin-top: 24px; }
 
 /* Feature cards: art with the game's name over it, its first recommendations beneath, on one white card. On phones and
-   tablets a row that scrolls and snaps, edge to edge, the next card peeking in. */
+   tablets a row that scrolls and snaps, the next card peeking in (on phones from past the screen edge). */
 .feature-row { display: grid; grid-auto-flow: column; grid-auto-columns: calc(100% - 36px); gap: 12px; overflow-x: auto; overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory; scrollbar-width: none; margin-block: -8px -28px; padding: 8px var(--edge) 28px; scroll-padding-inline: var(--edge); }
 .feature-row::-webkit-scrollbar { display: none; }
@@ -230,9 +232,9 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .see-all svg { transition: transform var(--duration-s) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .see-all:hover svg { transform: translateX(2px); } }
 
-/* Rails: a shelf as one row that scrolls and snaps on its own, running the full width of the screen with its cards
-   lined up on the frame. Cards are the store art at 2.14:1, sized by the frame: about 1.4 to a phone, 2.4 to a tablet,
-   three to a desktop page, larger than in a grid at every width; the next card always shows past the frame's edge. */
+/* Rails: a shelf as one row that scrolls and snaps on its own (Previous and Next page through it with a mouse). Cards
+   are the store art at 2.14:1, sized by the frame: about 1.4 to a phone, 2.4 to a tablet, three to a desktop page,
+   larger than in a grid at every width. */
 .rail-section > .section-heading { margin-inline: var(--edge); }
 .rail { --rail-gap: 12px; display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - var(--rail-gap)) / 1.4); gap: var(--rail-gap);
   overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
@@ -309,13 +311,18 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 }
 
 /* Game page */
-/* Plate: the cover is an object on the page, whole and unfaded, with a hairline edge, across the column; the title,
-   facts, blurb and Steam button follow it. The screenshots run under them as a rail, the full width of the page like
-   the shelves'. A section gap, not a rule, separates the recommendations. */
-.discovery-page > .source-game { grid-column: full; display: grid; grid-template-columns: subgrid; row-gap: 20px; }
+/* The page opens on the game's gameplay clip: a framed banner the width of the column, whole and unfaded, with a
+   hairline edge. The title, facts, blurb and Steam button follow (on desktop the button sits to the right of the text),
+   then the screenshots. The article spans the page (a subgrid of it) so that on phones the screenshots can run to the
+   screen edges. A section gap, not a rule, separates the recommendations. */
+.discovery-page > .source-game { grid-column: full; display: grid; grid-template-columns: subgrid; row-gap: 24px; }
 .source-game > * { grid-column: frame; min-width: 0; }
-.source-game > .screenshot-rail { grid-column: full; --edge: max(var(--gutter), calc((100% - var(--frame)) / 2)); }
 .source-info { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+@media (min-width: 1000px) {
+  .discovery-page > .source-game { row-gap: 32px; }
+  .source-info { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 48px; align-items: start; }
+  .source-game-actions { padding-top: 22px; }
+}
 .source-header { display: flex; flex-direction: column; gap: 12px; }
 /* Facts: soft filled chips, no outline, one per fact, wrapping whole. A chip whose name is longer than its line wraps
    inside itself, so its radius stays modest enough for two lines. */
@@ -346,20 +353,19 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 .bomb-icon { flex-shrink: 0; width: 13px; height: 13px; translate: 0 1.5px; color: #d97706; fill: rgb(245 158 11 / .25); stroke-width: 2; }
 .bomb-link { margin-left: auto; flex-shrink: 0; white-space: nowrap; color: #9a5219; opacity: .82; text-underline-offset: 3px; transition: opacity var(--duration-s) var(--ease-out), color var(--duration-s) var(--ease-out); }
 @media (hover: hover) and (pointer: fine) { .bomb-link:hover { opacity: 1; color: #5c2b09; text-decoration: underline; } }
-/* The plate: 16:9, a 16px radius (14px on phones) and a hairline inside its edge. */
+/* The banner: a 2:1 crop of the clip's centre, 16:9 on phones; a 16px radius (14px on phones) and a hairline inside
+   its edge. */
 .game-trailer { position: relative; aspect-ratio: 16/9; width: 100%; overflow: hidden; border-radius: var(--plate-radius); background: var(--media); }
 .game-trailer::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 1px rgb(0 0 0 / .08); pointer-events: none; }
+@media (min-width: 701px) { .game-trailer { aspect-ratio: 2 / 1; } }
 :root { --plate-radius: 16px; }
-/* Phones: the plate runs edge to edge, straight under the header, like an app page's media; name, facts and the Steam
-   button follow it. */
-@media (max-width: 700px) {
-  .source-game > .game-trailer { width: auto; margin: calc(-1 * var(--page-top)) calc(-1 * var(--gutter)) 0; border-radius: 0; }
-  .source-game > .game-trailer::after { box-shadow: inset 0 -1px 0 rgb(0 0 0 / .06); }
-}
-/* Hierarchy from size and weight, both in full foreground: a small lead line, then the title. */
+@media (max-width: 700px) { :root { --plate-radius: 14px; } }
+/* Hierarchy from size and weight, both in full foreground: a small lead line, then the title. On desktop, beside the
+   Steam button, the name is a step smaller than the display size, so long names keep to two lines. */
 .source-header .page-title { display: flex; flex-direction: column; gap: 4px; }
 .source-header .title-lead { color: var(--muted-foreground); font-size: var(--type-body); line-height: 1.4; font-weight: 500; letter-spacing: 0; }
 .source-header .page-title [itemprop=name] { text-wrap: balance; overflow-wrap: anywhere; }
+@media (min-width: 1000px) { .source-header .page-title [itemprop=name] { font-size: 40px; line-height: 1.08; } }
 .source-header .source-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; margin-top: 2px; }
 @media (max-width: 700px) { .source-header .source-description { -webkit-line-clamp: 3; } }
 /* Gameplay over a still (GameplayLoop): it fades up over the picture once it is actually playing. */
@@ -383,7 +389,7 @@ body { font-family: var(--font-inter), sans-serif; font-size: var(--type-body); 
 @media (max-width: 700px) { .screenshot-strip button { border-radius: 10px; } }
 /* A hairline edge, so pale shots don't melt into the page. */
 .screenshot-strip img { width: 100%; height: 100%; object-fit: cover; outline: 1px solid rgb(0 0 0 / .07); outline-offset: -1px; border-radius: inherit; }
-/* It runs the full width of the page with its first shot on the frame, like the rails. */
+/* Like the rails: in the frame, and on phones to the screen edges with its first shot on the gutter. */
 .screenshot-rail .screenshot-strip { padding-inline: var(--edge); scroll-padding-inline: var(--edge); }
 @media (max-width: 639px) { .screenshot-strip li { flex-basis: 72%; } }
 @media (hover: hover) and (pointer: fine) { .screenshot-strip button:hover img { opacity: .85; } }
