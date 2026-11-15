@@ -1,8 +1,3 @@
-"""Acquire canonical US app prices, including preserved legacy pages.
-
-Batched price_overview is the store's app price, not a bundle purchase option.
-Raw responses remain resumable on disk; no foreign or stale fallback is used.
-"""
 import argparse,datetime,hashlib,json,pathlib,time
 import requests
 p=argparse.ArgumentParser();p.add_argument('--source',type=pathlib.Path,required=True);a=p.parse_args()

@@ -3,7 +3,6 @@ import { Button } from "@ui-sdk/react/button";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
-/** A code sample with a copy button. The icon crossfades to a check, then back after a moment. */
 export function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {

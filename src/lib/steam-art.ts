@@ -5,11 +5,6 @@ const ASSETS = "https://shared.akamai.steamstatic.com/store_item_assets/";
 
 type StoreItem = { id: number; assets?: { asset_url_format?: string; library_capsule?: string } };
 
-/** Box art (Steam's 600×900 library capsule) for a list of games, by appid; a game without any is left out. Neither the
- *  catalog nor Steam's appdetails API carries it, and newer games keep it under hashed paths, so it comes from
- *  IStoreBrowseService/GetItems, which lists each game's asset files and the format their URLs take: a hundred games a
- *  request, kept for days. A game with no box art of its own gets a stand-in Steam generates (portrait.png: the store
- *  header over a smear of itself), which counts as none. */
 export async function getBoxArt(appids: number[]): Promise<Record<number, string>> {
   "use cache";
   cacheLife("days");

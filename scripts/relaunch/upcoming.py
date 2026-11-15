@@ -1,13 +1,3 @@
-"""Upcoming shelf: Steam's most-wishlisted upcoming indies that have a real release date in the next six months.
-
-Unreleased games have no reviews. Steam ranks them by wishlists (store search `filter=popularwishlist`, Indie tag).
-The counts are private but the order is public. It is the platform's own measure of anticipation, hard to game,
-and costs about 25 page requests. Demo reviews were too sparse to rank by (7 games met the Rising bar in
-November 2026), so they only gate quality. A game is kept when our catalog classes it indie, Steam shows a day
-or month release date within WINDOW_DAYS (no quarter, year or TBA placeholders), and, if its demo has at least
-DEMO_MIN_REVIEWS reviews, the demo is at least 80% positive. Writes upcoming.json {appid: rank}, where 1 is the
-most wishlisted game kept.
-"""
 import argparse,datetime,json,pathlib,re,time,urllib.error,urllib.parse,urllib.request
 from review_quality import TREND_MIN_POSITIVE
 WINDOW_DAYS=183;DEMO_MIN_REVIEWS=10;REAL_WINDOW={'date_full','date_month'}

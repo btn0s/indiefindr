@@ -2,11 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 
 let cachedBrowserClient: ReturnType<typeof createClient> | null = null;
 
-/**
- * Browser/client Supabase client.
- *
- * Lazily created so builds don't fail when env isn't present.
- */
 export function getSupabaseBrowserClient() {
   if (cachedBrowserClient) return cachedBrowserClient;
 

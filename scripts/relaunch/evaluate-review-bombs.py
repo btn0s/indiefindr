@@ -1,24 +1,3 @@
-"""Score the review-bomb detector against ground truth, old (v2) model vs new.
-
-Ground truth:
-- fixtures/review-bomb-labels.json: press-sourced bombs and real declines.
-  A model "adjusts" a labelled event when one of its adjusting windows overlaps
-  the labelled dates (±31 days, since old history is in monthly buckets).
-- Steam's own off-topic labels (`past_events` in every cached histogram). Recall
-  only: an unflagged window may still be a bomb, so it cannot count against us.
-The new model is always judged blind to Steam's labels so the labels can grade it.
-
-Two settings for the labelled set:
-- hindsight: the full history as it is today.
-- judged at the time: history cut off LIVE_DAYS into the labelled window. The
-  histogram keeps only periods that ended before the window; the window so far
-  is one period counted from GetAppReviews (every purchase type and off-topic
-  review, the closest match to the histogram's population). Only the live
-  verdict counts (active_bomb adjusts), with no future data and no Steam label.
-
-Writes data/review-eval/report.json and report.md; reads the catalog result
-from <source>/review-quality.json for the old-vs-new adjusted counts.
-"""
 import argparse,datetime,json,pathlib,statistics
 from review_quality import ADJUSTS,analyze,buckets,detect,detect_buckets,judge,needs_reviews,rated_low,steam_events,DAY
 from review_topics import off_game
@@ -32,7 +11,6 @@ a.out.mkdir(parents=True,exist_ok=True);steam=Steam(a.cache,store_interval=.5,ap
 
 
 def old_analyze(bs,default_score):
- """The v2 detector as shipped (steam-review-spikes-v2-negative-dominant), frozen here as the baseline."""
  daily=[b for b in bs if b['resolution']=='day']
  baseline=statistics.median([b['down'] for b in daily]) if daily else statistics.median([b['down']/((b['end']-b['start'])/DAY) for b in bs]) if bs else 0
  windows=[]
@@ -56,7 +34,6 @@ def blind(appid):
 
 
 def at_the_time(appid,start):
- """Old and new verdicts with history cut off LIVE_DAYS into the window."""
  cut=start+LIVE_DAYS*DAY
  bs=[b for b in buckets(steam.histogram(appid)['payload']) if b['end']<=start]
  up,down=steam.counts(appid,start,cut,offtopic=True,purchase_type=1)
@@ -74,7 +51,6 @@ def confusion(rows,key):
  return dict(tp=tp,fp=fp,fn=fn,tn=tn,precision=round(tp/(tp+fp),3) if tp+fp else None,recall=round(tp/(tp+fn),3) if tp+fn else None)
 
 
-# 1. Hand-labelled press set, in hindsight and judged at the time.
 hand=[];live=[]
 for item in json.loads(a.labels.read_text()):
  start,end=ts(item['window_start']),ts(item['window_end'])+DAY
@@ -87,7 +63,6 @@ for item in json.loads(a.labels.read_text()):
  if item['label'] in ('bomb','decline'):
   live.append(dict(appid=item['appid'],title=item['title'],label=item['label'],window=hand[-1]['window'],**at_the_time(item['appid'],start)))
 
-# 2. Steam's own labels across every cached histogram.
 events=[]
 for path in sorted((a.cache/'histogram').glob('*.json')):
  payload=json.loads(path.read_text())['payload']
@@ -99,7 +74,6 @@ for path in sorted((a.cache/'histogram').glob('*.json')):
   events.append(dict(appid=int(path.stem),start=day(e['start_ts']),end=day(e['end_ts']-DAY),old=any(overlaps(w,e['start_ts'],e['end_ts'],0) for w in old['bomb_windows']),
    detected=bool(hit),new=any(w['verdict'] in ADJUSTS for w in hit),verdicts=[w['verdict'] for w in hit]))
 
-# 3. Catalog impact: old model on the same cached histograms vs the new run's output.
 tags=json.loads((a.source/'data/steam_tags.json').read_text());names={str(g['appid']):g.get('title') for g in json.loads(a.catalog.read_text())['rows']} if a.catalog else {};quality=json.loads((a.source/'review-quality.json').read_text())
 c=dict(rated_low=0,old_adjusted=0,old_rescued=0,old_double_counted_steam_labels=0,new_adjusted=0,new_rescued=0,new_open_banners=0,new_active_bombs=0,steam_flagged_games=0);changes=[]
 for key,q in quality.items():

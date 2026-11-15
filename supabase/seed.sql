@@ -1,1 +1,0 @@
--- Catalog is loaded offline by scripts/relaunch/prepare.py.

@@ -1,13 +1,3 @@
-"""Resumable, rate-limited review-bomb checks on the offline ingest host.
-
-Every rated-low (or sharply dropped) game gets one histogram read; only games
-with a candidate window get GetAppReviews reads. Raw responses stay on disk.
-Games with an open window (active_bomb / unresolved) are re-judged every run,
-whatever their score, until hindsight confirms or flips the verdict.
-The same histogram read serves review momentum for the Rising (recent indie launches) and
-Early Access (indies still in early access, any age) shelves, below the indie+ line.
-Needs the recommender venv (sentence-transformers) and the topic model in HF_HOME.
-"""
 import argparse,datetime,fcntl,json,pathlib,threading
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from review_quality import analyze,detect,needs_reviews,open_windows,rated_low,momentum,VERSION,TREND_MIN_REVIEWS,TREND_MIN_POSITIVE,TREND_MAX_AGE_DAYS
@@ -21,10 +11,7 @@ steam=Steam(a.cache,store_interval=a.interval,api_interval=a.api_interval,offlin
 tags=json.loads((a.source/'data/steam_tags.json').read_text());output=a.source/'review-quality.json'
 previous=json.loads(output.read_text()) if output.exists() else {};results={};pending=[]
 now=datetime.datetime.now(datetime.timezone.utc)
-# Rising age runs from the later of first review and steam_release_date (an early-access 1.0 counts as a launch),
-# so only indies released, or released from early access, within the window need a histogram.
 trend_since=(now.date()-datetime.timedelta(days=TREND_MAX_AGE_DAYS)).isoformat()
-# Early Access games trend at any age, so their momentum skips the age gate.
 rows=[r for r in json.loads((a.source/'data/catalog.json').read_text())['rows'] if r.get('is_indie')]
 recent_indies={str(r['appid']):r.get('steam_release_date') for r in rows if r.get('is_early_access') or (r.get('steam_release_date') or '9999')>=trend_since}
 early_access={str(r['appid']) for r in rows if r.get('is_early_access')}

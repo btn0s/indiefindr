@@ -1,4 +1,3 @@
-// Steam appids resolved against the catalog; order is the editorial search empty state.
 export const POPULAR_INDIES = [
   { appid: 367520, title: 'Hollow Knight' },
   { appid: 413150, title: 'Stardew Valley' },

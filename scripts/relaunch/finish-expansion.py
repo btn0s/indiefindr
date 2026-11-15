@@ -1,8 +1,3 @@
-"""Finish the already-running full-catalog score without restarting compute.
-
-Run on devbox only. A durable ingest manifest resumes publication after failure;
-install the nightly job only once the initial generation has fully published.
-"""
 import json
 import pathlib
 import subprocess

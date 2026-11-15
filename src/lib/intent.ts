@@ -4,8 +4,6 @@ import { getImageProps } from "next/image";
 import { preload } from "react-dom";
 import { HERO_SIZES, smallCopy } from "@/lib/hero";
 
-/** Fetches a game page's cover the way the page will ask for it: Steam's small copy that paints first, then the hero
- *  at the same optimizer widths and sizes (GameTrailer). */
 export function preloadHero(src: string | null) {
   if (!src) return;
   preload(smallCopy(src), { as: "image", fetchPriority: "high" });
@@ -15,9 +13,6 @@ export function preloadHero(src: string | null) {
 
 let started = false;
 
-/** Calls `onIntent` once, when the visitor is about to open `element`: the pointer heading for it (trajectory), Tab
- *  about to reach it, it scrolling under a resting cursor, or a finger landing on it. Skipped on Save-Data and slow
- *  connections. Returns the unregister function, for use as an effect cleanup. */
 export function watchIntent(element: HTMLElement, onIntent: () => void) {
   if (!started) {
     started = true;

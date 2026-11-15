@@ -19,18 +19,16 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
       status?: number;
       response?: { status?: number };
     };
-    // Retry on network errors, 5xx errors, and rate limits
     if (error instanceof TypeError && error.message.includes("fetch")) {
-      return true; // Network error
+      return true;
     }
     if (err?.response?.status) {
       const status = err.response.status;
-      return status >= 500 || status === 429; // Server error or rate limit
+      return status >= 500 || status === 429;
     }
     if (err?.status) {
       return err.status >= 500 || err.status === 429;
     }
-    // Retry on common error messages
     const errorMessage = err?.message?.toLowerCase() || "";
     return (
       errorMessage.includes("timeout") ||

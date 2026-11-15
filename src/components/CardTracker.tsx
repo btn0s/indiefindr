@@ -4,8 +4,6 @@ import { track } from "@/lib/tracking";
 
 const CARD = "a.game-card[data-appid]";
 
-/** Impressions and clicks for every card in the grid it sits in, cards appended later included: one observer and one
- *  listener per grid rather than one per card. */
 export function CardTracker({ pageAppid }: { pageAppid?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {

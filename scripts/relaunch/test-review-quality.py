@@ -1,4 +1,3 @@
-"""Detector behaviour: bombs vs declines, Steam labels, spikes that are not bombs, sparse data, eligibility."""
 import calendar,datetime,json,pathlib,unittest
 from review_quality import analyze,buckets,eligible,momentum,open_windows,rated_low
 
@@ -8,7 +7,6 @@ def month(i):
 
 
 def history(months,events=()):
-    """Monthly histogram from (up, down) pairs starting Jan 2020."""
     rows=[dict(date=month(i),recommendations_up=u,recommendations_down=d) for i,(u,d) in enumerate(months)]
     return dict(success=1,results=dict(rollup_type='month',rollups=rows,recent=[]),past_events=[dict(type=0,start_date=s,end_date=e) for s,e in events])
 
@@ -26,7 +24,6 @@ def fetched(window_month,steam,headline,window=None,baseline=None):
 
 
 def topics(texts):
-    """Stand-in for the embedding classifier: anything mentioning the store deal is off-game."""
     return ['exclusive' in t for t in texts]
 
 
@@ -44,7 +41,6 @@ class Verdicts(unittest.TestCase):
         self.assertEqual((w['up'],w['down'],w['steam_up'],w['steam_down']),(60,900,50,850))
 
     def test_headline_in_another_population_never_adjusts(self):
-        # Apex Legends: Steam purchases alone gave 1.6k reviews at 75% against a 1.08M, 67% headline.
         payload=history(QUIET+[(60,900)]+QUIET)
         result=analyze(payload,67,fetched(24,(2,70),(1186,404)))
         self.assertEqual(result['clean_score'],67)
@@ -52,7 +48,6 @@ class Verdicts(unittest.TestCase):
         self.assertFalse(result['bomb_windows'])
 
     def test_lasting_decline_is_never_adjusted(self):
-        # Neos VR: ~80% before, single digits during, ~20% for years after.
         payload=history(QUIET+[(10,250)]+[(4,16)]*24)
         result=analyze(payload,57,fetched(24,(10,250),(2000,1500)))
         self.assertEqual(result['bomb_windows'],[])
@@ -61,7 +56,6 @@ class Verdicts(unittest.TestCase):
         self.assertEqual(w['verdict'],'decline')
 
     def test_partial_recovery_that_settles_lower_is_a_decline(self):
-        # Onward: recovered most of the dip but settled 14 points below.
         payload=history([(83,17)]*24+[(30,70)]*2+[(69,31)]*24)
         result=analyze(payload,69,fetched(24,(60,140),(5900,2700)))
         self.assertEqual(result['clean_score'],69)
@@ -73,7 +67,6 @@ class Verdicts(unittest.TestCase):
         self.assertEqual(len(result['bomb_windows']),1)
 
     def test_counter_reviews_do_not_hide_a_bomb(self):
-        # Borderlands 2, April 2019: 46% negative against a 10% baseline.
         payload=history([(90,10)]*24+[(540,460)]+[(90,10)]*24)
         result=analyze(payload,67,fetched(24,(500,400),(4000,2000)))
         self.assertEqual(len(result['bomb_windows']),1)
@@ -85,7 +78,6 @@ class Verdicts(unittest.TestCase):
         self.assertEqual(result['clean_score'],75)
         self.assertEqual(result['review_events'][0]['verdict'],'steam_flagged')
         self.assertEqual(len(result['steam_events']),1)
-        # Blind to the label, the shape alone still calls it a bomb.
         self.assertEqual(analyze(payload,75,fetched(24,(5,10),(3870,1300)),steam_labels=False)['bomb_windows'][0]['verdict'],'bomb')
 
     def test_outsider_wave_is_a_bomb_even_while_it_lingers(self):
@@ -97,7 +89,7 @@ class Verdicts(unittest.TestCase):
 
     def test_open_window_with_weak_evidence_is_shown_but_not_adjusted(self):
         payload=history(QUIET+[(60,900)])
-        newcomers=players(40,playtime=30)  # one family of evidence only: who is reviewing
+        newcomers=players(40,playtime=30)
         result=analyze(payload,64,fetched(24,(50,850),(3000,1700),window=newcomers),topics=topics)
         [w]=result['bomb_windows']
         self.assertEqual((w['verdict'],w['adjusted']),('unresolved',False))
@@ -106,7 +98,6 @@ class Verdicts(unittest.TestCase):
         self.assertEqual(open_windows(result),result['bomb_windows'])
 
     def test_a_bad_launch_is_not_shown_as_a_possible_bomb(self):
-        # A new game with almost no history: no before, so no break to judge and no banner.
         payload=history([(5,1),(60,900),(10,10)])
         result=analyze(payload,7,fetched(1,(50,850),(70,911)),topics=topics)
         [w]=result['review_events']
@@ -124,7 +115,6 @@ class Verdicts(unittest.TestCase):
         self.assertAlmostEqual(result['clean_score'],100*2950/(2950+850))
 
     def test_open_decline_by_the_games_own_players_is_called_a_decline(self):
-        # Neos VR judged at the time: established players writing about the split, not off-game topics.
         payload=history(QUIET+[(10,250)])
         result=analyze(payload,57,fetched(24,(10,250),(2000,1500),window=players(40,playtime=9000),baseline=players(40,playtime=9000)),topics=topics)
         self.assertEqual(result['bomb_windows'],[])
@@ -168,9 +158,7 @@ class Eligibility(unittest.TestCase):
         self.assertTrue(eligible(dict(review_count=10,review_positive_pct=70)))
         self.assertFalse(eligible(dict(review_count=10,review_positive_pct=69)))
         self.assertTrue(eligible(dict(review_count=100,review_positive_pct=50,clean_score=91,bomb_windows=[dict(up=1,down=100)])))
-        # A bomb drowned in counter-reviews still rescues.
         self.assertTrue(eligible(dict(review_count=100,review_positive_pct=50,clean_score=91,bomb_windows=[dict(up=540,down=460,verdict='bomb',adjusted=True)])))
-        # Rows from before v3 carry no flag and only ever stored negative-majority windows.
         self.assertFalse(eligible(dict(review_count=100,review_positive_pct=50,clean_score=91,bomb_windows=[dict(up=540,down=460)])))
         self.assertFalse(eligible(dict(review_count=100,review_positive_pct=50,clean_score=91,bomb_windows=[])))
         self.assertFalse(eligible(dict(review_count=100,review_positive_pct=50,clean_score=91,bomb_windows=[dict(up=1,down=100,adjusted=False)])))

@@ -1,4 +1,3 @@
-"""Publish a compact public title index for browser-worker search."""
 import argparse,gzip,hashlib,json,pathlib,urllib.request,urllib.error
 p=argparse.ArgumentParser();p.add_argument('--games',type=pathlib.Path,required=True);a=p.parse_args()
 v=dict(l.split('=',1) for l in pathlib.Path('.env.relaunch-admin').read_text().splitlines() if '=' in l);ref=v['RELAUNCH_PROJECT_REF'];assert ref=='rqcqlpoxtdddjcylhopk'

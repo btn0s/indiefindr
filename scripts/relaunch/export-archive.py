@@ -1,4 +1,3 @@
-"""Export retired tables through read-only transactions against the archive."""
 import pathlib,json,urllib.request
 values=dict(l.split('=',1) for l in pathlib.Path('.env.relaunch-admin').read_text().splitlines() if '=' in l)
 url='https://api.supabase.com/v1/projects/ndiwjugonecjegtsdjhv/database/query'

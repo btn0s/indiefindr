@@ -1,12 +1,5 @@
 #!/usr/bin/env npx tsx
 
-/**
- * Build-time OG image generator for the homepage.
- *
- * Creates `public/og/home.png` (1200x630) from the stored Steam header images of the most-reviewed indies.
- * This avoids runtime DB/remote fetch latency for social crawlers (Twitter/Slack).
- */
-
 import { createClient } from "@supabase/supabase-js";
 import { config as loadDotEnv } from "dotenv";
 import * as fs from "node:fs/promises";
@@ -21,13 +14,11 @@ const OUT_FILE = path.join(OUT_DIR, "home.png");
 const WIDTH = 1200;
 const HEIGHT = 630;
 
-// Same tile shape as src/lib/og-grid.tsx: Steam's 460:215 header, so printed titles aren't cropped.
 const TILE_W = 360;
 const TILE_H = 168;
 const GAP = 16;
 const RADIUS = 14;
 
-// Long-lived Steam header URLs, used when the build has no database access.
 const FALLBACK_IMAGES = [413150, 367520, 588650, 646570, 504230, 1145360]
   .map(appid => `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`);
 
@@ -200,7 +191,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  // Never fail the build over an OG image: write a placeholder instead.
   console.warn("[generate-home-og] Failed; writing placeholder OG image.", err);
   fs.mkdir(OUT_DIR, { recursive: true })
     .then(() => sharp(Buffer.from(backgroundSvg())).png().toFile(OUT_FILE))

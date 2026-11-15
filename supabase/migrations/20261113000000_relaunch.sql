@@ -1,4 +1,3 @@
--- Fresh project only. Historical migrations are preserved in archive/.
 create table public.tags (id integer primary key, name text not null);
 create table public.games (
  appid integer primary key, slug text not null unique, title text not null,

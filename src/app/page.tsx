@@ -6,7 +6,6 @@ import { ShelfHeading } from "@/components/ShelfHeading";
 import { CardRail } from "@/components/CardRail";
 import { EmptyNote } from "@/components/EmptyNote";
 
-// Any game works as a starting point, AAA included; recommendations are always indie.
 const EXAMPLES = [[413150, "Stardew Valley"], [367520, "Hollow Knight"], [2379780, "Balatro"]] as const;
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -83,8 +82,6 @@ export default async function Home() {
   );
 }
 
-/** A home shelf as a rail of box art. The first one is on screen as the page opens, so its first row of covers loads
- *  with the page. */
 function Shelf({ slug, games, eager = 0 }: { slug: ShelfSlug; games: BoxGame[]; eager?: number }) {
   return <CardRail games={games} title={SHELVES[slug].title} note={SHELVES[slug].note} href={`/discover/${slug}`} box eager={eager} />;
 }

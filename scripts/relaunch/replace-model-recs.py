@@ -1,4 +1,3 @@
-"""Capacity-checked atomic model replacement; verify archived LLM rows unchanged."""
 import fcntl
 import argparse,collections,itertools,json,pathlib,urllib.request,urllib.error,ssl,time
 from model_assertions import verify_model_slates

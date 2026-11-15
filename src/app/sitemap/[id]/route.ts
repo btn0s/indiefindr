@@ -5,11 +5,9 @@ import { SHELVES } from "@/lib/catalog";
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 const urlset = (entries: string[]) => `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries.join("")}</urlset>`;
 
-/** Hand-built pages: home and the discovery shelves. */
 const pagesSitemap = () => urlset(["", ...Object.keys(SHELVES).map(slug => `/discover/${slug}`)]
   .map(path => `<url><loc>${SITE}${path}</loc><changefreq>daily</changefreq></url>`));
 
-/** Games appid-ordered, 10,000 per shard. Null when the catalog is unavailable; empty when the shard has no games. */
 async function gamesSitemap(shard: number) {
   "use cache";
   cacheLife("hours");

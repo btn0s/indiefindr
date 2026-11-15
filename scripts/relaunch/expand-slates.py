@@ -1,4 +1,3 @@
-"""Select longer slates from saved ordered candidates; no encoding or inference."""
 import argparse,json,pathlib
 from catalog import is_indie
 from selection import SLATE_SIZE,CANDIDATE_LIMIT,MODEL_VERSION,select_targets

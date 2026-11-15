@@ -1,4 +1,3 @@
-"""Native Mac scheduler entrypoint: single-run lock and durable stage recovery."""
 import datetime,fcntl,json,os,pathlib,subprocess
 ROOT=pathlib.Path(__file__).resolve().parents[2];os.chdir(ROOT)
 os.environ.update(PYTHONDONTWRITEBYTECODE='1',HF_HUB_OFFLINE='1',TOKENIZERS_PARALLELISM='false',OMP_NUM_THREADS='2',OPENBLAS_NUM_THREADS='2',MKL_NUM_THREADS='2',VECLIB_MAXIMUM_THREADS='2',HF_HOME=str(ROOT/'data/huggingface'))

@@ -1,7 +1,6 @@
 import { ImageResponse } from "next/og";
 
 export const OG_SIZE = { width: 1200, height: 630 };
-// Tiles keep Steam's 460:215 header shape, so titles printed on the art are never cropped. Shared with scripts/generate-home-og.ts.
 const TILE_W = 360;
 const TILE_H = 168;
 const GAP = 16;
@@ -23,7 +22,6 @@ async function fetchImageAsDataUrl(url: string, timeoutMs: number): Promise<stri
   }
 }
 
-/** The IndieFindr share image: a 3x2 grid of the games' stored header images. Missing images render as dark tiles. */
 export async function gameGridImage(headerImages: (string | null)[]) {
   const urls = Array.from({ length: 6 }, (_, i) => headerImages[i] ?? null);
   const coverDataUrls = await Promise.all(urls.map(url => url ? fetchImageAsDataUrl(url, 3000) : null));
@@ -42,7 +40,6 @@ export async function gameGridImage(headerImages: (string | null)[]) {
       }}
     >
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element -- ImageResponse renders plain <img>
         <img
           src={src}
           alt=""

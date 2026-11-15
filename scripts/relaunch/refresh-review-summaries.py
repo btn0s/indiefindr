@@ -1,8 +1,3 @@
-"""Refresh default Steam summaries nightly, including unchanged store pages.
-
-The app-list modification timestamp is not a reliable review-change signal.
-Fetch compact summaries in 100-app batches before comparing previous scores.
-"""
 import argparse,json,pathlib,time,urllib.request,urllib.error,urllib.parse
 p=argparse.ArgumentParser();p.add_argument('--source',type=pathlib.Path,required=True);a=p.parse_args()
 path=a.source/'data/steam_tags.json';tags=json.loads(path.read_text());ids=sorted(map(int,tags))

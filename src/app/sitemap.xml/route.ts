@@ -3,7 +3,6 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://www.indiefindr.gg";
 
-/** One sitemap of hand-built pages, then one per 10,000 games. Null when the catalog is unavailable. */
 async function sitemapIndex() {
   "use cache";
   cacheLife("hours");
